@@ -1,0 +1,35 @@
+station_id,station_key,display_name,corridor_or_line,gtfs_parent_stop_id,notes
+1,brighton_line_dekalb_av,DeKalb Av,Brighton B/Q,,B and Q route-specific LEDs represent this one physical station.
+2,brighton_line_atlantic_av_barclays_ctr,Atlantic Av-Barclays Ctr,Brighton B/Q,,B and Q route-specific LEDs represent this one physical station.
+3,brighton_line_7_av,7 Av,Brighton B/Q,,B and Q route-specific LEDs represent this physical station; distinct from Culver 7 Av.
+4,brighton_line_prospect_park,Prospect Park,Brighton B/Q,,B and Q route-specific LEDs represent this physical station; distinct from 15 St-Prospect Park.
+5,brighton_line_church_av,Church Av,Brighton B/Q,,B and Q route-specific LEDs represent this physical station; distinct from Culver Church Av.
+6,brighton_line_newkirk_plaza,Newkirk Plaza,Brighton B/Q,,B and Q route-specific LEDs represent this one physical station.
+7,brighton_line_kings_hwy,Kings Hwy,Brighton B/Q,,B and Q route-specific LEDs represent this physical station; distinct from Culver Kings Hwy.
+8,brighton_line_sheepshead_bay,Sheepshead Bay,Brighton B/Q,,B and Q route-specific LEDs represent this one physical station.
+9,brighton_line_beverley_rd,Beverley Rd,Brighton Q,,Q station on the Brighton corridor.
+10,brighton_line_cortelyou_rd,Cortelyou Rd,Brighton Q,,Q station on the Brighton corridor.
+11,brighton_line_parkside_av,Parkside Av,Brighton Q,,Q station on the Brighton corridor.
+12,brighton_line_avenue_h,Avenue H,Brighton Q,,Q station on the Brighton corridor.
+13,brighton_line_avenue_j,Avenue J,Brighton Q,,Q station on the Brighton corridor.
+14,brighton_line_avenue_m,Avenue M,Brighton Q,,Q station on the Brighton corridor.
+15,brighton_line_avenue_u,Avenue U,Brighton Q,,Q station on the Brighton corridor; distinct from Culver Avenue U.
+16,brighton_line_neck_rd,Neck Rd,Brighton Q,,Q station on the Brighton corridor.
+17,brighton_line_brighton_beach,Brighton Beach,Brighton B/Q,,B and Q route-specific LEDs represent this one physical station.
+18,brighton_line_ocean_pkwy,Ocean Pkwy,Brighton Q,,Q station on the Brighton corridor.
+19,culver_line_church_av,Church Av,Culver F/G,,F and G route-specific LEDs represent this physical station; distinct from Brighton Church Av.
+20,culver_line_fort_hamilton_pkwy,Fort Hamilton Pkwy,Culver F/G,,F and G route-specific LEDs represent this one physical station.
+21,culver_line_7_av,7 Av,Culver F/G,,F and G route-specific LEDs represent this physical station; distinct from Brighton 7 Av.
+22,culver_line_15_st_prospect_park,15 St-Prospect Park,Culver F/G,,F and G route-specific LEDs represent this physical station; distinct from Brighton Prospect Park.
+23,culver_line_ditmas_av,Ditmas Av,Culver F,,F station on the Culver corridor.
+24,culver_line_18_av,18 Av,Culver F,,F station on the Culver corridor.
+25,culver_line_avenue_i,Avenue I,Culver F,,F station on the Culver corridor.
+26,culver_line_bay_pkwy,Bay Pkwy,Culver F,,F station on the Culver corridor.
+27,culver_line_avenue_n,Avenue N,Culver F,,F station on the Culver corridor.
+28,culver_line_avenue_p,Avenue P,Culver F,,F station on the Culver corridor.
+29,culver_line_kings_hwy,Kings Hwy,Culver F,,F station on the Culver corridor; distinct from Brighton Kings Hwy.
+30,culver_line_avenue_u,Avenue U,Culver F,,F station on the Culver corridor; distinct from Brighton Avenue U.
+31,culver_line_avenue_x,Avenue X,Culver F,,F station on the Culver corridor.
+32,culver_line_neptune_av,Neptune Av,Culver F,,F station on the Culver corridor.
+33,west_8_st_ny_aquarium,W 8 St-NY Aquarium,Brighton Q / Culver F,,F and Q route-specific LEDs represent this one physical station.
+34,coney_island_stillwell_av,Coney Island-Stillwell Av,Brighton Q / Culver F,,F and Q route-specific LEDs represent the same terminal complex.
