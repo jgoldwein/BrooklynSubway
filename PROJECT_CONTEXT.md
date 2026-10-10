@@ -34,7 +34,7 @@ This context was extracted read-only from the manufactured `.eprj2` database, in
 | LED channel 6 data | 11 | 19 | `MCU_CH6` | U15 -> R22 -> `DATA_CH6_IN` |
 | LED channel 7 data | 12 | 20 | `MCU_CH7` | U15 -> R23 -> `DATA_CH7_IN` |
 | LED channel 8 data | 13 | 21 | `MCU_CH8` | U15 -> R24 -> `DATA_CH8_IN` |
-| User indicator LED | 14 | 22 | `USER_LED` | Through R60 to U23 yellow LED, then GND; HIGH = on |
+| Avi-location indicator LED (U23) | 14 | 22 | `USER_LED` | Separate discrete LED through R60 1 kΩ to GND; active HIGH; not addressable |
 | Buzzer | 21 | 23 | unnamed | Directly to BUZZER3 pad 2; BUZZER3 pad 1 = GND |
 | TEST button | 47 | 24 | `GPIO47` | SW5 to GND, external 10 kΩ pull-up; active LOW |
 | ROUTE button | 38 | 31 | `GPIO38` | SW6; active LOW |
@@ -52,6 +52,9 @@ Unused / intentionally unconnected module GPIO pads in the manufactured PCB incl
 ## LED hardware
 
 - **306** addressable RGB LEDs are populated on the manufactured board.
+- U23 (`SZY0402Y`) is the separate discrete Avi-location indicator on the
+  `USER_LED` net, driven by GPIO14 through R60 1 kΩ to GND. GPIO14 HIGH turns
+  U23 on. U23 is not part of the 306 addressable LEDs or any LED channel.
 - Device: `XL-1615RGBC-2812B-S` / LCSC C41413180, 800 kbit/s, WS2812B-compatible protocol.
 - Data is split across **8 independent channels** through two SN74AHCT125DR level shifters (U14/U15).
 - Channel counts are **37, 38, 37, 37, 42, 37, 38, 40** (total 306).
@@ -85,6 +88,11 @@ The first four LEDs in channel 8 are the four front-panel status indicators, ver
 | 3 | LED307 | MODE |
 
 Channel 8 indices 4–39 are map LEDs.
+
+The addressable-LED accounting is 306 total, including four CH8 status LEDs
+and 302 subway-map LEDs. U23 is a separate discrete indicator and is excluded
+from this addressable topology. LED291 remains an ordinary addressable map LED
+(CH5 index 18).
 
 ## Front controls and UI contract
 

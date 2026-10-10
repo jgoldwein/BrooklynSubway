@@ -30,8 +30,8 @@ bool beginSafe() {
 
   pinMode(pins::POWER_STAT, INPUT);
 
-  digitalWrite(pins::USER_LED, LOW);
-  pinMode(pins::USER_LED, OUTPUT);
+  digitalWrite(pins::AVI_LOCATION_LED, LOW);
+  pinMode(pins::AVI_LOCATION_LED, OUTPUT);
 
   return Wire.begin(pins::I2C_SDA, pins::I2C_SCL);
 #else

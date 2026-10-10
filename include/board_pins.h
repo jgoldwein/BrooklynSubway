@@ -36,7 +36,7 @@ constexpr uint8_t BUTTON_BRIGHT = 42;
 constexpr uint8_t POWER_STAT = 18;
 constexpr uint8_t I2C_SDA = 8;
 constexpr uint8_t I2C_SCL = 9;
-constexpr uint8_t USER_LED = 14;  // HIGH = on
+constexpr uint8_t AVI_LOCATION_LED = 14;  // U23, discrete USER_LED net; HIGH = on
 constexpr uint8_t BUZZER = 21;
 constexpr uint8_t BOOT = 0;
 constexpr uint8_t UART_TX = 43;   // module TXD0

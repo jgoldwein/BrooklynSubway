@@ -28,6 +28,10 @@ channel/designator map. On XIAO startup, its self-test runs before a brief
 status/map simulation. The production board does not illuminate LEDs during
 normal startup.
 
+The separate discrete Avi-location indicator is U23 on GPIO14 (`USER_LED`,
+active HIGH). It is outside the 306 addressable LEDs. Those 306 comprise four
+CH8 status LEDs and 302 addressable map LEDs; LED291 remains a normal map LED.
+
 ## Phase 2B status
 
 The production backend uses Adafruit NeoPixel 1.12.3 for the eight WS2812

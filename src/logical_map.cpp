@@ -354,6 +354,26 @@ bool runSelfTest(ValidationReport &report, const char *&failureReason) {
     failureReason = "unknown logical map elements must resolve their physical reference";
     return false;
   }
+  bool led291RemainsMapElement = false;
+  for (uint16_t index = 0; index < elementCount(); ++index) {
+    MapElement element{};
+    if (!elementAt(index, element)) {
+      failureReason = "logical map inventory lookup failed";
+      return false;
+    }
+    if (element.physical.designator.value == 291 &&
+        element.physical.address.channel == led::PhysicalChannel::CH5 &&
+        element.physical.address.index == 18 &&
+        element.physical.globalIndex.value == 167 &&
+        !element.assigned && element.type == MapElementType::Unknown) {
+      led291RemainsMapElement = true;
+      break;
+    }
+  }
+  if (!led291RemainsMapElement) {
+    failureReason = "LED291 must remain an unassigned addressable map element";
+    return false;
+  }
   MapElement invalid{};
   if (findElement({0}, invalid) || findElement({303}, invalid)) {
     failureReason = "logical map element bounds check failed";

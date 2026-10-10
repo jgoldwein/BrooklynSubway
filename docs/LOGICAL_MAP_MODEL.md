@@ -38,6 +38,11 @@ SYSTEM, NETWORK, MTA FEED, and MODE status LEDs and are excluded. Each of the
 remaining 302 physical map LEDs appears as a deterministic logical inventory
 entry with a separate `MapElementId` and valid physical reference.
 
+The discrete Avi-location indicator U23 on GPIO14 (`USER_LED`, active HIGH) is
+not an addressable LED and is outside this inventory. LED291 remains an
+ordinary addressable map element at CH5 index 18 (global physical index 167).
+The validator checks that LED291 remains among the 302 unknown map entries.
+
 Until a route, station, or segment identity is verified, the entry is explicitly
 `Unknown`: route and station IDs are zero, direction is `Unknown`, and
 `assigned` is false. At present there are 302 unknown/unassigned entries, zero
@@ -69,4 +74,3 @@ inventory counts, and show three concise logical-to-physical examples. The
 existing `T`/`t` LED-engine self-test command and heartbeat remain unchanged.
 The model does not fetch GTFS or GTFS-Realtime data and does not arm or transmit
 production LEDs.
-
