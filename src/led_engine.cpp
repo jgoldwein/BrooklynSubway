@@ -3,7 +3,10 @@
 
 #include "led_engine.h"
 
+#include "led_backend.h"
+#include "board_pins.h"
 #include "led_map.h"
+#include "led_power.h"
 
 #include <Arduino.h>
 
@@ -145,6 +148,10 @@ void render() {
 #if defined(BROOKLYN_TARGET_XIAO)
   uint16_t litCount = 0;
   uint8_t activeChannels = 0;
+  DisplayState limitedFrame[map::TOTAL_LED_COUNT]{};
+  power::FramePowerReport powerReport{};
+  power::limitFrameToBudget(framebuffer, map::TOTAL_LED_COUNT, brightness, 255,
+                            limitedFrame, powerReport);
   for (uint8_t channel = 0; channel < map::CHANNEL_COUNT; ++channel) {
     const PhysicalChannel physicalChannel =
         static_cast<PhysicalChannel>(channel + 1);
@@ -173,13 +180,32 @@ void render() {
       }
     }
   }
-  Serial.printf(", brightness %u/255; status:", brightness);
+  Serial.printf(", brightness %u/255; estimated LED current %lu mA, "
+                "power scale %u/255; status:",
+                brightness,
+                static_cast<unsigned long>(powerReport.estimatedCurrentMa),
+                powerReport.appliedScale);
   constexpr StatusLed statuses[] = {StatusLed::System, StatusLed::Network,
                                     StatusLed::MtaFeed, StatusLed::Mode};
   for (StatusLed status : statuses) {
     Serial.printf(" %s=%s", statusName(status), statusColor(status));
   }
   Serial.println();
+#elif defined(BROOKLYN_TARGET_PCB)
+  DisplayState limitedFrame[map::TOTAL_LED_COUNT]{};
+  power::FramePowerReport powerReport{};
+  power::limitFrameToBudget(framebuffer, map::TOTAL_LED_COUNT, brightness,
+                            power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP,
+                            limitedFrame, powerReport);
+  const bool transmitted =
+      backend::transmitFrame(limitedFrame, map::TOTAL_LED_COUNT);
+  Serial.printf("Physical LED frame: %s; estimated current %lu mA, limited "
+                "current %lu mA, power scale %u/255, brightness cap %u/255\n",
+                transmitted ? "transmitted" : "suppressed (DISARMED)",
+                static_cast<unsigned long>(powerReport.estimatedCurrentMa),
+                static_cast<unsigned long>(powerReport.limitedCurrentMa),
+                powerReport.appliedScale,
+                power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP);
 #endif
 }
 
@@ -273,6 +299,45 @@ bool runSelfTest() {
   if (!fillChannel(PhysicalChannel::CH2, GREEN) ||
       fillChannel(static_cast<PhysicalChannel>(0), GREEN)) {
     return failSelfTest("channel fill or channel bounds check failed");
+  }
+
+  DisplayState fullWhite[map::TOTAL_LED_COUNT]{};
+  DisplayState limitedFrame[map::TOTAL_LED_COUNT]{};
+  DisplayState zeroFrame[map::TOTAL_LED_COUNT]{};
+  for (DisplayState &state : fullWhite) {
+    state.color = WHITE;
+  }
+  if (power::estimateFrameCurrentMa(zeroFrame, map::TOTAL_LED_COUNT, 255) !=
+      0) {
+    return failSelfTest("zero-frame current estimate failed");
+  }
+  const uint32_t fullWhiteEstimate =
+      power::estimateFrameCurrentMa(fullWhite, map::TOTAL_LED_COUNT, 255);
+  if (fullWhiteEstimate <= power::FIRMWARE_LED_CURRENT_BUDGET_MA) {
+    return failSelfTest("full-white frame should exceed LED power budget");
+  }
+  const uint8_t budgetScale = power::brightnessScaleForBudget(
+      fullWhite, map::TOTAL_LED_COUNT, 255);
+  if (budgetScale >= 255) {
+    return failSelfTest("power scaling did not reduce brightness");
+  }
+  power::FramePowerReport powerReport{};
+  power::limitFrameToBudget(fullWhite, map::TOTAL_LED_COUNT, 255, 255,
+                            limitedFrame, powerReport);
+  if (powerReport.limitedCurrentMa >
+      power::FIRMWARE_LED_CURRENT_BUDGET_MA) {
+    return failSelfTest("power-limited frame exceeds configured budget");
+  }
+  if (backend::physicalLedOutputPermissionEnabled() ||
+      backend::physicalLedOutputsArmed()) {
+    return failSelfTest("physical LED outputs must remain disarmed");
+  }
+  for (uint16_t index = 0; index < map::TOTAL_LED_COUNT; ++index) {
+    if (limitedFrame[index].color.red > fullWhite[index].color.red ||
+        limitedFrame[index].color.green > fullWhite[index].color.green ||
+        limitedFrame[index].color.blue > fullWhite[index].color.blue) {
+      return failSelfTest("power scaling increased a color component");
+    }
   }
   clear();
   setGlobalBrightness(255);

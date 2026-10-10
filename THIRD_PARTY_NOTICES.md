@@ -28,3 +28,13 @@ before using, modifying, distributing, or incorporating it.
 
 Third-party items should be identified and attributed in the relevant
 repository location or release materials when required by their terms.
+
+## Adafruit NeoPixel
+
+The production LED backend depends on **Adafruit NeoPixel 1.12.3** by Adafruit,
+source: <https://github.com/adafruit/Adafruit_NeoPixel/tree/1.12.3>. The
+library is licensed under the GNU Lesser General Public License, version 3 or
+(at your option) any later version (LGPL-3.0-or-later). Its license is
+included with the library source as `COPYING`; see also
+<https://www.gnu.org/licenses/lgpl-3.0.html>. This notice does not claim
+ownership of the library or alter its license.

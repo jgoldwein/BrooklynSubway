@@ -5,6 +5,7 @@
 #include "controls.h"
 #include "diagnostics.h"
 #include "hardware.h"
+#include "led_backend.h"
 #include "led_engine.h"
 
 #include <Arduino.h>
@@ -38,13 +39,26 @@ void setup() {
     delay(10);
   }
 
+  brooklyn::controls::begin();
+  brooklyn::led::begin();
+#if defined(BROOKLYN_TARGET_PCB)
+  const bool physicalBackendReady =
+      brooklyn::led::backend::initializePhysicalLedBackend();
+#endif
+
   brooklyn::diagnostics::begin();
   if (!hardwareReady) {
     Serial.println("ERROR: I2C initialization failed; LED outputs remain disabled.");
   }
-  brooklyn::controls::begin();
-  brooklyn::led::begin();
+#if defined(BROOKLYN_TARGET_PCB)
+  if (!physicalBackendReady) {
+    brooklyn::led::backend::disarmLedOutputs();
+    Serial.println(
+        "ERROR: Physical LED backend initialization failed; outputs DISARMED.");
+  }
+#endif
 #if defined(BROOKLYN_TARGET_XIAO)
+  (void)brooklyn::led::backend::initializePhysicalLedBackend();
   if (brooklyn::led::runSelfTest()) {
     brooklyn::led::runXiaoDemonstration();
   }

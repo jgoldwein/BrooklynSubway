@@ -4,6 +4,9 @@
 #include "diagnostics.h"
 
 #include "board_pins.h"
+#include "led_backend.h"
+#include "led_map.h"
+#include "led_power.h"
 
 #include <Arduino.h>
 #include <esp_system.h>
@@ -65,8 +68,26 @@ void begin() {
   Serial.printf("Reset reason: %s (%d)\n", resetReasonName(resetReason),
                 static_cast<int>(resetReason));
 #if defined(BROOKLYN_TARGET_PCB)
-  Serial.printf("LED outputs: DISABLED (GPIO %u LOW)\n",
+  Serial.printf("Physical LED backend: %s\n",
+                brooklyn::led::backend::physicalLedBackendInitialized()
+                    ? "initialized"
+                    : "not initialized");
+  Serial.println("Physical LED outputs: DISARMED");
+  Serial.printf("Physical LED output permission: %s\n",
+                brooklyn::led::backend::physicalLedOutputPermissionEnabled()
+                    ? "ENABLED BY BUILD"
+                    : "DISABLED BY BUILD");
+  Serial.printf("LED channels: %u\n", brooklyn::led::map::CHANNEL_COUNT);
+  Serial.printf("LED count: %u\n", brooklyn::led::map::TOTAL_LED_COUNT);
+  Serial.printf("Power budget: %u mA at nominal %u mV / %u mA supply\n",
+                brooklyn::led::power::FIRMWARE_LED_CURRENT_BUDGET_MA,
+                brooklyn::led::power::NOMINAL_SUPPLY_VOLTAGE_MV,
+                brooklyn::led::power::NOMINAL_SUPPLY_CURRENT_LIMIT_MA);
+  Serial.printf("Bring-up brightness cap: %u/255\n",
+                brooklyn::led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP);
+  Serial.printf("GPIO%u LED_ENABLE: LOW / DISARMED\n",
                 brooklyn::pins::LED_ENABLE);
+  Serial.println("LED outputs: DISABLED");
 #else
   Serial.println("LED outputs: DISABLED (production hardware not initialized)");
 #endif

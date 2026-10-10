@@ -25,8 +25,19 @@ as active-low inputs.
 
 Phase 2A adds a software-only 306-pixel framebuffer and the manufactured
 channel/designator map. On XIAO startup, its self-test runs before a brief
-status/map simulation; neither target initializes LED data GPIOs or transmits
-LED data, and rendering on the production target remains a no-op.
+status/map simulation. The production board does not illuminate LEDs during
+normal startup.
+
+## Phase 2B status
+
+The production backend uses Adafruit NeoPixel 1.12.3 for the eight WS2812
+channels. Production startup initializes channel data pins, sends an all-black
+frame while GPIO1 `LED_ENABLE` is LOW, and leaves outputs disarmed.
+`BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0` prevents arming in the standard build.
+The software current estimate uses a configurable 20 mA per full-scale RGB
+component assumption and a 4000 mA LED firmware budget against the nominal 5 V,
+5 A input path; the estimate is not a measurement of the board LEDs and excludes
+MCU/peripheral load. Physical output remains disabled pending reviewed bring-up.
 
 Build the bench target:
 
