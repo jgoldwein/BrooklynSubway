@@ -7,6 +7,7 @@
 #include "hardware.h"
 #include "led_backend.h"
 #include "led_engine.h"
+#include "logical_map.h"
 
 #include <Arduino.h>
 
@@ -18,7 +19,35 @@ void runXiaoLedTest() {
   if (brooklyn::led::runSelfTest()) {
     brooklyn::led::runXiaoDemonstration();
   }
-  Serial.println("XIAO bench: press T to rerun LED self-test");
+  Serial.println("XIAO bench: T reruns LED self-test; M validates logical map");
+}
+
+void runXiaoLogicalMapTest() {
+  brooklyn::subway::ValidationReport report{};
+  const char *failureReason = nullptr;
+  if (!brooklyn::subway::runSelfTest(report, failureReason)) {
+    Serial.printf("Logical map validation: FAIL - %s\n",
+                  failureReason == nullptr ? "unknown failure" : failureReason);
+    return;
+  }
+
+  Serial.printf(
+      "Logical map validation: PASS; elements %u, stations %u, segments %u, "
+      "assigned %u, unassigned %u, routes %u\n",
+      report.elements, report.stations, report.segments, report.assigned,
+      report.unassigned, report.routes);
+  for (uint16_t index = 0; index < 3 && index < report.elements; ++index) {
+    brooklyn::subway::MapElement element{};
+    if (brooklyn::subway::elementAt(index, element)) {
+      Serial.printf("  map ID %u: CH%u[%u], global %u, LED%u (unassigned)\n",
+                    element.id.value,
+                    static_cast<uint8_t>(element.physical.address.channel),
+                    element.physical.address.index,
+                    element.physical.globalIndex.value,
+                    element.physical.designator.value);
+    }
+  }
+  Serial.println("No verified route/station assignments are currently available.");
 }
 
 }  // namespace
@@ -62,7 +91,7 @@ void setup() {
   if (brooklyn::led::runSelfTest()) {
     brooklyn::led::runXiaoDemonstration();
   }
-  Serial.println("XIAO bench: press T to rerun LED self-test");
+  Serial.println("XIAO bench: T reruns LED self-test; M validates logical map");
 #endif
 }
 
@@ -74,6 +103,8 @@ void loop() {
     const int command = Serial.read();
     if (command == 't' || command == 'T') {
       runXiaoLedTest();
+    } else if (command == 'm' || command == 'M') {
+      runXiaoLogicalMapTest();
     }
   }
 #endif

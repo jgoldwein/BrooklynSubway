@@ -31,14 +31,6 @@ struct BoardLedDesignator {
   uint16_t value;
 };
 
-struct MapElementId {
-  uint16_t value;
-};
-
-struct SubwayRouteId {
-  uint16_t value;
-};
-
 enum class LedRole : uint8_t {
   Map,
   Status,
