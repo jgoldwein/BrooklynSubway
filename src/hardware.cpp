@@ -1,3 +1,6 @@
+// Copyright 2026 Joel W. Goldwein
+// SPDX-License-Identifier: Apache-2.0
+
 #include "hardware.h"
 
 #include "board_pins.h"

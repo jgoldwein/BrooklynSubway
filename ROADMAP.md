@@ -309,3 +309,13 @@ implementation. This roadmap itself authorizes none of these changes.
 Phase ordering may be adjusted through an explicit review when dependencies or
 test evidence require it. Any production hardware change needs a new hardware
 revision and immutable manufacturing records.
+
+## Licensing and Attribution
+
+- License original software/firmware under Apache-2.0, original hardware
+  designs under CERN-OHL-P-2.0 where licensable by the copyright holder, and
+  original documentation under CC-BY-4.0.
+- Review and record third-party attribution, license, trademark, and other
+  applicable terms before including externally sourced material or publishing
+  a release.
+- Include license and attribution review as a release-process check.

@@ -1,0 +1,18 @@
+Copyright 2026 Joel W. Goldwein for original project material, excluding
+third-party material identified in THIRD_PARTY_NOTICES.md.
+
+Unless a file or item states otherwise:
+
+- Original software and firmware are licensed under Apache License 2.0
+  (SPDX-License-Identifier: Apache-2.0). See LICENSES/Apache-2.0.txt.
+- Original hardware design material, including material stored under
+  hardware/, and to the extent the copyright holder has the right to license
+  it, is licensed under CERN Open Hardware Licence Version 2 - Permissive
+  (SPDX-License-Identifier: CERN-OHL-P-2.0). See
+  LICENSES/CERN-OHL-P-2.0.txt.
+- Original project documentation is licensed under Creative Commons
+  Attribution 4.0 International (SPDX-License-Identifier: CC-BY-4.0). See
+  LICENSES/CC-BY-4.0.txt.
+
+These project licenses do not relicense third-party material. See
+THIRD_PARTY_NOTICES.md and the applicable third-party terms.

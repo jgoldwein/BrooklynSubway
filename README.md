@@ -40,4 +40,14 @@ Build the production target:
 pio run -e brooklyn-s3
 ```
 
+## Licensing
+
+- Firmware/software: Apache-2.0.
+- Original hardware design: CERN-OHL-P-2.0.
+- Original documentation: CC-BY-4.0.
+- Third-party material retains its original rights and terms; see
+  [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+The full license texts are in `LICENSES/`.
+
 The production scaffold deliberately leaves all 306 map/status LED outputs disabled. LED bring-up should be a separate reviewed step after the assembled board is electrically checked.
