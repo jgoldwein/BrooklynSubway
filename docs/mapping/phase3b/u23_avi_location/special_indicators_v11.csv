@@ -1,0 +1,6 @@
+designator,function,gpio_or_chain,active_level_or_encoding,type,addressable_306_member,notes
+U23,AVI_LOCATION,GPIO14,HIGH,discrete_yellow_LED,false,"USER_LED net through R60 1kΩ to U23 (SZY0402Y), then GND; independent of the 306 addressable LEDs"
+LED252,SYSTEM,CH8[0],RGB,addressable_status_LED,true,"Front-panel status LED; excluded from subway-map semantics"
+LED251,NETWORK,CH8[1],RGB,addressable_status_LED,true,"Front-panel status LED; excluded from subway-map semantics"
+LED306,MTA_FEED,CH8[2],RGB,addressable_status_LED,true,"Front-panel status LED; excluded from subway-map semantics"
+LED307,MODE,CH8[3],RGB,addressable_status_LED,true,"Front-panel status LED; excluded from subway-map semantics"
