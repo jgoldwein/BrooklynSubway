@@ -23,6 +23,11 @@ heartbeat output without initializing production PCB GPIOs. Production input
 pull-ups are provided by the PCB, so front switches and rotary push are read
 as active-low inputs.
 
+Phase 2A adds a software-only 306-pixel framebuffer and the manufactured
+channel/designator map. On XIAO startup, its self-test runs before a brief
+status/map simulation; neither target initializes LED data GPIOs or transmits
+LED data, and rendering on the production target remains a no-op.
+
 Build the bench target:
 
 ```powershell
