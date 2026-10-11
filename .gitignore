@@ -5,3 +5,6 @@
 .vscode/ipch
 
 .vscode/
+local_reference/
+__pycache__/
+*.pyc
