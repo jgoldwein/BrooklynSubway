@@ -1,0 +1,22 @@
+﻿legacy_designator,station_name,route,legacy_coordinates,current_designator,current_station_name,current_route,current_review_status,relationship,notes
+LED147,Newkirk Av–Little Haiti,2/5,"182.642,-70.7525 mm",LED147,,,UNRESOLVED,UNCERTAIN,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED148,Broadway Junction,C,"185.5,65.5 mm",LED148,,,UNRESOLVED,SAME_STATION_DIFFERENT_ROUTE,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED149,Broadway Junction,J,"190.0,65.5 mm",LED149,,,UNRESOLVED,SAME_STATION_DIFFERENT_ROUTE,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED150,Broadway Junction,Z,"194.5,65.5 mm",LED150,,,UNRESOLVED,SAME_STATION_DIFFERENT_ROUTE,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED151,Broadway Junction,L,"199.0,65.5 mm",LED151,,,UNRESOLVED,SAME_STATION_DIFFERENT_ROUTE,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED152,Jay St–MetroTech,C,"34.5,-9.0 mm",LED152,,,UNRESOLVED,UNCERTAIN,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED153,Jay St–MetroTech,F,"39.0,-9.0 mm",LED153,,,UNRESOLVED,UNCERTAIN,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED154,Jay St–MetroTech,R,"43.5,-9.0 mm",LED154,,,UNRESOLVED,UNCERTAIN,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED155,Hoyt–Schermerhorn Sts,C,"45.5,-39.0 mm",LED155,,,UNRESOLVED,UNCERTAIN,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED156,Hoyt–Schermerhorn Sts,G,"50.0,-39.0 mm",LED156,,,UNRESOLVED,UNCERTAIN,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED157,Atlantic Av–Barclays Ctr,3,"81.5,-12.0 mm",LED157,,,AMBIGUOUS,SAME_STATION_DIFFERENT_ROUTE,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED158,Atlantic Av–Barclays Ctr,4,"86.0,-12.0 mm",LED158,,,AMBIGUOUS,SAME_STATION_DIFFERENT_ROUTE,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED159,Atlantic Av–Barclays Ctr,5,"90.5,-12.0 mm",LED159,,,AMBIGUOUS,SAME_STATION_DIFFERENT_ROUTE,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED160,Atlantic Av–Barclays Ctr,B,"95.0,-12.0 mm",LED160,Atlantic Av-Barclays Ctr,B,ALREADY_VERIFIED,CONFIRMED_CONTINUITY,Same designator and current station/service.
+LED161,Atlantic Av–Barclays Ctr,D,"81.5,-17.0 mm",LED161,,,AMBIGUOUS,SAME_STATION_DIFFERENT_ROUTE,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED162,Atlantic Av–Barclays Ctr,N,"86.0,-17.0 mm",LED162,,,UNRESOLVED,SAME_STATION_DIFFERENT_ROUTE,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED163,Atlantic Av–Barclays Ctr,Q,"90.5,-17.0 mm",LED163,Atlantic Av-Barclays Ctr,Q,ALREADY_VERIFIED,CONFIRMED_CONTINUITY,Same designator and current station/service.
+LED164,Atlantic Av–Barclays Ctr,R,"95.0,-17.0 mm",LED164,,,UNRESOLVED,SAME_STATION_DIFFERENT_ROUTE,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED165,Coney Island–Stillwell Av,F,"153.0,-153.5 mm",LED165,Coney Island-Stillwell Av,F,ALREADY_VERIFIED,CONFIRMED_CONTINUITY,Same designator and current station/service.
+LED166,Coney Island–Stillwell Av,N,"157.5,-153.5 mm",LED166,,,AMBIGUOUS,SAME_STATION_DIFFERENT_ROUTE,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
+LED167,Coney Island–Stillwell Av,Q,"162.0,-153.5 mm",LED167,,,AMBIGUOUS,SUPERSEDED,"Relationship assessed from the current review ledger; CP19 is design intent, not V1.1 truth."
