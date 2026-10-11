@@ -40,3 +40,9 @@ The authoritative worksheet and affected B/Q/F-G route reviews were repaired
 after the design-evolution audit. Pre-repair exploratory semantic-review
 outputs are superseded for the corrected rows; the audit files remain the
 unchanged historical record.
+
+Twenty G, R, and L station rows were subsequently promoted from the accepted
+direct-continuity review. The station registry now contains 54 entities, and
+the authoritative worksheet contains 71 VERIFIED semantics: 70 stations and
+one segment. The historical design-evolution audit and pre-promotion
+exploratory review outputs remain unchanged.
