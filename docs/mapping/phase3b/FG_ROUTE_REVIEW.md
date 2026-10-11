@@ -26,11 +26,11 @@ rows at the same physical station share one stable station registry identity:
 |---|---|---|---|---|
 | Church Av | LED40 | LED229 | 19 / `culver_line_church_av` | LED40 continues south into the F-only Culver corridor; LED229 is on the G lane that terminates at Church Av. |
 | Fort Hamilton Pkwy | LED39 | LED228 | 20 / `culver_line_fort_hamilton_pkwy` | Parallel physical pair continues the same lane orientation north of Church Av. |
-| 7 Av | LED38 | LED227 | 21 / `culver_line_7_av` | Repeated F/G lane offset and continuity north from Fort Hamilton Pkwy. |
-| 15 St-Prospect Park | LED100 | LED206 | 22 / `culver_line_15_st_prospect_park` | Paired F/G geometry and continuity; this is distinct from B/Q Prospect Park. |
+| 7 Av | LED100 | LED206 | 21 / `culver_line_7_av` | Repeated F/G lane offset and continuity north from Fort Hamilton Pkwy. |
+| 15 St-Prospect Park | LED38 | LED227 | 22 / `culver_line_15_st_prospect_park` | Paired F/G geometry and continuity; this is distinct from B/Q/S Prospect Park. |
 
-The Brighton B/Q station IDs remain separate for same-name locations: Church
-Av uses ID 5 (`brighton_line_church_av`), and 7 Av uses ID 3
+The Brighton B/Q(/S) station IDs remain separate for same-name locations:
+Church Av uses ID 5 (`brighton_line_church_av`), and 7 Av uses ID 3
 (`brighton_line_7_av`). Their physical LEDs are not the F/G pair LEDs.
 
 ## Verified assignments
@@ -44,8 +44,8 @@ All 19 new rows have confidence `1.00`; station IDs/keys link to
 |---|---|---|---|
 | LED40 | Church Av | 19 / `culver_line_church_av` | 1:2 / 2 |
 | LED39 | Fort Hamilton Pkwy | 20 / `culver_line_fort_hamilton_pkwy` | 1:5 / 5 |
-| LED38 | 7 Av | 21 / `culver_line_7_av` | 1:7 / 7 |
-| LED100 | 15 St-Prospect Park | 22 / `culver_line_15_st_prospect_park` | 1:8 / 8 |
+| LED38 | 15 St-Prospect Park | 22 / `culver_line_15_st_prospect_park` | 1:7 / 7 |
+| LED100 | 7 Av | 21 / `culver_line_7_av` | 1:8 / 8 |
 | LED41 | Ditmas Av | 23 / `culver_line_ditmas_av` | 1:1 / 1 |
 | LED42 | 18 Av | 24 / `culver_line_18_av` | 1:0 / 0 |
 | LED43 | Avenue I | 25 / `culver_line_avenue_i` | 2:12 / 49 |
@@ -64,8 +64,8 @@ All 19 new rows have confidence `1.00`; station IDs/keys link to
 |---|---|---|---|
 | LED229 | Church Av | 19 / `culver_line_church_av` | 1:3 / 3 |
 | LED228 | Fort Hamilton Pkwy | 20 / `culver_line_fort_hamilton_pkwy` | 1:4 / 4 |
-| LED227 | 7 Av | 21 / `culver_line_7_av` | 1:6 / 6 |
-| LED206 | 15 St-Prospect Park | 22 / `culver_line_15_st_prospect_park` | 1:9 / 9 |
+| LED227 | 15 St-Prospect Park | 22 / `culver_line_15_st_prospect_park` | 1:6 / 6 |
+| LED206 | 7 Av | 21 / `culver_line_7_av` | 1:9 / 9 |
 
 ### Existing verified F station
 
@@ -116,7 +116,7 @@ No F or G segment is proposed or verified by this review.
 `station_registry.csv` is the authoritative mapping-data identity source.
 Same physical stations use one station ID across route-specific LEDs; distinct
 physical stations with duplicate display names use distinct IDs and keys.
-15 St-Prospect Park on the F/G corridor is not B/Q Prospect Park. GTFS parent
+15 St-Prospect Park on the F/G corridor is not B/Q/S Prospect Park. GTFS parent
 stop IDs remain blank because no authoritative values were available.
 
 U23 remains the discrete Avi-location indicator outside the 306 addressable

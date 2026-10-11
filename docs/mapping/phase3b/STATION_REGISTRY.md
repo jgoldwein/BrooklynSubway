@@ -35,10 +35,10 @@ transit-feed identifier.
 | Kings Hwy | `culver_line_kings_hwy` | Culver F |
 | Avenue U | `brighton_line_avenue_u` | Brighton B/Q |
 | Avenue U | `culver_line_avenue_u` | Culver F |
-| Prospect Park | `brighton_line_prospect_park` | Brighton B/Q |
+| Prospect Park | `brighton_line_prospect_park` | Brighton B/Q/S |
 | 15 St-Prospect Park | `culver_line_15_st_prospect_park` | Culver F/G |
 
-In particular, B/Q Prospect Park and F/G 15 St-Prospect Park are distinct
+In particular, B/Q/S Prospect Park and F/G 15 St-Prospect Park are distinct
 stations despite their similar labels.
 
 ## Shared physical stations
@@ -46,8 +46,9 @@ stations despite their similar labels.
 The same registry entity is used for multiple route-specific LEDs at these
 stations:
 
-- Brighton B/Q: DeKalb Av, Atlantic Av-Barclays Ctr, 7 Av, Prospect Park,
-  Church Av, Newkirk Plaza, Kings Hwy, Sheepshead Bay, and Brighton Beach.
+- Brighton B/Q: DeKalb Av, Atlantic Av-Barclays Ctr, 7 Av, Church Av,
+  Newkirk Plaza, Kings Hwy, Sheepshead Bay, and Brighton Beach.
+- Brighton B/Q/S: Prospect Park (B LED184, Q LED51, and S LED185).
 - Culver F/G: Church Av, Fort Hamilton Pkwy, 7 Av, and 15 St-Prospect Park.
 - Cross-corridor physical stations: W 8 St-NY Aquarium (F/Q) and Coney
   Island-Stillwell Av (F/Q).

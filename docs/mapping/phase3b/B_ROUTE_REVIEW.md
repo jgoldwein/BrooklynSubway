@@ -1,9 +1,10 @@
 # B-Route / Brooklyn Corridor Semantic Review
 
-**Status: human-reviewed semantic promotion.** The six prior B assignments
-remain unchanged. The 7 Av, Atlantic Av-Barclays Ctr, and DeKalb Av B/Q station
-pairs are `VERIFIED` in the master worksheet. Other corridor candidates remain
-review-stage only; firmware is unchanged.
+**Status: human-reviewed semantic promotion.** Six B anchors remain
+represented; the Prospect Park B assignment is LED184, corrected from LED185
+after the design-evolution audit. The 7 Av, Atlantic Av-Barclays Ctr, and
+DeKalb Av B/Q station pairs are `VERIFIED` in the master worksheet. Other
+corridor candidates remain review-stage only; firmware is unchanged.
 
 ## Sources and method
 
@@ -36,15 +37,15 @@ There are **19 B-corridor candidate records examined**:
 
 ### Existing verified B anchors
 
-These six are represented only to provide corridor continuity and are not
-changed by this review:
+These six are represented to provide corridor continuity. The Prospect Park
+designator reflects the repaired authoritative worksheet:
 
 - LED208 Brighton Beach
 - LED207 Sheepshead Bay
 - LED233 Kings Hwy
 - LED232 Newkirk Plaza
 - LED231 Church Av
-- LED185 Prospect Park
+- LED184 Prospect Park
 
 ### B corridor, Brighton Beach northward
 
@@ -55,7 +56,7 @@ In route progression order:
 3. LED233 — Kings Hwy (`ALREADY_VERIFIED`)
 4. LED232 — Newkirk Plaza (`ALREADY_VERIFIED`)
 5. LED231 — Church Av (`ALREADY_VERIFIED`)
-6. LED185 — Prospect Park (`ALREADY_VERIFIED`)
+6. LED184 — Prospect Park (`ALREADY_VERIFIED`)
 7. LED230 — 7 Av station (`VERIFIED`).
 8. LED160 — Atlantic Av-Barclays Ctr station (`VERIFIED`).
 9. LED159 — likely B-side corridor marker (`AMBIGUOUS`, confidence 0.70;
@@ -74,8 +75,8 @@ retains each item's actual channel, channel index, and global physical order.
 
 ## Shared-station groups and ambiguity
 
-- **Prospect Park:** LED185 is already verified B; LED184 is the separately
-  verified Q counterpart. Keep the physical LEDs distinct.
+- **Prospect Park:** LED184 is verified B, LED51 is verified Q, and LED185 is
+  verified S. These are distinct route-specific LEDs at one physical station.
 - **Church Av:** LED231 is already verified B; LED53 is the Q counterpart.
 - **Newkirk Plaza:** LED232 is already verified B; LED56 is the Q counterpart.
 - **Kings Hwy:** LED233 is already verified B; LED60 is the Q counterpart.

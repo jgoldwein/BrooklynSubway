@@ -1,8 +1,8 @@
-station_id,station_key,display_name,corridor_or_line,gtfs_parent_stop_id,notes
+﻿station_id,station_key,display_name,corridor_or_line,gtfs_parent_stop_id,notes
 1,brighton_line_dekalb_av,DeKalb Av,Brighton B/Q,,B and Q route-specific LEDs represent this one physical station.
 2,brighton_line_atlantic_av_barclays_ctr,Atlantic Av-Barclays Ctr,Brighton B/Q,,B and Q route-specific LEDs represent this one physical station.
 3,brighton_line_7_av,7 Av,Brighton B/Q,,B and Q route-specific LEDs represent this physical station; distinct from Culver 7 Av.
-4,brighton_line_prospect_park,Prospect Park,Brighton B/Q,,B and Q route-specific LEDs represent this physical station; distinct from 15 St-Prospect Park.
+4,brighton_line_prospect_park,Prospect Park,Brighton B/Q/S,,"B, Q, and S route-specific LEDs represent this one physical station; distinct from 15 St-Prospect Park."
 5,brighton_line_church_av,Church Av,Brighton B/Q,,B and Q route-specific LEDs represent this physical station; distinct from Culver Church Av.
 6,brighton_line_newkirk_plaza,Newkirk Plaza,Brighton B/Q,,B and Q route-specific LEDs represent this one physical station.
 7,brighton_line_kings_hwy,Kings Hwy,Brighton B/Q,,B and Q route-specific LEDs represent this physical station; distinct from Culver Kings Hwy.

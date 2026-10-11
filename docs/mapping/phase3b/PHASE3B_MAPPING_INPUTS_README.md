@@ -33,3 +33,10 @@ Important columns in the worksheet:
 - `source_note` — traceable source for each assignment.
 
 Shared stations must preserve route-specific physical LEDs. Do not collapse multiple route LEDs into one logical station LED.
+
+## Phase 3B semantic repair
+
+The authoritative worksheet and affected B/Q/F-G route reviews were repaired
+after the design-evolution audit. Pre-repair exploratory semantic-review
+outputs are superseded for the corrected rows; the audit files remain the
+unchanged historical record.

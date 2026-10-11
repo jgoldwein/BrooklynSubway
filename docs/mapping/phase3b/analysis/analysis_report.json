@@ -1,0 +1,200 @@
+{
+  "source": {
+    "overview": "docs\\mapping\\phase3b\\pcb_led_designator_overlay.png",
+    "overview_dimensions_px": [
+      1920,
+      1360
+    ],
+    "classification_rasters": [
+      {
+        "image": "region_1_1.png",
+        "width": 1056,
+        "height": 1352,
+        "matches_inliers": 1480,
+        "registration_rms_px": 0.239,
+        "crop_to_overview_scale": 0.5
+      },
+      {
+        "image": "region_1_2.png",
+        "width": 1136,
+        "height": 1352,
+        "matches_inliers": 1425,
+        "registration_rms_px": 0.186,
+        "crop_to_overview_scale": 0.5
+      },
+      {
+        "image": "region_1_3.png",
+        "width": 1056,
+        "height": 1352,
+        "matches_inliers": 1003,
+        "registration_rms_px": 0.21,
+        "crop_to_overview_scale": 0.4999
+      },
+      {
+        "image": "region_2_1.png",
+        "width": 1056,
+        "height": 1352,
+        "matches_inliers": 2280,
+        "registration_rms_px": 0.144,
+        "crop_to_overview_scale": 0.5
+      },
+      {
+        "image": "region_2_2.png",
+        "width": 1136,
+        "height": 1352,
+        "matches_inliers": 1633,
+        "registration_rms_px": 0.164,
+        "crop_to_overview_scale": 0.5
+      },
+      {
+        "image": "region_2_3.png",
+        "width": 1056,
+        "height": 1352,
+        "matches_inliers": 1475,
+        "registration_rms_px": 0.115,
+        "crop_to_overview_scale": 0.5
+      }
+    ],
+    "source_limit": "No vector/PDF/original artwork source exists in the project; the provided generated board overlay is the highest-resolution available raster and is used for pixel classification. Six regional rasters are used only to validate image registration/coverage."
+  },
+  "transform": {
+    "pcb_to_overview_affine": [
+      [
+        0.11482718446601943,
+        0.0,
+        152.89165048543686
+      ],
+      [
+        0.0,
+        -0.1140335685555179,
+        469.6499142613917
+      ]
+    ],
+    "x_scale_px_per_pcb_unit": 0.11482718446601943,
+    "y_scale_px_per_pcb_unit": 0.1140335685555179,
+    "rotation_or_skew_degrees": 0.0,
+    "x_translation_px": 152.89165048543686,
+    "y_translation_px": 469.6499142613917,
+    "anchor_route_line_rms_px": 8.445429165334922,
+    "anchor_count": 51,
+    "method": "PCB/map extent affine; anchor refinement rejected",
+    "refined_anchor_route_line_rms_px": 11.541088318751605,
+    "extent_anchor_route_line_rms_px": 8.445429165334922,
+    "refined_anchor_ransac_inliers": 35,
+    "interpretation": "RMS is the residual from affine-projected verified LED centers to nearby detected route-color pixels, not a surveyed LED-center reprojection error. A refinement is kept only when it improves this metric."
+  },
+  "counts": {
+    "map_leds": 302,
+    "exactly_one_route_color_family": 100,
+    "multiple_plausible_route_colors": 139,
+    "no_route_color_detected": 63,
+    "strong_route_family_for_currently_unassigned": 30,
+    "current_unassigned": 251,
+    "median_led_to_route_pixel_distance": 3.66,
+    "maximum_led_to_route_pixel_distance": 20.26,
+    "family_counts": {
+      "red": 165,
+      "orange": 33,
+      "blue": 14,
+      "violet": 27
+    },
+    "element_type_candidate_counts": {
+      "STATION": 49,
+      "UNCLASSIFIED": 251,
+      "SEGMENT": 2
+    },
+    "leds_with_path_component": 147,
+    "path_component_counts_by_family": {
+      "red": 982,
+      "orange": 538,
+      "yellow": 55,
+      "cyan": 10,
+      "blue": 133,
+      "violet": 161
+    }
+  },
+  "validation": {
+    "map_rows": 302,
+    "chain_map_rows": 302,
+    "unique_designators": 302,
+    "unique_channel_indexes": 302,
+    "unique_global_physical_orders": 302,
+    "all_physical_references_match_chain_map": true,
+    "verified_anchor_rows": 51,
+    "verified_semantics_modified": false,
+    "master_worksheet_written": false,
+    "station_registry_written": false,
+    "independent_route_color_anchor_check": false,
+    "anchor_check_limitation": "The available raster does not provide an authoritative per-service route-color legend; verified rows are used to correlate color families with route names, not as an independent palette oracle."
+  },
+  "palette": {
+    "red": {
+      "hue_range_opencv": "0-10",
+      "representative_bgr": [
+        92,
+        114,
+        208
+      ],
+      "led_count": 165,
+      "route_anchors": {
+        "F": 14,
+        "G": 4,
+        "Q": 19,
+        "B": 2
+      }
+    },
+    "orange": {
+      "hue_range_opencv": "11-23",
+      "representative_bgr": [
+        72,
+        142,
+        222
+      ],
+      "led_count": 33,
+      "route_anchors": {
+        "B": 6,
+        "Q": 3
+      }
+    },
+    "yellow": {
+      "hue_range_opencv": "24-39",
+      "representative_bgr": [
+        90,
+        187,
+        203
+      ],
+      "led_count": 0,
+      "route_anchors": {}
+    },
+    "cyan": {
+      "hue_range_opencv": "82-102",
+      "representative_bgr": [
+        176,
+        167,
+        0
+      ],
+      "led_count": 0,
+      "route_anchors": {}
+    },
+    "blue": {
+      "hue_range_opencv": "103-131",
+      "representative_bgr": [
+        214,
+        125,
+        127
+      ],
+      "led_count": 14,
+      "route_anchors": {}
+    },
+    "violet": {
+      "hue_range_opencv": "132-159",
+      "representative_bgr": [
+        128,
+        63,
+        111
+      ],
+      "led_count": 27,
+      "route_anchors": {}
+    }
+  }
+}

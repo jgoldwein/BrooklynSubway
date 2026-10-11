@@ -30,38 +30,41 @@ identity, never to infer semantics.
 
 The CSV contains **40 addressable candidate LEDs** for this corridor:
 
-- **VERIFIED:** 32
+- **VERIFIED:** 31
 - **PROPOSED:** 0
 - **AMBIGUOUS:** 8
+- **NOT_Q:** 1
 - **UNRESOLVED:** 0
 
 Verified Q station LEDs (20):
 
-- LED184 Prospect Park; LED50 7 Av; LED163 Atlantic Av-Barclays Ctr;
-  LED190 DeKalb Av; LED51 Parkside Av; LED53 Church Av; LED54 Beverley Rd;
+- LED51 Prospect Park; LED50 7 Av; LED163 Atlantic Av-Barclays Ctr;
+  LED190 DeKalb Av; LED52 Parkside Av; LED53 Church Av; LED54 Beverley Rd;
   LED55 Cortelyou Rd; LED56 Newkirk Plaza; LED57 Avenue H; LED58 Avenue J;
   LED59 Avenue M; LED60 Kings Hwy; LED61 Avenue U; LED289 Neck Rd; LED114
   Sheepshead Bay; LED115 Brighton Beach; LED116 Ocean Pkwy; LED175 W 8
   St-NY Aquarium; LED7 Coney Island-Stillwell Av.
 
-Verified Q segment LEDs (2):
+Verified Q segment LED (1):
 
-- LED52: Parkside Av → Church Av.
 - LED113: Neck Rd → Sheepshead Bay.
 
-Verified B counterparts (9): LED185 Prospect Park; LED230 7 Av; LED160
+Verified B counterparts (9): LED184 Prospect Park; LED230 7 Av; LED160
 Atlantic Av-Barclays Ctr; LED189 DeKalb Av; LED231 Church Av; LED232 Newkirk
 Plaza; LED233 Kings Hwy; LED207 Sheepshead Bay; and LED208 Brighton Beach.
 
 Verified F counterpart (1): LED112 at W 8 St-NY Aquarium.
 
+Verified S counterpart (1): LED185 at Prospect Park (`NOT_Q` in this corridor
+ledger).
+
 ## Shared-station pairs and groups
 
 Route-specific LEDs remain separate physical records:
 
-- **Prospect Park (B/Q):** LED184 = Q and LED185 = B. This resolves the shared
-  pair immediately upstream of Q-only Parkside Av LED51 using the repeated
-  lower/left Q-lane and upper/right B-lane geometry.
+- **Prospect Park (B/Q/S):** LED184 = B, LED51 = Q, and LED185 = S. The
+  route-specific LEDs occupy distinct lanes at the same physical station;
+  LED52 is the Q-only Parkside Av station.
 - **7 Av (B/Q):** LED50 = Q and LED230 = B. Their signed PCB offset matches
   the repeated B/Q lane orientation and continuity from Prospect Park.
 - **Church Av:** LED53 = Q; LED231 = B.
@@ -103,11 +106,12 @@ The following exact route identities or element semantics remain ambiguous:
 3. **Coney Island terminal:** identify the routes for LED167, LED166, and
    LED165. LED7 is verified as Q; do not infer assignments for the other three.
 
-“Prospect Park” (B/Q) and “15 St–Prospect Park” (F/G) are distinct stations
+“Prospect Park” (B/Q/S) and “15 St–Prospect Park” (F/G) are distinct stations
 and must never be conflated in the semantic model.
-LED100 and LED206 are associated geographically with 15 St–Prospect Park on
+LED38 and LED227 are associated geographically with 15 St–Prospect Park on
 the F/G corridor, are not Q-route candidates, and are omitted from this review.
-Do not assign F versus G here.
+LED100 and LED206 are at Culver 7 Av and are also omitted. Do not assign F
+versus G here.
 
 The verified station and segment semantics are recorded in the master
 worksheet with their supporting manufactured-artwork and human-review notes.
