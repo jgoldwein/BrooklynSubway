@@ -42,7 +42,10 @@ outputs are superseded for the corrected rows; the audit files remain the
 unchanged historical record.
 
 Twenty G, R, and L station rows were subsequently promoted from the accepted
-direct-continuity review. The station registry now contains 54 entities, and
-the authoritative worksheet contains 71 VERIFIED semantics: 70 stations and
-one segment. The historical design-evolution audit and pre-promotion
-exploratory review outputs remain unchanged.
+direct-continuity review. A further 18 A, L, and R station rows were promoted
+from the remaining-high-proposal adjudication. The station registry now
+contains 72 entities, and the authoritative worksheet contains 89 VERIFIED
+semantics: 88 stations and one segment. LED266 (Aqueduct Racetrack) and LED267
+(Aqueduct-North Conduit Av) remain unverified pending package-to-station
+review. The historical design-evolution audit and exploratory semantic-review
+outputs remain unchanged.

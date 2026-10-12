@@ -2,7 +2,7 @@
 
 This registry assigns one stable internal identity to each distinct physical
 station entity represented by currently verified Phase 3B station mappings.
-It contains **54 station entities** after the direct-continuity promotion.
+It contains **72 station entities** after the remaining-high-proposal promotion.
 `station_id` is a positive 16-bit-compatible integer and `station_key` is a
 stable, unique human-readable key. Neither is derived from the display name,
 route, LED designator, electrical chain position, nor any future external
@@ -96,6 +96,39 @@ historical GTFS mapping.
 
 This is station identity sharing, not LED sharing: every route-specific map
 element retains its own designator and physical reference.
+
+## Remaining-high-proposal station entities
+
+The following 18 entities were appended after review of current V1.1 artwork,
+accepted projected centers, historical route/station evidence where available,
+and route/branch topology. The Aqueduct Racetrack and Aqueduct-North Conduit Av
+proposals remain unverified and are not included.
+
+| ID | LED | Display name | Station key | Corridor/service | GTFS parent |
+|---:|---|---|---|---|---|
+| 55 | LED186 | Grant Av | `a_line_grant_av` | A | — |
+| 56 | LED260 | 80 St | `a_line_80_st` | A | — |
+| 57 | LED261 | 88 St | `a_line_88_st` | A | — |
+| 58 | LED262 | Rockaway Blvd | `a_line_rockaway_blvd` | A | — |
+| 59 | LED263 | 104 St | `a_line_104_st` | A | — |
+| 60 | LED264 | 111 St | `a_line_111_st` | A | — |
+| 61 | LED265 | Ozone Park-Lefferts Blvd | `a_line_ozone_park_lefferts_blvd` | A | — |
+| 62 | LED268 | Howard Beach-JFK Airport | `a_line_howard_beach_jfk_airport` | A | — |
+| 63 | LED271 | Far Rockaway-Mott Av | `a_line_far_rockaway_mott_av` | A | — |
+| 64 | LED272 | Beach 25 St | `rockaway_beach_25_st` | A | — |
+| 65 | LED273 | Beach 36 St | `rockaway_beach_36_st` | A | — |
+| 66 | LED274 | Beach 44 St | `rockaway_beach_44_st` | A | — |
+| 67 | LED275 | Beach 60 St | `rockaway_beach_60_st` | A | — |
+| 68 | LED276 | Beach 67 St | `rockaway_beach_67_st` | A | — |
+| 69 | LED8 | Canarsie-Rockaway Pkwy | `canarsie_line_canarsie_rockaway_pkwy` | Canarsie L | L29 |
+| 70 | LED86 | Myrtle-Wyckoff Avs | `canarsie_line_myrtle_wyckoff_avs` | Canarsie L | L17 |
+| 71 | LED6 | Bay Ridge-95 St | `bay_ridge_line_bay_ridge_95_st` | Bay Ridge R | R45 |
+| 72 | LED23 | Bay Ridge Av | `bay_ridge_line_bay_ridge_av` | Bay Ridge R | R42 |
+
+The 14 A-line entities are supported by the current V1.1 artwork, accepted
+projected centers, and route/branch topology; historical designator continuity
+is not claimed for them. The two Aqueduct candidates remain outside the
+verified registry until their package-to-station assignments are resolved.
 
 ## Master worksheet linkage
 
