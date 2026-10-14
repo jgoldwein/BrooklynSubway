@@ -37,7 +37,7 @@ STOP_MAP_COLUMNS = ["gtfs_parent_stop_id", "station_id", "registry_name",
                     "lon", "evidence"]
 REVIEW_COLUMNS = ["station_id", "registry_name", "corridor_or_line",
                   "registry_routes", "reason", "candidate_stop_ids"]
-EXPECT_STOPS = 195
+EXPECT_STOPS = 197
 EXPECT_STATIONS_MAPPED = 188
 EXPECT_REVIEW = 0
 STOP_ID_RE = re.compile(r"[0-9A-Z]{3}")
