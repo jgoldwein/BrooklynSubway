@@ -10,6 +10,7 @@
 
 #include "gtfs_rt_state.h"
 #include "semantic_api.h"
+#include "rgb_renderer.h"
 #include "train_frame.h"
 
 #include <stdio.h>
@@ -220,13 +221,65 @@ void printFrame(const TrainFrameHost &h) {
     printf("\n");
   }
 }
+
+// ---- Phase 4H: logical RGB frame diagnostics (in-memory only) --------------
+
+void printRgb(const TrainFrameHost &h, uint8_t brightness) {
+  static sem::RgbFrame rgb;
+  sem::RenderConfig cfg;
+  cfg.brightness = brightness;
+  const sem::RenderResult r = sem::renderTrainFrame(h.frame, rgb, cfg);
+  unsigned nonBlack = 0, statusNonBlack = 0;
+  for (unsigned i = 0; i < sem::kFrameLedCount; ++i) {
+    const bool lit = rgb.pixels[i].red || rgb.pixels[i].green || rgb.pixels[i].blue;
+    if (lit) ++nonBlack;
+    if (lit && !sem::semanticForLed(i)) ++statusNonBlack;
+  }
+  printf("\n== Phase 4H RGB frame (brightness %u/255, in-memory only) ==\n", brightness);
+  printf("resolved trains in frame:      %u\n", h.frame.resolvedTrains);
+  printf("occupied logical map LEDs:     %u\n", h.frame.occupiedLeds);
+  printf("rendered LEDs:                 %u (station %u, segment %u)\n", r.renderedLeds, r.stationLeds,
+         r.segmentLeds);
+  printf("collision LEDs: %u   max occupancy: %u\n", h.frame.collisionLeds, h.frame.maxOccupancy);
+  printf("non-black RGB pixels:          %u (expected == occupied when brightness > 0)\n", nonBlack);
+  printf("status LEDs non-black:         %u\n", statusNonBlack);
+  printf("renderer rejected entries:     %u (occupied status LEDs: %u)\n", r.rejectedLeds,
+         r.occupiedStatusLeds);
+
+  uint32_t seen[16];
+  unsigned nseen = 0;
+  bool collisionShown = false;
+  for (unsigned i = 0; i < sem::kFrameLedCount; ++i) {
+    const sem::MapLed *m = sem::semanticForLed(i);
+    if (!m || !h.frame.occupancy[i]) continue;
+    const sem::Rgb nom = sem::nominalRouteColor(m->route);
+    const uint32_t key = (nom.red << 16) | (nom.green << 8) | nom.blue;
+    bool fresh = true;
+    for (unsigned k = 0; k < nseen; ++k) if (seen[k] == key) fresh = false;
+    const bool showCollision = !collisionShown && h.frame.occupancy[i] > 1;
+    if (!fresh && !showCollision) continue;
+    if (fresh && nseen < 16) seen[nseen++] = key;
+    if (showCollision) collisionShown = true;
+    char where[80];
+    if (m->role == sem::Role::Station)
+      snprintf(where, sizeof where, "STATION %u %s", m->stationId, sem::stationName(m->stationId));
+    else
+      snprintf(where, sizeof where, "SEG %u-%u slot %u/%u", m->endpointA, m->endpointB, m->segmentSlot,
+               m->segmentSlotCount);
+    const sem::Rgb sc = rgb.pixels[i];
+    printf("  LED%u route %s %s occ %u nominal #%02X%02X%02X scaled (%u,%u,%u)%s\n", m->designator,
+           sem::routeName(m->route), where, h.frame.occupancy[i], nom.red, nom.green, nom.blue, sc.red,
+           sc.green, sc.blue, h.frame.occupancy[i] > 1 ? " [collision]" : "");
+  }
+}
 }  // namespace
 
 int main(int argc, char **argv) {
   const char *patterns = nullptr;
   const char *routeFilter = nullptr;
   const char *catFilter = nullptr;
-  bool verbose = false, all = false, quiet = false, useTopology = false, compare = false, frameMode = false;
+  bool verbose = false, all = false, quiet = false, useTopology = false, compare = false, frameMode = false, rgbMode = false;
+  unsigned brightness = sem::kDefaultRenderBrightness;
   uint32_t maxAge = kDefaultMaxVehicleAgeSec, now = 0;
   long limit = -1;
   const char *files[32];
@@ -246,6 +299,8 @@ int main(int argc, char **argv) {
     else if (!strcmp(a, "--topology")) useTopology = true;
     else if (!strcmp(a, "--compare")) compare = true;
     else if (!strcmp(a, "--frame")) frameMode = true;
+    else if (!strcmp(a, "--rgb")) { rgbMode = true; frameMode = true; }
+    else if (!strcmp(a, "--brightness") && i + 1 < argc) brightness = static_cast<unsigned>(atol(argv[++i]) & 255);
     else if (nfiles < 32) files[nfiles++] = a;
   }
   if (nfiles == 0) {
@@ -383,6 +438,7 @@ int main(int argc, char **argv) {
            provider.none);
   if (compare) printCompare(cmp);
   if (frameMode) printFrame(fh);
+  if (rgbMode) printRgb(fh, static_cast<uint8_t>(brightness));
   printf("resolved to LED:         %u trains on %u shared LEDs (max %u trains on one LED)\n", stationLeds,
          shared, maxShared);
   return decodeErrors ? 1 : 0;
