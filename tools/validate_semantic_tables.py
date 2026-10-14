@@ -58,10 +58,11 @@ def parse_generated():
     leds = []
     for m in re.finditer(
             r"^\s+\{(\d+), (\d+), (\d+), (\d+), (\d+), (\d+), (\d+), "
-            r"Route::(\w+), Role::(\w+)\},", cpp, re.M):
+            r"Route::(\w+), Role::(\w+), (\d+), (\d+)\},", cpp, re.M):
         leds.append(dict(zip(
             ["designator", "global", "station", "a", "b", "channel", "index"],
-            map(int, m.groups()[:7])), route=m.group(8), role=m.group(9)))
+            map(int, m.groups()[:7])), route=m.group(8), role=m.group(9),
+            slot=int(m.group(10)), slot_count=int(m.group(11))))
     stations = []
     for m in re.finditer(r'^\s+\{(\d+), "((?:[^"\\]|\\.)*)", (nullptr|"(?:[^"\\]|\\.)*")\},',
                          cpp, re.M):
@@ -84,6 +85,8 @@ def validate_content():
     reg = gen.read_csv(gen.REGISTRY)
     chain = gen.load_chain()
     map_rows = {r["designator"]: r for r in ws if r["role"] == "map"}
+    slot_order = {r["designator"]: r for r in gen.read_csv(gen.SEGMENT_ORDER)}
+    check(len(slot_order) == 26, f"{gen.SEGMENT_ORDER.name} has {len(slot_order)} rows, expected 26")
 
     check("AUTO-GENERATED -- DO NOT EDIT" in cpp and "AUTO-GENERATED -- DO NOT EDIT" in header,
           "generated header banner missing")
@@ -132,12 +135,21 @@ def validate_content():
             check(src["element_type"] == "STATION" and l["station"] == int(src["station_id"])
                   and l["a"] == 0 and l["b"] == 0 and l["station"] in ids,
                   f"{des} station record mismatch")
+            check(l["slot"] == 0 and l["slot_count"] == 0,
+                  f"{des} station carries segment slot metadata")
         else:
             check(src["element_type"] == "SEGMENT" and l["station"] == 0
                   and l["a"] == int(src["from_station_id"])
                   and l["b"] == int(src["to_station_id"])
                   and l["a"] in ids and l["b"] in ids and l["a"] != l["b"],
                   f"{des} segment record mismatch")
+            order = slot_order.get(des)
+            check(order is not None and (l["slot"], l["slot_count"]) ==
+                  (int(order["segment_slot"]), int(order["segment_slot_count"]))
+                  and (order["route"], int(order["from_station_id"]),
+                       int(order["to_station_id"])) ==
+                  (src["route"], l["a"], l["b"]),
+                  f"{des} segment slot metadata differs from {gen.SEGMENT_ORDER.name}")
     check(len(seen_des) == 302 and len(seen_addr) == 302,
           "designators/channel-index identities not unique across 302 records")
     check(seen_des == set(map_rows), "generated designators != worksheet map LED set")
@@ -197,12 +209,18 @@ def validate_content():
           "spot check LED308 D segment")
     check(by_des["LED309"]["role"] == "Segment" and by_des["LED309"]["route"] == "RouteB",
           "spot check LED309 B segment")
+    for des, slot in (("LED285", 0), ("LED309", 1), ("LED286", 0), ("LED308", 1)):
+        check((by_des[des]["slot"], by_des[des]["slot_count"]) == (slot, 2),
+              f"spot check {des} slot {slot} of 2")
+    check(sum(1 for l in leds if l["role"] == "Segment" and l["slot_count"] == 1) == 22 and
+          sum(1 for l in leds if l["role"] == "Segment" and l["slot_count"] == 2) == 4,
+          "expected 22 single-pixel and 4 two-pixel (2 groups) segment LEDs")
     return leds, stations, cpp
 
 
 def make_workspace(mutator):
     tmp = Path(tempfile.mkdtemp())
-    for src in (gen.WORKSHEET, gen.REGISTRY, gen.CHAIN):
+    for src in (gen.WORKSHEET, gen.REGISTRY, gen.CHAIN, gen.SEGMENT_ORDER):
         dst = tmp / src.relative_to(gen.ROOT)
         dst.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(src, dst)
@@ -224,11 +242,12 @@ def edit_csv(tmp, path, fn):
 
 def expect_generation_failure(label, path, fn):
     tmp = make_workspace(lambda t: edit_csv(t, path, fn))
-    saved = (gen.WORKSHEET, gen.REGISTRY, gen.CHAIN)
+    saved = (gen.WORKSHEET, gen.REGISTRY, gen.CHAIN, gen.SEGMENT_ORDER)
     try:
         gen.WORKSHEET = tmp / saved[0].relative_to(gen.ROOT)
         gen.REGISTRY = tmp / saved[1].relative_to(gen.ROOT)
         gen.CHAIN = tmp / saved[2].relative_to(gen.ROOT)
+        gen.SEGMENT_ORDER = tmp / saved[3].relative_to(gen.ROOT)
         try:
             gen.build()
         except gen.GenerationError as error:
@@ -236,7 +255,7 @@ def expect_generation_failure(label, path, fn):
             return
         check(False, f"generator accepted invalid input: {label}")
     finally:
-        gen.WORKSHEET, gen.REGISTRY, gen.CHAIN = saved
+        gen.WORKSHEET, gen.REGISTRY, gen.CHAIN, gen.SEGMENT_ORDER = saved
         shutil.rmtree(tmp, ignore_errors=True)
 
 
@@ -272,6 +291,33 @@ def negative_tests():
                               lambda rs: rs.append(dict(row(rs, "LED252"), designator="U23")))
     expect_generation_failure("registry entity dropped", R, lambda rs: rs.pop())
 
+    S = gen.SEGMENT_ORDER
+    expect_generation_failure("slot file omits a segment LED", S,
+                              lambda rs: rs.remove(row(rs, "LED299")))
+    expect_generation_failure("slot file references a station LED", S,
+                              lambda rs: rs.append(dict(row(rs, "LED299"), designator="LED96")))
+    expect_generation_failure("slot file references unknown LED", S,
+                              lambda rs: rs.append(dict(row(rs, "LED299"), designator="LED9999")))
+    expect_generation_failure("slot file duplicate designator", S,
+                              lambda rs: rs.append(dict(row(rs, "LED299"))))
+    expect_generation_failure("slot metadata missing", S,
+                              lambda rs: row(rs, "LED299").update(segment_slot=""))
+    expect_generation_failure("slot >= slotCount", S,
+                              lambda rs: row(rs, "LED299").update(segment_slot="1"))
+    expect_generation_failure("duplicate slot in group", S,
+                              lambda rs: row(rs, "LED309").update(segment_slot="0"))
+    expect_generation_failure("gap in slot numbering", S,
+                              lambda rs: (row(rs, "LED309").update(segment_slot="2"),
+                                          row(rs, "LED285").update(segment_slot="0")))
+    expect_generation_failure("inconsistent slotCount", S,
+                              lambda rs: row(rs, "LED309").update(segment_slot_count="3"))
+    expect_generation_failure("slotCount != group size", S,
+                              lambda rs: (row(rs, "LED299").update(segment_slot_count="2")))
+    expect_generation_failure("slot file route disagrees", S,
+                              lambda rs: row(rs, "LED299").update(route="A"))
+    expect_generation_failure("slot file endpoints disagree", S,
+                              lambda rs: row(rs, "LED299").update(to_station_id="1"))
+
 
 def size_estimate(cpp):
     strings = sum(len(unescape(s).encode("utf-8")) + 1 for s in
@@ -279,13 +325,13 @@ def size_estimate(cpp):
                              .split("const MapLed kMapLeds")[0]))
     route_strings = sum(len(r) + 1 for r in [""] + gen.ROUTES)
     stations = 188 * 12          # id(2)+pad(2)+2 pointers(4+4) on 32-bit Xtensa
-    leds = 302 * 14
+    leds = 302 * 16
     offsets = 189 * 2
     index = 276 * 2
     routes_tbl = 19 * 4
     total = strings + route_strings + stations + leds + offsets + index + routes_tbl
     print("Static data estimate (flash .rodata, 32-bit ESP32-S3; RAM = 0 bytes, no heap):")
-    print(f"  kMapLeds                 {leds:6d} B (302 x 14)")
+    print(f"  kMapLeds                 {leds:6d} B (302 x 16)")
     print(f"  kStations                {stations:6d} B (188 x 12)")
     print(f"  station name/GTFS text   {strings:6d} B")
     print(f"  kStationLedOffsets       {offsets:6d} B")

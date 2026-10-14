@@ -7,6 +7,7 @@
 //   phase3b_semantic_mapping_worksheet.csv: 1abfb45f837acf77b10bb94bb6af609a1a0a57ec0a6860c1010fb6cdc20cb64f
 //   station_registry.csv: 72f847a0f68f5ce38eb13d1eee6cf561a508786802085ee74a123833e1a4070f
 //   data/led_chain_map.csv: d16b1921f78c490f99c71bb3024311627c05d32a693605a066a9f2b635d33c8c
+//   data/segment_pixel_order.csv (Phase 4 supplemental): 14945698b975110e866bceb70df391f610ae735d5776c5bc5aadc1eba6284dd4
 // Regenerate with: python tools/generate_semantic_tables.py
 
 #include "generated/semantic_tables.h"
@@ -213,309 +214,309 @@ const Station kStations[kRegistryCount] = {
 };
 
 const MapLed kMapLeds[kMapLedCount] = {
-    // designator, global, station, endpointA, endpointB, ch, idx, route, role
-    {42, 0, 24, 0, 0, 1, 0, Route::RouteF, Role::Station},  // LED42 F STATION
-    {41, 1, 23, 0, 0, 1, 1, Route::RouteF, Role::Station},  // LED41 F STATION
-    {40, 2, 19, 0, 0, 1, 2, Route::RouteF, Role::Station},  // LED40 F STATION
-    {229, 3, 19, 0, 0, 1, 3, Route::RouteG, Role::Station},  // LED229 G STATION
-    {228, 4, 20, 0, 0, 1, 4, Route::RouteG, Role::Station},  // LED228 G STATION
-    {39, 5, 20, 0, 0, 1, 5, Route::RouteF, Role::Station},  // LED39 F STATION
-    {227, 6, 22, 0, 0, 1, 6, Route::RouteG, Role::Station},  // LED227 G STATION
-    {38, 7, 22, 0, 0, 1, 7, Route::RouteF, Role::Station},  // LED38 F STATION
-    {100, 8, 21, 0, 0, 1, 8, Route::RouteF, Role::Station},  // LED100 F STATION
-    {206, 9, 21, 0, 0, 1, 9, Route::RouteG, Role::Station},  // LED206 G STATION
-    {18, 10, 86, 0, 0, 1, 10, Route::RouteR, Role::Station},  // LED18 R STATION
-    {168, 11, 86, 0, 0, 1, 11, Route::RouteG, Role::Station},  // LED168 G STATION
-    {99, 12, 173, 0, 0, 1, 12, Route::RouteF, Role::Station},  // LED99 F STATION
-    {169, 13, 86, 0, 0, 1, 13, Route::RouteF, Role::Station},  // LED169 F STATION
-    {19, 14, 160, 0, 0, 1, 14, Route::RouteR, Role::Station},  // LED19 R STATION
-    {20, 15, 73, 0, 0, 1, 15, Route::RouteR, Role::Station},  // LED20 R STATION
-    {173, 16, 78, 0, 0, 1, 16, Route::RouteR, Role::Station},  // LED173 R STATION
-    {101, 17, 78, 0, 0, 1, 17, Route::RouteN, Role::Station},  // LED101 N STATION
-    {172, 18, 78, 0, 0, 1, 18, Route::RouteD, Role::Station},  // LED172 D STATION
-    {21, 19, 42, 0, 0, 1, 19, Route::RouteR, Role::Station},  // LED21 R STATION
-    {22, 20, 43, 0, 0, 1, 20, Route::RouteR, Role::Station},  // LED22 R STATION
-    {26, 21, 74, 0, 0, 1, 21, Route::RouteD, Role::Station},  // LED26 D STATION
-    {27, 22, 75, 0, 0, 1, 22, Route::RouteD, Role::Station},  // LED27 D STATION
-    {28, 23, 76, 0, 0, 1, 23, Route::RouteD, Role::Station},  // LED28 D STATION
-    {102, 24, 79, 0, 0, 1, 24, Route::RouteN, Role::Station},  // LED102 N STATION
-    {174, 25, 79, 0, 0, 1, 25, Route::RouteR, Role::Station},  // LED174 R STATION
-    {23, 26, 72, 0, 0, 1, 26, Route::RouteR, Role::Station},  // LED23 R STATION
-    {24, 27, 44, 0, 0, 1, 27, Route::RouteR, Role::Station},  // LED24 R STATION
-    {25, 28, 45, 0, 0, 1, 28, Route::RouteR, Role::Station},  // LED25 R STATION
-    {6, 29, 71, 0, 0, 1, 29, Route::RouteR, Role::Station},  // LED6 R STATION
-    {103, 30, 80, 0, 0, 1, 30, Route::RouteN, Role::Station},  // LED103 N STATION
-    {104, 31, 81, 0, 0, 1, 31, Route::RouteN, Role::Station},  // LED104 N STATION
-    {171, 32, 82, 0, 0, 1, 32, Route::RouteN, Role::Station},  // LED171 N STATION
-    {29, 33, 77, 0, 0, 1, 33, Route::RouteD, Role::Station},  // LED29 D STATION
-    {30, 34, 161, 0, 0, 1, 34, Route::RouteD, Role::Station},  // LED30 D STATION
-    {31, 35, 162, 0, 0, 1, 35, Route::RouteD, Role::Station},  // LED31 D STATION
-    {32, 36, 163, 0, 0, 1, 36, Route::RouteD, Role::Station},  // LED32 D STATION
-    {208, 37, 17, 0, 0, 2, 0, Route::RouteB, Role::Station},  // LED208 B STATION
-    {115, 38, 17, 0, 0, 2, 1, Route::RouteQ, Role::Station},  // LED115 Q STATION
-    {207, 39, 8, 0, 0, 2, 2, Route::RouteB, Role::Station},  // LED207 B STATION
-    {114, 40, 8, 0, 0, 2, 3, Route::RouteQ, Role::Station},  // LED114 Q STATION
-    {113, 41, 0, 16, 8, 2, 4, Route::RouteQ, Role::Segment},  // LED113 Q SEGMENT
-    {289, 42, 16, 0, 0, 2, 5, Route::RouteQ, Role::Station},  // LED289 Q STATION
-    {61, 43, 15, 0, 0, 2, 6, Route::RouteQ, Role::Station},  // LED61 Q STATION
-    {233, 44, 7, 0, 0, 2, 7, Route::RouteB, Role::Station},  // LED233 B STATION
-    {60, 45, 7, 0, 0, 2, 8, Route::RouteQ, Role::Station},  // LED60 Q STATION
-    {59, 46, 14, 0, 0, 2, 9, Route::RouteQ, Role::Station},  // LED59 Q STATION
-    {58, 47, 13, 0, 0, 2, 10, Route::RouteQ, Role::Station},  // LED58 Q STATION
-    {57, 48, 12, 0, 0, 2, 11, Route::RouteQ, Role::Station},  // LED57 Q STATION
-    {43, 49, 25, 0, 0, 2, 12, Route::RouteF, Role::Station},  // LED43 F STATION
-    {44, 50, 26, 0, 0, 2, 13, Route::RouteF, Role::Station},  // LED44 F STATION
-    {106, 51, 175, 0, 0, 2, 14, Route::RouteN, Role::Station},  // LED106 N STATION
-    {105, 52, 174, 0, 0, 2, 15, Route::RouteN, Role::Station},  // LED105 N STATION
-    {33, 53, 164, 0, 0, 2, 16, Route::RouteD, Role::Station},  // LED33 D STATION
-    {34, 54, 165, 0, 0, 2, 17, Route::RouteD, Role::Station},  // LED34 D STATION
-    {107, 55, 176, 0, 0, 2, 18, Route::RouteN, Role::Station},  // LED107 N STATION
-    {45, 56, 27, 0, 0, 2, 19, Route::RouteF, Role::Station},  // LED45 F STATION
-    {46, 57, 28, 0, 0, 2, 20, Route::RouteF, Role::Station},  // LED46 F STATION
-    {47, 58, 29, 0, 0, 2, 21, Route::RouteF, Role::Station},  // LED47 F STATION
-    {48, 59, 30, 0, 0, 2, 22, Route::RouteF, Role::Station},  // LED48 F STATION
-    {49, 60, 31, 0, 0, 2, 23, Route::RouteF, Role::Station},  // LED49 F STATION
-    {111, 61, 32, 0, 0, 2, 24, Route::RouteF, Role::Station},  // LED111 F STATION
-    {116, 62, 18, 0, 0, 2, 25, Route::RouteQ, Role::Station},  // LED116 Q STATION
-    {175, 63, 33, 0, 0, 2, 26, Route::RouteQ, Role::Station},  // LED175 Q STATION
-    {112, 64, 33, 0, 0, 2, 27, Route::RouteF, Role::Station},  // LED112 F STATION
-    {110, 65, 179, 0, 0, 2, 28, Route::RouteN, Role::Station},  // LED110 N STATION
-    {109, 66, 178, 0, 0, 2, 29, Route::RouteN, Role::Station},  // LED109 N STATION
-    {108, 67, 177, 0, 0, 2, 30, Route::RouteN, Role::Station},  // LED108 N STATION
-    {35, 68, 166, 0, 0, 2, 31, Route::RouteD, Role::Station},  // LED35 D STATION
-    {36, 69, 167, 0, 0, 2, 32, Route::RouteD, Role::Station},  // LED36 D STATION
-    {37, 70, 168, 0, 0, 2, 33, Route::RouteD, Role::Station},  // LED37 D STATION
-    {167, 71, 34, 0, 0, 2, 34, Route::RouteD, Role::Station},  // LED167 D STATION
-    {166, 72, 34, 0, 0, 2, 35, Route::RouteN, Role::Station},  // LED166 N STATION
-    {165, 73, 34, 0, 0, 2, 36, Route::RouteF, Role::Station},  // LED165 F STATION
-    {7, 74, 34, 0, 0, 2, 37, Route::RouteQ, Role::Station},  // LED7 Q STATION
-    {226, 75, 126, 0, 0, 3, 0, Route::Route5, Role::Station},  // LED226 5 STATION
-    {146, 76, 126, 0, 0, 3, 1, Route::Route2, Role::Station},  // LED146 2 STATION
-    {147, 77, 91, 0, 0, 3, 2, Route::Route2, Role::Station},  // LED147 2 STATION
-    {250, 78, 91, 0, 0, 3, 3, Route::Route5, Role::Station},  // LED250 5 STATION
-    {225, 79, 125, 0, 0, 3, 4, Route::Route5, Role::Station},  // LED225 5 STATION
-    {145, 80, 125, 0, 0, 3, 5, Route::Route2, Role::Station},  // LED145 2 STATION
-    {224, 81, 124, 0, 0, 3, 6, Route::Route5, Role::Station},  // LED224 5 STATION
-    {144, 82, 124, 0, 0, 3, 7, Route::Route2, Role::Station},  // LED144 2 STATION
-    {143, 83, 123, 0, 0, 3, 8, Route::Route2, Role::Station},  // LED143 2 STATION
-    {223, 84, 123, 0, 0, 3, 9, Route::Route5, Role::Station},  // LED223 5 STATION
-    {222, 85, 122, 0, 0, 3, 10, Route::Route5, Role::Station},  // LED222 5 STATION
-    {142, 86, 122, 0, 0, 3, 11, Route::Route2, Role::Station},  // LED142 2 STATION
-    {141, 87, 121, 0, 0, 3, 12, Route::Route2, Role::Station},  // LED141 2 STATION
-    {221, 88, 121, 0, 0, 3, 13, Route::Route5, Role::Station},  // LED221 5 STATION
-    {196, 89, 147, 0, 0, 3, 14, Route::Route3, Role::Station},  // LED196 3 STATION
-    {195, 90, 146, 0, 0, 3, 15, Route::Route3, Role::Station},  // LED195 3 STATION
-    {302, 91, 0, 89, 127, 3, 16, Route::Route4, Role::Segment},  // LED302 4 SEGMENT
-    {301, 92, 0, 89, 146, 3, 17, Route::Route3, Role::Segment},  // LED301 3 SEGMENT
-    {300, 93, 0, 89, 121, 3, 18, Route::Route2, Role::Segment},  // LED300 2 SEGMENT
-    {183, 94, 90, 0, 0, 3, 19, Route::RouteS, Role::Station},  // LED183 S STATION
-    {180, 95, 89, 0, 0, 3, 20, Route::Route2, Role::Station},  // LED180 2 STATION
-    {140, 96, 89, 0, 0, 3, 21, Route::Route3, Role::Station},  // LED140 3 STATION
-    {181, 97, 89, 0, 0, 3, 22, Route::Route4, Role::Station},  // LED181 4 STATION
-    {304, 98, 0, 90, 153, 3, 23, Route::RouteS, Role::Segment},  // LED304 S SEGMENT
-    {182, 99, 89, 0, 0, 3, 24, Route::Route5, Role::Station},  // LED182 5 STATION
-    {303, 100, 0, 2, 89, 3, 25, Route::Route5, Role::Segment},  // LED303 5 SEGMENT
-    {290, 101, 0, 3, 4, 3, 26, Route::RouteQ, Role::Segment},  // LED290 Q SEGMENT
-    {185, 102, 4, 0, 0, 3, 27, Route::RouteS, Role::Station},  // LED185 S STATION
-    {184, 103, 4, 0, 0, 3, 28, Route::RouteB, Role::Station},  // LED184 B STATION
-    {51, 104, 4, 0, 0, 3, 29, Route::RouteQ, Role::Station},  // LED51 Q STATION
-    {52, 105, 11, 0, 0, 3, 30, Route::RouteQ, Role::Station},  // LED52 Q STATION
-    {53, 106, 5, 0, 0, 3, 31, Route::RouteQ, Role::Station},  // LED53 Q STATION
-    {231, 107, 5, 0, 0, 3, 32, Route::RouteB, Role::Station},  // LED231 B STATION
-    {54, 108, 9, 0, 0, 3, 33, Route::RouteQ, Role::Station},  // LED54 Q STATION
-    {55, 109, 10, 0, 0, 3, 34, Route::RouteQ, Role::Station},  // LED55 Q STATION
-    {56, 110, 6, 0, 0, 3, 35, Route::RouteQ, Role::Station},  // LED56 Q STATION
-    {232, 111, 6, 0, 0, 3, 36, Route::RouteB, Role::Station},  // LED232 B STATION
-    {220, 112, 139, 0, 0, 4, 0, Route::Route2, Role::Station},  // LED220 2 STATION
-    {139, 113, 139, 0, 0, 4, 1, Route::Route3, Role::Station},  // LED139 3 STATION
-    {230, 114, 3, 0, 0, 4, 2, Route::RouteB, Role::Station},  // LED230 B STATION
-    {50, 115, 3, 0, 0, 4, 3, Route::RouteQ, Role::Station},  // LED50 Q STATION
-    {138, 116, 138, 0, 0, 4, 4, Route::Route3, Role::Station},  // LED138 3 STATION
-    {219, 117, 138, 0, 0, 4, 5, Route::Route2, Role::Station},  // LED219 2 STATION
-    {137, 118, 137, 0, 0, 4, 6, Route::Route3, Role::Station},  // LED137 3 STATION
-    {218, 119, 137, 0, 0, 4, 7, Route::Route2, Role::Station},  // LED218 2 STATION
-    {17, 120, 159, 0, 0, 4, 8, Route::RouteR, Role::Station},  // LED17 R STATION
-    {292, 121, 0, 2, 78, 4, 9, Route::RouteN, Role::Segment},  // LED292 N SEGMENT
-    {249, 122, 173, 0, 0, 4, 10, Route::RouteG, Role::Station},  // LED249 G STATION
-    {248, 123, 172, 0, 0, 4, 11, Route::RouteG, Role::Station},  // LED248 G STATION
-    {98, 124, 172, 0, 0, 4, 12, Route::RouteF, Role::Station},  // LED98 F STATION
-    {97, 125, 171, 0, 0, 4, 13, Route::RouteF, Role::Station},  // LED97 F STATION
-    {247, 126, 171, 0, 0, 4, 14, Route::RouteG, Role::Station},  // LED247 G STATION
-    {156, 127, 85, 0, 0, 4, 15, Route::RouteG, Role::Station},  // LED156 G STATION
-    {155, 128, 85, 0, 0, 4, 16, Route::RouteA, Role::Station},  // LED155 A STATION
-    {119, 129, 85, 0, 0, 4, 17, Route::RouteC, Role::Station},  // LED119 C STATION
-    {164, 130, 2, 0, 0, 4, 18, Route::RouteR, Role::Station},  // LED164 R STATION
-    {162, 131, 2, 0, 0, 4, 19, Route::RouteN, Role::Station},  // LED162 N STATION
-    {161, 132, 2, 0, 0, 4, 20, Route::RouteD, Role::Station},  // LED161 D STATION
-    {157, 133, 2, 0, 0, 4, 21, Route::Route2, Role::Station},  // LED157 2 STATION
-    {136, 134, 2, 0, 0, 4, 22, Route::Route3, Role::Station},  // LED136 3 STATION
-    {158, 135, 2, 0, 0, 4, 23, Route::Route4, Role::Station},  // LED158 4 STATION
-    {159, 136, 2, 0, 0, 4, 24, Route::Route5, Role::Station},  // LED159 5 STATION
-    {163, 137, 2, 0, 0, 4, 25, Route::RouteQ, Role::Station},  // LED163 Q STATION
-    {160, 138, 2, 0, 0, 4, 26, Route::RouteB, Role::Station},  // LED160 B STATION
-    {191, 139, 1, 0, 0, 4, 27, Route::RouteR, Role::Station},  // LED191 R STATION
-    {217, 140, 106, 0, 0, 4, 28, Route::Route5, Role::Station},  // LED217 5 STATION
-    {215, 141, 106, 0, 0, 4, 29, Route::Route4, Role::Station},  // LED215 4 STATION
-    {135, 142, 106, 0, 0, 4, 30, Route::Route3, Role::Station},  // LED135 3 STATION
-    {216, 143, 106, 0, 0, 4, 31, Route::Route2, Role::Station},  // LED216 2 STATION
-    {214, 144, 105, 0, 0, 4, 32, Route::Route2, Role::Station},  // LED214 2 STATION
-    {134, 145, 105, 0, 0, 4, 33, Route::Route3, Role::Station},  // LED134 3 STATION
-    {177, 146, 88, 0, 0, 4, 34, Route::Route2, Role::Station},  // LED177 2 STATION
-    {133, 147, 88, 0, 0, 4, 35, Route::Route3, Role::Station},  // LED133 3 STATION
-    {178, 148, 88, 0, 0, 4, 36, Route::Route4, Role::Station},  // LED178 4 STATION
-    {190, 149, 1, 0, 0, 5, 0, Route::RouteQ, Role::Station},  // LED190 Q STATION
-    {293, 150, 0, 84, 1, 5, 1, Route::RouteR, Role::Segment},  // LED293 R SEGMENT
-    {154, 151, 84, 0, 0, 5, 2, Route::RouteR, Role::Station},  // LED154 R STATION
-    {153, 152, 84, 0, 0, 5, 3, Route::RouteF, Role::Station},  // LED153 F STATION
-    {118, 153, 84, 0, 0, 5, 4, Route::RouteC, Role::Station},  // LED118 C STATION
-    {152, 154, 84, 0, 0, 5, 5, Route::RouteA, Role::Station},  // LED152 A STATION
-    {179, 155, 88, 0, 0, 5, 6, Route::Route5, Role::Station},  // LED179 5 STATION
-    {10, 156, 102, 0, 0, 5, 7, Route::RouteR, Role::Station},  // LED10 R STATION
-    {213, 157, 104, 0, 0, 5, 8, Route::Route2, Role::Station},  // LED213 2 STATION
-    {132, 158, 104, 0, 0, 5, 9, Route::Route3, Role::Station},  // LED132 3 STATION
-    {209, 159, 103, 0, 0, 5, 10, Route::RouteA, Role::Station},  // LED209 A STATION
-    {117, 160, 103, 0, 0, 5, 11, Route::RouteC, Role::Station},  // LED117 C STATION
-    {294, 161, 0, 84, 107, 5, 12, Route::RouteF, Role::Segment},  // LED294 F SEGMENT
-    {311, 162, 0, 183, 2, 5, 13, Route::RouteN, Role::Segment},  // LED311 N SEGMENT
-    {310, 163, 0, 183, 1, 5, 14, Route::RouteQ, Role::Segment},  // LED310 Q SEGMENT
-    {309, 164, 0, 182, 1, 5, 15, Route::RouteB, Role::Segment},  // LED309 B SEGMENT
-    {308, 165, 0, 182, 2, 5, 16, Route::RouteD, Role::Segment},  // LED308 D SEGMENT
-    {188, 166, 107, 0, 0, 5, 17, Route::RouteF, Role::Station},  // LED188 F STATION
-    {291, 167, 0, 107, 184, 5, 18, Route::RouteF, Role::Segment},  // LED291 F SEGMENT
-    {285, 168, 0, 182, 1, 5, 19, Route::RouteB, Role::Segment},  // LED285 B SEGMENT
-    {286, 169, 0, 182, 2, 5, 20, Route::RouteD, Role::Segment},  // LED286 D SEGMENT
-    {255, 170, 185, 0, 0, 5, 21, Route::RouteF, Role::Station},  // LED255 F STATION
-    {256, 171, 185, 0, 0, 5, 22, Route::RouteM, Role::Station},  // LED256 M STATION
-    {257, 172, 185, 0, 0, 5, 23, Route::RouteJ, Role::Station},  // LED257 J STATION
-    {258, 173, 185, 0, 0, 5, 24, Route::RouteZ, Role::Station},  // LED258 Z STATION
-    {259, 174, 184, 0, 0, 5, 25, Route::RouteF, Role::Station},  // LED259 F STATION
-    {234, 175, 118, 0, 0, 5, 26, Route::RouteZ, Role::Station},  // LED234 Z STATION
-    {62, 176, 118, 0, 0, 5, 27, Route::RouteJ, Role::Station},  // LED62 J STATION
-    {235, 177, 118, 0, 0, 5, 28, Route::RouteM, Role::Station},  // LED235 M STATION
-    {236, 178, 180, 0, 0, 5, 29, Route::RouteM, Role::Station},  // LED236 M STATION
-    {63, 179, 180, 0, 0, 5, 30, Route::RouteJ, Role::Station},  // LED63 J STATION
-    {297, 180, 0, 180, 109, 5, 31, Route::RouteM, Role::Segment},  // LED297 M SEGMENT
-    {9, 181, 35, 0, 0, 5, 32, Route::RouteG, Role::Station},  // LED9 G STATION
-    {82, 182, 136, 0, 0, 5, 33, Route::RouteL, Role::Station},  // LED82 L STATION
-    {81, 183, 135, 0, 0, 5, 34, Route::RouteL, Role::Station},  // LED81 L STATION
-    {80, 184, 134, 0, 0, 5, 35, Route::RouteL, Role::Station},  // LED80 L STATION
-    {295, 185, 0, 170, 35, 5, 36, Route::RouteG, Role::Segment},  // LED295 G SEGMENT
-    {96, 186, 170, 0, 0, 5, 37, Route::RouteG, Role::Station},  // LED96 G STATION
-    {79, 187, 133, 0, 0, 5, 38, Route::RouteL, Role::Station},  // LED79 L STATION
-    {78, 188, 132, 0, 0, 5, 39, Route::RouteL, Role::Station},  // LED78 L STATION
-    {95, 189, 169, 0, 0, 5, 40, Route::RouteG, Role::Station},  // LED95 G STATION
-    {187, 190, 0, 186, 169, 5, 41, Route::RouteG, Role::Segment},  // LED187 G SEGMENT
-    {194, 191, 153, 0, 0, 6, 0, Route::RouteS, Role::Station},  // LED194 S STATION
-    {176, 192, 87, 0, 0, 6, 1, Route::RouteS, Role::Station},  // LED176 S STATION
-    {210, 193, 152, 0, 0, 6, 2, Route::RouteA, Role::Station},  // LED210 A STATION
-    {124, 194, 140, 0, 0, 6, 3, Route::RouteC, Role::Station},  // LED124 C STATION
-    {123, 195, 152, 0, 0, 6, 4, Route::RouteC, Role::Station},  // LED123 C STATION
-    {122, 196, 151, 0, 0, 6, 5, Route::RouteC, Role::Station},  // LED122 C STATION
-    {121, 197, 150, 0, 0, 6, 6, Route::RouteC, Role::Station},  // LED121 C STATION
-    {288, 198, 0, 181, 150, 6, 7, Route::RouteC, Role::Segment},  // LED288 C SEGMENT
-    {120, 199, 181, 0, 0, 6, 8, Route::RouteC, Role::Station},  // LED120 C STATION
-    {287, 200, 0, 85, 152, 6, 9, Route::RouteA, Role::Segment},  // LED287 A SEGMENT
-    {189, 201, 1, 0, 0, 6, 10, Route::RouteB, Role::Station},  // LED189 B STATION
-    {16, 202, 41, 0, 0, 6, 11, Route::RouteG, Role::Station},  // LED16 G STATION
-    {15, 203, 40, 0, 0, 6, 12, Route::RouteG, Role::Station},  // LED15 G STATION
-    {14, 204, 39, 0, 0, 6, 13, Route::RouteG, Role::Station},  // LED14 G STATION
-    {13, 205, 38, 0, 0, 6, 14, Route::RouteG, Role::Station},  // LED13 G STATION
-    {12, 206, 37, 0, 0, 6, 15, Route::RouteG, Role::Station},  // LED12 G STATION
-    {11, 207, 36, 0, 0, 6, 16, Route::RouteG, Role::Station},  // LED11 G STATION
-    {298, 208, 0, 118, 111, 6, 17, Route::RouteZ, Role::Segment},  // LED298 Z SEGMENT
-    {64, 209, 109, 0, 0, 6, 18, Route::RouteJ, Role::Station},  // LED64 J STATION
-    {237, 210, 109, 0, 0, 6, 19, Route::RouteM, Role::Station},  // LED237 M STATION
-    {238, 211, 110, 0, 0, 6, 20, Route::RouteM, Role::Station},  // LED238 M STATION
-    {65, 212, 110, 0, 0, 6, 21, Route::RouteJ, Role::Station},  // LED65 J STATION
-    {240, 213, 111, 0, 0, 6, 22, Route::RouteZ, Role::Station},  // LED240 Z STATION
-    {66, 214, 111, 0, 0, 6, 23, Route::RouteJ, Role::Station},  // LED66 J STATION
-    {239, 215, 111, 0, 0, 6, 24, Route::RouteM, Role::Station},  // LED239 M STATION
-    {192, 216, 115, 0, 0, 6, 25, Route::RouteM, Role::Station},  // LED192 M STATION
-    {67, 217, 112, 0, 0, 6, 26, Route::RouteJ, Role::Station},  // LED67 J STATION
-    {296, 218, 0, 111, 117, 6, 27, Route::RouteZ, Role::Segment},  // LED296 Z SEGMENT
-    {68, 219, 117, 0, 0, 6, 28, Route::RouteJ, Role::Station},  // LED68 J STATION
-    {241, 220, 117, 0, 0, 6, 29, Route::RouteZ, Role::Station},  // LED241 Z STATION
-    {193, 221, 116, 0, 0, 6, 30, Route::RouteM, Role::Station},  // LED193 M STATION
-    {86, 222, 70, 0, 0, 6, 31, Route::RouteL, Role::Station},  // LED86 L STATION
-    {170, 223, 70, 0, 0, 6, 32, Route::RouteM, Role::Station},  // LED170 M STATION
-    {254, 224, 145, 0, 0, 6, 33, Route::RouteM, Role::Station},  // LED254 M STATION
-    {85, 225, 46, 0, 0, 6, 34, Route::RouteL, Role::Station},  // LED85 L STATION
-    {84, 226, 114, 0, 0, 6, 35, Route::RouteL, Role::Station},  // LED84 L STATION
-    {83, 227, 113, 0, 0, 6, 36, Route::RouteL, Role::Station},  // LED83 L STATION
-    {198, 228, 127, 0, 0, 7, 0, Route::Route3, Role::Station},  // LED198 3 STATION
-    {197, 229, 127, 0, 0, 7, 1, Route::Route4, Role::Station},  // LED197 4 STATION
-    {199, 230, 148, 0, 0, 7, 2, Route::Route3, Role::Station},  // LED199 3 STATION
-    {200, 231, 149, 0, 0, 7, 3, Route::Route3, Role::Station},  // LED200 3 STATION
-    {201, 232, 187, 0, 0, 7, 4, Route::Route3, Role::Station},  // LED201 3 STATION
-    {90, 233, 50, 0, 0, 7, 5, Route::RouteL, Role::Station},  // LED90 L STATION
-    {128, 234, 94, 0, 0, 7, 6, Route::RouteC, Role::Station},  // LED128 C STATION
-    {129, 235, 95, 0, 0, 7, 7, Route::RouteC, Role::Station},  // LED129 C STATION
-    {130, 236, 96, 0, 0, 7, 8, Route::RouteC, Role::Station},  // LED130 C STATION
-    {212, 237, 97, 0, 0, 7, 9, Route::RouteA, Role::Station},  // LED212 A STATION
-    {131, 238, 97, 0, 0, 7, 10, Route::RouteC, Role::Station},  // LED131 C STATION
-    {245, 239, 129, 0, 0, 7, 11, Route::RouteZ, Role::Station},  // LED245 Z STATION
-    {246, 240, 130, 0, 0, 7, 12, Route::RouteZ, Role::Station},  // LED246 Z STATION
-    {77, 241, 131, 0, 0, 7, 13, Route::RouteJ, Role::Station},  // LED77 J STATION
-    {76, 242, 130, 0, 0, 7, 14, Route::RouteJ, Role::Station},  // LED76 J STATION
-    {75, 243, 129, 0, 0, 7, 15, Route::RouteJ, Role::Station},  // LED75 J STATION
-    {74, 244, 128, 0, 0, 7, 16, Route::RouteJ, Role::Station},  // LED74 J STATION
-    {73, 245, 100, 0, 0, 7, 17, Route::RouteJ, Role::Station},  // LED73 J STATION
-    {244, 246, 100, 0, 0, 7, 18, Route::RouteZ, Role::Station},  // LED244 Z STATION
-    {243, 247, 99, 0, 0, 7, 19, Route::RouteZ, Role::Station},  // LED243 Z STATION
-    {72, 248, 99, 0, 0, 7, 20, Route::RouteJ, Role::Station},  // LED72 J STATION
-    {151, 249, 83, 0, 0, 7, 21, Route::RouteL, Role::Station},  // LED151 L STATION
-    {71, 250, 83, 0, 0, 7, 22, Route::RouteJ, Role::Station},  // LED71 J STATION
-    {150, 251, 83, 0, 0, 7, 23, Route::RouteZ, Role::Station},  // LED150 Z STATION
-    {148, 252, 83, 0, 0, 7, 24, Route::RouteC, Role::Station},  // LED148 C STATION
-    {149, 253, 83, 0, 0, 7, 25, Route::RouteA, Role::Station},  // LED149 A STATION
-    {299, 254, 0, 83, 50, 7, 26, Route::RouteL, Role::Segment},  // LED299 L SEGMENT
-    {127, 255, 143, 0, 0, 7, 27, Route::RouteC, Role::Station},  // LED127 C STATION
-    {126, 256, 142, 0, 0, 7, 28, Route::RouteC, Role::Station},  // LED126 C STATION
-    {211, 257, 141, 0, 0, 7, 29, Route::RouteA, Role::Station},  // LED211 A STATION
-    {125, 258, 141, 0, 0, 7, 30, Route::RouteC, Role::Station},  // LED125 C STATION
-    {69, 259, 119, 0, 0, 7, 31, Route::RouteJ, Role::Station},  // LED69 J STATION
-    {242, 260, 120, 0, 0, 7, 32, Route::RouteZ, Role::Station},  // LED242 Z STATION
-    {70, 261, 120, 0, 0, 7, 33, Route::RouteJ, Role::Station},  // LED70 J STATION
-    {89, 262, 49, 0, 0, 7, 34, Route::RouteL, Role::Station},  // LED89 L STATION
-    {88, 263, 48, 0, 0, 7, 35, Route::RouteL, Role::Station},  // LED88 L STATION
-    {87, 264, 47, 0, 0, 7, 36, Route::RouteL, Role::Station},  // LED87 L STATION
-    {253, 265, 144, 0, 0, 7, 37, Route::RouteM, Role::Station},  // LED253 M STATION
-    {284, 270, 158, 0, 0, 8, 4, Route::RouteA, Role::Station},  // LED284 A STATION
-    {283, 271, 158, 0, 0, 8, 5, Route::RouteS, Role::Station},  // LED283 S STATION
-    {281, 272, 157, 0, 0, 8, 6, Route::RouteS, Role::Station},  // LED281 S STATION
-    {282, 273, 157, 0, 0, 8, 7, Route::RouteA, Role::Station},  // LED282 A STATION
-    {279, 274, 156, 0, 0, 8, 8, Route::RouteS, Role::Station},  // LED279 S STATION
-    {280, 275, 156, 0, 0, 8, 9, Route::RouteA, Role::Station},  // LED280 A STATION
-    {278, 276, 155, 0, 0, 8, 10, Route::RouteA, Role::Station},  // LED278 A STATION
-    {277, 277, 155, 0, 0, 8, 11, Route::RouteS, Role::Station},  // LED277 S STATION
-    {305, 278, 0, 154, 155, 8, 12, Route::RouteS, Role::Segment},  // LED305 S SEGMENT
-    {276, 279, 68, 0, 0, 8, 13, Route::RouteA, Role::Station},  // LED276 A STATION
-    {275, 280, 67, 0, 0, 8, 14, Route::RouteA, Role::Station},  // LED275 A STATION
-    {274, 281, 66, 0, 0, 8, 15, Route::RouteA, Role::Station},  // LED274 A STATION
-    {273, 282, 65, 0, 0, 8, 16, Route::RouteA, Role::Station},  // LED273 A STATION
-    {272, 283, 64, 0, 0, 8, 17, Route::RouteA, Role::Station},  // LED272 A STATION
-    {271, 284, 63, 0, 0, 8, 18, Route::RouteA, Role::Station},  // LED271 A STATION
-    {269, 285, 154, 0, 0, 8, 19, Route::RouteA, Role::Station},  // LED269 A STATION
-    {270, 286, 154, 0, 0, 8, 20, Route::RouteS, Role::Station},  // LED270 S STATION
-    {268, 287, 62, 0, 0, 8, 21, Route::RouteA, Role::Station},  // LED268 A STATION
-    {267, 288, 93, 0, 0, 8, 22, Route::RouteA, Role::Station},  // LED267 A STATION
-    {266, 289, 92, 0, 0, 8, 23, Route::RouteA, Role::Station},  // LED266 A STATION
-    {265, 290, 61, 0, 0, 8, 24, Route::RouteA, Role::Station},  // LED265 A STATION
-    {264, 291, 60, 0, 0, 8, 25, Route::RouteA, Role::Station},  // LED264 A STATION
-    {263, 292, 59, 0, 0, 8, 26, Route::RouteA, Role::Station},  // LED263 A STATION
-    {262, 293, 58, 0, 0, 8, 27, Route::RouteA, Role::Station},  // LED262 A STATION
-    {261, 294, 57, 0, 0, 8, 28, Route::RouteA, Role::Station},  // LED261 A STATION
-    {260, 295, 56, 0, 0, 8, 29, Route::RouteA, Role::Station},  // LED260 A STATION
-    {186, 296, 55, 0, 0, 8, 30, Route::RouteA, Role::Station},  // LED186 A STATION
-    {205, 297, 98, 0, 0, 8, 31, Route::Route3, Role::Station},  // LED205 3 STATION
-    {204, 298, 101, 0, 0, 8, 32, Route::Route3, Role::Station},  // LED204 3 STATION
-    {203, 299, 108, 0, 0, 8, 33, Route::Route3, Role::Station},  // LED203 3 STATION
-    {91, 300, 51, 0, 0, 8, 34, Route::RouteL, Role::Station},  // LED91 L STATION
-    {202, 301, 188, 0, 0, 8, 35, Route::Route3, Role::Station},  // LED202 3 STATION
-    {92, 302, 52, 0, 0, 8, 36, Route::RouteL, Role::Station},  // LED92 L STATION
-    {93, 303, 53, 0, 0, 8, 37, Route::RouteL, Role::Station},  // LED93 L STATION
-    {94, 304, 54, 0, 0, 8, 38, Route::RouteL, Role::Station},  // LED94 L STATION
-    {8, 305, 69, 0, 0, 8, 39, Route::RouteL, Role::Station},  // LED8 L STATION
+    // designator, global, station, endpointA,     endpointB, ch, idx, route, role, slot, slotCount
+    {42, 0, 24, 0, 0, 1, 0, Route::RouteF, Role::Station, 0, 0},  // LED42 F STATION
+    {41, 1, 23, 0, 0, 1, 1, Route::RouteF, Role::Station, 0, 0},  // LED41 F STATION
+    {40, 2, 19, 0, 0, 1, 2, Route::RouteF, Role::Station, 0, 0},  // LED40 F STATION
+    {229, 3, 19, 0, 0, 1, 3, Route::RouteG, Role::Station, 0, 0},  // LED229 G STATION
+    {228, 4, 20, 0, 0, 1, 4, Route::RouteG, Role::Station, 0, 0},  // LED228 G STATION
+    {39, 5, 20, 0, 0, 1, 5, Route::RouteF, Role::Station, 0, 0},  // LED39 F STATION
+    {227, 6, 22, 0, 0, 1, 6, Route::RouteG, Role::Station, 0, 0},  // LED227 G STATION
+    {38, 7, 22, 0, 0, 1, 7, Route::RouteF, Role::Station, 0, 0},  // LED38 F STATION
+    {100, 8, 21, 0, 0, 1, 8, Route::RouteF, Role::Station, 0, 0},  // LED100 F STATION
+    {206, 9, 21, 0, 0, 1, 9, Route::RouteG, Role::Station, 0, 0},  // LED206 G STATION
+    {18, 10, 86, 0, 0, 1, 10, Route::RouteR, Role::Station, 0, 0},  // LED18 R STATION
+    {168, 11, 86, 0, 0, 1, 11, Route::RouteG, Role::Station, 0, 0},  // LED168 G STATION
+    {99, 12, 173, 0, 0, 1, 12, Route::RouteF, Role::Station, 0, 0},  // LED99 F STATION
+    {169, 13, 86, 0, 0, 1, 13, Route::RouteF, Role::Station, 0, 0},  // LED169 F STATION
+    {19, 14, 160, 0, 0, 1, 14, Route::RouteR, Role::Station, 0, 0},  // LED19 R STATION
+    {20, 15, 73, 0, 0, 1, 15, Route::RouteR, Role::Station, 0, 0},  // LED20 R STATION
+    {173, 16, 78, 0, 0, 1, 16, Route::RouteR, Role::Station, 0, 0},  // LED173 R STATION
+    {101, 17, 78, 0, 0, 1, 17, Route::RouteN, Role::Station, 0, 0},  // LED101 N STATION
+    {172, 18, 78, 0, 0, 1, 18, Route::RouteD, Role::Station, 0, 0},  // LED172 D STATION
+    {21, 19, 42, 0, 0, 1, 19, Route::RouteR, Role::Station, 0, 0},  // LED21 R STATION
+    {22, 20, 43, 0, 0, 1, 20, Route::RouteR, Role::Station, 0, 0},  // LED22 R STATION
+    {26, 21, 74, 0, 0, 1, 21, Route::RouteD, Role::Station, 0, 0},  // LED26 D STATION
+    {27, 22, 75, 0, 0, 1, 22, Route::RouteD, Role::Station, 0, 0},  // LED27 D STATION
+    {28, 23, 76, 0, 0, 1, 23, Route::RouteD, Role::Station, 0, 0},  // LED28 D STATION
+    {102, 24, 79, 0, 0, 1, 24, Route::RouteN, Role::Station, 0, 0},  // LED102 N STATION
+    {174, 25, 79, 0, 0, 1, 25, Route::RouteR, Role::Station, 0, 0},  // LED174 R STATION
+    {23, 26, 72, 0, 0, 1, 26, Route::RouteR, Role::Station, 0, 0},  // LED23 R STATION
+    {24, 27, 44, 0, 0, 1, 27, Route::RouteR, Role::Station, 0, 0},  // LED24 R STATION
+    {25, 28, 45, 0, 0, 1, 28, Route::RouteR, Role::Station, 0, 0},  // LED25 R STATION
+    {6, 29, 71, 0, 0, 1, 29, Route::RouteR, Role::Station, 0, 0},  // LED6 R STATION
+    {103, 30, 80, 0, 0, 1, 30, Route::RouteN, Role::Station, 0, 0},  // LED103 N STATION
+    {104, 31, 81, 0, 0, 1, 31, Route::RouteN, Role::Station, 0, 0},  // LED104 N STATION
+    {171, 32, 82, 0, 0, 1, 32, Route::RouteN, Role::Station, 0, 0},  // LED171 N STATION
+    {29, 33, 77, 0, 0, 1, 33, Route::RouteD, Role::Station, 0, 0},  // LED29 D STATION
+    {30, 34, 161, 0, 0, 1, 34, Route::RouteD, Role::Station, 0, 0},  // LED30 D STATION
+    {31, 35, 162, 0, 0, 1, 35, Route::RouteD, Role::Station, 0, 0},  // LED31 D STATION
+    {32, 36, 163, 0, 0, 1, 36, Route::RouteD, Role::Station, 0, 0},  // LED32 D STATION
+    {208, 37, 17, 0, 0, 2, 0, Route::RouteB, Role::Station, 0, 0},  // LED208 B STATION
+    {115, 38, 17, 0, 0, 2, 1, Route::RouteQ, Role::Station, 0, 0},  // LED115 Q STATION
+    {207, 39, 8, 0, 0, 2, 2, Route::RouteB, Role::Station, 0, 0},  // LED207 B STATION
+    {114, 40, 8, 0, 0, 2, 3, Route::RouteQ, Role::Station, 0, 0},  // LED114 Q STATION
+    {113, 41, 0, 16, 8, 2, 4, Route::RouteQ, Role::Segment, 0, 1},  // LED113 Q SEGMENT
+    {289, 42, 16, 0, 0, 2, 5, Route::RouteQ, Role::Station, 0, 0},  // LED289 Q STATION
+    {61, 43, 15, 0, 0, 2, 6, Route::RouteQ, Role::Station, 0, 0},  // LED61 Q STATION
+    {233, 44, 7, 0, 0, 2, 7, Route::RouteB, Role::Station, 0, 0},  // LED233 B STATION
+    {60, 45, 7, 0, 0, 2, 8, Route::RouteQ, Role::Station, 0, 0},  // LED60 Q STATION
+    {59, 46, 14, 0, 0, 2, 9, Route::RouteQ, Role::Station, 0, 0},  // LED59 Q STATION
+    {58, 47, 13, 0, 0, 2, 10, Route::RouteQ, Role::Station, 0, 0},  // LED58 Q STATION
+    {57, 48, 12, 0, 0, 2, 11, Route::RouteQ, Role::Station, 0, 0},  // LED57 Q STATION
+    {43, 49, 25, 0, 0, 2, 12, Route::RouteF, Role::Station, 0, 0},  // LED43 F STATION
+    {44, 50, 26, 0, 0, 2, 13, Route::RouteF, Role::Station, 0, 0},  // LED44 F STATION
+    {106, 51, 175, 0, 0, 2, 14, Route::RouteN, Role::Station, 0, 0},  // LED106 N STATION
+    {105, 52, 174, 0, 0, 2, 15, Route::RouteN, Role::Station, 0, 0},  // LED105 N STATION
+    {33, 53, 164, 0, 0, 2, 16, Route::RouteD, Role::Station, 0, 0},  // LED33 D STATION
+    {34, 54, 165, 0, 0, 2, 17, Route::RouteD, Role::Station, 0, 0},  // LED34 D STATION
+    {107, 55, 176, 0, 0, 2, 18, Route::RouteN, Role::Station, 0, 0},  // LED107 N STATION
+    {45, 56, 27, 0, 0, 2, 19, Route::RouteF, Role::Station, 0, 0},  // LED45 F STATION
+    {46, 57, 28, 0, 0, 2, 20, Route::RouteF, Role::Station, 0, 0},  // LED46 F STATION
+    {47, 58, 29, 0, 0, 2, 21, Route::RouteF, Role::Station, 0, 0},  // LED47 F STATION
+    {48, 59, 30, 0, 0, 2, 22, Route::RouteF, Role::Station, 0, 0},  // LED48 F STATION
+    {49, 60, 31, 0, 0, 2, 23, Route::RouteF, Role::Station, 0, 0},  // LED49 F STATION
+    {111, 61, 32, 0, 0, 2, 24, Route::RouteF, Role::Station, 0, 0},  // LED111 F STATION
+    {116, 62, 18, 0, 0, 2, 25, Route::RouteQ, Role::Station, 0, 0},  // LED116 Q STATION
+    {175, 63, 33, 0, 0, 2, 26, Route::RouteQ, Role::Station, 0, 0},  // LED175 Q STATION
+    {112, 64, 33, 0, 0, 2, 27, Route::RouteF, Role::Station, 0, 0},  // LED112 F STATION
+    {110, 65, 179, 0, 0, 2, 28, Route::RouteN, Role::Station, 0, 0},  // LED110 N STATION
+    {109, 66, 178, 0, 0, 2, 29, Route::RouteN, Role::Station, 0, 0},  // LED109 N STATION
+    {108, 67, 177, 0, 0, 2, 30, Route::RouteN, Role::Station, 0, 0},  // LED108 N STATION
+    {35, 68, 166, 0, 0, 2, 31, Route::RouteD, Role::Station, 0, 0},  // LED35 D STATION
+    {36, 69, 167, 0, 0, 2, 32, Route::RouteD, Role::Station, 0, 0},  // LED36 D STATION
+    {37, 70, 168, 0, 0, 2, 33, Route::RouteD, Role::Station, 0, 0},  // LED37 D STATION
+    {167, 71, 34, 0, 0, 2, 34, Route::RouteD, Role::Station, 0, 0},  // LED167 D STATION
+    {166, 72, 34, 0, 0, 2, 35, Route::RouteN, Role::Station, 0, 0},  // LED166 N STATION
+    {165, 73, 34, 0, 0, 2, 36, Route::RouteF, Role::Station, 0, 0},  // LED165 F STATION
+    {7, 74, 34, 0, 0, 2, 37, Route::RouteQ, Role::Station, 0, 0},  // LED7 Q STATION
+    {226, 75, 126, 0, 0, 3, 0, Route::Route5, Role::Station, 0, 0},  // LED226 5 STATION
+    {146, 76, 126, 0, 0, 3, 1, Route::Route2, Role::Station, 0, 0},  // LED146 2 STATION
+    {147, 77, 91, 0, 0, 3, 2, Route::Route2, Role::Station, 0, 0},  // LED147 2 STATION
+    {250, 78, 91, 0, 0, 3, 3, Route::Route5, Role::Station, 0, 0},  // LED250 5 STATION
+    {225, 79, 125, 0, 0, 3, 4, Route::Route5, Role::Station, 0, 0},  // LED225 5 STATION
+    {145, 80, 125, 0, 0, 3, 5, Route::Route2, Role::Station, 0, 0},  // LED145 2 STATION
+    {224, 81, 124, 0, 0, 3, 6, Route::Route5, Role::Station, 0, 0},  // LED224 5 STATION
+    {144, 82, 124, 0, 0, 3, 7, Route::Route2, Role::Station, 0, 0},  // LED144 2 STATION
+    {143, 83, 123, 0, 0, 3, 8, Route::Route2, Role::Station, 0, 0},  // LED143 2 STATION
+    {223, 84, 123, 0, 0, 3, 9, Route::Route5, Role::Station, 0, 0},  // LED223 5 STATION
+    {222, 85, 122, 0, 0, 3, 10, Route::Route5, Role::Station, 0, 0},  // LED222 5 STATION
+    {142, 86, 122, 0, 0, 3, 11, Route::Route2, Role::Station, 0, 0},  // LED142 2 STATION
+    {141, 87, 121, 0, 0, 3, 12, Route::Route2, Role::Station, 0, 0},  // LED141 2 STATION
+    {221, 88, 121, 0, 0, 3, 13, Route::Route5, Role::Station, 0, 0},  // LED221 5 STATION
+    {196, 89, 147, 0, 0, 3, 14, Route::Route3, Role::Station, 0, 0},  // LED196 3 STATION
+    {195, 90, 146, 0, 0, 3, 15, Route::Route3, Role::Station, 0, 0},  // LED195 3 STATION
+    {302, 91, 0, 89, 127, 3, 16, Route::Route4, Role::Segment, 0, 1},  // LED302 4 SEGMENT
+    {301, 92, 0, 89, 146, 3, 17, Route::Route3, Role::Segment, 0, 1},  // LED301 3 SEGMENT
+    {300, 93, 0, 89, 121, 3, 18, Route::Route2, Role::Segment, 0, 1},  // LED300 2 SEGMENT
+    {183, 94, 90, 0, 0, 3, 19, Route::RouteS, Role::Station, 0, 0},  // LED183 S STATION
+    {180, 95, 89, 0, 0, 3, 20, Route::Route2, Role::Station, 0, 0},  // LED180 2 STATION
+    {140, 96, 89, 0, 0, 3, 21, Route::Route3, Role::Station, 0, 0},  // LED140 3 STATION
+    {181, 97, 89, 0, 0, 3, 22, Route::Route4, Role::Station, 0, 0},  // LED181 4 STATION
+    {304, 98, 0, 90, 153, 3, 23, Route::RouteS, Role::Segment, 0, 1},  // LED304 S SEGMENT
+    {182, 99, 89, 0, 0, 3, 24, Route::Route5, Role::Station, 0, 0},  // LED182 5 STATION
+    {303, 100, 0, 2, 89, 3, 25, Route::Route5, Role::Segment, 0, 1},  // LED303 5 SEGMENT
+    {290, 101, 0, 3, 4, 3, 26, Route::RouteQ, Role::Segment, 0, 1},  // LED290 Q SEGMENT
+    {185, 102, 4, 0, 0, 3, 27, Route::RouteS, Role::Station, 0, 0},  // LED185 S STATION
+    {184, 103, 4, 0, 0, 3, 28, Route::RouteB, Role::Station, 0, 0},  // LED184 B STATION
+    {51, 104, 4, 0, 0, 3, 29, Route::RouteQ, Role::Station, 0, 0},  // LED51 Q STATION
+    {52, 105, 11, 0, 0, 3, 30, Route::RouteQ, Role::Station, 0, 0},  // LED52 Q STATION
+    {53, 106, 5, 0, 0, 3, 31, Route::RouteQ, Role::Station, 0, 0},  // LED53 Q STATION
+    {231, 107, 5, 0, 0, 3, 32, Route::RouteB, Role::Station, 0, 0},  // LED231 B STATION
+    {54, 108, 9, 0, 0, 3, 33, Route::RouteQ, Role::Station, 0, 0},  // LED54 Q STATION
+    {55, 109, 10, 0, 0, 3, 34, Route::RouteQ, Role::Station, 0, 0},  // LED55 Q STATION
+    {56, 110, 6, 0, 0, 3, 35, Route::RouteQ, Role::Station, 0, 0},  // LED56 Q STATION
+    {232, 111, 6, 0, 0, 3, 36, Route::RouteB, Role::Station, 0, 0},  // LED232 B STATION
+    {220, 112, 139, 0, 0, 4, 0, Route::Route2, Role::Station, 0, 0},  // LED220 2 STATION
+    {139, 113, 139, 0, 0, 4, 1, Route::Route3, Role::Station, 0, 0},  // LED139 3 STATION
+    {230, 114, 3, 0, 0, 4, 2, Route::RouteB, Role::Station, 0, 0},  // LED230 B STATION
+    {50, 115, 3, 0, 0, 4, 3, Route::RouteQ, Role::Station, 0, 0},  // LED50 Q STATION
+    {138, 116, 138, 0, 0, 4, 4, Route::Route3, Role::Station, 0, 0},  // LED138 3 STATION
+    {219, 117, 138, 0, 0, 4, 5, Route::Route2, Role::Station, 0, 0},  // LED219 2 STATION
+    {137, 118, 137, 0, 0, 4, 6, Route::Route3, Role::Station, 0, 0},  // LED137 3 STATION
+    {218, 119, 137, 0, 0, 4, 7, Route::Route2, Role::Station, 0, 0},  // LED218 2 STATION
+    {17, 120, 159, 0, 0, 4, 8, Route::RouteR, Role::Station, 0, 0},  // LED17 R STATION
+    {292, 121, 0, 2, 78, 4, 9, Route::RouteN, Role::Segment, 0, 1},  // LED292 N SEGMENT
+    {249, 122, 173, 0, 0, 4, 10, Route::RouteG, Role::Station, 0, 0},  // LED249 G STATION
+    {248, 123, 172, 0, 0, 4, 11, Route::RouteG, Role::Station, 0, 0},  // LED248 G STATION
+    {98, 124, 172, 0, 0, 4, 12, Route::RouteF, Role::Station, 0, 0},  // LED98 F STATION
+    {97, 125, 171, 0, 0, 4, 13, Route::RouteF, Role::Station, 0, 0},  // LED97 F STATION
+    {247, 126, 171, 0, 0, 4, 14, Route::RouteG, Role::Station, 0, 0},  // LED247 G STATION
+    {156, 127, 85, 0, 0, 4, 15, Route::RouteG, Role::Station, 0, 0},  // LED156 G STATION
+    {155, 128, 85, 0, 0, 4, 16, Route::RouteA, Role::Station, 0, 0},  // LED155 A STATION
+    {119, 129, 85, 0, 0, 4, 17, Route::RouteC, Role::Station, 0, 0},  // LED119 C STATION
+    {164, 130, 2, 0, 0, 4, 18, Route::RouteR, Role::Station, 0, 0},  // LED164 R STATION
+    {162, 131, 2, 0, 0, 4, 19, Route::RouteN, Role::Station, 0, 0},  // LED162 N STATION
+    {161, 132, 2, 0, 0, 4, 20, Route::RouteD, Role::Station, 0, 0},  // LED161 D STATION
+    {157, 133, 2, 0, 0, 4, 21, Route::Route2, Role::Station, 0, 0},  // LED157 2 STATION
+    {136, 134, 2, 0, 0, 4, 22, Route::Route3, Role::Station, 0, 0},  // LED136 3 STATION
+    {158, 135, 2, 0, 0, 4, 23, Route::Route4, Role::Station, 0, 0},  // LED158 4 STATION
+    {159, 136, 2, 0, 0, 4, 24, Route::Route5, Role::Station, 0, 0},  // LED159 5 STATION
+    {163, 137, 2, 0, 0, 4, 25, Route::RouteQ, Role::Station, 0, 0},  // LED163 Q STATION
+    {160, 138, 2, 0, 0, 4, 26, Route::RouteB, Role::Station, 0, 0},  // LED160 B STATION
+    {191, 139, 1, 0, 0, 4, 27, Route::RouteR, Role::Station, 0, 0},  // LED191 R STATION
+    {217, 140, 106, 0, 0, 4, 28, Route::Route5, Role::Station, 0, 0},  // LED217 5 STATION
+    {215, 141, 106, 0, 0, 4, 29, Route::Route4, Role::Station, 0, 0},  // LED215 4 STATION
+    {135, 142, 106, 0, 0, 4, 30, Route::Route3, Role::Station, 0, 0},  // LED135 3 STATION
+    {216, 143, 106, 0, 0, 4, 31, Route::Route2, Role::Station, 0, 0},  // LED216 2 STATION
+    {214, 144, 105, 0, 0, 4, 32, Route::Route2, Role::Station, 0, 0},  // LED214 2 STATION
+    {134, 145, 105, 0, 0, 4, 33, Route::Route3, Role::Station, 0, 0},  // LED134 3 STATION
+    {177, 146, 88, 0, 0, 4, 34, Route::Route2, Role::Station, 0, 0},  // LED177 2 STATION
+    {133, 147, 88, 0, 0, 4, 35, Route::Route3, Role::Station, 0, 0},  // LED133 3 STATION
+    {178, 148, 88, 0, 0, 4, 36, Route::Route4, Role::Station, 0, 0},  // LED178 4 STATION
+    {190, 149, 1, 0, 0, 5, 0, Route::RouteQ, Role::Station, 0, 0},  // LED190 Q STATION
+    {293, 150, 0, 84, 1, 5, 1, Route::RouteR, Role::Segment, 0, 1},  // LED293 R SEGMENT
+    {154, 151, 84, 0, 0, 5, 2, Route::RouteR, Role::Station, 0, 0},  // LED154 R STATION
+    {153, 152, 84, 0, 0, 5, 3, Route::RouteF, Role::Station, 0, 0},  // LED153 F STATION
+    {118, 153, 84, 0, 0, 5, 4, Route::RouteC, Role::Station, 0, 0},  // LED118 C STATION
+    {152, 154, 84, 0, 0, 5, 5, Route::RouteA, Role::Station, 0, 0},  // LED152 A STATION
+    {179, 155, 88, 0, 0, 5, 6, Route::Route5, Role::Station, 0, 0},  // LED179 5 STATION
+    {10, 156, 102, 0, 0, 5, 7, Route::RouteR, Role::Station, 0, 0},  // LED10 R STATION
+    {213, 157, 104, 0, 0, 5, 8, Route::Route2, Role::Station, 0, 0},  // LED213 2 STATION
+    {132, 158, 104, 0, 0, 5, 9, Route::Route3, Role::Station, 0, 0},  // LED132 3 STATION
+    {209, 159, 103, 0, 0, 5, 10, Route::RouteA, Role::Station, 0, 0},  // LED209 A STATION
+    {117, 160, 103, 0, 0, 5, 11, Route::RouteC, Role::Station, 0, 0},  // LED117 C STATION
+    {294, 161, 0, 84, 107, 5, 12, Route::RouteF, Role::Segment, 0, 1},  // LED294 F SEGMENT
+    {311, 162, 0, 183, 2, 5, 13, Route::RouteN, Role::Segment, 0, 1},  // LED311 N SEGMENT
+    {310, 163, 0, 183, 1, 5, 14, Route::RouteQ, Role::Segment, 0, 1},  // LED310 Q SEGMENT
+    {309, 164, 0, 182, 1, 5, 15, Route::RouteB, Role::Segment, 1, 2},  // LED309 B SEGMENT
+    {308, 165, 0, 182, 2, 5, 16, Route::RouteD, Role::Segment, 1, 2},  // LED308 D SEGMENT
+    {188, 166, 107, 0, 0, 5, 17, Route::RouteF, Role::Station, 0, 0},  // LED188 F STATION
+    {291, 167, 0, 107, 184, 5, 18, Route::RouteF, Role::Segment, 0, 1},  // LED291 F SEGMENT
+    {285, 168, 0, 182, 1, 5, 19, Route::RouteB, Role::Segment, 0, 2},  // LED285 B SEGMENT
+    {286, 169, 0, 182, 2, 5, 20, Route::RouteD, Role::Segment, 0, 2},  // LED286 D SEGMENT
+    {255, 170, 185, 0, 0, 5, 21, Route::RouteF, Role::Station, 0, 0},  // LED255 F STATION
+    {256, 171, 185, 0, 0, 5, 22, Route::RouteM, Role::Station, 0, 0},  // LED256 M STATION
+    {257, 172, 185, 0, 0, 5, 23, Route::RouteJ, Role::Station, 0, 0},  // LED257 J STATION
+    {258, 173, 185, 0, 0, 5, 24, Route::RouteZ, Role::Station, 0, 0},  // LED258 Z STATION
+    {259, 174, 184, 0, 0, 5, 25, Route::RouteF, Role::Station, 0, 0},  // LED259 F STATION
+    {234, 175, 118, 0, 0, 5, 26, Route::RouteZ, Role::Station, 0, 0},  // LED234 Z STATION
+    {62, 176, 118, 0, 0, 5, 27, Route::RouteJ, Role::Station, 0, 0},  // LED62 J STATION
+    {235, 177, 118, 0, 0, 5, 28, Route::RouteM, Role::Station, 0, 0},  // LED235 M STATION
+    {236, 178, 180, 0, 0, 5, 29, Route::RouteM, Role::Station, 0, 0},  // LED236 M STATION
+    {63, 179, 180, 0, 0, 5, 30, Route::RouteJ, Role::Station, 0, 0},  // LED63 J STATION
+    {297, 180, 0, 180, 109, 5, 31, Route::RouteM, Role::Segment, 0, 1},  // LED297 M SEGMENT
+    {9, 181, 35, 0, 0, 5, 32, Route::RouteG, Role::Station, 0, 0},  // LED9 G STATION
+    {82, 182, 136, 0, 0, 5, 33, Route::RouteL, Role::Station, 0, 0},  // LED82 L STATION
+    {81, 183, 135, 0, 0, 5, 34, Route::RouteL, Role::Station, 0, 0},  // LED81 L STATION
+    {80, 184, 134, 0, 0, 5, 35, Route::RouteL, Role::Station, 0, 0},  // LED80 L STATION
+    {295, 185, 0, 170, 35, 5, 36, Route::RouteG, Role::Segment, 0, 1},  // LED295 G SEGMENT
+    {96, 186, 170, 0, 0, 5, 37, Route::RouteG, Role::Station, 0, 0},  // LED96 G STATION
+    {79, 187, 133, 0, 0, 5, 38, Route::RouteL, Role::Station, 0, 0},  // LED79 L STATION
+    {78, 188, 132, 0, 0, 5, 39, Route::RouteL, Role::Station, 0, 0},  // LED78 L STATION
+    {95, 189, 169, 0, 0, 5, 40, Route::RouteG, Role::Station, 0, 0},  // LED95 G STATION
+    {187, 190, 0, 186, 169, 5, 41, Route::RouteG, Role::Segment, 0, 1},  // LED187 G SEGMENT
+    {194, 191, 153, 0, 0, 6, 0, Route::RouteS, Role::Station, 0, 0},  // LED194 S STATION
+    {176, 192, 87, 0, 0, 6, 1, Route::RouteS, Role::Station, 0, 0},  // LED176 S STATION
+    {210, 193, 152, 0, 0, 6, 2, Route::RouteA, Role::Station, 0, 0},  // LED210 A STATION
+    {124, 194, 140, 0, 0, 6, 3, Route::RouteC, Role::Station, 0, 0},  // LED124 C STATION
+    {123, 195, 152, 0, 0, 6, 4, Route::RouteC, Role::Station, 0, 0},  // LED123 C STATION
+    {122, 196, 151, 0, 0, 6, 5, Route::RouteC, Role::Station, 0, 0},  // LED122 C STATION
+    {121, 197, 150, 0, 0, 6, 6, Route::RouteC, Role::Station, 0, 0},  // LED121 C STATION
+    {288, 198, 0, 181, 150, 6, 7, Route::RouteC, Role::Segment, 0, 1},  // LED288 C SEGMENT
+    {120, 199, 181, 0, 0, 6, 8, Route::RouteC, Role::Station, 0, 0},  // LED120 C STATION
+    {287, 200, 0, 85, 152, 6, 9, Route::RouteA, Role::Segment, 0, 1},  // LED287 A SEGMENT
+    {189, 201, 1, 0, 0, 6, 10, Route::RouteB, Role::Station, 0, 0},  // LED189 B STATION
+    {16, 202, 41, 0, 0, 6, 11, Route::RouteG, Role::Station, 0, 0},  // LED16 G STATION
+    {15, 203, 40, 0, 0, 6, 12, Route::RouteG, Role::Station, 0, 0},  // LED15 G STATION
+    {14, 204, 39, 0, 0, 6, 13, Route::RouteG, Role::Station, 0, 0},  // LED14 G STATION
+    {13, 205, 38, 0, 0, 6, 14, Route::RouteG, Role::Station, 0, 0},  // LED13 G STATION
+    {12, 206, 37, 0, 0, 6, 15, Route::RouteG, Role::Station, 0, 0},  // LED12 G STATION
+    {11, 207, 36, 0, 0, 6, 16, Route::RouteG, Role::Station, 0, 0},  // LED11 G STATION
+    {298, 208, 0, 118, 111, 6, 17, Route::RouteZ, Role::Segment, 0, 1},  // LED298 Z SEGMENT
+    {64, 209, 109, 0, 0, 6, 18, Route::RouteJ, Role::Station, 0, 0},  // LED64 J STATION
+    {237, 210, 109, 0, 0, 6, 19, Route::RouteM, Role::Station, 0, 0},  // LED237 M STATION
+    {238, 211, 110, 0, 0, 6, 20, Route::RouteM, Role::Station, 0, 0},  // LED238 M STATION
+    {65, 212, 110, 0, 0, 6, 21, Route::RouteJ, Role::Station, 0, 0},  // LED65 J STATION
+    {240, 213, 111, 0, 0, 6, 22, Route::RouteZ, Role::Station, 0, 0},  // LED240 Z STATION
+    {66, 214, 111, 0, 0, 6, 23, Route::RouteJ, Role::Station, 0, 0},  // LED66 J STATION
+    {239, 215, 111, 0, 0, 6, 24, Route::RouteM, Role::Station, 0, 0},  // LED239 M STATION
+    {192, 216, 115, 0, 0, 6, 25, Route::RouteM, Role::Station, 0, 0},  // LED192 M STATION
+    {67, 217, 112, 0, 0, 6, 26, Route::RouteJ, Role::Station, 0, 0},  // LED67 J STATION
+    {296, 218, 0, 111, 117, 6, 27, Route::RouteZ, Role::Segment, 0, 1},  // LED296 Z SEGMENT
+    {68, 219, 117, 0, 0, 6, 28, Route::RouteJ, Role::Station, 0, 0},  // LED68 J STATION
+    {241, 220, 117, 0, 0, 6, 29, Route::RouteZ, Role::Station, 0, 0},  // LED241 Z STATION
+    {193, 221, 116, 0, 0, 6, 30, Route::RouteM, Role::Station, 0, 0},  // LED193 M STATION
+    {86, 222, 70, 0, 0, 6, 31, Route::RouteL, Role::Station, 0, 0},  // LED86 L STATION
+    {170, 223, 70, 0, 0, 6, 32, Route::RouteM, Role::Station, 0, 0},  // LED170 M STATION
+    {254, 224, 145, 0, 0, 6, 33, Route::RouteM, Role::Station, 0, 0},  // LED254 M STATION
+    {85, 225, 46, 0, 0, 6, 34, Route::RouteL, Role::Station, 0, 0},  // LED85 L STATION
+    {84, 226, 114, 0, 0, 6, 35, Route::RouteL, Role::Station, 0, 0},  // LED84 L STATION
+    {83, 227, 113, 0, 0, 6, 36, Route::RouteL, Role::Station, 0, 0},  // LED83 L STATION
+    {198, 228, 127, 0, 0, 7, 0, Route::Route3, Role::Station, 0, 0},  // LED198 3 STATION
+    {197, 229, 127, 0, 0, 7, 1, Route::Route4, Role::Station, 0, 0},  // LED197 4 STATION
+    {199, 230, 148, 0, 0, 7, 2, Route::Route3, Role::Station, 0, 0},  // LED199 3 STATION
+    {200, 231, 149, 0, 0, 7, 3, Route::Route3, Role::Station, 0, 0},  // LED200 3 STATION
+    {201, 232, 187, 0, 0, 7, 4, Route::Route3, Role::Station, 0, 0},  // LED201 3 STATION
+    {90, 233, 50, 0, 0, 7, 5, Route::RouteL, Role::Station, 0, 0},  // LED90 L STATION
+    {128, 234, 94, 0, 0, 7, 6, Route::RouteC, Role::Station, 0, 0},  // LED128 C STATION
+    {129, 235, 95, 0, 0, 7, 7, Route::RouteC, Role::Station, 0, 0},  // LED129 C STATION
+    {130, 236, 96, 0, 0, 7, 8, Route::RouteC, Role::Station, 0, 0},  // LED130 C STATION
+    {212, 237, 97, 0, 0, 7, 9, Route::RouteA, Role::Station, 0, 0},  // LED212 A STATION
+    {131, 238, 97, 0, 0, 7, 10, Route::RouteC, Role::Station, 0, 0},  // LED131 C STATION
+    {245, 239, 129, 0, 0, 7, 11, Route::RouteZ, Role::Station, 0, 0},  // LED245 Z STATION
+    {246, 240, 130, 0, 0, 7, 12, Route::RouteZ, Role::Station, 0, 0},  // LED246 Z STATION
+    {77, 241, 131, 0, 0, 7, 13, Route::RouteJ, Role::Station, 0, 0},  // LED77 J STATION
+    {76, 242, 130, 0, 0, 7, 14, Route::RouteJ, Role::Station, 0, 0},  // LED76 J STATION
+    {75, 243, 129, 0, 0, 7, 15, Route::RouteJ, Role::Station, 0, 0},  // LED75 J STATION
+    {74, 244, 128, 0, 0, 7, 16, Route::RouteJ, Role::Station, 0, 0},  // LED74 J STATION
+    {73, 245, 100, 0, 0, 7, 17, Route::RouteJ, Role::Station, 0, 0},  // LED73 J STATION
+    {244, 246, 100, 0, 0, 7, 18, Route::RouteZ, Role::Station, 0, 0},  // LED244 Z STATION
+    {243, 247, 99, 0, 0, 7, 19, Route::RouteZ, Role::Station, 0, 0},  // LED243 Z STATION
+    {72, 248, 99, 0, 0, 7, 20, Route::RouteJ, Role::Station, 0, 0},  // LED72 J STATION
+    {151, 249, 83, 0, 0, 7, 21, Route::RouteL, Role::Station, 0, 0},  // LED151 L STATION
+    {71, 250, 83, 0, 0, 7, 22, Route::RouteJ, Role::Station, 0, 0},  // LED71 J STATION
+    {150, 251, 83, 0, 0, 7, 23, Route::RouteZ, Role::Station, 0, 0},  // LED150 Z STATION
+    {148, 252, 83, 0, 0, 7, 24, Route::RouteC, Role::Station, 0, 0},  // LED148 C STATION
+    {149, 253, 83, 0, 0, 7, 25, Route::RouteA, Role::Station, 0, 0},  // LED149 A STATION
+    {299, 254, 0, 83, 50, 7, 26, Route::RouteL, Role::Segment, 0, 1},  // LED299 L SEGMENT
+    {127, 255, 143, 0, 0, 7, 27, Route::RouteC, Role::Station, 0, 0},  // LED127 C STATION
+    {126, 256, 142, 0, 0, 7, 28, Route::RouteC, Role::Station, 0, 0},  // LED126 C STATION
+    {211, 257, 141, 0, 0, 7, 29, Route::RouteA, Role::Station, 0, 0},  // LED211 A STATION
+    {125, 258, 141, 0, 0, 7, 30, Route::RouteC, Role::Station, 0, 0},  // LED125 C STATION
+    {69, 259, 119, 0, 0, 7, 31, Route::RouteJ, Role::Station, 0, 0},  // LED69 J STATION
+    {242, 260, 120, 0, 0, 7, 32, Route::RouteZ, Role::Station, 0, 0},  // LED242 Z STATION
+    {70, 261, 120, 0, 0, 7, 33, Route::RouteJ, Role::Station, 0, 0},  // LED70 J STATION
+    {89, 262, 49, 0, 0, 7, 34, Route::RouteL, Role::Station, 0, 0},  // LED89 L STATION
+    {88, 263, 48, 0, 0, 7, 35, Route::RouteL, Role::Station, 0, 0},  // LED88 L STATION
+    {87, 264, 47, 0, 0, 7, 36, Route::RouteL, Role::Station, 0, 0},  // LED87 L STATION
+    {253, 265, 144, 0, 0, 7, 37, Route::RouteM, Role::Station, 0, 0},  // LED253 M STATION
+    {284, 270, 158, 0, 0, 8, 4, Route::RouteA, Role::Station, 0, 0},  // LED284 A STATION
+    {283, 271, 158, 0, 0, 8, 5, Route::RouteS, Role::Station, 0, 0},  // LED283 S STATION
+    {281, 272, 157, 0, 0, 8, 6, Route::RouteS, Role::Station, 0, 0},  // LED281 S STATION
+    {282, 273, 157, 0, 0, 8, 7, Route::RouteA, Role::Station, 0, 0},  // LED282 A STATION
+    {279, 274, 156, 0, 0, 8, 8, Route::RouteS, Role::Station, 0, 0},  // LED279 S STATION
+    {280, 275, 156, 0, 0, 8, 9, Route::RouteA, Role::Station, 0, 0},  // LED280 A STATION
+    {278, 276, 155, 0, 0, 8, 10, Route::RouteA, Role::Station, 0, 0},  // LED278 A STATION
+    {277, 277, 155, 0, 0, 8, 11, Route::RouteS, Role::Station, 0, 0},  // LED277 S STATION
+    {305, 278, 0, 154, 155, 8, 12, Route::RouteS, Role::Segment, 0, 1},  // LED305 S SEGMENT
+    {276, 279, 68, 0, 0, 8, 13, Route::RouteA, Role::Station, 0, 0},  // LED276 A STATION
+    {275, 280, 67, 0, 0, 8, 14, Route::RouteA, Role::Station, 0, 0},  // LED275 A STATION
+    {274, 281, 66, 0, 0, 8, 15, Route::RouteA, Role::Station, 0, 0},  // LED274 A STATION
+    {273, 282, 65, 0, 0, 8, 16, Route::RouteA, Role::Station, 0, 0},  // LED273 A STATION
+    {272, 283, 64, 0, 0, 8, 17, Route::RouteA, Role::Station, 0, 0},  // LED272 A STATION
+    {271, 284, 63, 0, 0, 8, 18, Route::RouteA, Role::Station, 0, 0},  // LED271 A STATION
+    {269, 285, 154, 0, 0, 8, 19, Route::RouteA, Role::Station, 0, 0},  // LED269 A STATION
+    {270, 286, 154, 0, 0, 8, 20, Route::RouteS, Role::Station, 0, 0},  // LED270 S STATION
+    {268, 287, 62, 0, 0, 8, 21, Route::RouteA, Role::Station, 0, 0},  // LED268 A STATION
+    {267, 288, 93, 0, 0, 8, 22, Route::RouteA, Role::Station, 0, 0},  // LED267 A STATION
+    {266, 289, 92, 0, 0, 8, 23, Route::RouteA, Role::Station, 0, 0},  // LED266 A STATION
+    {265, 290, 61, 0, 0, 8, 24, Route::RouteA, Role::Station, 0, 0},  // LED265 A STATION
+    {264, 291, 60, 0, 0, 8, 25, Route::RouteA, Role::Station, 0, 0},  // LED264 A STATION
+    {263, 292, 59, 0, 0, 8, 26, Route::RouteA, Role::Station, 0, 0},  // LED263 A STATION
+    {262, 293, 58, 0, 0, 8, 27, Route::RouteA, Role::Station, 0, 0},  // LED262 A STATION
+    {261, 294, 57, 0, 0, 8, 28, Route::RouteA, Role::Station, 0, 0},  // LED261 A STATION
+    {260, 295, 56, 0, 0, 8, 29, Route::RouteA, Role::Station, 0, 0},  // LED260 A STATION
+    {186, 296, 55, 0, 0, 8, 30, Route::RouteA, Role::Station, 0, 0},  // LED186 A STATION
+    {205, 297, 98, 0, 0, 8, 31, Route::Route3, Role::Station, 0, 0},  // LED205 3 STATION
+    {204, 298, 101, 0, 0, 8, 32, Route::Route3, Role::Station, 0, 0},  // LED204 3 STATION
+    {203, 299, 108, 0, 0, 8, 33, Route::Route3, Role::Station, 0, 0},  // LED203 3 STATION
+    {91, 300, 51, 0, 0, 8, 34, Route::RouteL, Role::Station, 0, 0},  // LED91 L STATION
+    {202, 301, 188, 0, 0, 8, 35, Route::Route3, Role::Station, 0, 0},  // LED202 3 STATION
+    {92, 302, 52, 0, 0, 8, 36, Route::RouteL, Role::Station, 0, 0},  // LED92 L STATION
+    {93, 303, 53, 0, 0, 8, 37, Route::RouteL, Role::Station, 0, 0},  // LED93 L STATION
+    {94, 304, 54, 0, 0, 8, 38, Route::RouteL, Role::Station, 0, 0},  // LED94 L STATION
+    {8, 305, 69, 0, 0, 8, 39, Route::RouteL, Role::Station, 0, 0},  // LED8 L STATION
 };
 
 namespace {
@@ -556,7 +557,7 @@ constexpr uint16_t kStationLedRecords[kStationLedCount] = {
 };
 }  // namespace
 
-static_assert(sizeof(MapLed) == 14, "MapLed layout changed");
+static_assert(sizeof(MapLed) == 16, "MapLed layout changed");
 static_assert(kChannelOffsets[7] + kChannelCounts[7] == kPhysicalLedCount,
               "channel layout must total kPhysicalLedCount");
 

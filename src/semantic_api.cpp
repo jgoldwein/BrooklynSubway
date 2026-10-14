@@ -81,8 +81,11 @@ bool selfCheck() {
     }
     const bool isStation = record->role == Role::Station;
     if (isStation ? (stationById(record->stationId) == nullptr ||
-                     record->endpointA != 0 || record->endpointB != 0)
+                     record->endpointA != 0 || record->endpointB != 0 ||
+                     record->segmentSlot != 0 || record->segmentSlotCount != 0)
                   : (record->stationId != 0 ||
+                     record->segmentSlotCount == 0 ||
+                     record->segmentSlot >= record->segmentSlotCount ||
                      stationById(record->endpointA) == nullptr ||
                      stationById(record->endpointB) == nullptr ||
                      record->endpointA == record->endpointB)) {
