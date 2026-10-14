@@ -66,6 +66,10 @@ constexpr TrainMapPosition segmentPosition(
 // Resolves against the generated kMapLeds table.
 ResolveResult resolveTrainPosition(const TrainMapPosition &position);
 
+// Number of display pixels of the explicit segment for route + unordered
+// endpoint pair; 0 when the map has no such segment (or the query is invalid).
+uint8_t segmentPixelCount(Route route, uint16_t endpointA, uint16_t endpointB);
+
 // Same logic over an arbitrary table (used by tests to exercise ambiguity).
 ResolveResult resolveTrainPositionIn(const MapLed *table, uint16_t count,
                                      const TrainMapPosition &position);
