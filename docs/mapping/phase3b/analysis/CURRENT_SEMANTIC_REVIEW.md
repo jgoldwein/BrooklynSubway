@@ -1,10 +1,18 @@
-# Phase 3B station-centric legacy recovery
+# Historical Phase 3B station-centric legacy recovery
 
-This is a review-only pass. The accepted physical/raster registration and
-projected LED coordinates were used unchanged. No semantic was promoted
-to VERIFIED, and the master worksheet and station registry were not edited.
+> **Historical analysis only; not an active review or current census.** Phase
+> 3B is complete: the authoritative worksheet and synchronized CSV contain
+> 302 / 302 resolved map LEDs (276 STATION, 26 SEGMENT, 0 unresolved). See
+> [PHASE3B_COMPLETION_AUDIT.md](PHASE3B_COMPLETION_AUDIT.md) and the current
+> [global semantic review](../global_semantic_review.md). Counts and proposal
+> statuses below describe the earlier legacy-recovery snapshot only.
 
-## Current totals
+This archived review-only pass used the accepted physical/raster registration
+and projected LED coordinates unchanged. Its historical proposal analysis
+did not promote semantics; subsequent human-confirmed mappings are documented
+in the authoritative worksheet and completion audit.
+
+## Historical totals before final confirmations
 
 - ALREADY_VERIFIED: **51**
 - PROPOSED_HIGH: **37**

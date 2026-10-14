@@ -34,18 +34,39 @@ Important columns in the worksheet:
 
 Shared stations must preserve route-specific physical LEDs. Do not collapse multiple route LEDs into one logical station LED.
 
-## Phase 3B semantic repair
+## Phase 3B semantic completion
 
-The authoritative worksheet and affected B/Q/F-G route reviews were repaired
-after the design-evolution audit. Pre-repair exploratory semantic-review
-outputs are superseded for the corrected rows; the audit files remain the
-unchanged historical record.
+**Phase 3B semantic identification is complete: 302 / 302 map LEDs have
+semantic assignments.** The authoritative worksheet contains **276 STATION**
+rows and **26 SEGMENT** rows, with **0 unresolved map LEDs**. Four additional
+addressable LEDs are status indicators, not map LEDs; U23 is a separate
+discrete indicator and is outside the addressable-chain semantic count. The
+append-only station registry contains **188 entities**.
 
-Twenty G, R, and L station rows were subsequently promoted from the accepted
-direct-continuity review. A further 18 A, L, and R station rows were promoted
-from the remaining-high-proposal adjudication. The station registry now
-contains 72 entities, and the authoritative worksheet contains 89 VERIFIED
-semantics: 88 stations and one segment. LED266 (Aqueduct Racetrack) and LED267
-(Aqueduct-North Conduit Av) remain unverified pending package-to-station
-review. The historical design-evolution audit and exploratory semantic-review
-outputs remain unchanged.
+The final 13 assignments were human-confirmed from the CPL-derived final V1.1
+artwork. Existing station entities were reused where appropriate; four
+genuinely missing station entities were appended as IDs 185-188. Segment LEDs
+use endpoint station IDs and do not create station entities. No GTFS IDs were
+invented.
+
+The complete results and integrity checks are in the
+[Phase 3B completion and audit report](analysis/PHASE3B_COMPLETION_AUDIT.md).
+The authoritative worksheet, station registry, full current global review,
+and projected-LED cache are the current semantic sources. The active
+[remaining-LED candidate matrix](analysis/remaining_led_candidate_matrix.csv)
+and [human-review queue](manual_review/HUMAN_REVIEW_QUEUE.md) have zero
+unresolved map LEDs. Earlier candidate analysis and review crops are retained
+as explicitly resolved historical evidence in `manual_review/`.
+
+LED299 is HUMAN_CONFIRMED as the L segment Broadway Junction -> Atlantic Av
+(registry endpoint IDs 83 -> 50). This supersedes its earlier human-confirmed
+L / Bushwick Av-Aberdeen St station interpretation; LED89 remains the station
+assignment.
+
+The accepted projection and artwork registration were not refit or altered.
+Historical overrides remain authoritative: LED96 is G / Lorimer St rather
+than the historical Metropolitan Av; LED308/309 retain the human-confirmed
+D/B bridge-route reversal; LED291 is the human-confirmed F segment rather than
+historical D; LED304 remains Botanic Garden -> Park Pl; LED285 is B / Grand
+St -> DeKalb Av; LED286 is D / Grand St -> Atlantic Av-Barclays Ctr; and LED287
+is A / Hoyt-Schermerhorn Sts -> Nostrand Av.

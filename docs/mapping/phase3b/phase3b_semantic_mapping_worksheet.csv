@@ -1,307 +1,307 @@
-﻿channel,channel_index,global_physical_order,designator,role,x,y,angle,route,element_type,station_name,from_station,to_station,direction,semantic_status,confidence,source_note,station_id,station_key,from_station_id,to_station_id,from_station_key,to_station_key
-1,0,0,LED42,map,5375.0,-4850.0,-135,F,STATION,18 Av,,,,VERIFIED,1.00,Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.,24,culver_line_18_av,,,,
-1,1,1,LED41,map,5160.0,-4650.0,-135,F,STATION,Ditmas Av,,,,VERIFIED,1.00,Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.,23,culver_line_ditmas_av,,,,
-1,2,2,LED40,map,4950.0,-4455.0,-135,F,STATION,Church Av,,,,VERIFIED,1.00,Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.,19,culver_line_church_av,,,,
-1,3,3,LED229,map,5030.0,-4370.0,-135,G,STATION,Church Av,,,,VERIFIED,1.00,Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.,19,culver_line_church_av,,,,
-1,4,4,LED228,map,4690.0,-4055.0,-135,G,STATION,Fort Hamilton Pkwy,,,,VERIFIED,1.00,Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.,20,culver_line_fort_hamilton_pkwy,,,,
-1,5,5,LED39,map,4606.3219,-4138.7617,-135,F,STATION,Fort Hamilton Pkwy,,,,VERIFIED,1.00,Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.,20,culver_line_fort_hamilton_pkwy,,,,
-1,6,6,LED227,map,4360.0,-3750.0,-135,G,STATION,15 St-Prospect Park,,,,VERIFIED,1.00,Manufactured V1.1 artwork and coordinates place this G LED at 15 St-Prospect Park; corrected after design-evolution audit. Shares station ID 22 with F LED38.,22,culver_line_15_st_prospect_park,,,,
-1,7,7,LED38,map,4285.0,-3835.0,-135,F,STATION,15 St-Prospect Park,,,,VERIFIED,1.00,Manufactured V1.1 artwork and coordinates place this F LED at 15 St-Prospect Park; corrected after design-evolution audit. Shares station ID 22 with G LED227.,22,culver_line_15_st_prospect_park,,,,
-1,8,8,LED100,map,3635.0,-3615.0,-90,F,STATION,7 Av,,,,VERIFIED,1.00,Manufactured V1.1 artwork and coordinates place this F LED at Culver 7 Av; corrected after design-evolution audit. Shares station ID 21 with G LED206.,21,culver_line_7_av,,,,
-1,9,9,LED206,map,3635.0,-3495.0,-90,G,STATION,7 Av,,,,VERIFIED,1.00,Manufactured V1.1 artwork and coordinates place this G LED at Culver 7 Av; corrected after design-evolution audit. Shares station ID 21 with F LED100.,21,culver_line_7_av,,,,
-1,10,10,LED18,map,3125.0,-3495.0,180,,,,,,,,,,,,,,,
-1,11,11,LED168,map,3009.9001,-3492.9587,-90,,,,,,,,,,,,,,,
-1,12,12,LED99,map,2290.0,-3610.0,-90,,,,,,,,,,,,,,,
-1,13,13,LED169,map,3009.9001,-3607.4465,-90,,,,,,,,,,,,,,,
-1,14,14,LED19,map,3125.0,-3780.0,180,,,,,,,,,,,,,,,
-1,15,15,LED20,map,3125.0,-4055.0,180,,,,,,,,,,,,,,,
-1,16,16,LED173,map,3128.0189,-4334.0038,180,,,,,,,,,,,,,,,
-1,17,17,LED101,map,3250.0,-4335.0,180,,,,,,,,,,,,,,,
-1,18,18,LED172,map,3364.2567,-4334.0038,180,,,,,,,,,,,,,,,
-1,19,19,LED21,map,3126.0975,-4671.4315,180,R,STATION,45 St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.,42,bay_ridge_line_45_st,,,,
-1,20,20,LED22,map,3126.0975,-5005.7805,180,R,STATION,53 St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.,43,bay_ridge_line_53_st,,,,
-1,21,21,LED26,map,3590.0,-4605.0,45,,,,,,,,,,,,,,,
-1,22,22,LED27,map,3825.0,-4820.0,45,,,,,,,,,,,,,,,
-1,23,23,LED28,map,4055.0,-5035.0,45,,,,,,,,,,,,,,,
-1,24,24,LED102,map,3247.5877,-5340.7223,180,,,,,,,,,,,,,,,
-1,25,25,LED174,map,3128.0189,-5342.9737,180,,,,,,,,,,,,,,,
-1,26,26,LED23,map,3125.0,-5680.0,180,R,STATION,Bay Ridge Av,,,,VERIFIED,1.00,Current V1.1 artwork + historical GTFS + CP04 + coordinate continuity + route sequence.,72,bay_ridge_line_bay_ridge_av,,,,
-1,27,27,LED24,map,3126.0975,-6015.0131,180,R,STATION,77 St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.,44,bay_ridge_line_77_st,,,,
-1,28,28,LED25,map,3125.0,-6355.0,180,R,STATION,86 St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.,45,bay_ridge_line_86_st,,,,
-1,29,29,LED6,map,3120.0,-6690.0,180,R,STATION,Bay Ridge-95 St,,,,VERIFIED,1.00,Current V1.1 artwork + historical GTFS + terminal topology.,71,bay_ridge_line_bay_ridge_95_st,,,,
-1,30,30,LED103,map,3435.0,-5585.0,-90,,,,,,,,,,,,,,,
-1,31,31,LED104,map,3853.9797,-5587.5216,-90,,,,,,,,,,,,,,,
-1,32,32,LED171,map,4275.0,-5585.0,-90,,,,,,,,,,,,,,,
-1,33,33,LED29,map,4290.0,-5255.0,45,,,,,,,,,,,,,,,
-1,34,34,LED30,map,4520.0,-5470.0,-135,,,,,,,,,,,,,,,
-1,35,35,LED31,map,4750.0,-5690.0,-135,,,,,,,,,,,,,,,
-1,36,36,LED32,map,4980.0,-5910.0,-135,,,,,,,,,,,,,,,
-2,0,37,LED208,map,8155.0,-5855.0,-135,B,STATION,Brighton Beach,,,,VERIFIED,1.00,"Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as B, separate from Q counterpart LED115.",17,brighton_line_brighton_beach,,,,
-2,1,38,LED115,map,8075.0,-5940.0,-137,Q,STATION,Brighton Beach,,,,VERIFIED,1.00,"Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as Q, separate from B counterpart LED208.",17,brighton_line_brighton_beach,,,,
-2,2,39,LED207,map,7910.0,-5635.0,-135,B,STATION,Sheepshead Bay,,,,VERIFIED,1.00,"Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as B, separate from Q counterpart LED114.",8,brighton_line_sheepshead_bay,,,,
-2,3,40,LED114,map,7830.0,-5710.0,-134,Q,STATION,Sheepshead Bay,,,,VERIFIED,1.00,"Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as Q, separate from B counterpart LED207.",8,brighton_line_sheepshead_bay,,,,
-2,4,41,LED113,map,7595.0,-5485.0,-134,Q,SEGMENT,,Neck Rd,Sheepshead Bay,,VERIFIED,1.00,Manufactured V1.1 artwork plus human-reviewed geometry; LED lies on the Q lane between Neck Rd and Sheepshead Bay.,,,16,8,brighton_line_neck_rd,brighton_line_sheepshead_bay
-2,5,42,LED289,map,7550.0,-5280.0,-135,Q,STATION,Neck Rd,,,,VERIFIED,1.00,Manufactured V1.1 artwork plus human-reviewed geometry; station marker lies on the established Q lane.,16,brighton_line_neck_rd,,,,
-2,6,43,LED61,map,7360.0,-5270.0,-134,Q,STATION,Avenue U,,,,VERIFIED,1.00,Manufactured V1.1 artwork plus human-reviewed geometry; station marker lies on the established Q lane.,15,brighton_line_avenue_u,,,,
-2,7,44,LED233,map,7235.0,-5000.0,-135,B,STATION,Kings Hwy,,,,VERIFIED,1.00,"Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as B, separate from Q counterpart LED60.",7,brighton_line_kings_hwy,,,,
-2,8,45,LED60,map,7155.0,-5075.0,-134,Q,STATION,Kings Hwy,,,,VERIFIED,1.00,"Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as Q, separate from B counterpart LED233.",7,brighton_line_kings_hwy,,,,
-2,9,46,LED59,map,6960.0,-4900.0,-134,Q,STATION,Avenue M,,,,VERIFIED,1.00,Manufactured V1.1 artwork plus human-reviewed geometry; station marker lies on the established Q lane.,14,brighton_line_avenue_m,,,,
-2,10,47,LED58,map,6775.0,-4720.0,-134,Q,STATION,Avenue J,,,,VERIFIED,1.00,Manufactured V1.1 artwork plus human-reviewed geometry; station marker lies on the established Q lane.,13,brighton_line_avenue_j,,,,
-2,11,48,LED57,map,6580.0,-4540.0,-134,Q,STATION,Avenue H,,,,VERIFIED,1.00,Manufactured V1.1 artwork plus human-reviewed geometry; station marker lies on the established Q lane.,12,brighton_line_avenue_h,,,,
-2,12,49,LED43,map,5580.0,-5045.0,-135,F,STATION,Avenue I,,,,VERIFIED,1.00,Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.,25,culver_line_avenue_i,,,,
-2,13,50,LED44,map,5795.0,-5240.0,-135,F,STATION,Bay Pkwy,,,,VERIFIED,1.00,Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.,26,culver_line_bay_pkwy,,,,
-2,14,51,LED106,map,5560.0,-5585.0,-90,,,,,,,,,,,,,,,
-2,15,52,LED105,map,5170.0,-5585.0,-90,,,,,,,,,,,,,,,
-2,16,53,LED33,map,5215.0,-6125.0,-135,,,,,,,,,,,,,,,
-2,17,54,LED34,map,5445.0,-6340.0,-135,,,,,,,,,,,,,,,
-2,18,55,LED107,map,5900.0,-5755.0,-135,,,,,,,,,,,,,,,
-2,19,56,LED45,map,6005.0,-5440.0,-135,F,STATION,Avenue N,,,,VERIFIED,1.00,Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.,27,culver_line_avenue_n,,,,
-2,20,57,LED46,map,6215.0,-5640.0,-135,F,STATION,Avenue P,,,,VERIFIED,1.00,Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.,28,culver_line_avenue_p,,,,
-2,21,58,LED47,map,6430.0,-5835.0,-135,F,STATION,Kings Hwy,,,,VERIFIED,1.00,Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.,29,culver_line_kings_hwy,,,,
-2,22,59,LED48,map,6640.0,-6035.0,-135,F,STATION,Avenue U,,,,VERIFIED,1.00,Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.,30,culver_line_avenue_u,,,,
-2,23,60,LED49,map,6855.0,-6230.0,-135,F,STATION,Avenue X,,,,VERIFIED,1.00,Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.,31,culver_line_avenue_x,,,,
-2,24,61,LED111,map,7065.0,-6425.0,-135,F,STATION,Neptune Av,,,,VERIFIED,1.00,Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.,32,culver_line_neptune_av,,,,
-2,25,62,LED116,map,7718.4011,-6442.5047,133,Q,STATION,Ocean Pkwy,,,,VERIFIED,1.00,Manufactured V1.1 artwork plus human-reviewed geometry; continuous Q route geometry proceeds through LED175 to LED7.,18,brighton_line_ocean_pkwy,,,,
-2,26,63,LED175,map,7280.0,-6855.0,133,Q,STATION,W 8 St-NY Aquarium,,,,VERIFIED,1.00,Manufactured V1.1 artwork plus human-reviewed geometry; continuous Q route geometry connects LED116 and LED7.,33,west_8_st_ny_aquarium,,,,
-2,27,64,LED112,map,7195.0,-6770.0,133,F,STATION,W 8 St-NY Aquarium,,,,VERIFIED,1.00,Manufactured V1.1 artwork plus human-reviewed geometry; route-specific shared-station counterpart to Q LED175.,33,west_8_st_ny_aquarium,,,,
-2,28,65,LED110,map,6855.0,-6645.0,-135,,,,,,,,,,,,,,,
-2,29,66,LED109,map,6540.0,-6350.0,-135,,,,,,,,,,,,,,,
-2,30,67,LED108,map,6220.0,-6050.0,-135,,,,,,,,,,,,,,,
-2,31,68,LED35,map,5685.0,-6560.0,-135,,,,,,,,,,,,,,,
-2,32,69,LED36,map,5915.0,-6780.0,-135,,,,,,,,,,,,,,,
-2,33,70,LED37,map,6150.0,-6995.0,-135,,,,,,,,,,,,,,,
-2,34,71,LED167,map,6380.0,-7210.0,-135,,,,,,,,,,,,,,,
-2,35,72,LED166,map,6470.0,-7290.0,135,,,,,,,,,,,,,,,
-2,36,73,LED165,map,6555.0,-7370.0,135,F,STATION,Coney Island-Stillwell Av,,,,VERIFIED,1.00,Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.,34,coney_island_stillwell_av,,,,
-2,37,74,LED7,map,6640.0,-7450.0,135,Q,STATION,Coney Island-Stillwell Av,,,,VERIFIED,1.00,Manufactured V1.1 artwork plus human-reviewed geometry; continuous Q route geometry proceeds from LED116 through LED175 to this terminal.,34,coney_island_stillwell_av,,,,
-3,0,75,LED226,map,8159.5035,-4278.2605,-135,,,,,,,,,,,,,,,
-3,1,76,LED146,map,8065.0,-4370.0,-135,,,,,,,,,,,,,,,
-3,2,77,LED147,map,7810.2507,-4123.8349,-135,,,,,,,,,,,,,,,
-3,3,78,LED250,map,7890.0,-4035.0,-135,,,,,,,,,,,,,,,
-3,4,79,LED225,map,7630.0,-3790.0,-135,,,,,,,,,,,,,,,
-3,5,80,LED145,map,7540.0,-3880.0,-135,,,,,,,,,,,,,,,
-3,6,81,LED224,map,7370.0,-3550.0,-135,,,,,,,,,,,,,,,
-3,7,82,LED144,map,7285.0,-3640.0,-135,,,,,,,,,,,,,,,
-3,8,83,LED143,map,7023.899,-3390.7355,-135,,,,,,,,,,,,,,,
-3,9,84,LED223,map,7100.0,-3300.0,-135,,,,,,,,,,,,,,,
-3,10,85,LED222,map,6845.0,-3055.0,-135,,,,,,,,,,,,,,,
-3,11,86,LED142,map,6755.0,-3140.0,-135,,,,,,,,,,,,,,,
-3,12,87,LED141,map,6500.0,-2900.0,-135,,,,,,,,,,,,,,,
-3,13,88,LED221,map,6580.0,-2810.0,-135,,,,,,,,,,,,,,,
-3,14,89,LED196,map,7235.0,-1845.0,-47,,,,,,,,,,,,,,,
-3,15,90,LED195,map,6815.0,-2245.0,-47,,,,,,,,,,,,,,,
-3,16,91,LED302,map,6445.0,-2420.0,-45,,,,,,,,,,,,,,,
-3,17,92,LED301,map,5840.0,-2715.0,-90,,,,,,,,,,,,,,,
-3,18,93,LED300,map,5840.0,-2830.0,-90,,,,,,,,,,,,,,,
-3,19,94,LED183,map,5608.2398,-2996.5704,180,,,,,,,,,,,,,,,
-3,20,95,LED180,map,5425.0,-2830.0,-90,,,,,,,,,,,,,,,
-3,21,96,LED140,map,5425.0,-2710.0,-90,,,,,,,,,,,,,,,
-3,22,97,LED181,map,5425.0,-2595.0,-90,,,,,,,,,,,,,,,
-3,23,98,LED304,map,5610.0,-2385.0,180,,,,,,,,,,,,,,,
-3,24,99,LED182,map,5424.2496,-2489.5854,-90,,,,,,,,,,,,,,,
-3,25,100,LED303,map,4960.0,-2495.0,-90,,,,,,,,,,,,,,,
-3,26,101,LED290,map,4815.0,-2900.0,-134,,,,,,,,,,,,,,,
-3,27,102,LED185,map,5605.0,-3325.0,180,S,STATION,Prospect Park,,,,VERIFIED,1.00,Manufactured V1.1 artwork places LED185 on the S lane at Prospect Park; CP25 assigns this designator to Prospect Park S.,4,brighton_line_prospect_park,,,,
-3,28,103,LED184,map,5520.0,-3395.0,-135,B,STATION,Prospect Park,,,,VERIFIED,1.00,Manufactured V1.1 artwork places LED184 on the B lane at Prospect Park; CP25 assigns this designator to Prospect Park B.,4,brighton_line_prospect_park,,,,
-3,29,104,LED51,map,5435.0,-3480.0,-134,Q,STATION,Prospect Park,,,,VERIFIED,1.00,Manufactured V1.1 artwork places LED51 on the Q lane at Prospect Park; CP25 station/service history corroborates Prospect Park Q.,4,brighton_line_prospect_park,,,,
-3,30,105,LED52,map,5625.0,-3655.0,-134,Q,STATION,Parkside Av,,,,VERIFIED,1.00,Manufactured V1.1 artwork places LED52 at the Parkside Av Q station marker; historical GTFS identifies the designator with Parkside Av.,11,brighton_line_parkside_av,,,,
-3,31,106,LED53,map,5810.0,-3835.0,-134,Q,STATION,Church Av,,,,VERIFIED,1.00,"Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as Q, separate from B counterpart LED231.",5,brighton_line_church_av,,,,
-3,32,107,LED231,map,5900.0,-3755.0,-135,B,STATION,Church Av,,,,VERIFIED,1.00,"Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as B, separate from Q counterpart LED53.",5,brighton_line_church_av,,,,
-3,33,108,LED54,map,6000.0,-4010.0,-134,Q,STATION,Beverley Rd,,,,VERIFIED,1.00,Manufactured V1.1 artwork plus human-reviewed geometry; station marker lies on the established Q lane.,9,brighton_line_beverley_rd,,,,
-3,34,109,LED55,map,6195.0,-4190.0,-134,Q,STATION,Cortelyou Rd,,,,VERIFIED,1.00,Manufactured V1.1 artwork plus human-reviewed geometry; station marker lies on the established Q lane.,10,brighton_line_cortelyou_rd,,,,
-3,35,110,LED56,map,6385.0,-4370.0,-134,Q,STATION,Newkirk Plaza,,,,VERIFIED,1.00,"Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as Q, separate from B counterpart LED232.",6,brighton_line_newkirk_plaza,,,,
-3,36,111,LED232,map,6470.0,-4290.0,-135,B,STATION,Newkirk Plaza,,,,VERIFIED,1.00,"Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as B, separate from Q counterpart LED56.",6,brighton_line_newkirk_plaza,,,,
-4,0,112,LED220,map,4410.0,-2830.0,-90,,,,,,,,,,,,,,,
-4,1,113,LED139,map,4405.0,-2715.0,-90,,,,,,,,,,,,,,,
-4,2,114,LED230,map,4345.0,-2310.0,-135,B,STATION,7 Av,,,,VERIFIED,1.00,"Manufactured V1.1 artwork, PCB coordinate geometry, and human-reviewed repeated B/Q lane offset; LED230 is the B lane at 7 Av and continues from the verified Prospect Park B/Q pair.",3,brighton_line_7_av,,,,
-4,3,115,LED50,map,4265.0,-2390.0,-135,Q,STATION,7 Av,,,,VERIFIED,1.00,"Manufactured V1.1 artwork, PCB coordinate geometry, and human-reviewed repeated B/Q lane offset; LED50 is the Q lane at 7 Av and continues from the verified Prospect Park B/Q pair.",3,brighton_line_7_av,,,,
-4,4,116,LED138,map,4145.0,-2695.0,-105,,,,,,,,,,,,,,,
-4,5,117,LED219,map,4130.0,-2810.0,-105,,,,,,,,,,,,,,,
-4,6,118,LED137,map,3910.0,-2540.0,-135,,,,,,,,,,,,,,,
-4,7,119,LED218,map,3825.0,-2615.0,-135,,,,,,,,,,,,,,,
-4,8,120,LED17,map,3120.0,-2935.0,180,,,,,,,,,,,,,,,
-4,9,121,LED292,map,3245.0,-3195.0,180,,,,,,,,,,,,,,,
-4,10,122,LED249,map,2293.3554,-3498.7881,-90,,,,,,,,,,,,,,,
-4,11,123,LED248,map,2045.0,-3370.0,180,,,,,,,,,,,,,,,
-4,12,124,LED98,map,1925.0,-3370.0,180,,,,,,,,,,,,,,,
-4,13,125,LED97,map,1925.0,-3125.0,180,,,,,,,,,,,,,,,
-4,14,126,LED247,map,2045.0,-3125.0,180,,,,,,,,,,,,,,,
-4,15,127,LED156,map,2230.0,-2905.0,90,,,,,,,,,,,,,,,
-4,16,128,LED155,map,2235.0,-2795.0,-90,,,,,,,,,,,,,,,
-4,17,129,LED119,map,2235.0,-2680.0,-90,,,,,,,,,,,,,,,
-4,18,130,LED164,map,3125.0,-2330.0,180,,,,,,,,,,,,,,,
-4,19,131,LED162,map,3240.0,-2330.0,180,,,,,,,,,,,,,,,
-4,20,132,LED161,map,3365.0,-2330.0,180,,,,,,,,,,,,,,,
-4,21,133,LED157,map,3520.0,-2320.0,-135,,,,,,,,,,,,,,,
-4,22,134,LED136,map,3605.0,-2245.0,-135,,,,,,,,,,,,,,,
-4,23,135,LED158,map,3685.54,-2163.1388,-135,,,,,,,,,,,,,,,
-4,24,136,LED159,map,3775.0,-2085.0,-135,,,,,,,,,,,,,,,
-4,25,137,LED163,map,3860.0,-2000.0,-135,Q,STATION,Atlantic Av-Barclays Ctr,,,,VERIFIED,1.00,manufactured V1.1 artwork + PCB coordinates + human-reviewed B/Q lane continuity,2,brighton_line_atlantic_av_barclays_ctr,,,,
-4,26,138,LED160,map,3945.0,-1925.0,-135,B,STATION,Atlantic Av-Barclays Ctr,,,,VERIFIED,1.00,manufactured V1.1 artwork + PCB coordinates + human-reviewed B/Q lane continuity,2,brighton_line_atlantic_av_barclays_ctr,,,,
-4,27,139,LED191,map,2955.0,-1525.0,-110,,,,,,,,,,,,,,,
-4,28,140,LED217,map,2565.0,-1880.0,-90,,,,,,,,,,,,,,,
-4,29,141,LED215,map,2565.0,-1990.0,-90,,,,,,,,,,,,,,,
-4,30,142,LED135,map,2565.0,-2100.0,-90,,,,,,,,,,,,,,,
-4,31,143,LED216,map,2560.0,-2220.0,-90,,,,,,,,,,,,,,,
-4,32,144,LED214,map,2100.0,-2210.0,-90,,,,,,,,,,,,,,,
-4,33,145,LED134,map,2095.0,-2095.0,-90,,,,,,,,,,,,,,,
-4,34,146,LED177,map,1350.0,-2205.0,-90,,,,,,,,,,,,,,,
-4,35,147,LED133,map,1350.0,-2095.0,-90,,,,,,,,,,,,,,,
-4,36,148,LED178,map,1350.0,-1985.0,-90,,,,,,,,,,,,,,,
-5,0,149,LED190,map,3150.0,-1345.0,-135,Q,STATION,DeKalb Av,,,,VERIFIED,1.00,manufactured V1.1 artwork + PCB coordinates + human-reviewed B/Q lane continuity,1,brighton_line_dekalb_av,,,,
-5,1,150,LED293,map,2545.0,-1505.0,-90,,,,,,,,,,,,,,,
-5,2,151,LED154,map,2046.3254,-1502.6323,-90,,,,,,,,,,,,,,,
-5,3,152,LED153,map,1927.9313,-1502.6323,180,,,,,,,,,,,,,,,
-5,4,153,LED118,map,1810.3436,-1506.5197,180,,,,,,,,,,,,,,,
-5,5,154,LED152,map,1682.244,-1502.6323,180,,,,,,,,,,,,,,,
-5,6,155,LED179,map,1351.5112,-1872.5159,-90,,,,,,,,,,,,,,,
-5,7,156,LED10,map,1351.378,-1503.2283,-90,,,,,,,,,,,,,,,
-5,8,157,LED213,map,1085.0,-1220.0,180,,,,,,,,,,,,,,,
-5,9,158,LED132,map,1205.0,-1220.0,180,,,,,,,,,,,,,,,
-5,10,159,LED209,map,1680.0,-860.0,180,,,,,,,,,,,,,,,
-5,11,160,LED117,map,1805.0,-860.0,180,,,,,,,,,,,,,,,
-5,12,161,LED294,map,1915.0,-860.0,180,,,,,,,,,,,,,,,
-5,13,162,LED311,map,2040.0,-465.0,-135,,,,,,,,,,,,,,,
-5,14,163,LED310,map,2040.0,-310.0,-135,,,,,,,,,,,,,,,
-5,15,164,LED309,map,2040.0,-150.0,-135,,,,,,,,,,,,,,,
-5,16,165,LED308,map,2050.0,-5.0,-135,,,,,,,,,,,,,,,
-5,17,166,LED188,map,1925.0,330.0,180,,,,,,,,,,,,,,,
-5,18,167,LED291,map,1715.1575,611.5354,-133,,,,,,,,,,,,,,,
-5,19,168,LED285,map,675.0,1115.0,-135,,,,,,,,,,,,,,,
-5,20,169,LED286,map,760.0,1200.0,-135,,,,,,,,,,,,,,,
-5,21,170,LED255,map,1149.7776,1654.868,180,,,,,,,,,,,,,,,
-5,22,171,LED256,map,1144.7776,1542.7746,-90,,,,,,,,,,,,,,,
-5,23,172,LED257,map,1150.0,1420.0,-90,,,,,,,,,,,,,,,
-5,24,173,LED258,map,1145.0,1310.0,-90,,,,,,,,,,,,,,,
-5,25,174,LED259,map,1260.0,1045.0,-135,,,,,,,,,,,,,,,
-5,26,175,LED234,map,2305.0,1310.0,-90,,,,,,,,,,,,,,,
-5,27,176,LED62,map,2300.0,1425.0,-90,,,,,,,,,,,,,,,
-5,28,177,LED235,map,2308.7215,1541.744,-90,,,,,,,,,,,,,,,
-5,29,178,LED236,map,2815.0,1535.0,-90,,,,,,,,,,,,,,,
-5,30,179,LED63,map,2815.0,1420.0,-90,,,,,,,,,,,,,,,
-5,31,180,LED297,map,3275.0,1530.0,-90,,,,,,,,,,,,,,,
-5,32,181,LED9,map,3035.0,1920.0,-135,G,STATION,Broadway,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.,35,crosstown_line_broadway,,,,
-5,33,182,LED82,map,3283.4646,2843.5039,-90,,,,,,,,,,,,,,,
-5,34,183,LED81,map,2875.0,3067.9134,-135,,,,,,,,,,,,,,,
-5,35,184,LED80,map,2553.4958,3353.3583,-90,,,,,,,,,,,,,,,
-5,36,185,LED295,map,2579.685,2336.5354,-135,,,,,,,,,,,,,,,
-5,37,186,LED96,map,2125.0,2760.0,-135,,,,,,,,,,,,,,,
-5,38,187,LED79,map,2135.0,3000.0,-45,,,,,,,,,,,,,,,
-5,39,188,LED78,map,1326.378,2849.7244,-90,,,,,,,,,,,,,,,
-5,40,189,LED95,map,1405.0,3440.0,-135,,,,,,,,,,,,,,,
-5,41,190,LED187,map,1323.4252,3698.1496,180,,,,,,,,,,,,,,,
-6,0,191,LED194,map,5610.0,-1845.0,180,,,,,,,,,,,,,,,
-6,1,192,LED176,map,5605.0,-1150.0,180,,,,,,,,,,,,,,,
-6,2,193,LED210,map,5875.0,-735.0,-45,,,,,,,,,,,,,,,
-6,3,194,LED124,map,6225.0,-260.0,-45,,,,,,,,,,,,,,,
-6,4,195,LED123,map,5800.0,-660.0,-45,,,,,,,,,,,,,,,
-6,5,196,LED122,map,5440.0,-995.0,-47,,,,,,,,,,,,,,,
-6,6,197,LED121,map,5110.0,-1300.0,-47,,,,,,,,,,,,,,,
-6,7,198,LED288,map,4630.0,-1385.0,-90,,,,,,,,,,,,,,,
-6,8,199,LED120,map,4140.0,-1390.0,-90,,,,,,,,,,,,,,,
-6,9,200,LED287,map,3925.0,-1610.0,-48,,,,,,,,,,,,,,,
-6,10,201,LED189,map,3235.0,-1265.0,-135,B,STATION,DeKalb Av,,,,VERIFIED,1.00,manufactured V1.1 artwork + PCB coordinates + human-reviewed B/Q lane continuity,1,brighton_line_dekalb_av,,,,
-6,11,202,LED16,map,3910.0,-955.0,180,G,STATION,Fulton St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.,41,crosstown_line_fulton_st,,,,
-6,12,203,LED15,map,3910.0,-535.0,180,G,STATION,Clinton-Washington Avs,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.,40,crosstown_line_clinton_washington_avs,,,,
-6,13,204,LED14,map,3910.0,-160.0,180,G,STATION,Classon Av,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.,39,crosstown_line_classon_av,,,,
-6,14,205,LED13,map,3915.0,195.0,180,G,STATION,Bedford-Nostrand Avs,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.,38,crosstown_line_bedford_nostrand_avs,,,,
-6,15,206,LED12,map,3915.0,555.0,180,G,STATION,Myrtle-Willoughby Avs,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.,37,crosstown_line_myrtle_willoughby_avs,,,,
-6,16,207,LED11,map,3915.0,925.0,180,G,STATION,Flushing Av,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.,36,crosstown_line_flushing_av,,,,
-6,17,208,LED298,map,4000.8268,1310.6693,-90,,,,,,,,,,,,,,,
-6,18,209,LED64,map,3783.2994,1428.0356,-90,,,,,,,,,,,,,,,
-6,19,210,LED237,map,3784.2969,1535.8731,-90,,,,,,,,,,,,,,,
-6,20,211,LED238,map,4240.0,1530.0,-90,,,,,,,,,,,,,,,
-6,21,212,LED65,map,4242.1108,1423.0356,-90,,,,,,,,,,,,,,,
-6,22,213,LED240,map,4720.0,1300.0,-90,,,,,,,,,,,,,,,
-6,23,214,LED66,map,4725.0,1420.0,-90,,,,,,,,,,,,,,,
-6,24,215,LED239,map,4725.0,1535.0,-90,,,,,,,,,,,,,,,
-6,25,216,LED192,map,5240.0,1835.0,-47,,,,,,,,,,,,,,,
-6,26,217,LED67,map,5275.0,1420.0,-90,,,,,,,,,,,,,,,
-6,27,218,LED296,map,5305.0,1305.0,-90,,,,,,,,,,,,,,,
-6,28,219,LED68,map,5845.0,1420.0,-90,,,,,,,,,,,,,,,
-6,29,220,LED241,map,5845.0,1305.0,-90,,,,,,,,,,,,,,,
-6,30,221,LED193,map,5585.0,2160.0,-45,,,,,,,,,,,,,,,
-6,31,222,LED86,map,5600.0,2850.0,-90,L,STATION,Myrtle-Wyckoff Avs,,,,VERIFIED,1.00,Current V1.1 artwork + historical GTFS/CP12 + transfer-expansion design intent + route sequence.,70,canarsie_line_myrtle_wyckoff_avs,,,,
-6,32,223,LED170,map,5715.0,2850.0,0,,,,,,,,,,,,,,,
-6,33,224,LED254,map,5720.0,3305.0,0,,,,,,,,,,,,,,,
-6,34,225,LED85,map,5045.0,2850.0,-90,L,STATION,DeKalb Av,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.,46,canarsie_line_dekalb_av,,,,
-6,35,226,LED84,map,4455.0,2845.0,-90,,,,,,,,,,,,,,,
-6,36,227,LED83,map,3930.0,2850.0,-90,,,,,,,,,,,,,,,
-7,0,228,LED198,map,7660.0,-1455.0,-47,,,,,,,,,,,,,,,
-7,1,229,LED197,map,7585.0,-1365.0,-47,,,,,,,,,,,,,,,
-7,2,230,LED199,map,8080.0,-1065.0,-47,,,,,,,,,,,,,,,
-7,3,231,LED200,map,8415.0,-755.0,-47,,,,,,,,,,,,,,,
-7,4,232,LED201,map,8760.0,-430.0,-47,,,,,,,,,,,,,,,
-7,5,233,LED90,map,8550.0,865.0,-133,L,STATION,Atlantic Av,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.,50,canarsie_line_atlantic_av,,,,
-7,6,234,LED128,map,8607.3738,1423.0356,-90,,,,,,,,,,,,,,,
-7,7,235,LED129,map,8919.8247,1462.6998,-45,,,,,,,,,,,,,,,
-7,8,236,LED130,map,9125.0,1650.0,-45,,,,,,,,,,,,,,,
-7,9,237,LED212,map,9415.0,1770.0,-45,,,,,,,,,,,,,,,
-7,10,238,LED131,map,9335.0,1850.0,-45,,,,,,,,,,,,,,,
-7,11,239,LED245,map,9085.0,2560.0,-47,,,,,,,,,,,,,,,
-7,12,240,LED246,map,9365.0,3055.0,0,,,,,,,,,,,,,,,
-7,13,241,LED77,map,9240.0,3475.0,0,,,,,,,,,,,,,,,
-7,14,242,LED76,map,9245.0,3055.0,0,,,,,,,,,,,,,,,
-7,15,243,LED75,map,8995.0,2645.0,-47,,,,,,,,,,,,,,,
-7,16,244,LED74,map,8740.0,2400.0,-47,,,,,,,,,,,,,,,
-7,17,245,LED73,map,8490.0,2170.0,-47,,,,,,,,,,,,,,,
-7,18,246,LED244,map,8575.0,2090.0,-47,,,,,,,,,,,,,,,
-7,19,247,LED243,map,8320.0,1850.0,-47,,,,,,,,,,,,,,,
-7,20,248,LED72,map,8235.0,1935.0,-47,,,,,,,,,,,,,,,
-7,21,249,LED151,map,7819.425,1547.7148,-45,,,,,,,,,,,,,,,
-7,22,250,LED71,map,7737.0512,1472.1069,-45,,,,,,,,,,,,,,,
-7,23,251,LED150,map,7824.425,1399.1932,-45,,,,,,,,,,,,,,,
-7,24,252,LED148,map,7909.4705,1314.9325,135,,,,,,,,,,,,,,,
-7,25,253,LED149,map,8000.0,1225.0,-45,,,,,,,,,,,,,,,
-7,26,254,LED299,map,8220.0,1175.0,-133,,,,,,,,,,,,,,,
-7,27,255,LED127,map,7295.0,735.0,315,,,,,,,,,,,,,,,
-7,28,256,LED126,map,6960.0,425.0,315,,,,,,,,,,,,,,,
-7,29,257,LED211,map,6725.0,55.0,-45,,,,,,,,,,,,,,,
-7,30,258,LED125,map,6645.0,135.0,-45,,,,,,,,,,,,,,,
-7,31,259,LED69,map,6385.0,1420.0,-90,,,,,,,,,,,,,,,
-7,32,260,LED242,map,6965.0,1310.0,-90,,,,,,,,,,,,,,,
-7,33,261,LED70,map,6960.0,1420.0,-90,,,,,,,,,,,,,,,
-7,34,262,LED89,map,7225.0,2095.0,-135,L,STATION,Bushwick Av-Aberdeen St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.,49,canarsie_line_bushwick_av_aberdeen_st,,,,
-7,35,263,LED88,map,6780.0,2510.0,-135,L,STATION,Wilson Av,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.,48,canarsie_line_wilson_av,,,,
-7,36,264,LED87,map,6270.0,2845.0,-90,L,STATION,Halsey St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.,47,canarsie_line_halsey_st,,,,
-7,37,265,LED253,map,5717.126,3701.1024,0,,,,,,,,,,,,,,,
-8,0,266,LED252,status_system,10307.4295,-7607.7149,90,,STATUS,SYSTEM,,,,VERIFIED_NON_MAP,VERIFIED,Manufactured V1.1 front-panel status labeling,,,,,,
-8,1,267,LED251,status_network,10307.4295,-7371.4944,90,,STATUS,NETWORK,,,,VERIFIED_NON_MAP,VERIFIED,Manufactured V1.1 front-panel status labeling,,,,,,
-8,2,268,LED306,status_mta_feed,10307.4295,-7135.274,90,,STATUS,MTA FEED,,,,VERIFIED_NON_MAP,VERIFIED,Manufactured V1.1 front-panel status labeling,,,,,,
-8,3,269,LED307,status_mode,10307.4295,-6899.0535,90,,STATUS,MODE,,,,VERIFIED_NON_MAP,VERIFIED,Manufactured V1.1 front-panel status labeling,,,,,,
-8,4,270,LED284,map,12200.0,-1605.0,135,,,,,,,,,,,,,,,
-8,5,271,LED283,map,12120.0,-1515.0,135,,,,,,,,,,,,,,,
-8,6,272,LED281,map,12460.0,-1205.0,135,,,,,,,,,,,,,,,
-8,7,273,LED282,map,12545.0,-1285.0,135,,,,,,,,,,,,,,,
-8,8,274,LED279,map,12805.0,-885.0,135,,,,,,,,,,,,,,,
-8,9,275,LED280,map,12890.0,-970.0,135,,,,,,,,,,,,,,,
-8,10,276,LED278,map,13215.0,-660.0,135,,,,,,,,,,,,,,,
-8,11,277,LED277,map,13135.0,-575.0,135,,,,,,,,,,,,,,,
-8,12,278,LED305,map,13035.0,200.0,45,,,,,,,,,,,,,,,
-8,13,279,LED276,map,13545.0,365.0,0,A,STATION,Beach 67 St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted projected center + A-line branch topology.,68,rockaway_beach_67_st,,,,
-8,14,280,LED275,map,13550.0,730.0,0,A,STATION,Beach 60 St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted projected center + A-line branch topology.,67,rockaway_beach_60_st,,,,
-8,15,281,LED274,map,13550.0,1100.0,0,A,STATION,Beach 44 St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted projected center + A-line branch topology.,66,rockaway_beach_44_st,,,,
-8,16,282,LED273,map,13550.0,1470.0,0,A,STATION,Beach 36 St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted projected center + A-line branch topology.,65,rockaway_beach_36_st,,,,
-8,17,283,LED272,map,13550.0,1835.0,0,A,STATION,Beach 25 St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted projected center + A-line branch topology.,64,rockaway_beach_25_st,,,,
-8,18,284,LED271,map,13550.0,2295.0,0,A,STATION,Far Rockaway-Mott Av,,,,VERIFIED,1.00,Current V1.1 artwork + accepted projected center + A-line branch topology.,63,a_line_far_rockaway_mott_av,,,,
-8,19,285,LED269,map,12650.0,715.0,-135,,,,,,,,,,,,,,,
-8,20,286,LED270,map,12570.0,635.0,45,,,,,,,,,,,,,,,
-8,21,287,LED268,map,11490.0,1800.0,-135,A,STATION,Howard Beach-JFK Airport,,,,VERIFIED,1.00,Current V1.1 artwork + accepted projected center + A-line branch topology.,62,a_line_howard_beach_jfk_airport,,,,
-8,22,288,LED267,map,11140.0,2125.0,-135,,,,,,,,,,,,,,,
-8,23,289,LED266,map,10840.0,2410.0,-135,,,,,,,,,,,,,,,
-8,24,290,LED265,map,11145.0,3375.0,-45,A,STATION,Ozone Park-Lefferts Blvd,,,,VERIFIED,1.00,Current V1.1 artwork + accepted projected center + A-line branch topology.,61,a_line_ozone_park_lefferts_blvd,,,,
-8,25,291,LED264,map,10875.0,3125.0,-45,A,STATION,111 St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted projected center + A-line branch topology.,60,a_line_111_st,,,,
-8,26,292,LED263,map,10600.0,2870.0,-45,A,STATION,104 St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted projected center + A-line branch topology.,59,a_line_104_st,,,,
-8,27,293,LED262,map,10280.0,2570.0,-45,A,STATION,Rockaway Blvd,,,,VERIFIED,1.00,Current V1.1 artwork + accepted projected center + A-line branch topology.,58,a_line_rockaway_blvd,,,,
-8,28,294,LED261,map,10070.0,2375.0,-45,A,STATION,88 St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted projected center + A-line branch topology.,57,a_line_88_st,,,,
-8,29,295,LED260,map,9845.0,2165.0,-45,A,STATION,80 St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted projected center + A-line branch topology.,56,a_line_80_st,,,,
-8,30,296,LED186,map,9635.0,1965.0,-45,A,STATION,Grant Av,,,,VERIFIED,1.00,Current V1.1 artwork + accepted projected center + A-line branch topology.,55,a_line_grant_av,,,,
-8,31,297,LED205,map,10135.0,850.0,-45,,,,,,,,,,,,,,,
-8,32,298,LED204,map,9870.0,605.0,-45,,,,,,,,,,,,,,,
-8,33,299,LED203,map,9610.0,360.0,-45,,,,,,,,,,,,,,,
-8,34,300,LED91,map,9085.0,365.0,-133,L,STATION,Sutter Av,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.,51,canarsie_line_sutter_av,,,,
-8,35,301,LED202,map,9095.0,-115.0,-45,,,,,,,,,,,,,,,
-8,36,302,LED92,map,9605.0,-120.0,-135,L,STATION,Livonia Av,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.,52,canarsie_line_livonia_av,,,,
-8,37,303,LED93,map,10000.0,-485.0,-135,L,STATION,New Lots Av,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.,53,canarsie_line_new_lots_av,,,,
-8,38,304,LED94,map,10054.4881,-973.8499,180,L,STATION,East 105 St,,,,VERIFIED,1.00,Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.,54,canarsie_line_east_105_st,,,,
-8,39,305,LED8,map,10055.0,-1450.0,180,L,STATION,Canarsie-Rockaway Pkwy,,,,VERIFIED,1.00,Current V1.1 artwork + historical GTFS station/service identity + route-terminal topology.,69,canarsie_line_canarsie_rockaway_pkwy,,,,
+﻿"channel","channel_index","global_physical_order","designator","role","x","y","angle","route","element_type","station_name","from_station","to_station","direction","semantic_status","confidence","source_note","station_id","station_key","from_station_id","to_station_id","from_station_key","to_station_key"
+"1","0","0","LED42","map","5375.0","-4850.0","-135","F","STATION","18 Av","","","","VERIFIED","1.00","Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.","24","culver_line_18_av","","","",""
+"1","1","1","LED41","map","5160.0","-4650.0","-135","F","STATION","Ditmas Av","","","","VERIFIED","1.00","Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.","23","culver_line_ditmas_av","","","",""
+"1","2","2","LED40","map","4950.0","-4455.0","-135","F","STATION","Church Av","","","","VERIFIED","1.00","Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.","19","culver_line_church_av","","","",""
+"1","3","3","LED229","map","5030.0","-4370.0","-135","G","STATION","Church Av","","","","VERIFIED","1.00","Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.","19","culver_line_church_av","","","",""
+"1","4","4","LED228","map","4690.0","-4055.0","-135","G","STATION","Fort Hamilton Pkwy","","","","VERIFIED","1.00","Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.","20","culver_line_fort_hamilton_pkwy","","","",""
+"1","5","5","LED39","map","4606.3219","-4138.7617","-135","F","STATION","Fort Hamilton Pkwy","","","","VERIFIED","1.00","Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.","20","culver_line_fort_hamilton_pkwy","","","",""
+"1","6","6","LED227","map","4360.0","-3750.0","-135","G","STATION","15 St-Prospect Park","","","","VERIFIED","1.00","Manufactured V1.1 artwork and coordinates place this G LED at 15 St-Prospect Park; corrected after design-evolution audit. Shares station ID 22 with F LED38.","22","culver_line_15_st_prospect_park","","","",""
+"1","7","7","LED38","map","4285.0","-3835.0","-135","F","STATION","15 St-Prospect Park","","","","VERIFIED","1.00","Manufactured V1.1 artwork and coordinates place this F LED at 15 St-Prospect Park; corrected after design-evolution audit. Shares station ID 22 with G LED227.","22","culver_line_15_st_prospect_park","","","",""
+"1","8","8","LED100","map","3635.0","-3615.0","-90","F","STATION","7 Av","","","","VERIFIED","1.00","Manufactured V1.1 artwork and coordinates place this F LED at Culver 7 Av; corrected after design-evolution audit. Shares station ID 21 with G LED206.","21","culver_line_7_av","","","",""
+"1","9","9","LED206","map","3635.0","-3495.0","-90","G","STATION","7 Av","","","","VERIFIED","1.00","Manufactured V1.1 artwork and coordinates place this G LED at Culver 7 Av; corrected after design-evolution audit. Shares station ID 21 with F LED100.","21","culver_line_7_av","","","",""
+"1","10","10","LED18","map","3125.0","-3495.0","180","R","STATION","4 Av-9 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","86","fourth_avenue_4_av_9_st","","","",""
+"1","11","11","LED168","map","3009.9001","-3492.9587","-90","G","STATION","4 Av-9 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","86","fourth_avenue_4_av_9_st","","","",""
+"1","12","12","LED99","map","2290.0","-3610.0","-90","F","STATION","Smith-9 Sts","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","173","culver_line_smith_9_sts","","","",""
+"1","13","13","LED169","map","3009.9001","-3607.4465","-90","F","STATION","4 Av-9 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","86","fourth_avenue_4_av_9_st","","","",""
+"1","14","14","LED19","map","3125.0","-3780.0","180","R","STATION","Prospect Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","160","fourth_avenue_prospect_av","","","",""
+"1","15","15","LED20","map","3125.0","-4055.0","180","R","STATION","25 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork; route lane visually confirmed.","73","bay_ridge_line_25_st","","","",""
+"1","16","16","LED173","map","3128.0189","-4334.0038","180","R","STATION","36 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork; route lane visually confirmed.","78","fourth_avenue_line_36_st","","","",""
+"1","17","17","LED101","map","3250.0","-4335.0","180","N","STATION","36 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork; route lane visually confirmed.","78","fourth_avenue_line_36_st","","","",""
+"1","18","18","LED172","map","3364.2567","-4334.0038","180","D","STATION","36 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork; route lane visually confirmed.","78","fourth_avenue_line_36_st","","","",""
+"1","19","19","LED21","map","3126.0975","-4671.4315","180","R","STATION","45 St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.","42","bay_ridge_line_45_st","","","",""
+"1","20","20","LED22","map","3126.0975","-5005.7805","180","R","STATION","53 St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.","43","bay_ridge_line_53_st","","","",""
+"1","21","21","LED26","map","3590.0","-4605.0","45","D","STATION","9 Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork; route lane visually confirmed.","74","west_end_line_9_av","","","",""
+"1","22","22","LED27","map","3825.0","-4820.0","45","D","STATION","Fort Hamilton Pkwy","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork; route lane visually confirmed.","75","west_end_line_fort_hamilton_pkwy","","","",""
+"1","23","23","LED28","map","4055.0","-5035.0","45","D","STATION","50 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork; route lane visually confirmed.","76","west_end_line_50_st","","","",""
+"1","24","24","LED102","map","3247.5877","-5340.7223","180","N","STATION","59 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork; route lane visually confirmed.","79","fourth_avenue_line_59_st","","","",""
+"1","25","25","LED174","map","3128.0189","-5342.9737","180","R","STATION","59 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork; route lane visually confirmed.","79","fourth_avenue_line_59_st","","","",""
+"1","26","26","LED23","map","3125.0","-5680.0","180","R","STATION","Bay Ridge Av","","","","VERIFIED","1.00","Current V1.1 artwork + historical GTFS + CP04 + coordinate continuity + route sequence.","72","bay_ridge_line_bay_ridge_av","","","",""
+"1","27","27","LED24","map","3126.0975","-6015.0131","180","R","STATION","77 St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.","44","bay_ridge_line_77_st","","","",""
+"1","28","28","LED25","map","3125.0","-6355.0","180","R","STATION","86 St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.","45","bay_ridge_line_86_st","","","",""
+"1","29","29","LED6","map","3120.0","-6690.0","180","R","STATION","Bay Ridge-95 St","","","","VERIFIED","1.00","Current V1.1 artwork + historical GTFS + terminal topology.","71","bay_ridge_line_bay_ridge_95_st","","","",""
+"1","30","30","LED103","map","3435.0","-5585.0","-90","N","STATION","8 Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork; route lane visually confirmed.","80","sea_beach_line_8_av","","","",""
+"1","31","31","LED104","map","3853.9797","-5587.5216","-90","N","STATION","Fort Hamilton Pkwy","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork; route lane visually confirmed.","81","sea_beach_line_fort_hamilton_pkwy","","","",""
+"1","32","32","LED171","map","4275.0","-5585.0","-90","N","STATION","New Utrecht Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork; historical GTFS N04 and route lane visually confirmed.","82","sea_beach_line_new_utrecht_av","","","",""
+"1","33","33","LED29","map","4290.0","-5255.0","45","D","STATION","55 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork; route lane visually confirmed.","77","west_end_line_55_st","","","",""
+"1","34","34","LED30","map","4520.0","-5470.0","-135","D","STATION","62 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","161","west_end_62_st","","","",""
+"1","35","35","LED31","map","4750.0","-5690.0","-135","D","STATION","71 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","162","west_end_71_st","","","",""
+"1","36","36","LED32","map","4980.0","-5910.0","-135","D","STATION","79 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","163","west_end_79_st","","","",""
+"2","0","37","LED208","map","8155.0","-5855.0","-135","B","STATION","Brighton Beach","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as B, separate from Q counterpart LED115.","17","brighton_line_brighton_beach","","","",""
+"2","1","38","LED115","map","8075.0","-5940.0","-137","Q","STATION","Brighton Beach","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as Q, separate from B counterpart LED208.","17","brighton_line_brighton_beach","","","",""
+"2","2","39","LED207","map","7910.0","-5635.0","-135","B","STATION","Sheepshead Bay","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as B, separate from Q counterpart LED114.","8","brighton_line_sheepshead_bay","","","",""
+"2","3","40","LED114","map","7830.0","-5710.0","-134","Q","STATION","Sheepshead Bay","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as Q, separate from B counterpart LED207.","8","brighton_line_sheepshead_bay","","","",""
+"2","4","41","LED113","map","7595.0","-5485.0","-134","Q","SEGMENT","","Neck Rd","Sheepshead Bay","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; LED lies on the Q lane between Neck Rd and Sheepshead Bay.","","","16","8","brighton_line_neck_rd","brighton_line_sheepshead_bay"
+"2","5","42","LED289","map","7550.0","-5280.0","-135","Q","STATION","Neck Rd","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; station marker lies on the established Q lane.","16","brighton_line_neck_rd","","","",""
+"2","6","43","LED61","map","7360.0","-5270.0","-134","Q","STATION","Avenue U","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; station marker lies on the established Q lane.","15","brighton_line_avenue_u","","","",""
+"2","7","44","LED233","map","7235.0","-5000.0","-135","B","STATION","Kings Hwy","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as B, separate from Q counterpart LED60.","7","brighton_line_kings_hwy","","","",""
+"2","8","45","LED60","map","7155.0","-5075.0","-134","Q","STATION","Kings Hwy","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as Q, separate from B counterpart LED233.","7","brighton_line_kings_hwy","","","",""
+"2","9","46","LED59","map","6960.0","-4900.0","-134","Q","STATION","Avenue M","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; station marker lies on the established Q lane.","14","brighton_line_avenue_m","","","",""
+"2","10","47","LED58","map","6775.0","-4720.0","-134","Q","STATION","Avenue J","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; station marker lies on the established Q lane.","13","brighton_line_avenue_j","","","",""
+"2","11","48","LED57","map","6580.0","-4540.0","-134","Q","STATION","Avenue H","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; station marker lies on the established Q lane.","12","brighton_line_avenue_h","","","",""
+"2","12","49","LED43","map","5580.0","-5045.0","-135","F","STATION","Avenue I","","","","VERIFIED","1.00","Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.","25","culver_line_avenue_i","","","",""
+"2","13","50","LED44","map","5795.0","-5240.0","-135","F","STATION","Bay Pkwy","","","","VERIFIED","1.00","Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.","26","culver_line_bay_pkwy","","","",""
+"2","14","51","LED106","map","5560.0","-5585.0","-90","N","STATION","20 Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","175","sea_beach_20_av","","","",""
+"2","15","52","LED105","map","5170.0","-5585.0","-90","N","STATION","18 Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","174","sea_beach_18_av","","","",""
+"2","16","53","LED33","map","5215.0","-6125.0","-135","D","STATION","18 Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","164","west_end_18_av","","","",""
+"2","17","54","LED34","map","5445.0","-6340.0","-135","D","STATION","20 Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","165","west_end_20_av","","","",""
+"2","18","55","LED107","map","5900.0","-5755.0","-135","N","STATION","Bay Pkwy","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","176","sea_beach_bay_pkwy","","","",""
+"2","19","56","LED45","map","6005.0","-5440.0","-135","F","STATION","Avenue N","","","","VERIFIED","1.00","Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.","27","culver_line_avenue_n","","","",""
+"2","20","57","LED46","map","6215.0","-5640.0","-135","F","STATION","Avenue P","","","","VERIFIED","1.00","Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.","28","culver_line_avenue_p","","","",""
+"2","21","58","LED47","map","6430.0","-5835.0","-135","F","STATION","Kings Hwy","","","","VERIFIED","1.00","Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.","29","culver_line_kings_hwy","","","",""
+"2","22","59","LED48","map","6640.0","-6035.0","-135","F","STATION","Avenue U","","","","VERIFIED","1.00","Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.","30","culver_line_avenue_u","","","",""
+"2","23","60","LED49","map","6855.0","-6230.0","-135","F","STATION","Avenue X","","","","VERIFIED","1.00","Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.","31","culver_line_avenue_x","","","",""
+"2","24","61","LED111","map","7065.0","-6425.0","-135","F","STATION","Neptune Av","","","","VERIFIED","1.00","Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.","32","culver_line_neptune_av","","","",""
+"2","25","62","LED116","map","7718.4011","-6442.5047","133","Q","STATION","Ocean Pkwy","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; continuous Q route geometry proceeds through LED175 to LED7.","18","brighton_line_ocean_pkwy","","","",""
+"2","26","63","LED175","map","7280.0","-6855.0","133","Q","STATION","W 8 St-NY Aquarium","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; continuous Q route geometry connects LED116 and LED7.","33","west_8_st_ny_aquarium","","","",""
+"2","27","64","LED112","map","7195.0","-6770.0","133","F","STATION","W 8 St-NY Aquarium","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; route-specific shared-station counterpart to Q LED175.","33","west_8_st_ny_aquarium","","","",""
+"2","28","65","LED110","map","6855.0","-6645.0","-135","N","STATION","86 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","179","sea_beach_86_st","","","",""
+"2","29","66","LED109","map","6540.0","-6350.0","-135","N","STATION","Avenue U","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","178","sea_beach_avenue_u","","","",""
+"2","30","67","LED108","map","6220.0","-6050.0","-135","N","STATION","Kings Hwy","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","177","sea_beach_kings_hwy","","","",""
+"2","31","68","LED35","map","5685.0","-6560.0","-135","D","STATION","Bay Pkwy","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","166","west_end_bay_pkwy","","","",""
+"2","32","69","LED36","map","5915.0","-6780.0","-135","D","STATION","25 Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","167","west_end_25_av","","","",""
+"2","33","70","LED37","map","6150.0","-6995.0","-135","D","STATION","Bay 50 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","168","west_end_bay_50_st","","","",""
+"2","34","71","LED167","map","6380.0","-7210.0","-135","D","STATION","Coney Island-Stillwell Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","34","coney_island_stillwell_av","","","",""
+"2","35","72","LED166","map","6470.0","-7290.0","135","N","STATION","Coney Island-Stillwell Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","34","coney_island_stillwell_av","","","",""
+"2","36","73","LED165","map","6555.0","-7370.0","135","F","STATION","Coney Island-Stillwell Av","","","","VERIFIED","1.00","Manufactured V1.1 artwork + PCB coordinates + human-reviewed F/G lane continuity.","34","coney_island_stillwell_av","","","",""
+"2","37","74","LED7","map","6640.0","-7450.0","135","Q","STATION","Coney Island-Stillwell Av","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; continuous Q route geometry proceeds from LED116 through LED175 to this terminal.","34","coney_island_stillwell_av","","","",""
+"3","0","75","LED226","map","8159.5035","-4278.2605","-135","5","STATION","Flatbush Av-Brooklyn College","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","126","irt_flatbush_av_brooklyn_college","","","",""
+"3","1","76","LED146","map","8065.0","-4370.0","-135","2","STATION","Flatbush Av-Brooklyn College","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","126","irt_flatbush_av_brooklyn_college","","","",""
+"3","2","77","LED147","map","7810.2507","-4123.8349","-135","2","STATION","Newkirk Av-Little Haiti","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","91","newkirk_av_little_haiti","","","",""
+"3","3","78","LED250","map","7890.0","-4035.0","-135","5","STATION","Newkirk Av-Little Haiti","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","91","newkirk_av_little_haiti","","","",""
+"3","4","79","LED225","map","7630.0","-3790.0","-135","5","STATION","Beverly Rd","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","125","irt_beverly_rd","","","",""
+"3","5","80","LED145","map","7540.0","-3880.0","-135","2","STATION","Beverly Rd","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","125","irt_beverly_rd","","","",""
+"3","6","81","LED224","map","7370.0","-3550.0","-135","5","STATION","Church Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","124","irt_church_av","","","",""
+"3","7","82","LED144","map","7285.0","-3640.0","-135","2","STATION","Church Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","124","irt_church_av","","","",""
+"3","8","83","LED143","map","7023.899","-3390.7355","-135","2","STATION","Winthrop St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","123","irt_winthrop_st","","","",""
+"3","9","84","LED223","map","7100.0","-3300.0","-135","5","STATION","Winthrop St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","123","irt_winthrop_st","","","",""
+"3","10","85","LED222","map","6845.0","-3055.0","-135","5","STATION","Sterling St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","122","irt_sterling_st","","","",""
+"3","11","86","LED142","map","6755.0","-3140.0","-135","2","STATION","Sterling St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","122","irt_sterling_st","","","",""
+"3","12","87","LED141","map","6500.0","-2900.0","-135","2","STATION","President St-Medgar Evers College","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","121","irt_president_st_medgar_evers_college","","","",""
+"3","13","88","LED221","map","6580.0","-2810.0","-135","5","STATION","President St-Medgar Evers College","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","121","irt_president_st_medgar_evers_college","","","",""
+"3","14","89","LED196","map","7235.0","-1845.0","-47","3","STATION","Kingston Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","147","irt_kingston_av","","","",""
+"3","15","90","LED195","map","6815.0","-2245.0","-47","3","STATION","Nostrand Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","146","irt_nostrand_av","","","",""
+"3","16","91","LED302","map","6445.0","-2420.0","-45","4","SEGMENT","","Franklin Av-Medgar Evers College","Crown Hts-Utica Av","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork; approximately midway between Franklin Av-Medgar Evers College and Crown Hts-Utica Av.","","","89","127","franklin_av_medgar_evers_college","irt_crown_hts_utica_av"
+"3","17","92","LED301","map","5840.0","-2715.0","-90","3","SEGMENT","","Franklin Av-Medgar Evers College","Nostrand Av","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","89","146","franklin_av_medgar_evers_college","irt_nostrand_av"
+"3","18","93","LED300","map","5840.0","-2830.0","-90","2","SEGMENT","","Franklin Av-Medgar Evers College","President St-Medgar Evers College","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","89","121","franklin_av_medgar_evers_college","irt_president_st_medgar_evers_college"
+"3","19","94","LED183","map","5608.2398","-2996.5704","180","S","STATION","Botanic Garden","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","90","botanic_garden","","","",""
+"3","20","95","LED180","map","5425.0","-2830.0","-90","2","STATION","Franklin Av-Medgar Evers College","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","89","franklin_av_medgar_evers_college","","","",""
+"3","21","96","LED140","map","5425.0","-2710.0","-90","3","STATION","Franklin Av-Medgar Evers College","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","89","franklin_av_medgar_evers_college","","","",""
+"3","22","97","LED181","map","5425.0","-2595.0","-90","4","STATION","Franklin Av-Medgar Evers College","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","89","franklin_av_medgar_evers_college","","","",""
+"3","23","98","LED304","map","5610.0","-2385.0","180","S","SEGMENT","","Botanic Garden","Park Pl","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork. Human-confirmed Botanic Garden -> Park Pl despite physical proximity to Franklin Av-Medgar Evers College.","","","90","153","botanic_garden","franklin_shuttle_park_pl"
+"3","24","99","LED182","map","5424.2496","-2489.5854","-90","5","STATION","Franklin Av-Medgar Evers College","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","89","franklin_av_medgar_evers_college","","","",""
+"3","25","100","LED303","map","4960.0","-2495.0","-90","5","SEGMENT","","Atlantic Av-Barclays Ctr","Franklin Av-Medgar Evers College","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","2","89","brighton_line_atlantic_av_barclays_ctr","franklin_av_medgar_evers_college"
+"3","26","101","LED290","map","4815.0","-2900.0","-134","Q","SEGMENT","","7 Av","Prospect Park","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","3","4","brighton_line_7_av","brighton_line_prospect_park"
+"3","27","102","LED185","map","5605.0","-3325.0","180","S","STATION","Prospect Park","","","","VERIFIED","1.00","Manufactured V1.1 artwork places LED185 on the S lane at Prospect Park; CP25 assigns this designator to Prospect Park S.","4","brighton_line_prospect_park","","","",""
+"3","28","103","LED184","map","5520.0","-3395.0","-135","B","STATION","Prospect Park","","","","VERIFIED","1.00","Manufactured V1.1 artwork places LED184 on the B lane at Prospect Park; CP25 assigns this designator to Prospect Park B.","4","brighton_line_prospect_park","","","",""
+"3","29","104","LED51","map","5435.0","-3480.0","-134","Q","STATION","Prospect Park","","","","VERIFIED","1.00","Manufactured V1.1 artwork places LED51 on the Q lane at Prospect Park; CP25 station/service history corroborates Prospect Park Q.","4","brighton_line_prospect_park","","","",""
+"3","30","105","LED52","map","5625.0","-3655.0","-134","Q","STATION","Parkside Av","","","","VERIFIED","1.00","Manufactured V1.1 artwork places LED52 at the Parkside Av Q station marker; historical GTFS identifies the designator with Parkside Av.","11","brighton_line_parkside_av","","","",""
+"3","31","106","LED53","map","5810.0","-3835.0","-134","Q","STATION","Church Av","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as Q, separate from B counterpart LED231.","5","brighton_line_church_av","","","",""
+"3","32","107","LED231","map","5900.0","-3755.0","-135","B","STATION","Church Av","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as B, separate from Q counterpart LED53.","5","brighton_line_church_av","","","",""
+"3","33","108","LED54","map","6000.0","-4010.0","-134","Q","STATION","Beverley Rd","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; station marker lies on the established Q lane.","9","brighton_line_beverley_rd","","","",""
+"3","34","109","LED55","map","6195.0","-4190.0","-134","Q","STATION","Cortelyou Rd","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; station marker lies on the established Q lane.","10","brighton_line_cortelyou_rd","","","",""
+"3","35","110","LED56","map","6385.0","-4370.0","-134","Q","STATION","Newkirk Plaza","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as Q, separate from B counterpart LED232.","6","brighton_line_newkirk_plaza","","","",""
+"3","36","111","LED232","map","6470.0","-4290.0","-135","B","STATION","Newkirk Plaza","","","","VERIFIED","1.00","Manufactured V1.1 artwork plus human-reviewed geometry; repeated parallel-lane offset identifies this as B, separate from Q counterpart LED56.","6","brighton_line_newkirk_plaza","","","",""
+"4","0","112","LED220","map","4410.0","-2830.0","-90","2","STATION","Eastern Pkwy-Brooklyn Museum","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","139","irt_eastern_pkwy_brooklyn_museum","","","",""
+"4","1","113","LED139","map","4405.0","-2715.0","-90","3","STATION","Eastern Pkwy-Brooklyn Museum","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","139","irt_eastern_pkwy_brooklyn_museum","","","",""
+"4","2","114","LED230","map","4345.0","-2310.0","-135","B","STATION","7 Av","","","","VERIFIED","1.00","Manufactured V1.1 artwork, PCB coordinate geometry, and human-reviewed repeated B/Q lane offset; LED230 is the B lane at 7 Av and continues from the verified Prospect Park B/Q pair.","3","brighton_line_7_av","","","",""
+"4","3","115","LED50","map","4265.0","-2390.0","-135","Q","STATION","7 Av","","","","VERIFIED","1.00","Manufactured V1.1 artwork, PCB coordinate geometry, and human-reviewed repeated B/Q lane offset; LED50 is the Q lane at 7 Av and continues from the verified Prospect Park B/Q pair.","3","brighton_line_7_av","","","",""
+"4","4","116","LED138","map","4145.0","-2695.0","-105","3","STATION","Grand Army Plaza","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","138","irt_grand_army_plaza","","","",""
+"4","5","117","LED219","map","4130.0","-2810.0","-105","2","STATION","Grand Army Plaza","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","138","irt_grand_army_plaza","","","",""
+"4","6","118","LED137","map","3910.0","-2540.0","-135","3","STATION","Bergen St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","137","irt_bergen_st","","","",""
+"4","7","119","LED218","map","3825.0","-2615.0","-135","2","STATION","Bergen St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","137","irt_bergen_st","","","",""
+"4","8","120","LED17","map","3120.0","-2935.0","180","R","STATION","Union St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","159","fourth_avenue_union_st","","","",""
+"4","9","121","LED292","map","3245.0","-3195.0","180","N","SEGMENT","","Atlantic Av-Barclays Ctr","36 St","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","2","78","brighton_line_atlantic_av_barclays_ctr","fourth_avenue_line_36_st"
+"4","10","122","LED249","map","2293.3554","-3498.7881","-90","G","STATION","Smith-9 Sts","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","173","culver_line_smith_9_sts","","","",""
+"4","11","123","LED248","map","2045.0","-3370.0","180","G","STATION","Carroll St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","172","culver_line_carroll_st","","","",""
+"4","12","124","LED98","map","1925.0","-3370.0","180","F","STATION","Carroll St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","172","culver_line_carroll_st","","","",""
+"4","13","125","LED97","map","1925.0","-3125.0","180","F","STATION","Bergen St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","171","culver_line_bergen_st","","","",""
+"4","14","126","LED247","map","2045.0","-3125.0","180","G","STATION","Bergen St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","171","culver_line_bergen_st","","","",""
+"4","15","127","LED156","map","2230.0","-2905.0","90","G","STATION","Hoyt-Schermerhorn Sts","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","85","hoyt_schermerhorn_sts","","","",""
+"4","16","128","LED155","map","2235.0","-2795.0","-90","A","STATION","Hoyt-Schermerhorn Sts","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","85","hoyt_schermerhorn_sts","","","",""
+"4","17","129","LED119","map","2235.0","-2680.0","-90","C","STATION","Hoyt-Schermerhorn Sts","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","85","hoyt_schermerhorn_sts","","","",""
+"4","18","130","LED164","map","3125.0","-2330.0","180","R","STATION","Atlantic Av-Barclays Ctr","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","2","brighton_line_atlantic_av_barclays_ctr","","","",""
+"4","19","131","LED162","map","3240.0","-2330.0","180","N","STATION","Atlantic Av-Barclays Ctr","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","2","brighton_line_atlantic_av_barclays_ctr","","","",""
+"4","20","132","LED161","map","3365.0","-2330.0","180","D","STATION","Atlantic Av-Barclays Ctr","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","2","brighton_line_atlantic_av_barclays_ctr","","","",""
+"4","21","133","LED157","map","3520.0","-2320.0","-135","2","STATION","Atlantic Av-Barclays Ctr","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","2","brighton_line_atlantic_av_barclays_ctr","","","",""
+"4","22","134","LED136","map","3605.0","-2245.0","-135","3","STATION","Atlantic Av-Barclays Ctr","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","2","brighton_line_atlantic_av_barclays_ctr","","","",""
+"4","23","135","LED158","map","3685.54","-2163.1388","-135","4","STATION","Atlantic Av-Barclays Ctr","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","2","brighton_line_atlantic_av_barclays_ctr","","","",""
+"4","24","136","LED159","map","3775.0","-2085.0","-135","5","STATION","Atlantic Av-Barclays Ctr","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","2","brighton_line_atlantic_av_barclays_ctr","","","",""
+"4","25","137","LED163","map","3860.0","-2000.0","-135","Q","STATION","Atlantic Av-Barclays Ctr","","","","VERIFIED","1.00","manufactured V1.1 artwork + PCB coordinates + human-reviewed B/Q lane continuity","2","brighton_line_atlantic_av_barclays_ctr","","","",""
+"4","26","138","LED160","map","3945.0","-1925.0","-135","B","STATION","Atlantic Av-Barclays Ctr","","","","VERIFIED","1.00","manufactured V1.1 artwork + PCB coordinates + human-reviewed B/Q lane continuity","2","brighton_line_atlantic_av_barclays_ctr","","","",""
+"4","27","139","LED191","map","2955.0","-1525.0","-110","R","STATION","DeKalb Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","1","brighton_line_dekalb_av","","","",""
+"4","28","140","LED217","map","2565.0","-1880.0","-90","5","STATION","Nevins St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","106","irt_nevins_st","","","",""
+"4","29","141","LED215","map","2565.0","-1990.0","-90","4","STATION","Nevins St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","106","irt_nevins_st","","","",""
+"4","30","142","LED135","map","2565.0","-2100.0","-90","3","STATION","Nevins St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","106","irt_nevins_st","","","",""
+"4","31","143","LED216","map","2560.0","-2220.0","-90","2","STATION","Nevins St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","106","irt_nevins_st","","","",""
+"4","32","144","LED214","map","2100.0","-2210.0","-90","2","STATION","Hoyt St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","105","irt_hoyt_st","","","",""
+"4","33","145","LED134","map","2095.0","-2095.0","-90","3","STATION","Hoyt St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","105","irt_hoyt_st","","","",""
+"4","34","146","LED177","map","1350.0","-2205.0","-90","2","STATION","Borough Hall","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","88","borough_hall","","","",""
+"4","35","147","LED133","map","1350.0","-2095.0","-90","3","STATION","Borough Hall","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","88","borough_hall","","","",""
+"4","36","148","LED178","map","1350.0","-1985.0","-90","4","STATION","Borough Hall","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","88","borough_hall","","","",""
+"5","0","149","LED190","map","3150.0","-1345.0","-135","Q","STATION","DeKalb Av","","","","VERIFIED","1.00","manufactured V1.1 artwork + PCB coordinates + human-reviewed B/Q lane continuity","1","brighton_line_dekalb_av","","","",""
+"5","1","150","LED293","map","2545.0","-1505.0","-90","R","SEGMENT","","Jay St-MetroTech","DeKalb Av","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","84","1","jay_st_metrotech","brighton_line_dekalb_av"
+"5","2","151","LED154","map","2046.3254","-1502.6323","-90","R","STATION","Jay St-MetroTech","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","84","jay_st_metrotech","","","",""
+"5","3","152","LED153","map","1927.9313","-1502.6323","180","F","STATION","Jay St-MetroTech","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","84","jay_st_metrotech","","","",""
+"5","4","153","LED118","map","1810.3436","-1506.5197","180","C","STATION","Jay St-MetroTech","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","84","jay_st_metrotech","","","",""
+"5","5","154","LED152","map","1682.244","-1502.6323","180","A","STATION","Jay St-MetroTech","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","84","jay_st_metrotech","","","",""
+"5","6","155","LED179","map","1351.5112","-1872.5159","-90","5","STATION","Borough Hall","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","88","borough_hall","","","",""
+"5","7","156","LED10","map","1351.378","-1503.2283","-90","R","STATION","Court St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","102","bay_ridge_line_court_st","","","",""
+"5","8","157","LED213","map","1085.0","-1220.0","180","2","STATION","Clark St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","104","irt_clark_st","","","",""
+"5","9","158","LED132","map","1205.0","-1220.0","180","3","STATION","Clark St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","104","irt_clark_st","","","",""
+"5","10","159","LED209","map","1680.0","-860.0","180","A","STATION","High St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","103","high_st","","","",""
+"5","11","160","LED117","map","1805.0","-860.0","180","C","STATION","High St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","103","high_st","","","",""
+"5","12","161","LED294","map","1915.0","-860.0","180","F","SEGMENT","","Jay St-MetroTech","York St","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","84","107","jay_st_metrotech","culver_line_york_st"
+"5","13","162","LED311","map","2040.0","-465.0","-135","N","SEGMENT","","Canal St","Atlantic Av-Barclays Ctr","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","183","2","broadway_line_canal_st","brighton_line_atlantic_av_barclays_ctr"
+"5","14","163","LED310","map","2040.0","-310.0","-135","Q","SEGMENT","","Canal St","DeKalb Av","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","183","1","broadway_line_canal_st","brighton_line_dekalb_av"
+"5","15","164","LED309","map","2040.0","-150.0","-135","B","SEGMENT","","Grand St","DeKalb Av","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork. Supersedes historical bridge audit route D assignment; LED308/LED309 reversal is human-confirmed.","","","182","1","manhattan_bridge_grand_st","brighton_line_dekalb_av"
+"5","16","165","LED308","map","2050.0","-5.0","-135","D","SEGMENT","","Grand St","Atlantic Av-Barclays Ctr","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork. Supersedes historical bridge audit route B assignment; LED309/LED308 reversal is human-confirmed.","","","182","2","manhattan_bridge_grand_st","brighton_line_atlantic_av_barclays_ctr"
+"5","17","166","LED188","map","1925.0","330.0","180","F","STATION","York St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","107","culver_line_york_st","","","",""
+"5","18","167","LED291","map","1715.1575","611.5354","-133","F","SEGMENT","","York St","East Broadway","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork. Supersedes historical D assignment.","","","107","184","culver_line_york_st","culver_line_east_broadway"
+"5","19","168","LED285","map","675.0","1115.0","-135","B","SEGMENT","","Grand St","DeKalb Av","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","182","1","manhattan_bridge_grand_st","brighton_line_dekalb_av"
+"5","20","169","LED286","map","760.0","1200.0","-135","D","SEGMENT","","Grand St","Atlantic Av-Barclays Ctr","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","182","2","manhattan_bridge_grand_st","brighton_line_atlantic_av_barclays_ctr"
+"5","21","170","LED255","map","1149.7776","1654.868","180","F","STATION","Delancey St–Essex St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","185","manhattan_bridge_delancey_st","","","",""
+"5","22","171","LED256","map","1144.7776","1542.7746","-90","M","STATION","Delancey St–Essex St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","185","manhattan_bridge_delancey_st","","","",""
+"5","23","172","LED257","map","1150.0","1420.0","-90","J","STATION","Delancey St–Essex St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","185","manhattan_bridge_delancey_st","","","",""
+"5","24","173","LED258","map","1145.0","1310.0","-90","Z","STATION","Delancey St–Essex St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","185","manhattan_bridge_delancey_st","","","",""
+"5","25","174","LED259","map","1260.0","1045.0","-135","F","STATION","East Broadway","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","184","culver_line_east_broadway","","","",""
+"5","26","175","LED234","map","2305.0","1310.0","-90","Z","STATION","Marcy Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","118","broadway_marcy_av","","","",""
+"5","27","176","LED62","map","2300.0","1425.0","-90","J","STATION","Marcy Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","118","broadway_marcy_av","","","",""
+"5","28","177","LED235","map","2308.7215","1541.744","-90","M","STATION","Marcy Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","118","broadway_marcy_av","","","",""
+"5","29","178","LED236","map","2815.0","1535.0","-90","M","STATION","Hewes St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","180","broadway_hewes_st","","","",""
+"5","30","179","LED63","map","2815.0","1420.0","-90","J","STATION","Hewes St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","180","broadway_hewes_st","","","",""
+"5","31","180","LED297","map","3275.0","1530.0","-90","M","SEGMENT","","Hewes St","Lorimer St","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","180","109","broadway_hewes_st","broadway_lorimer_st"
+"5","32","181","LED9","map","3035.0","1920.0","-135","G","STATION","Broadway","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.","35","crosstown_line_broadway","","","",""
+"5","33","182","LED82","map","3283.4646","2843.5039","-90","L","STATION","Montrose Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","136","canarsie_montrose_av","","","",""
+"5","34","183","LED81","map","2875.0","3067.9134","-135","L","STATION","Grand St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","135","canarsie_grand_st","","","",""
+"5","35","184","LED80","map","2553.4958","3353.3583","-90","L","STATION","Graham Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","134","canarsie_graham_av","","","",""
+"5","36","185","LED295","map","2579.685","2336.5354","-135","G","SEGMENT","","Lorimer St","Broadway","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","170","35","crosstown_lorimer_st","crosstown_line_broadway"
+"5","37","186","LED96","map","2125.0","2760.0","-135","G","STATION","Lorimer St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork. Supersedes historical G / Metropolitan Av (G29); registry/GTFS naming review flagged, with human assignment retained.","170","crosstown_lorimer_st","","","",""
+"5","38","187","LED79","map","2135.0","3000.0","-45","L","STATION","Lorimer St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","133","canarsie_lorimer_st","","","",""
+"5","39","188","LED78","map","1326.378","2849.7244","-90","L","STATION","Bedford Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","132","canarsie_bedford_av","","","",""
+"5","40","189","LED95","map","1405.0","3440.0","-135","G","STATION","Nassau Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","169","crosstown_nassau_av","","","",""
+"5","41","190","LED187","map","1323.4252","3698.1496","180","G","SEGMENT","","Greenpoint Av","Nassau Av","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","186","169","crosstown_greenpoint_av","crosstown_nassau_av"
+"6","0","191","LED194","map","5610.0","-1845.0","180","S","STATION","Park Pl","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","153","franklin_shuttle_park_pl","","","",""
+"6","1","192","LED176","map","5605.0","-1150.0","180","S","STATION","Franklin Av-Fulton St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","87","franklin_av_fulton_st","","","",""
+"6","2","193","LED210","map","5875.0","-735.0","-45","A","STATION","Nostrand Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","152","fulton_line_nostrand_av","","","",""
+"6","3","194","LED124","map","6225.0","-260.0","-45","C","STATION","Kingston-Throop Avs","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","140","fulton_line_kingston_throop_avs","","","",""
+"6","4","195","LED123","map","5800.0","-660.0","-45","C","STATION","Nostrand Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","152","fulton_line_nostrand_av","","","",""
+"6","5","196","LED122","map","5440.0","-995.0","-47","C","STATION","Franklin Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","151","fulton_line_franklin_av","","","",""
+"6","6","197","LED121","map","5110.0","-1300.0","-47","C","STATION","Clinton-Washington Avs","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","150","fulton_line_clinton_washington_avs","","","",""
+"6","7","198","LED288","map","4630.0","-1385.0","-90","C","SEGMENT","","Lafayette Av","Clinton-Washington Avs","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","181","150","fulton_line_lafayette_av","fulton_line_clinton_washington_avs"
+"6","8","199","LED120","map","4140.0","-1390.0","-90","C","STATION","Lafayette Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","181","fulton_line_lafayette_av","","","",""
+"6","9","200","LED287","map","3925.0","-1610.0","-48","A","SEGMENT","","Hoyt-Schermerhorn Sts","Nostrand Av","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","85","152","hoyt_schermerhorn_sts","fulton_line_nostrand_av"
+"6","10","201","LED189","map","3235.0","-1265.0","-135","B","STATION","DeKalb Av","","","","VERIFIED","1.00","manufactured V1.1 artwork + PCB coordinates + human-reviewed B/Q lane continuity","1","brighton_line_dekalb_av","","","",""
+"6","11","202","LED16","map","3910.0","-955.0","180","G","STATION","Fulton St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.","41","crosstown_line_fulton_st","","","",""
+"6","12","203","LED15","map","3910.0","-535.0","180","G","STATION","Clinton-Washington Avs","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.","40","crosstown_line_clinton_washington_avs","","","",""
+"6","13","204","LED14","map","3910.0","-160.0","180","G","STATION","Classon Av","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.","39","crosstown_line_classon_av","","","",""
+"6","14","205","LED13","map","3915.0","195.0","180","G","STATION","Bedford-Nostrand Avs","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.","38","crosstown_line_bedford_nostrand_avs","","","",""
+"6","15","206","LED12","map","3915.0","555.0","180","G","STATION","Myrtle-Willoughby Avs","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.","37","crosstown_line_myrtle_willoughby_avs","","","",""
+"6","16","207","LED11","map","3915.0","925.0","180","G","STATION","Flushing Av","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP04.","36","crosstown_line_flushing_av","","","",""
+"6","17","208","LED298","map","4000.8268","1310.6693","-90","Z","SEGMENT","","Marcy Av","Myrtle Av","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","118","111","broadway_marcy_av","broadway_myrtle_av"
+"6","18","209","LED64","map","3783.2994","1428.0356","-90","J","STATION","Lorimer St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","109","broadway_lorimer_st","","","",""
+"6","19","210","LED237","map","3784.2969","1535.8731","-90","M","STATION","Lorimer St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","109","broadway_lorimer_st","","","",""
+"6","20","211","LED238","map","4240.0","1530.0","-90","M","STATION","Flushing Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","110","broadway_flushing_av","","","",""
+"6","21","212","LED65","map","4242.1108","1423.0356","-90","J","STATION","Flushing Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","110","broadway_flushing_av","","","",""
+"6","22","213","LED240","map","4720.0","1300.0","-90","Z","STATION","Myrtle Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","111","broadway_myrtle_av","","","",""
+"6","23","214","LED66","map","4725.0","1420.0","-90","J","STATION","Myrtle Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","111","broadway_myrtle_av","","","",""
+"6","24","215","LED239","map","4725.0","1535.0","-90","M","STATION","Myrtle Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","111","broadway_myrtle_av","","","",""
+"6","25","216","LED192","map","5240.0","1835.0","-47","M","STATION","Central Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","115","myrtle_line_central_av","","","",""
+"6","26","217","LED67","map","5275.0","1420.0","-90","J","STATION","Kosciuszko St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","112","broadway_kosciuszko_st","","","",""
+"6","27","218","LED296","map","5305.0","1305.0","-90","Z","SEGMENT","","Myrtle Av","Gates Av","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","111","117","broadway_myrtle_av","broadway_gates_av"
+"6","28","219","LED68","map","5845.0","1420.0","-90","J","STATION","Gates Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","117","broadway_gates_av","","","",""
+"6","29","220","LED241","map","5845.0","1305.0","-90","Z","STATION","Gates Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","117","broadway_gates_av","","","",""
+"6","30","221","LED193","map","5585.0","2160.0","-45","M","STATION","Knickerbocker Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","116","myrtle_line_knickerbocker_av","","","",""
+"6","31","222","LED86","map","5600.0","2850.0","-90","L","STATION","Myrtle-Wyckoff Avs","","","","VERIFIED","1.00","Current V1.1 artwork + historical GTFS/CP12 + transfer-expansion design intent + route sequence.","70","canarsie_line_myrtle_wyckoff_avs","","","",""
+"6","32","223","LED170","map","5715.0","2850.0","0","M","STATION","Myrtle-Wyckoff Avs","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","70","canarsie_line_myrtle_wyckoff_avs","","","",""
+"6","33","224","LED254","map","5720.0","3305.0","0","M","STATION","Seneca Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","145","broadway_seneca_av","","","",""
+"6","34","225","LED85","map","5045.0","2850.0","-90","L","STATION","DeKalb Av","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.","46","canarsie_line_dekalb_av","","","",""
+"6","35","226","LED84","map","4455.0","2845.0","-90","L","STATION","Jefferson St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","114","canarsie_jefferson_st","","","",""
+"6","36","227","LED83","map","3930.0","2850.0","-90","L","STATION","Morgan Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","113","canarsie_morgan_av","","","",""
+"7","0","228","LED198","map","7660.0","-1455.0","-47","3","STATION","Crown Hts-Utica Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","127","irt_crown_hts_utica_av","","","",""
+"7","1","229","LED197","map","7585.0","-1365.0","-47","4","STATION","Crown Hts-Utica Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","127","irt_crown_hts_utica_av","","","",""
+"7","2","230","LED199","map","8080.0","-1065.0","-47","3","STATION","Sutter Av-Rutland Rd","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","148","irt_sutter_av_rutland_rd","","","",""
+"7","3","231","LED200","map","8415.0","-755.0","-47","3","STATION","Saratoga Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","149","irt_saratoga_av","","","",""
+"7","4","232","LED201","map","8760.0","-430.0","-47","3","STATION","Rockaway Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","187","irt_rockaway_av","","","",""
+"7","5","233","LED90","map","8550.0","865.0","-133","L","STATION","Atlantic Av","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.","50","canarsie_line_atlantic_av","","","",""
+"7","6","234","LED128","map","8607.3738","1423.0356","-90","C","STATION","Liberty Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","94","fulton_line_liberty_av","","","",""
+"7","7","235","LED129","map","8919.8247","1462.6998","-45","C","STATION","Van Siclen Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","95","fulton_line_van_siclen_av","","","",""
+"7","8","236","LED130","map","9125.0","1650.0","-45","C","STATION","Shepherd Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","96","fulton_line_shepherd_av","","","",""
+"7","9","237","LED212","map","9415.0","1770.0","-45","A","STATION","Euclid Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","97","euclid_av","","","",""
+"7","10","238","LED131","map","9335.0","1850.0","-45","C","STATION","Euclid Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","97","euclid_av","","","",""
+"7","11","239","LED245","map","9085.0","2560.0","-47","Z","STATION","Norwood Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","129","broadway_norwood_av","","","",""
+"7","12","240","LED246","map","9365.0","3055.0","0","Z","STATION","Crescent St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","130","broadway_crescent_st","","","",""
+"7","13","241","LED77","map","9240.0","3475.0","0","J","STATION","Cypress Hills","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","131","broadway_cypress_hills","","","",""
+"7","14","242","LED76","map","9245.0","3055.0","0","J","STATION","Crescent St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","130","broadway_crescent_st","","","",""
+"7","15","243","LED75","map","8995.0","2645.0","-47","J","STATION","Norwood Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","129","broadway_norwood_av","","","",""
+"7","16","244","LED74","map","8740.0","2400.0","-47","J","STATION","Cleveland St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","128","broadway_cleveland_st","","","",""
+"7","17","245","LED73","map","8490.0","2170.0","-47","J","STATION","Van Siclen Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","100","broadway_van_siclen_av","","","",""
+"7","18","246","LED244","map","8575.0","2090.0","-47","Z","STATION","Van Siclen Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","100","broadway_van_siclen_av","","","",""
+"7","19","247","LED243","map","8320.0","1850.0","-47","Z","STATION","Alabama Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","99","broadway_alabama_av","","","",""
+"7","20","248","LED72","map","8235.0","1935.0","-47","J","STATION","Alabama Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","99","broadway_alabama_av","","","",""
+"7","21","249","LED151","map","7819.425","1547.7148","-45","L","STATION","Broadway Junction","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","83","broadway_junction","","","",""
+"7","22","250","LED71","map","7737.0512","1472.1069","-45","J","STATION","Broadway Junction","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","83","broadway_junction","","","",""
+"7","23","251","LED150","map","7824.425","1399.1932","-45","Z","STATION","Broadway Junction","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","83","broadway_junction","","","",""
+"7","24","252","LED148","map","7909.4705","1314.9325","135","C","STATION","Broadway Junction","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","83","broadway_junction","","","",""
+"7","25","253","LED149","map","8000.0","1225.0","-45","A","STATION","Broadway Junction","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","83","broadway_junction","","","",""
+"7","26","254","LED299","map","8220.0","1175.0","-133","L","SEGMENT","","Broadway Junction","Atlantic Av","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","83","50","broadway_junction","canarsie_line_atlantic_av"
+"7","27","255","LED127","map","7295.0","735.0","315","C","STATION","Rockaway Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","143","fulton_line_rockaway_av","","","",""
+"7","28","256","LED126","map","6960.0","425.0","315","C","STATION","Ralph Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","142","fulton_line_ralph_av","","","",""
+"7","29","257","LED211","map","6725.0","55.0","-45","A","STATION","Utica Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","141","fulton_line_utica_av","","","",""
+"7","30","258","LED125","map","6645.0","135.0","-45","C","STATION","Utica Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","141","fulton_line_utica_av","","","",""
+"7","31","259","LED69","map","6385.0","1420.0","-90","J","STATION","Halsey St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","119","broadway_halsey_st","","","",""
+"7","32","260","LED242","map","6965.0","1310.0","-90","Z","STATION","Chauncey St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","120","broadway_chauncey_st","","","",""
+"7","33","261","LED70","map","6960.0","1420.0","-90","J","STATION","Chauncey St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","120","broadway_chauncey_st","","","",""
+"7","34","262","LED89","map","7225.0","2095.0","-135","L","STATION","Bushwick Av-Aberdeen St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.","49","canarsie_line_bushwick_av_aberdeen_st","","","",""
+"7","35","263","LED88","map","6780.0","2510.0","-135","L","STATION","Wilson Av","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.","48","canarsie_line_wilson_av","","","",""
+"7","36","264","LED87","map","6270.0","2845.0","-90","L","STATION","Halsey St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.","47","canarsie_line_halsey_st","","","",""
+"7","37","265","LED253","map","5717.126","3701.1024","0","M","STATION","Forest Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","144","broadway_forest_av","","","",""
+"8","0","266","LED252","status_system","10307.4295","-7607.7149","90","","STATUS","SYSTEM","","","","VERIFIED_NON_MAP","VERIFIED","Manufactured V1.1 front-panel status labeling","","","","","",""
+"8","1","267","LED251","status_network","10307.4295","-7371.4944","90","","STATUS","NETWORK","","","","VERIFIED_NON_MAP","VERIFIED","Manufactured V1.1 front-panel status labeling","","","","","",""
+"8","2","268","LED306","status_mta_feed","10307.4295","-7135.274","90","","STATUS","MTA FEED","","","","VERIFIED_NON_MAP","VERIFIED","Manufactured V1.1 front-panel status labeling","","","","","",""
+"8","3","269","LED307","status_mode","10307.4295","-6899.0535","90","","STATUS","MODE","","","","VERIFIED_NON_MAP","VERIFIED","Manufactured V1.1 front-panel status labeling","","","","","",""
+"8","4","270","LED284","map","12200.0","-1605.0","135","A","STATION","Rockaway Park-Beach 116 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","158","rockaway_line_rockaway_park_beach_116_st","","","",""
+"8","5","271","LED283","map","12120.0","-1515.0","135","S","STATION","Rockaway Park-Beach 116 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","158","rockaway_line_rockaway_park_beach_116_st","","","",""
+"8","6","272","LED281","map","12460.0","-1205.0","135","S","STATION","Beach 105 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","157","rockaway_line_beach_105_st","","","",""
+"8","7","273","LED282","map","12545.0","-1285.0","135","A","STATION","Beach 105 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","157","rockaway_line_beach_105_st","","","",""
+"8","8","274","LED279","map","12805.0","-885.0","135","S","STATION","Beach 98 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","156","rockaway_line_beach_98_st","","","",""
+"8","9","275","LED280","map","12890.0","-970.0","135","A","STATION","Beach 98 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","156","rockaway_line_beach_98_st","","","",""
+"8","10","276","LED278","map","13215.0","-660.0","135","A","STATION","Beach 90 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","155","rockaway_line_beach_90_st","","","",""
+"8","11","277","LED277","map","13135.0","-575.0","135","S","STATION","Beach 90 St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","155","rockaway_line_beach_90_st","","","",""
+"8","12","278","LED305","map","13035.0","200.0","45","S","SEGMENT","","Broad Channel","Beach 90 St","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","","","154","155","rockaway_line_broad_channel","rockaway_line_beach_90_st"
+"8","13","279","LED276","map","13545.0","365.0","0","A","STATION","Beach 67 St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted projected center + A-line branch topology.","68","rockaway_beach_67_st","","","",""
+"8","14","280","LED275","map","13550.0","730.0","0","A","STATION","Beach 60 St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted projected center + A-line branch topology.","67","rockaway_beach_60_st","","","",""
+"8","15","281","LED274","map","13550.0","1100.0","0","A","STATION","Beach 44 St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted projected center + A-line branch topology.","66","rockaway_beach_44_st","","","",""
+"8","16","282","LED273","map","13550.0","1470.0","0","A","STATION","Beach 36 St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted projected center + A-line branch topology.","65","rockaway_beach_36_st","","","",""
+"8","17","283","LED272","map","13550.0","1835.0","0","A","STATION","Beach 25 St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted projected center + A-line branch topology.","64","rockaway_beach_25_st","","","",""
+"8","18","284","LED271","map","13550.0","2295.0","0","A","STATION","Far Rockaway-Mott Av","","","","VERIFIED","1.00","Current V1.1 artwork + accepted projected center + A-line branch topology.","63","a_line_far_rockaway_mott_av","","","",""
+"8","19","285","LED269","map","12650.0","715.0","-135","A","STATION","Broad Channel","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","154","rockaway_line_broad_channel","","","",""
+"8","20","286","LED270","map","12570.0","635.0","45","S","STATION","Broad Channel","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","154","rockaway_line_broad_channel","","","",""
+"8","21","287","LED268","map","11490.0","1800.0","-135","A","STATION","Howard Beach-JFK Airport","","","","VERIFIED","1.00","Current V1.1 artwork + accepted projected center + A-line branch topology.","62","a_line_howard_beach_jfk_airport","","","",""
+"8","22","288","LED267","map","11140.0","2125.0","-135","A","STATION","Aqueduct-North Conduit Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","93","a_line_aqueduct_north_conduit_av","","","",""
+"8","23","289","LED266","map","10840.0","2410.0","-135","A","STATION","Aqueduct Racetrack","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","92","a_line_aqueduct_racetrack","","","",""
+"8","24","290","LED265","map","11145.0","3375.0","-45","A","STATION","Ozone Park-Lefferts Blvd","","","","VERIFIED","1.00","Current V1.1 artwork + accepted projected center + A-line branch topology.","61","a_line_ozone_park_lefferts_blvd","","","",""
+"8","25","291","LED264","map","10875.0","3125.0","-45","A","STATION","111 St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted projected center + A-line branch topology.","60","a_line_111_st","","","",""
+"8","26","292","LED263","map","10600.0","2870.0","-45","A","STATION","104 St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted projected center + A-line branch topology.","59","a_line_104_st","","","",""
+"8","27","293","LED262","map","10280.0","2570.0","-45","A","STATION","Rockaway Blvd","","","","VERIFIED","1.00","Current V1.1 artwork + accepted projected center + A-line branch topology.","58","a_line_rockaway_blvd","","","",""
+"8","28","294","LED261","map","10070.0","2375.0","-45","A","STATION","88 St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted projected center + A-line branch topology.","57","a_line_88_st","","","",""
+"8","29","295","LED260","map","9845.0","2165.0","-45","A","STATION","80 St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted projected center + A-line branch topology.","56","a_line_80_st","","","",""
+"8","30","296","LED186","map","9635.0","1965.0","-45","A","STATION","Grant Av","","","","VERIFIED","1.00","Current V1.1 artwork + accepted projected center + A-line branch topology.","55","a_line_grant_av","","","",""
+"8","31","297","LED205","map","10135.0","850.0","-45","3","STATION","New Lots Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","98","new_lots_av_3","","","",""
+"8","32","298","LED204","map","9870.0","605.0","-45","3","STATION","Van Siclen Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","101","irt_van_siclen_av","","","",""
+"8","33","299","LED203","map","9610.0","360.0","-45","3","STATION","Pennsylvania Av","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","108","irt_pennsylvania_av","","","",""
+"8","34","300","LED91","map","9085.0","365.0","-133","L","STATION","Sutter Av","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.","51","canarsie_line_sutter_av","","","",""
+"8","35","301","LED202","map","9095.0","-115.0","-45","3","STATION","Junius St","","","","VERIFIED","1.00","Human identified from CPL-derived final V1.1 artwork.","188","irt_junius_st","","","",""
+"8","36","302","LED92","map","9605.0","-120.0","-135","L","STATION","Livonia Av","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.","52","canarsie_line_livonia_av","","","",""
+"8","37","303","LED93","map","10000.0","-485.0","-135","L","STATION","New Lots Av","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.","53","canarsie_line_new_lots_av","","","",""
+"8","38","304","LED94","map","10054.4881","-973.8499","180","L","STATION","East 105 St","","","","VERIFIED","1.00","Current V1.1 artwork + accepted physical registration + direct historical designator continuity + historical station/service mapping; corroborated by CP12.","54","canarsie_line_east_105_st","","","",""
+"8","39","305","LED8","map","10055.0","-1450.0","180","L","STATION","Canarsie-Rockaway Pkwy","","","","VERIFIED","1.00","Current V1.1 artwork + historical GTFS station/service identity + route-terminal topology.","69","canarsie_line_canarsie_rockaway_pkwy","","","",""
