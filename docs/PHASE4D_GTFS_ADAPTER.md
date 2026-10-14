@@ -60,7 +60,7 @@ missing IDs live in `data/gtfs_stop_map.csv`, derived from the official MTA
 `stops.txt` / `stop_times.txt` / `trips.txt`:
 
 - all 43 registry IDs are reproduced and verified (name and served route);
-- all 188 stations map, via 195 parent stops (`evidence` column per row);
+- all 188 stations map, via 197 parent stops (195 at the Phase 4D freeze; R33 and M08 added in Phase 4E) (`evidence` column per row);
 - matching uses names **plus** served routes intersecting the entity's map
   routes, never names alone; multi-parent matches are accepted only for
   registry-noted complexes or when route subsets disambiguate.
@@ -140,6 +140,6 @@ the result carries enough detail (`position`, `resolved`) for that layer.
 ## Tests
 
 `python tools/run_gtfs_adapter_tests.py` — 7,309 checks, 0 failures: route
-parsing, all 195 stops plus N/S forms, every station LED via every GTFS parent
+parsing, all 197 stops plus N/S forms, every station LED via every GTFS parent
 of its station, all 276 station LEDs and all 26 segment LEDs forward/reverse, B and D bridge progress
 boundaries, 104 unrepresented adjacent pairs, and invalid combinations.

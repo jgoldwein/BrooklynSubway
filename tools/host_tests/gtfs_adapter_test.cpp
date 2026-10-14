@@ -119,7 +119,7 @@ void testRoutes() {
 }
 
 void testStopTable() {
-  CHECK(kGtfsStopCount == 195);
+  CHECK(kGtfsStopCount == 197);
   for (uint16_t i = 0; i < kGtfsStopCount; ++i) {
     const GtfsStop &s = kGtfsStops[i];
     CHECK(strlen(s.stopId) == 3);

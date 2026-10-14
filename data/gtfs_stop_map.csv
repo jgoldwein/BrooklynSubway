@@ -157,6 +157,7 @@ L28,54,East 105 St,East 105 St,L,L,40.650573,-73.899485,registry-verified
 L29,69,Canarsie-Rockaway Pkwy,Canarsie-Rockaway Pkwy,L,L,40.646654,-73.901850,registry-verified
 M05,144,Forest Av,Forest Av,M,M,40.704423,-73.903077,name+route
 M06,145,Seneca Av,Seneca Av,M,M,40.702762,-73.907740,name+route
+M08,70,Myrtle-Wyckoff Avs,Myrtle-Wyckoff Avs,M,L/M,40.699430,-73.912385,name+route; M-line platform of the registry-verified Myrtle-Wyckoff Avs entity (registry: L and M LEDs share station 70); separate GTFS parent from L17
 M09,116,Knickerbocker Av,Knickerbocker Av,M,M,40.698664,-73.919711,name+route
 M10,115,Central Av,Central Av,M,M,40.697857,-73.927397,name+route
 M11,111,Myrtle Av,Myrtle Av,J/M/Z,J/M/Z,40.697207,-73.935657,name+route
@@ -180,6 +181,7 @@ R29,84,Jay St-MetroTech,Jay St-MetroTech,N/R,A/C/F/R,40.692180,-73.985942,name+r
 R30,1,DeKalb Av,DeKalb Av,B/D/N/Q/R,B/Q/R,40.690635,-73.981824,name+route
 R31,2,Atlantic Av-Barclays Ctr,Atlantic Av-Barclays Ctr,D/N/R,2/3/4/5/B/D/N/Q/R,40.683666,-73.978810,name+route; registry note says complex
 R32,159,Union St,Union St,D/N/R,R,40.677316,-73.983110,name+route
+R33,86,4 Av-9 St,4 Av-9 St,N/R,F/G/R,40.670847,-73.988302,name+route; R-line platform of the registry-verified 4 Av-9 St entity (registry note: reused by R LED18); separate GTFS parent from F23
 R34,160,Prospect Av,Prospect Av,D/N/R,R,40.665414,-73.992872,name+route
 R35,73,25 St,25 St,D/N/R,R,40.660397,-73.998091,registry-verified
 R36,78,36 St,36 St,D/N/R,D/N/R,40.655144,-74.003549,registry-verified
