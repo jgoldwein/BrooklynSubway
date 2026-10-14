@@ -56,6 +56,14 @@ FrameAdd addResolvedTrain(TrainFrame &frame, const ResolveResult &resolved);
 // Adds an adapter result: counted only when status == Match.
 FrameAdd addGtfsResult(TrainFrame &frame, const GtfsMapResult &result);
 
+// Two-step form used by the Phase 4I pipeline to defer a train's contribution
+// without mutating the frame. validatedGlobalIndex applies the same identity
+// validation as addResolvedTrain (and requires status == Match); on success it
+// returns true and stores the canonical global index. addValidatedLed counts
+// one train on that index (false if it is not a canonical map LED).
+bool validatedGlobalIndex(const GtfsMapResult &result, uint16_t &globalIndex);
+bool addValidatedLed(TrainFrame &frame, uint16_t globalIndex);
+
 // Clears then adds every result. Order-independent. Returns trains Added.
 size_t composeTrainFrame(TrainFrame &frame, const GtfsMapResult *results, size_t count);
 
