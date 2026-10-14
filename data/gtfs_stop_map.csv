@@ -1,0 +1,196 @@
+gtfs_parent_stop_id,station_id,registry_name,gtfs_stop_name,gtfs_routes,registry_routes,lat,lon,evidence
+231,104,Clark St,Clark St,2/3,2/3,40.697466,-73.993086,name+route
+232,88,Borough Hall,Borough Hall,2/3,2/3/4/5,40.693219,-73.989998,name+route; registry note says complex
+233,105,Hoyt St,Hoyt St,2/3,2/3,40.690545,-73.985065,name+route
+234,106,Nevins St,Nevins St,2/3/4/5,2/3/4/5,40.688246,-73.980492,name+route
+235,2,Atlantic Av-Barclays Ctr,Atlantic Av-Barclays Ctr,2/3/4/5,2/3/4/5/B/D/N/Q/R,40.684359,-73.977666,name+route; registry note says complex
+236,137,Bergen St,Bergen St,2/3/4,2/3,40.680829,-73.975098,name+route
+237,138,Grand Army Plaza,Grand Army Plaza,2/3/4,2/3,40.675235,-73.971046,name+route
+238,139,Eastern Pkwy-Brooklyn Museum,Eastern Pkwy-Brooklyn Museum,2/3/4,2/3,40.671987,-73.964375,name+route
+239,89,Franklin Av-Medgar Evers College,Franklin Av-Medgar Evers College,2/3/4/5,2/3/4/5,40.670682,-73.958131,name+route
+241,121,President St-Medgar Evers College,President St-Medgar Evers College,2/5,2/5,40.667883,-73.950683,name+route
+242,122,Sterling St,Sterling St,2/5,2/5,40.662742,-73.950850,name+route
+243,123,Winthrop St,Winthrop St,2/5,2/5,40.656652,-73.950200,name+route
+244,124,Church Av,Church Av,2/5,2/5,40.650843,-73.949575,name+route
+245,125,Beverly Rd,Beverly Rd,2/5,2/5,40.645098,-73.948959,name+route
+246,91,Newkirk Av-Little Haiti,Newkirk Av-Little Haiti,2/5,2/5,40.639967,-73.948411,name+route
+247,126,Flatbush Av-Brooklyn College,Flatbush Av-Brooklyn College,2/5,2/5,40.632836,-73.947642,name+route
+248,146,Nostrand Av,Nostrand Av,2/3/4/5,3,40.669847,-73.950466,name+route
+249,147,Kingston Av,Kingston Av,2/3/4/5,3,40.669399,-73.942161,name+route
+250,127,Crown Hts-Utica Av,Crown Hts-Utica Av,2/3/4/5,3/4,40.668897,-73.932942,name+route
+251,148,Sutter Av-Rutland Rd,Sutter Av-Rutland Rd,2/3/4/5,3,40.664717,-73.922610,name+route
+252,149,Saratoga Av,Saratoga Av,2/3/4/5,3,40.661453,-73.916327,name+route
+253,187,Rockaway Av,Rockaway Av,2/3/4/5,3,40.662549,-73.908946,name+route
+254,188,Junius St,Junius St,2/3/4/5,3,40.663515,-73.902447,name+route
+255,108,Pennsylvania Av,Pennsylvania Av,2/3/4/5,3,40.664635,-73.894895,name+route
+256,101,Van Siclen Av,Van Siclen Av,2/3/4/5,3,40.665449,-73.889395,name+route
+257,98,New Lots Av,New Lots Av,2/3/4/5,3,40.666235,-73.884079,name+route
+423,88,Borough Hall,Borough Hall,4/5,2/3/4/5,40.692404,-73.990151,name+route; registry note says complex
+A40,103,High St,High St,A/C,A/C,40.699337,-73.990531,registry-verified
+A41,84,Jay St-MetroTech,Jay St-MetroTech,A/C/F,A/C/F/R,40.692338,-73.987342,name+route; registry note says complex
+A42,85,Hoyt-Schermerhorn Sts,Hoyt-Schermerhorn Sts,A/C/G,A/C/G,40.688484,-73.985001,name+route
+A43,181,Lafayette Av,Lafayette Av,A/C,C,40.686113,-73.973946,name+route
+A44,150,Clinton-Washington Avs,Clinton-Washington Avs,A/C,C,40.683263,-73.965838,name+route
+A45,151,Franklin Av,Franklin Av,A/C,C,40.681380,-73.956848,name+route
+A46,152,Nostrand Av,Nostrand Av,A/C,A/C,40.680438,-73.950426,name+route
+A47,140,Kingston-Throop Avs,Kingston-Throop Avs,A/C,C,40.679921,-73.940858,name+route
+A48,141,Utica Av,Utica Av,A/C,A/C,40.679364,-73.930729,name+route
+A49,142,Ralph Av,Ralph Av,A/C,C,40.678822,-73.920786,name+route
+A50,143,Rockaway Av,Rockaway Av,A/C,C,40.678340,-73.911946,name+route
+A51,83,Broadway Junction,Broadway Junction,A/C,A/C/J/L/Z,40.678334,-73.905316,name+route; registry note says complex
+A52,94,Liberty Av,Liberty Av,A/C,C,40.674542,-73.896548,registry-verified
+A53,95,Van Siclen Av,Van Siclen Av,A/C,C,40.672710,-73.890358,registry-verified
+A54,96,Shepherd Av,Shepherd Av,A/C,C,40.674130,-73.880750,registry-verified
+A55,97,Euclid Av,Euclid Av,A/C,A/C,40.675377,-73.872106,registry-verified
+A57,55,Grant Av,Grant Av,A,A,40.677044,-73.865050,name+route
+A59,56,80 St,80 St,A,A,40.679371,-73.858992,name+route
+A60,57,88 St,88 St,A,A,40.679843,-73.851470,name+route
+A61,58,Rockaway Blvd,Rockaway Blvd,A/S,A,40.680429,-73.843853,name+route
+A63,59,104 St,104 St,A,A,40.681711,-73.837683,name+route
+A64,60,111 St,111 St,A,A,40.684331,-73.832163,name+route
+A65,61,Ozone Park-Lefferts Blvd,Ozone Park-Lefferts Blvd,A,A,40.685951,-73.825798,name+route
+B12,74,9 Av,9 Av,D/R,D,40.646292,-73.994324,registry-verified
+B13,75,Fort Hamilton Pkwy,Fort Hamilton Pkwy,D,D,40.640914,-73.994304,registry-verified
+B14,76,50 St,50 St,D,D,40.636260,-73.994791,registry-verified
+B15,77,55 St,55 St,D,D,40.631435,-73.995476,registry-verified
+B16,161,62 St,62 St,D/R,D,40.626472,-73.996895,name+route
+B17,162,71 St,71 St,D,D,40.619589,-73.998864,name+route
+B18,163,79 St,79 St,D,D,40.613501,-74.000610,name+route
+B19,164,18 Av,18 Av,D,D,40.607954,-74.001736,name+route
+B20,165,20 Av,20 Av,D,D,40.604556,-73.998168,name+route
+B21,166,Bay Pkwy,Bay Pkwy,D/R,D,40.601875,-73.993728,name+route
+B22,167,25 Av,25 Av,D,D,40.597704,-73.986829,name+route
+B23,168,Bay 50 St,Bay 50 St,D,D,40.588841,-73.983765,name+route
+D22,182,Grand St,Grand St,B/D,B/D,40.718267,-73.993753,name+route
+D24,2,Atlantic Av-Barclays Ctr,Atlantic Av-Barclays Ctr,B/Q,2/3/4/5/B/D/N/Q/R,40.684460,-73.976890,name+route; registry note says complex
+D25,3,7 Av,7 Av,B/Q,B/Q,40.677050,-73.972367,name+route; only candidate whose routes are all shown at this entity
+D26,4,Prospect Park,Prospect Park,B/Q/S,B/Q/S,40.661614,-73.962246,name+route
+D27,11,Parkside Av,Parkside Av,Q,Q,40.655292,-73.961495,name+route
+D28,5,Church Av,Church Av,B/Q,B/Q,40.650527,-73.962982,name+route
+D29,9,Beverley Rd,Beverley Rd,Q,Q,40.644031,-73.964492,name+route
+D30,10,Cortelyou Rd,Cortelyou Rd,Q,Q,40.640927,-73.963891,name+route
+D31,6,Newkirk Plaza,Newkirk Plaza,B/Q,B/Q,40.635082,-73.962793,name+route
+D32,12,Avenue H,Avenue H,Q,Q,40.629270,-73.961639,name+route
+D33,13,Avenue J,Avenue J,Q,Q,40.625039,-73.960803,name+route
+D34,14,Avenue M,Avenue M,Q,Q,40.617618,-73.959399,name+route
+D35,7,Kings Hwy,Kings Hwy,B/Q,B/Q,40.608670,-73.957734,name+route
+D37,15,Avenue U,Avenue U,Q,Q,40.599300,-73.955929,name+route
+D38,16,Neck Rd,Neck Rd,Q,Q,40.595246,-73.955161,name+route
+D39,8,Sheepshead Bay,Sheepshead Bay,B/Q,B/Q,40.586896,-73.954155,name+route
+D40,17,Brighton Beach,Brighton Beach,B/Q,B/Q,40.577621,-73.961376,name+route
+D41,18,Ocean Pkwy,Ocean Pkwy,Q,Q,40.576312,-73.968501,name+route
+D42,33,W 8 St-NY Aquarium,W 8 St-NY Aquarium,F/Q,F/Q,40.576127,-73.975939,name+route
+D43,34,Coney Island-Stillwell Av,Coney Island-Stillwell Av,D/F/N/Q,D/F/N/Q,40.577422,-73.981233,name+route
+F15,185,Delancey St–Essex St,Delancey St-Essex St,F,F/J/M/Z,40.718611,-73.988114,name+route; registry note says complex
+F16,184,East Broadway,East Broadway,F,F,40.713715,-73.990173,name+route
+F18,107,York St,York St,F,F,40.701397,-73.986751,name+route
+F20,171,Bergen St,Bergen St,F/G,F/G,40.686145,-73.990862,name+route
+F21,172,Carroll St,Carroll St,F/G,F/G,40.680303,-73.995048,name+route
+F22,173,Smith-9 Sts,Smith-9 Sts,F/G,F/G,40.673580,-73.995959,name+route
+F23,86,4 Av-9 St,4 Av-9 St,F/G,F/G/R,40.670272,-73.989779,registry-verified
+F24,21,7 Av,7 Av,F/G,F/G,40.666271,-73.980305,name+route
+F25,22,15 St-Prospect Park,15 St-Prospect Park,F/G,F/G,40.660365,-73.979493,name+route
+F26,20,Fort Hamilton Pkwy,Fort Hamilton Pkwy,F/G,F/G,40.650782,-73.975776,name+route
+F27,19,Church Av,Church Av,F/G,F/G,40.644041,-73.979678,name+route
+F29,23,Ditmas Av,Ditmas Av,F,F,40.636119,-73.978172,name+route
+F30,24,18 Av,18 Av,F,F,40.629755,-73.976971,name+route
+F31,25,Avenue I,Avenue I,F,F,40.625322,-73.976127,name+route
+F32,26,Bay Pkwy,Bay Pkwy,F,F,40.620769,-73.975264,name+route
+F33,27,Avenue N,Avenue N,F,F,40.615140,-73.974197,name+route
+F34,28,Avenue P,Avenue P,F,F,40.608944,-73.973022,name+route
+F35,29,Kings Hwy,Kings Hwy,F,F,40.603217,-73.972361,name+route
+F36,30,Avenue U,Avenue U,F,F,40.596063,-73.973357,name+route
+F38,31,Avenue X,Avenue X,F,F,40.589620,-73.974250,name+route
+F39,32,Neptune Av,Neptune Av,F,F,40.581011,-73.974574,name+route
+G26,186,Greenpoint Av,Greenpoint Av,G,G,40.731352,-73.954449,name+route
+G28,169,Nassau Av,Nassau Av,G,G,40.724635,-73.951277,name+route
+G30,35,Broadway,Broadway,G,G,40.706092,-73.950308,registry-verified
+G31,36,Flushing Av,Flushing Av,G,G,40.700377,-73.950234,registry-verified
+G32,37,Myrtle-Willoughby Avs,Myrtle-Willoughby Avs,G,G,40.694568,-73.949046,registry-verified
+G33,38,Bedford-Nostrand Avs,Bedford-Nostrand Avs,G,G,40.689627,-73.953522,registry-verified
+G34,39,Classon Av,Classon Av,G,G,40.688873,-73.960070,registry-verified
+G35,40,Clinton-Washington Avs,Clinton-Washington Avs,G,G,40.688089,-73.966839,registry-verified
+G36,41,Fulton St,Fulton St,G,G,40.687119,-73.975375,registry-verified
+H01,92,Aqueduct Racetrack,Aqueduct Racetrack,A/S,A,40.672097,-73.835919,name+route
+H02,93,Aqueduct-North Conduit Av,Aqueduct-N Conduit Av,A/S,A,40.668234,-73.834058,name+route
+H03,62,Howard Beach-JFK Airport,Howard Beach-JFK Airport,A/S,A,40.660476,-73.830301,name+route
+H04,154,Broad Channel,Broad Channel,A/S,A/S,40.608382,-73.815925,name+route
+H06,68,Beach 67 St,Beach 67 St,A,A,40.590927,-73.796924,name+route
+H07,67,Beach 60 St,Beach 60 St,A,A,40.592374,-73.788522,name+route
+H08,66,Beach 44 St,Beach 44 St,A,A,40.592943,-73.776013,name+route
+H09,65,Beach 36 St,Beach 36 St,A,A,40.595398,-73.768175,name+route
+H10,64,Beach 25 St,Beach 25 St,A,A,40.600066,-73.761353,name+route
+H11,63,Far Rockaway-Mott Av,Far Rockaway-Mott Av,A,A,40.603995,-73.755405,name+route
+H12,155,Beach 90 St,Beach 90 St,A/S,A/S,40.588034,-73.813641,name+route
+H13,156,Beach 98 St,Beach 98 St,A/S,A/S,40.585307,-73.820558,name+route
+H14,157,Beach 105 St,Beach 105 St,A/S,A/S,40.583209,-73.827559,name+route
+H15,158,Rockaway Park-Beach 116 St,Rockaway Park-Beach 116 St,A/S,A/S,40.580903,-73.835592,name+route
+J19,131,Cypress Hills,Cypress Hills,J,J,40.689941,-73.872550,name+route
+J20,130,Crescent St,Crescent St,J/Z,J/Z,40.683194,-73.873785,name+route
+J21,129,Norwood Av,Norwood Av,J/Z,J/Z,40.681410,-73.880039,name+route
+J22,128,Cleveland St,Cleveland St,J,J,40.679947,-73.884639,name+route
+J23,100,Van Siclen Av,Van Siclen Av,J/Z,J/Z,40.678024,-73.891688,registry-verified
+J24,99,Alabama Av,Alabama Av,J/Z,J/Z,40.676992,-73.898654,registry-verified
+J27,83,Broadway Junction,Broadway Junction,J/Z,A/C/J/L/Z,40.679498,-73.904512,name+route; registry note says complex
+J28,120,Chauncey St,Chauncey St,J/Z,J/Z,40.682893,-73.910456,name+route
+J29,119,Halsey St,Halsey St,J,J,40.686370,-73.916559,name+route
+J30,117,Gates Av,Gates Av,J/Z,J/Z,40.689630,-73.922270,name+route
+J31,112,Kosciuszko St,Kosciuszko St,J,J,40.693342,-73.928814,name+route
+L08,132,Bedford Av,Bedford Av,L,L,40.717304,-73.956872,name+route
+L10,133,Lorimer St,Lorimer St,L,L,40.714063,-73.950275,name+route
+L11,134,Graham Av,Graham Av,L,L,40.714565,-73.944053,name+route
+L12,135,Grand St,Grand St,L,L,40.711926,-73.940670,name+route
+L13,136,Montrose Av,Montrose Av,L,L,40.707739,-73.939850,name+route
+L14,113,Morgan Av,Morgan Av,L,L,40.706152,-73.933147,name+route
+L15,114,Jefferson St,Jefferson St,L,L,40.706607,-73.922913,name+route
+L16,46,DeKalb Av,DeKalb Av,L,L,40.703811,-73.918425,registry-verified
+L17,70,Myrtle-Wyckoff Avs,Myrtle-Wyckoff Avs,L,L/M,40.699814,-73.911586,registry-verified
+L19,47,Halsey St,Halsey St,L,L,40.695602,-73.904084,registry-verified
+L20,48,Wilson Av,Wilson Av,L,L,40.688764,-73.904046,registry-verified
+L21,49,Bushwick Av-Aberdeen St,Bushwick Av-Aberdeen St,L,L,40.682829,-73.905249,registry-verified
+L22,83,Broadway Junction,Broadway Junction,L,A/C/J/L/Z,40.678856,-73.903240,name+route; registry note says complex
+L24,50,Atlantic Av,Atlantic Av,L,L,40.675345,-73.903097,registry-verified
+L25,51,Sutter Av,Sutter Av,L,L,40.669367,-73.901975,registry-verified
+L26,52,Livonia Av,Livonia Av,L,L,40.664038,-73.900571,registry-verified
+L27,53,New Lots Av,New Lots Av,L,L,40.658733,-73.899232,registry-verified
+L28,54,East 105 St,East 105 St,L,L,40.650573,-73.899485,registry-verified
+L29,69,Canarsie-Rockaway Pkwy,Canarsie-Rockaway Pkwy,L,L,40.646654,-73.901850,registry-verified
+M05,144,Forest Av,Forest Av,M,M,40.704423,-73.903077,name+route
+M06,145,Seneca Av,Seneca Av,M,M,40.702762,-73.907740,name+route
+M09,116,Knickerbocker Av,Knickerbocker Av,M,M,40.698664,-73.919711,name+route
+M10,115,Central Av,Central Av,M,M,40.697857,-73.927397,name+route
+M11,111,Myrtle Av,Myrtle Av,J/M/Z,J/M/Z,40.697207,-73.935657,name+route
+M12,110,Flushing Av,Flushing Av,J/M,J/M,40.700260,-73.941126,name+route
+M13,109,Lorimer St,Lorimer St,J/M,J/M,40.703869,-73.947408,name+route
+M14,180,Hewes St,Hewes St,J/M,J/M,40.706870,-73.953431,name+route
+M16,118,Marcy Av,Marcy Av,J/M/Z,J/M/Z,40.708359,-73.957757,name+route
+M18,185,Delancey St–Essex St,Delancey St-Essex St,J/M/Z,F/J/M/Z,40.718315,-73.987437,name+route; registry note says complex
+N02,80,8 Av,8 Av,N,N,40.635064,-74.011719,registry-verified
+N03,81,Fort Hamilton Pkwy,Fort Hamilton Pkwy,N,N,40.631386,-74.005351,registry-verified
+N04,82,New Utrecht Av,New Utrecht Av,N,N,40.624842,-73.996353,registry-verified
+N05,174,18 Av,18 Av,N,N,40.620671,-73.990414,name+route
+N06,175,20 Av,20 Av,N,N,40.617410,-73.985026,name+route
+N07,176,Bay Pkwy,Bay Pkwy,N,N,40.611815,-73.981848,name+route
+N08,177,Kings Hwy,Kings Hwy,N,N,40.603923,-73.980353,name+route
+N09,178,Avenue U,Avenue U,N,N,40.597473,-73.979137,name+route
+N10,179,86 St,86 St,N,N,40.592721,-73.978230,name+route; only candidate whose routes are all shown at this entity
+Q01,183,Canal St,Canal St,N/Q,N/Q,40.718383,-74.000460,name+route; only candidate whose routes are all shown at this entity
+R28,102,Court St,Court St,N/R,R,40.694100,-73.991777,registry-verified
+R29,84,Jay St-MetroTech,Jay St-MetroTech,N/R,A/C/F/R,40.692180,-73.985942,name+route; registry note says complex
+R30,1,DeKalb Av,DeKalb Av,B/D/N/Q/R,B/Q/R,40.690635,-73.981824,name+route
+R31,2,Atlantic Av-Barclays Ctr,Atlantic Av-Barclays Ctr,D/N/R,2/3/4/5/B/D/N/Q/R,40.683666,-73.978810,name+route; registry note says complex
+R32,159,Union St,Union St,D/N/R,R,40.677316,-73.983110,name+route
+R34,160,Prospect Av,Prospect Av,D/N/R,R,40.665414,-73.992872,name+route
+R35,73,25 St,25 St,D/N/R,R,40.660397,-73.998091,registry-verified
+R36,78,36 St,36 St,D/N/R,D/N/R,40.655144,-74.003549,registry-verified
+R39,42,45 St,45 St,N/R,R,40.648939,-74.010006,registry-verified
+R40,43,53 St,53 St,N/R,R,40.645069,-74.014034,registry-verified
+R41,79,59 St,59 St,N/R,N/R,40.641362,-74.017881,registry-verified
+R42,72,Bay Ridge Av,Bay Ridge Av,R,R,40.634967,-74.023377,registry-verified
+R43,44,77 St,77 St,R,R,40.629742,-74.025510,registry-verified
+R44,45,86 St,86 St,R,R,40.622687,-74.028398,registry-verified
+R45,71,Bay Ridge-95 St,Bay Ridge-95 St,R,R,40.616622,-74.030876,registry-verified
+S01,87,Franklin Av-Fulton St,Franklin Av,S,S,40.680596,-73.955827,name-token+route (Franklin Av shuttle)
+S03,153,Park Pl,Park Pl,S,S,40.674772,-73.957624,name+route
+S04,90,Botanic Garden,Botanic Garden,S,S,40.670343,-73.959245,name+route
+G29,170,Lorimer St,Metropolitan Av,G,G,40.712792,-73.951418,cross-system alias: human-confirmed semantic name is Lorimer St on the physical map; official GTFS G-route parent is G29 Metropolitan Av at the Lorimer St-Metropolitan Av transfer complex

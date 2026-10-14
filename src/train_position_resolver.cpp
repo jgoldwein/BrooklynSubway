@@ -91,6 +91,22 @@ ResolveResult resolveTrainPositionIn(const MapLed *table, uint16_t count,
                        found->channelIndex, found};
 }
 
+uint8_t segmentPixelCount(Route route, uint16_t endpointA, uint16_t endpointB) {
+  if (!validRoute(route) || !validStationId(endpointA) ||
+      !validStationId(endpointB) || endpointA == endpointB) {
+    return 0;
+  }
+  for (uint16_t i = 0; i < kMapLedCount; ++i) {
+    const MapLed &led = kMapLeds[i];
+    if (led.route == route && led.role == Role::Segment &&
+        ((led.endpointA == endpointA && led.endpointB == endpointB) ||
+         (led.endpointA == endpointB && led.endpointB == endpointA))) {
+      return led.segmentSlotCount;
+    }
+  }
+  return 0;
+}
+
 ResolveResult resolveTrainPosition(const TrainMapPosition &position) {
   return resolveTrainPositionIn(kMapLeds, kMapLedCount, position);
 }
