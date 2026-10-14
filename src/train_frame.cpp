@@ -38,17 +38,10 @@ bool identityValid(const ResolveResult &r) {
 
 void clearFrame(TrainFrame &frame) { memset(&frame, 0, sizeof frame); }
 
-FrameAdd addResolvedTrain(TrainFrame &frame, const ResolveResult &resolved) {
-  if (resolved.status != ResolveStatus::Match) {
-    if (frame.ignoredTrains < 0xFFFF) ++frame.ignoredTrains;
-    return FrameAdd::Ignored;
-  }
-  if (!identityValid(resolved)) {
-    if (frame.rejectedTrains < 0xFFFF) ++frame.rejectedTrains;
-    return FrameAdd::Rejected;
-  }
+namespace {
 
-  uint8_t &count = frame.occupancy[resolved.globalIndex];
+FrameAdd countLed(TrainFrame &frame, uint16_t globalIndex) {
+  uint8_t &count = frame.occupancy[globalIndex];
   if (frame.resolvedTrains < 0xFFFFFFFFu) ++frame.resolvedTrains;
   if (count == 0) {
     ++frame.occupiedLeds;
@@ -65,12 +58,44 @@ FrameAdd addResolvedTrain(TrainFrame &frame, const ResolveResult &resolved) {
   return FrameAdd::Added;
 }
 
+}  // namespace
+
+FrameAdd addResolvedTrain(TrainFrame &frame, const ResolveResult &resolved) {
+  if (resolved.status != ResolveStatus::Match) {
+    if (frame.ignoredTrains < 0xFFFF) ++frame.ignoredTrains;
+    return FrameAdd::Ignored;
+  }
+  if (!identityValid(resolved)) {
+    if (frame.rejectedTrains < 0xFFFF) ++frame.rejectedTrains;
+    return FrameAdd::Rejected;
+  }
+  return countLed(frame, resolved.globalIndex);
+}
+
 FrameAdd addGtfsResult(TrainFrame &frame, const GtfsMapResult &result) {
   if (result.status != GtfsMapStatus::Match) {
     if (frame.ignoredTrains < 0xFFFF) ++frame.ignoredTrains;
     return FrameAdd::Ignored;
   }
   return addResolvedTrain(frame, result.resolved);
+}
+
+bool validatedGlobalIndex(const GtfsMapResult &result, uint16_t &globalIndex) {
+  if (result.status != GtfsMapStatus::Match || result.resolved.status != ResolveStatus::Match ||
+      !identityValid(result.resolved)) {
+    return false;
+  }
+  globalIndex = result.resolved.globalIndex;
+  return true;
+}
+
+bool addValidatedLed(TrainFrame &frame, uint16_t globalIndex) {
+  if (globalIndex >= kFrameLedCount || semanticForLed(globalIndex) == nullptr) return false;
+  led::map::PhysicalLed phys{};
+  if (!led::map::physicalLed(led::GlobalPhysicalIndex{globalIndex}, phys)) return false;
+  if (phys.role != led::LedRole::Map) return false;
+  countLed(frame, globalIndex);
+  return true;
 }
 
 size_t composeTrainFrame(TrainFrame &frame, const GtfsMapResult *results, size_t count) {

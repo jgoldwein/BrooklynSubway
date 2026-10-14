@@ -8,10 +8,15 @@
 #include "led_backend.h"
 #include "led_engine.h"
 #include "logical_map.h"
+#include "train_pipeline.h"
 
 #include <Arduino.h>
 
 namespace {
+
+// Phase 4I: in-memory train pipeline. No feed source exists yet; it is exercised
+// once at startup with an empty cycle and never drives LEDs.
+brooklyn::pipeline::TrainPipeline trainPipeline;
 
 void runXiaoLedTest() {
   brooklyn::diagnostics::begin();
@@ -76,6 +81,8 @@ void setup() {
 #endif
 
   brooklyn::diagnostics::begin();
+  Serial.printf("Train pipeline self-check (no feeds, no LED output): %s\n",
+                brooklyn::pipeline::selfCheckEmptyCycle(trainPipeline) ? "PASS" : "FAIL");
   if (!hardwareReady) {
     Serial.println("ERROR: I2C initialization failed; LED outputs remain disabled.");
   }

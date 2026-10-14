@@ -23,6 +23,7 @@ CORE_SOURCES = [
     ROOT / "src/led_map.cpp",
     ROOT / "src/train_frame.cpp",
     ROOT / "src/rgb_renderer.cpp",
+    ROOT / "src/train_pipeline.cpp",
 ]
 
 
@@ -38,7 +39,7 @@ def compiler():
 
 
 def build(main_cpp, exe):
-    cmd = compiler() + ["-std=c++17", "-Wall", "-Wextra", "-Werror", "-O1",
+    cmd = compiler() + ["-std=c++17", "-Wall", "-Wextra", "-Werror", "-O1", "-fno-exceptions",
                         f"-I{ROOT / 'include'}", f"-I{ROOT / 'tools/host_tests'}",
                         str(main_cpp), *map(str, CORE_SOURCES), "-o", str(exe)]
     r = subprocess.run(cmd, capture_output=True, text=True)
