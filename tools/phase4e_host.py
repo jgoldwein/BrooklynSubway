@@ -21,6 +21,7 @@ CORE_SOURCES = [
     ROOT / "src/semantic_api.cpp",
     ROOT / "src/generated/semantic_tables.cpp",
     ROOT / "src/led_map.cpp",
+    ROOT / "src/train_frame.cpp",
 ]
 
 

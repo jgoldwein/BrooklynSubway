@@ -103,5 +103,7 @@ Phase 4F linked cost (forced-link measurement, reference removed from tree): fla
 
 ## Final clean builds (default firmware, Phase 4F not force-linked)
 
-- brooklyn-s3: RAM 20,456 B, flash 285,901 B (+112 B vs Phase 4E 285,789 B, decoder/toolchain-level variation).
+- brooklyn-s3: RAM 20,456 B, flash 285,901 B (+112 B vs Phase 4E 285,789 B).
 - xiao-s3: RAM 25,972 B, flash 264,937 B (+112 B vs 264,825 B).
+
+The clean default build was 112 bytes larger than the Phase 4E checkpoint on both targets. The cause of this small difference was not investigated.
