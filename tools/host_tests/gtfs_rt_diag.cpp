@@ -10,6 +10,7 @@
 
 #include "gtfs_rt_state.h"
 #include "semantic_api.h"
+#include "train_frame.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -153,13 +154,79 @@ void printCompare(const Compare &c) {
   printf("ResolvedSegment: host index %u, firmware topology %u\n", c.hostSegments, c.topoSegments);
 }
 
+// ---- Phase 4G: logical frame diagnostics (host layer keeps trip ids) -------
+
+struct TrainFrameHost {
+  sem::TrainFrame frame;
+  static constexpr int kIds = 8;
+  char trip[sem::kFrameLedCount][kIds][kTripIdMax];
+  char route[sem::kFrameLedCount][kIds][4];
+  uint8_t stored[sem::kFrameLedCount];
+  unsigned fed, added, notAdded;
+  unsigned duplicateTrips;
+  char seen[4000][kTripIdMax];
+  unsigned seenCount;
+};
+
+void frameAdd(TrainFrameHost &h, const RtTrain &t, const Observation &o) {
+  ++h.fed;
+  bool dup = false;
+  for (unsigned i = 0; i < h.seenCount; ++i)
+    if (strcmp(h.seen[i], t.tripId) == 0) { dup = true; break; }
+  if (dup) ++h.duplicateTrips;
+  else if (h.seenCount < 4000) snprintf(h.seen[h.seenCount++], kTripIdMax, "%s", t.tripId);
+  if (sem::addGtfsResult(h.frame, o.result) != sem::FrameAdd::Added) { ++h.notAdded; return; }
+  ++h.added;
+  const unsigned g = o.result.resolved.globalIndex;
+  if (h.stored[g] < TrainFrameHost::kIds) {
+    snprintf(h.trip[g][h.stored[g]], kTripIdMax, "%s", t.tripId);
+    snprintf(h.route[g][h.stored[g]], 4, "%s", t.routeId);
+    ++h.stored[g];
+  }
+}
+
+void printFrame(const TrainFrameHost &h) {
+  const sem::TrainFrame &f = h.frame;
+  unsigned st = 0, sg = 0, statusOcc = 0, nonMap = 0;
+  for (unsigned i = 0; i < sem::kFrameLedCount; ++i) {
+    if (!f.occupancy[i]) continue;
+    const sem::MapLed *m = sem::semanticForLed(i);
+    if (!m) { ++statusOcc; continue; }
+    (m->role == sem::Role::Station ? st : sg)++;
+  }
+  nonMap = statusOcc;
+  printf("\n== Phase 4G logical frame ==\n");
+  printf("resolved trains offered: %u   trains added to frame: %u   not added: %u\n", h.fed, h.added,
+         h.notAdded);
+  printf("duplicate trip_ids among offered: %u (upstream merge contract check)\n", h.duplicateTrips);
+  printf("resolved trains in frame:   %u\n", f.resolvedTrains);
+  printf("unique occupied LEDs:       %u (station %u, segment %u)\n", f.occupiedLeds, st, sg);
+  printf("collision LEDs:             %u   excess trains: %u   max occupancy: %u\n", f.collisionLeds,
+         f.excessTrains, f.maxOccupancy);
+  printf("status LEDs occupied:       %u   non-map occupied: %u   rejected: %u\n", statusOcc, nonMap,
+         f.rejectedTrains);
+  for (unsigned i = 0; i < sem::kFrameLedCount; ++i) {
+    if (f.occupancy[i] < 2) continue;
+    const sem::MapLed *m = sem::semanticForLed(i);
+    char where[80];
+    if (m->role == sem::Role::Station)
+      snprintf(where, sizeof where, "STATION %u %s", m->stationId, sem::stationName(m->stationId));
+    else
+      snprintf(where, sizeof where, "SEG %u-%u slot %u/%u", m->endpointA, m->endpointB, m->segmentSlot,
+               m->segmentSlotCount);
+    printf("  collision LED%u (global %u, ch%u/%u) route %s %s occupancy %u trips:", m->designator, i,
+           m->channel, m->channelIndex, sem::routeName(m->route), where, f.occupancy[i]);
+    for (unsigned k = 0; k < h.stored[i]; ++k) printf(" %s[%s]", h.trip[i][k], h.route[i][k]);
+    printf("\n");
+  }
+}
 }  // namespace
 
 int main(int argc, char **argv) {
   const char *patterns = nullptr;
   const char *routeFilter = nullptr;
   const char *catFilter = nullptr;
-  bool verbose = false, all = false, quiet = false, useTopology = false, compare = false;
+  bool verbose = false, all = false, quiet = false, useTopology = false, compare = false, frameMode = false;
   uint32_t maxAge = kDefaultMaxVehicleAgeSec, now = 0;
   long limit = -1;
   const char *files[32];
@@ -178,6 +245,7 @@ int main(int argc, char **argv) {
     else if (!strcmp(a, "--summary-only")) quiet = true;
     else if (!strcmp(a, "--topology")) useTopology = true;
     else if (!strcmp(a, "--compare")) compare = true;
+    else if (!strcmp(a, "--frame")) frameMode = true;
     else if (nfiles < 32) files[nfiles++] = a;
   }
   if (nfiles == 0) {
@@ -206,6 +274,7 @@ int main(int argc, char **argv) {
   topoCfg.previousStop = topologyPreviousStop;
   Compare cmp{};
 
+  static TrainFrameHost fh;
   static RtTrain trains[kMaxTrips];
   unsigned counts[kCategories] = {};
   unsigned reasons[16] = {};
@@ -246,6 +315,7 @@ int main(int argc, char **argv) {
       if (o.category != Category::UnsupportedRoute) ++supported;
       if (!t.hasVehicle) ++noVehicle;
       if (compare) compareTrain(t, st.headerTimestamp, hostCfg, topoCfg, cmp);
+      if (frameMode && (o.category == Category::ResolvedStation || o.category == Category::ResolvedSegment)) frameAdd(fh, t, o);
       if (o.adapted && o.result.resolved.status == sem::ResolveStatus::Match && o.result.resolved.semantic) {
         ++stationLeds;
         const unsigned d = o.result.resolved.semantic->designator;
@@ -312,6 +382,7 @@ int main(int argc, char **argv) {
     printf("previous stop source:    exact=%d fallback=%d none=%d\n", provider.exact, provider.fallback,
            provider.none);
   if (compare) printCompare(cmp);
+  if (frameMode) printFrame(fh);
   printf("resolved to LED:         %u trains on %u shared LEDs (max %u trains on one LED)\n", stationLeds,
          shared, maxShared);
   return decodeErrors ? 1 : 0;
