@@ -29,6 +29,7 @@ ROOT = Path(__file__).resolve().parent.parent
 WORKSHEET = ROOT / "docs/mapping/phase3b/phase3b_semantic_mapping_worksheet.csv"
 REGISTRY = ROOT / "docs/mapping/phase3b/station_registry.csv"
 CHAIN = ROOT / "data/led_chain_map.csv"
+SEGMENT_ORDER = ROOT / "data/segment_pixel_order.csv"
 OUT_H = ROOT / "include/generated/semantic_tables.h"
 OUT_CPP = ROOT / "src/generated/semantic_tables.cpp"
 
@@ -249,14 +250,71 @@ def build():
              f"missing={sorted(chain_map - seen_designator)} "
              f"extra={sorted(seen_designator - chain_map)}")
 
+    apply_segment_order(records, {r["designator"] for r in map_rows})
+
     records.sort(key=lambda r: r["global"])
     return registry, records
+
+
+NO_SLOT = 0  # STATION records: segmentSlot and segmentSlotCount are both 0.
+
+
+def apply_segment_order(records, map_rows):
+    """Attach segmentSlot/segmentSlotCount from the Phase 4 supplemental file."""
+    rows = read_csv(SEGMENT_ORDER)
+    by_des = {}
+    for row in rows:
+        des = row["designator"]
+        if des in by_des:
+            fail(f"{SEGMENT_ORDER.name}: duplicate designator {des}")
+        by_des[des] = row
+
+    seg_records = {r["des"]: r for r in records if r["role"] == "Segment"}
+    for des in by_des:
+        if des not in map_rows:
+            fail(f"{SEGMENT_ORDER.name}: {des} is not a map LED")
+        if des not in seg_records:
+            fail(f"{SEGMENT_ORDER.name}: {des} is not a SEGMENT LED")
+    missing = sorted(set(seg_records) - set(by_des))
+    if missing:
+        fail(f"{SEGMENT_ORDER.name} omits SEGMENT LEDs: {missing}")
+
+    for des, row in by_des.items():
+        rec = seg_records[des]
+        if row["route"] != rec["route"] or \
+                (int(row["from_station_id"]), int(row["to_station_id"])) != (rec["a"], rec["b"]):
+            fail(f"{SEGMENT_ORDER.name}: {des} route/endpoints disagree with Phase 3B")
+        try:
+            slot, count = int(row["segment_slot"]), int(row["segment_slot_count"])
+        except ValueError:
+            fail(f"{SEGMENT_ORDER.name}: {des} missing slot metadata")
+        if count < 1 or count > 254 or not 0 <= slot < count:
+            fail(f"{SEGMENT_ORDER.name}: {des} slot {slot} outside count {count}")
+        rec["slot"], rec["slot_count"] = slot, count
+
+    groups = {}
+    for rec in seg_records.values():
+        groups.setdefault((rec["route"], frozenset((rec["a"], rec["b"]))), []).append(rec)
+    for (route, _), members in groups.items():
+        label = f"{route} {members[0]['a']}->{members[0]['b']}"
+        if len({(m["a"], m["b"]) for m in members}) != 1:
+            fail(f"segment group {label}: members stored with differing direction")
+        slots = sorted(m["slot"] for m in members)
+        if slots != list(range(len(members))):
+            fail(f"segment group {label}: slots {slots} are not unique and contiguous from 0")
+        if any(m["slot_count"] != len(members) for m in members):
+            fail(f"segment group {label}: slotCount != number of LEDs ({len(members)})")
+
+    for rec in records:
+        if rec["role"] == "Station":
+            rec["slot"], rec["slot_count"] = NO_SLOT, NO_SLOT
 
 
 def render(registry, records):
     src_hash_ws = sha256_normalized(WORKSHEET)
     src_hash_reg = sha256_normalized(REGISTRY)
     src_hash_chain = sha256_normalized(CHAIN)
+    src_hash_order = sha256_normalized(SEGMENT_ORDER)
 
     station_leds = {sid: [] for sid in registry}
     for i, rec in enumerate(records):
@@ -280,6 +338,7 @@ def render(registry, records):
 //   {WORKSHEET.name}: {src_hash_ws}
 //   {REGISTRY.name}: {src_hash_reg}
 //   {CHAIN.relative_to(ROOT).as_posix()}: {src_hash_chain}
+//   {SEGMENT_ORDER.relative_to(ROOT).as_posix()} (Phase 4 supplemental): {src_hash_order}
 // Regenerate with: python tools/generate_semantic_tables.py
 """
 
@@ -322,6 +381,9 @@ struct Station {{
 // One record per physical map LED, sorted by global physical order.
 // STATION: stationId != 0, endpointA == endpointB == 0.
 // SEGMENT: stationId == 0, endpointA/endpointB are registry station IDs.
+// segmentSlot is the zero-based pixel position along the stored endpointA ->
+// endpointB direction; segmentSlotCount is the number of LEDs in that segment.
+// STATION records carry segmentSlot == segmentSlotCount == 0.
 struct MapLed {{
   uint16_t designator;    // N in "LEDN"
   uint16_t globalOrder;   // 0..305 across channels 1..8
@@ -332,6 +394,8 @@ struct MapLed {{
   uint8_t channelIndex;   // 0-based within the channel
   Route route;
   Role role;
+  uint8_t segmentSlot;
+  uint8_t segmentSlotCount;
 }};
 
 extern const char *const kRouteNames[kRouteCount + 1];  // [0] == ""
@@ -373,11 +437,12 @@ const uint16_t *stationLedIndices(uint16_t stationId, uint16_t &count);
     L.append("};\n")
 
     L.append("const MapLed kMapLeds[kMapLedCount] = {")
-    L.append("    // designator, global, station, endpointA, endpointB, ch, idx, route, role")
+    L.append("    // designator, global, station, endpointA,     endpointB, ch, idx, route, role, slot, slotCount")
     for r in records:
         L.append(f"    {{{r['designator']}, {r['global']}, {r['station']}, {r['a']}, "
                  f"{r['b']}, {r['channel']}, {r['index']}, Route::{ROUTE_ENUM[r['route']]}, "
-                 f"Role::{r['role']}}},  // {r['des']} {r['route']} {r['role'].upper()}")
+                     f"Role::{r['role']}, {r['slot']}, {r['slot_count']}}},  "
+                     f"// {r['des']} {r['route']} {r['role'].upper()}")
     L.append("};\n")
 
     L.append("namespace {")
@@ -394,7 +459,7 @@ const uint16_t *stationLedIndices(uint16_t stationId, uint16_t &count);
     L.append("}  // namespace\n")
 
     L.append(f"""\
-static_assert(sizeof(MapLed) == 14, "MapLed layout changed");
+static_assert(sizeof(MapLed) == 16, "MapLed layout changed");
 static_assert(kChannelOffsets[7] + kChannelCounts[7] == kPhysicalLedCount,
               "channel layout must total kPhysicalLedCount");
 

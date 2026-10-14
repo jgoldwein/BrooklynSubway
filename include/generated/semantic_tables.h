@@ -7,6 +7,7 @@
 //   phase3b_semantic_mapping_worksheet.csv: 1abfb45f837acf77b10bb94bb6af609a1a0a57ec0a6860c1010fb6cdc20cb64f
 //   station_registry.csv: 72f847a0f68f5ce38eb13d1eee6cf561a508786802085ee74a123833e1a4070f
 //   data/led_chain_map.csv: d16b1921f78c490f99c71bb3024311627c05d32a693605a066a9f2b635d33c8c
+//   data/segment_pixel_order.csv (Phase 4 supplemental): 14945698b975110e866bceb70df391f610ae735d5776c5bc5aadc1eba6284dd4
 // Regenerate with: python tools/generate_semantic_tables.py
 
 #pragma once
@@ -61,6 +62,9 @@ struct Station {
 // One record per physical map LED, sorted by global physical order.
 // STATION: stationId != 0, endpointA == endpointB == 0.
 // SEGMENT: stationId == 0, endpointA/endpointB are registry station IDs.
+// segmentSlot is the zero-based pixel position along the stored endpointA ->
+// endpointB direction; segmentSlotCount is the number of LEDs in that segment.
+// STATION records carry segmentSlot == segmentSlotCount == 0.
 struct MapLed {
   uint16_t designator;    // N in "LEDN"
   uint16_t globalOrder;   // 0..305 across channels 1..8
@@ -71,6 +75,8 @@ struct MapLed {
   uint8_t channelIndex;   // 0-based within the channel
   Route route;
   Role role;
+  uint8_t segmentSlot;
+  uint8_t segmentSlotCount;
 };
 
 extern const char *const kRouteNames[kRouteCount + 1];  // [0] == ""
