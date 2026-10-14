@@ -124,7 +124,7 @@ bool parseStopTimeEvent(Cursor c, uint32_t &time) {
   return true;
 }
 
-bool parseStopTimeUpdate(Cursor c, RtTrain &t, bool first) {
+bool parseStopTimeUpdate(Cursor c, RtTrain &t, bool first, bool second) {
   Field f;
   for (Next n; (n = nextField(c, f)) != Next::End;) {
     if (n != Next::Ok) return false;
@@ -138,6 +138,7 @@ bool parseStopTimeUpdate(Cursor c, RtTrain &t, bool first) {
       if (first) t.nextStopDeparture = time;
     } else if (f.number == 4 && f.wire == kLen) {
       if (first) copyString(t.nextStopId, sizeof t.nextStopId, f.payload, t.fieldTruncated);
+      if (second) copyString(t.secondStopId, sizeof t.secondStopId, f.payload, t.fieldTruncated);
     }
   }
   return true;
@@ -150,7 +151,8 @@ bool parseTripUpdate(Cursor c, RtTrain &t) {
     if (f.number == 1 && f.wire == kLen) {
       if (!parseTripDescriptor(f.payload, t)) return false;
     } else if (f.number == 2 && f.wire == kLen) {
-      if (!parseStopTimeUpdate(f.payload, t, t.stopTimeUpdateCount == 0)) return false;
+      if (!parseStopTimeUpdate(f.payload, t, t.stopTimeUpdateCount == 0,
+                               t.stopTimeUpdateCount == 1)) return false;
       if (t.stopTimeUpdateCount < 0xFFFF) ++t.stopTimeUpdateCount;
     } else if (f.number == 3 && f.wire == kLen) {
       if (!parseVehicleDescriptor(f.payload, t)) return false;
@@ -219,6 +221,7 @@ void mergeInto(RtTrain &dst, const RtTrain &src, FeedStats &stats) {
     dst.nextStopDeparture = src.nextStopDeparture;
     dst.stopTimeUpdateCount = src.stopTimeUpdateCount;
     memcpy(dst.nextStopId, src.nextStopId, sizeof dst.nextStopId);
+    memcpy(dst.secondStopId, src.secondStopId, sizeof dst.secondStopId);
   }
 }
 
