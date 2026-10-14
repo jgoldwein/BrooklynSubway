@@ -43,6 +43,7 @@ struct RtTrain {
   char trainId[kTrainIdMax];       // NYCT train_id (often empty)
   char vehicleStopId[kStopIdMax];  // VehiclePosition.stop_id
   char nextStopId[kStopIdMax];     // first TripUpdate.stop_time_update.stop_id
+  char secondStopId[kStopIdMax];   // second stop_time_update.stop_id (Phase 4F)
   uint32_t vehicleTimestamp;       // 0 when absent
   uint32_t tripUpdateTimestamp;    // 0 when absent
   uint32_t nextStopArrival;        // first stop_time_update arrival.time, 0 if absent

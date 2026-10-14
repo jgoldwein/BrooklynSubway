@@ -44,7 +44,14 @@ const char *gtfsStateName(sem::GtfsVehicleStatus s) {
 }
 
 const char *srcName(PreviousSource s) {
-  return s == PreviousSource::ExactTrip ? "exact" : s == PreviousSource::RouteFallback ? "fallback" : "";
+  switch (s) {
+    case PreviousSource::ExactTrip: return "exact";
+    case PreviousSource::RouteFallback: return "fallback";
+    case PreviousSource::Realtime: return "realtime";
+    case PreviousSource::StaticTopology: return "topology";
+    case PreviousSource::StaticEquivalent: return "topology-equiv";
+    default: return "";
+  }
 }
 
 const char *adapterName(const Observation &o) {
@@ -62,13 +69,97 @@ const char *adapterName(const Observation &o) {
 
 constexpr int kCategories = 9;
 
+// Phase 4F: host static pattern index vs firmware-capable topology table.
+struct Compare {
+  unsigned compared = 0, agreeExact = 0, agreeEquivalent = 0, agreeUnknownDest = 0;
+  unsigned ambiguousContainsHost = 0, topologyOnly = 0, bothUnresolved = 0, topologyUnresolved = 0;
+  unsigned conflicts = 0, topoSegments = 0, hostSegments = 0, realtimeExact = 0;
+};
+
+bool sameOutcome(const Observation &a, const Observation &b) {
+  if (a.category != b.category) return false;
+  if (a.adapted && b.adapted && a.result.resolved.status == sem::ResolveStatus::Match)
+    return a.result.resolved.globalIndex == b.result.resolved.globalIndex;
+  return true;
+}
+
+void compareTrain(const RtTrain &t, uint32_t feedTs, const BuilderConfig &hostCfg,
+                  const BuilderConfig &topoCfg, Compare &c) {
+  Observation h, o;
+  evaluateTrain(t, feedTs, hostCfg, h);
+  evaluateTrain(t, feedTs, topoCfg, o);
+  const bool reachedProvider =
+      t.hasVehicle && t.status != VehicleStatus::StoppedAt && t.status != VehicleStatus::Absent &&
+      h.category != Category::UnsupportedRoute && h.category != Category::OperationalStop &&
+      h.category != Category::Invalid && !(h.category == Category::Skipped && h.reason != Reason::NoPreviousStop);
+  if (!reachedProvider) return;
+  ++c.compared;
+  if (h.category == Category::ResolvedSegment) ++c.hostSegments;
+  if (o.category == Category::ResolvedSegment) ++c.topoSegments;
+  const bool hostHas = h.previous.source != PreviousSource::None;
+  const bool topoHas = o.previous.source != PreviousSource::None;
+  if (o.previous.source == PreviousSource::Realtime) ++c.realtimeExact;
+  if (hostHas && topoHas) {
+    if (strcmp(h.previous.stopId, o.previous.stopId) == 0) {
+      ++c.agreeExact;
+    } else if (o.previous.source == PreviousSource::StaticEquivalent && sameOutcome(h, o)) {
+      ++c.agreeEquivalent;
+    } else {
+      ++c.conflicts;
+      printf("CONFLICT %s %s stop=%s host=%s topo=%s\n", t.routeId, t.tripId, t.vehicleStopId,
+             h.previous.stopId, o.previous.stopId);
+    }
+  } else if (hostHas && o.category == Category::UnknownStop &&
+             o.previous.failure == PreviousFailure::UnknownDestination) {
+    if (h.category == Category::UnknownStop) {
+      ++c.agreeUnknownDest;
+    } else {
+      ++c.conflicts;
+      printf("CONFLICT %s %s stop=%s host resolved %s, topo UnknownDestination\n", t.routeId,
+             t.tripId, t.vehicleStopId, categoryName(h.category));
+    }
+  } else if (hostHas && o.previous.failure == PreviousFailure::Ambiguous) {
+    bool in = false;
+    for (uint8_t i = 0; i < o.previous.candidateCount; ++i)
+      if (strcmp(o.previous.candidates[i], h.previous.stopId) == 0) in = true;
+    if (in) {
+      ++c.ambiguousContainsHost;
+    } else {
+      ++c.conflicts;
+      printf("CONFLICT %s %s stop=%s host=%s not in ambiguous candidates\n", t.routeId, t.tripId,
+             t.vehicleStopId, h.previous.stopId);
+    }
+  } else if (hostHas) {
+    ++c.topologyUnresolved;
+  } else if (topoHas) {
+    ++c.topologyOnly;
+  } else {
+    ++c.bothUnresolved;
+  }
+}
+
+void printCompare(const Compare &c) {
+  printf("\n== Phase 4F: host static pattern index vs firmware topology table ==\n");
+  printf("in-transit trains compared:             %u\n", c.compared);
+  printf("  agree, identical previous stop:       %u\n", c.agreeExact);
+  printf("  agree, ambiguous but same outcome:    %u\n", c.agreeEquivalent);
+  printf("  agree, destination off-map (Unknown): %u\n", c.agreeUnknownDest);
+  printf("  firmware ambiguous (host exact in set): %u\n", c.ambiguousContainsHost);
+  printf("  firmware unresolved, host resolved:   %u\n", c.topologyUnresolved);
+  printf("  firmware resolved, host not:          %u\n", c.topologyOnly);
+  printf("  both unresolved:                      %u\n", c.bothUnresolved);
+  printf("  CONFLICTS:                            %u\n", c.conflicts);
+  printf("  realtime-exact previous stops:        %u\n", c.realtimeExact);
+  printf("ResolvedSegment: host index %u, firmware topology %u\n", c.hostSegments, c.topoSegments);
+}
+
 }  // namespace
 
 int main(int argc, char **argv) {
   const char *patterns = nullptr;
   const char *routeFilter = nullptr;
   const char *catFilter = nullptr;
-  bool verbose = false, all = false, quiet = false;
+  bool verbose = false, all = false, quiet = false, useTopology = false, compare = false;
   uint32_t maxAge = kDefaultMaxVehicleAgeSec, now = 0;
   long limit = -1;
   const char *files[32];
@@ -85,6 +176,8 @@ int main(int argc, char **argv) {
     else if (!strcmp(a, "--verbose")) verbose = true;
     else if (!strcmp(a, "--all")) all = true;
     else if (!strcmp(a, "--summary-only")) quiet = true;
+    else if (!strcmp(a, "--topology")) useTopology = true;
+    else if (!strcmp(a, "--compare")) compare = true;
     else if (nfiles < 32) files[nfiles++] = a;
   }
   if (nfiles == 0) {
@@ -101,8 +194,17 @@ int main(int argc, char **argv) {
   BuilderConfig cfg{};
   cfg.now = now;
   cfg.maxVehicleAgeSec = maxAge;
-  cfg.previousStop = patterns ? hostidx::previousStop : nullptr;
+  cfg.previousStop = useTopology ? topologyPreviousStop
+                                 : (patterns ? hostidx::previousStop : nullptr);
   cfg.previousStopContext = &provider;
+  if (compare && !patterns) {
+    fprintf(stderr, "--compare needs --patterns\n");
+    return 2;
+  }
+  BuilderConfig hostCfg = cfg, topoCfg = cfg;
+  hostCfg.previousStop = hostidx::previousStop;
+  topoCfg.previousStop = topologyPreviousStop;
+  Compare cmp{};
 
   static RtTrain trains[kMaxTrips];
   unsigned counts[kCategories] = {};
@@ -143,6 +245,7 @@ int main(int argc, char **argv) {
       if (o.category == Category::Skipped || o.category == Category::Invalid) ++reasons[static_cast<int>(o.reason)];
       if (o.category != Category::UnsupportedRoute) ++supported;
       if (!t.hasVehicle) ++noVehicle;
+      if (compare) compareTrain(t, st.headerTimestamp, hostCfg, topoCfg, cmp);
       if (o.adapted && o.result.resolved.status == sem::ResolveStatus::Match && o.result.resolved.semantic) {
         ++stationLeds;
         const unsigned d = o.result.resolved.semantic->designator;
@@ -205,9 +308,10 @@ int main(int argc, char **argv) {
   for (int r = 1; r < 16; ++r)
     if (reasons[r]) printf(" %s=%u", reasonName(static_cast<Reason>(r)), reasons[r]);
   printf("\n");
-  if (patterns)
+  if (patterns && !useTopology)
     printf("previous stop source:    exact=%d fallback=%d none=%d\n", provider.exact, provider.fallback,
            provider.none);
+  if (compare) printCompare(cmp);
   printf("resolved to LED:         %u trains on %u shared LEDs (max %u trains on one LED)\n", stationLeds,
          shared, maxShared);
   return decodeErrors ? 1 : 0;

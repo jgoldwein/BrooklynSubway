@@ -48,21 +48,45 @@ enum class Reason : uint8_t {
   NotStarted,         // Skipped: VehiclePosition without current_status
   Stale,              // Skipped: vehicle timestamp too old
   NoPreviousStop,     // Skipped: provider could not supply a previous stop
+  PreviousStopAmbiguous,  // Skipped: several static predecessors with different outcomes
 };
 
-enum class PreviousSource : uint8_t { None, ExactTrip, RouteFallback };
+enum class PreviousSource : uint8_t {
+  None,
+  ExactTrip,         // host static pattern index, exact trip shape (host only)
+  RouteFallback,     // host static pattern index, route/direction (host only)
+  Realtime,          // earlier stop from the TripUpdate (Phase 4F)
+  StaticTopology,    // unique predecessor from the compiled topology table (Phase 4F)
+  StaticEquivalent,  // several predecessors, all with the identical adapter outcome
+};
+
+enum class PreviousFailure : uint8_t {
+  None,
+  NoPrevious,          // no previous stop available (default for a false return)
+  Ambiguous,           // `candidates` holds the static predecessors
+  UnknownDestination,  // destination stop is not in the compiled topology table
+};
 
 constexpr uint8_t kPrevStopMax = 8;
+constexpr uint8_t kPrevCandidatesMax = 4;
 
 struct PreviousStop {
   char stopId[kPrevStopMax];
   PreviousSource source;
+  PreviousFailure failure;  // set by the provider when it returns false
+  uint8_t candidateCount;
+  char candidates[kPrevCandidatesMax][4];
 };
 
 // Returns true and fills `out` when a unique previous stop is known for
 // `train` heading to `stopId` (platform or parent id as sent by the feed).
 using PreviousStopProvider = bool (*)(void *context, const RtTrain &train,
                                       const char *stopId, PreviousStop &out);
+
+// Phase 4F firmware-capable provider: realtime earlier stop if the TripUpdate
+// shows one, else the compiled static topology table. Needs no context.
+bool topologyPreviousStop(void *context, const RtTrain &train, const char *stopId,
+                          PreviousStop &out);
 
 struct BuilderConfig {
   uint32_t now;                 // reference time; 0 = use the feed header timestamp

@@ -13,6 +13,8 @@ ROOT = Path(__file__).resolve().parent.parent
 CORE_SOURCES = [
     ROOT / "src/gtfs_rt_decoder.cpp",
     ROOT / "src/gtfs_rt_state.cpp",
+    ROOT / "src/previous_stop.cpp",
+    ROOT / "src/generated/gtfs_topology_table.cpp",
     ROOT / "src/gtfs_adapter.cpp",
     ROOT / "src/generated/gtfs_stop_table.cpp",
     ROOT / "src/train_position_resolver.cpp",
