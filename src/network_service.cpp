@@ -169,8 +169,20 @@ void NetworkService::allocateBuffer() {
     Serial.println("Network: PSRAM not found; feed buffer unavailable");
     return;
   }
+  const size_t psramFreeBefore = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+  const size_t intFreeBefore = heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+  Serial.printf("Mem init: PSRAM total %u free-before %u; internal free-before %u largest-block %u; request %u\n",
+                static_cast<unsigned>(ESP.getPsramSize()), static_cast<unsigned>(psramFreeBefore),
+                static_cast<unsigned>(intFreeBefore),
+                static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)),
+                static_cast<unsigned>(kFeedBufferCapacity));
   void *p = heap_caps_malloc(kFeedBufferCapacity, MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
-  if (p == nullptr || !esp_ptr_external_ram(p)) {
+  const bool external = p != nullptr && esp_ptr_external_ram(p);
+  Serial.printf("Mem init: alloc %s ptr %p external-ram %s; PSRAM free-after %u; internal free-after %u\n",
+                p != nullptr ? "OK" : "FAIL", p, external ? "YES" : "NO",
+                static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
+                static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)));
+  if (!external) {
     if (p != nullptr) heap_caps_free(p);
     Serial.println("Network: PSRAM feed buffer allocation failed");
     return;
@@ -187,11 +199,12 @@ void NetworkService::serviceWifi(uint32_t nowMs) {
   }
   if (!wifiStarted_ || elapsed(nowMs, lastWifiAttemptMs_) >= kDefaultNetworkConfig.wifiRetryMs) {
     // Retries are spaced by wifiRetryMs: never a tight reconnect loop.
+    const int statusBefore = static_cast<int>(WiFi.status());
     WiFi.mode(WIFI_STA);
     WiFi.begin(kSsid, kPassword);
     wifiStarted_ = true;
     lastWifiAttemptMs_ = nowMs;
-    Serial.println("Network: Wi-Fi association attempt");
+    Serial.printf("Network: Wi-Fi association attempt (WiFi.status() before = %d)\n", statusBefore);
   }
 }
 
@@ -239,6 +252,14 @@ void NetworkService::printStatus(const transport::CycleResult &r) const {
                 static_cast<unsigned long>(counters_.cycleBudgetExceeded),
                 static_cast<unsigned long>(counters_.feedsSkippedByBudget),
                 static_cast<unsigned long long>(counters_.bytesDownloaded));
+  Serial.printf("Mem cycle %lu: buf %p external-ram %s; PSRAM free %u min %u; internal free %u min %u largest %u\n",
+                static_cast<unsigned long>(counters_.pollCycles), static_cast<const void *>(buffer_.data),
+                (buffer_.data != nullptr && esp_ptr_external_ram(buffer_.data)) ? "YES" : "NO",
+                static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_SPIRAM)),
+                static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM)),
+                static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),
+                static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL)),
+                static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)));
 }
 
 void NetworkService::pollNow(uint32_t nowMs) {
