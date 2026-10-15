@@ -38,10 +38,10 @@ def compiler():
     sys.exit("no host C++ compiler found (install g++/clang++ or `pip install ziglang`)")
 
 
-def build(main_cpp, exe):
+def build(main_cpp, exe, extra=()):
     cmd = compiler() + ["-std=c++17", "-Wall", "-Wextra", "-Werror", "-O1", "-fno-exceptions",
                         f"-I{ROOT / 'include'}", f"-I{ROOT / 'tools/host_tests'}",
-                        str(main_cpp), *map(str, CORE_SOURCES), "-o", str(exe)]
+                        str(main_cpp), *map(str, CORE_SOURCES), *map(str, extra), "-o", str(exe)]
     r = subprocess.run(cmd, capture_output=True, text=True)
     if r.returncode != 0:
         print(r.stdout + r.stderr)

@@ -8,6 +8,7 @@
 #include "led_backend.h"
 #include "led_engine.h"
 #include "logical_map.h"
+#include "network_service.h"
 #include "train_pipeline.h"
 
 #include <Arduino.h>
@@ -17,6 +18,10 @@ namespace {
 // Phase 4I: in-memory train pipeline. No feed source exists yet; it is exercised
 // once at startup with an empty cycle and never drives LEDs.
 brooklyn::pipeline::TrainPipeline trainPipeline;
+
+// Phase 4J: GTFS-RT transport. Disabled unless built with
+// -DBROOKLYN_NETWORK_ENABLED=1 and credentials exist; never drives LEDs.
+brooklyn::network::NetworkService networkService(trainPipeline);
 
 void runXiaoLedTest() {
   brooklyn::diagnostics::begin();
@@ -83,6 +88,7 @@ void setup() {
   brooklyn::diagnostics::begin();
   Serial.printf("Train pipeline self-check (no feeds, no LED output): %s\n",
                 brooklyn::pipeline::selfCheckEmptyCycle(trainPipeline) ? "PASS" : "FAIL");
+  networkService.begin();
   if (!hardwareReady) {
     Serial.println("ERROR: I2C initialization failed; LED outputs remain disabled.");
   }
@@ -105,6 +111,7 @@ void setup() {
 void loop() {
   brooklyn::controls::update();
   brooklyn::diagnostics::update();
+  networkService.update(millis());
 #if defined(BROOKLYN_TARGET_XIAO)
   while (Serial.available() > 0) {
     const int command = Serial.read();

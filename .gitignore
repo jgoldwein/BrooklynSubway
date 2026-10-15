@@ -8,3 +8,5 @@
 local_reference/
 __pycache__/
 *.pyc
+
+include/secrets.h
