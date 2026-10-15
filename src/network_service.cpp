@@ -6,9 +6,13 @@
 
 #include "network_service.h"
 
+#include "wifi_policy.h"
+
 #include <Arduino.h>
 
 #if BROOKLYN_NETWORK_ENABLED
+#include "wifi_portal.h"
+
 #include <HTTPClient.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
@@ -32,6 +36,8 @@ namespace brooklyn::network {
 
 namespace {
 
+// Developer-only fallback (include/secrets.h, git-ignored). Used ONLY when no
+// credentials are stored in NVS; never copied into NVS, never overrides them.
 #ifdef BROOKLYN_WIFI_SSID
 constexpr const char *kSsid = BROOKLYN_WIFI_SSID;
 #else
@@ -42,6 +48,29 @@ constexpr const char *kPassword = BROOKLYN_WIFI_PASSWORD;
 #else
 constexpr const char *kPassword = "";
 #endif
+
+wifi::Credentials gActive{};  // credentials currently used for station mode
+bool gActiveFromNvs = false;
+
+wifi::NvsCredentialStore &store() {
+  static wifi::NvsCredentialStore instance;
+  return instance;
+}
+
+wifi::Portal &portal() {
+  static wifi::Portal instance(store());
+  return instance;
+}
+
+// Logs feed failures (name, category, bytes, elapsed). Diagnostic only.
+class FailureLogger : public transport::FeedFailureObserver {
+ public:
+  void onFeedFailure(const transport::FeedFailure &failure) override {
+    char line[112];
+    transport::formatFeedFailure(line, sizeof(line), failure);
+    Serial.println(line);
+  }
+};
 
 constexpr uint32_t elapsed(uint32_t now, uint32_t since) { return now - since; }
 
@@ -129,7 +158,9 @@ const char *stateName(State s) {
   switch (s) {
     case State::Disabled: return "DISABLED";
     case State::NoCredentials: return "NO CREDENTIALS";
+    case State::Provisioning: return "PROVISIONING (setup AP BrooklynMap-Avi)";
     case State::WifiConnecting: return "WIFI CONNECTING";
+    case State::TemporarilyUnavailable: return "WIFI TEMPORARILY UNAVAILABLE (retrying)";
     case State::TimeSyncing: return "TIME SYNCING";
     case State::Ready: return "READY";
   }
@@ -141,24 +172,85 @@ const char *stateName(State s) {
 NetworkService::NetworkService(pipeline::TrainPipeline &pipeline)
     : pipeline_(pipeline), counters_{}, buffer_{nullptr, 0}, scheduler_{},
       state_(State::Disabled), bufferTried_(false), wifiStarted_(false),
-      timeStarted_(false), lastWifiAttemptMs_(0), timeStartMs_(0) {}
+      timeStarted_(false), recoveryRequested_(false), lastWifiAttemptMs_(0), timeStartMs_(0) {}
 
-bool NetworkService::credentialsPresent() const { return kSsid[0] != '\0'; }
+bool NetworkService::credentialsPresent() const { return gActive.ssid[0] != '\0'; }
+
+void NetworkService::loadCredentials() {
+  memset(&gActive, 0, sizeof(gActive));
+  gActiveFromNvs = store().load(gActive);
+  if (!gActiveFromNvs) {
+    memset(&gActive, 0, sizeof(gActive));
+    if (kSsid[0] != '\0' &&
+        wifi::validateCredentials(kSsid, kPassword) == wifi::CredentialCheck::Ok) {
+      strncpy(gActive.ssid, kSsid, wifi::kMaxSsidLen);
+      strncpy(gActive.password, kPassword, wifi::kMaxPassLen);
+    }
+  }
+}
 
 void NetworkService::begin() {
   if (!kDefaultNetworkConfig.enabled) {
     state_ = State::Disabled;
-  } else if (!credentialsPresent()) {
-    state_ = State::NoCredentials;
+    Serial.printf("Network: %s\n", stateName(state_));
+    return;
+  }
+  WiFi.persistent(false);  // the Wi-Fi driver must not keep its own copy of the password
+  loadCredentials();
+  scheduler_.configure(kDefaultNetworkConfig.pollIntervalMs);
+  const bool fallback = !gActiveFromNvs && credentialsPresent();
+  Serial.printf("Network: credentials source: %s\n",
+                gActiveFromNvs ? "NVS" : (fallback ? "secrets.h developer fallback" : "none"));
+  if (wifi::decideBootMode(gActiveFromNvs, fallback, false) == wifi::BootMode::Provisioning) {
+    startProvisioning(millis());
   } else {
     state_ = State::WifiConnecting;
-    scheduler_.configure(kDefaultNetworkConfig.pollIntervalMs);
     allocateBuffer();
   }
   Serial.printf("Network: %s\n", stateName(state_));
-  if (state_ == State::NoCredentials) {
-    Serial.println("Network: copy include/secrets.example.h to include/secrets.h and set the SSID");
+}
+
+void NetworkService::startProvisioning(uint32_t nowMs) {
+  if (portal().begin(gActiveFromNvs, nowMs)) {
+    state_ = State::Provisioning;
+    Serial.println("Provisioning: setup AP \"BrooklynMap-Avi\" at http://192.168.4.1/ (2.4 GHz only)");
+  } else {
+    state_ = State::NoCredentials;
+    Serial.println("Provisioning: FAILED to start the setup AP");
   }
+}
+
+void NetworkService::serviceProvisioning(uint32_t nowMs) {
+  const wifi::Portal::Result r = portal().service(nowMs);
+  if (r == wifi::Portal::Result::Active) return;
+  loadCredentials();
+  wifiStarted_ = false;
+  timeStarted_ = false;
+  if (r == wifi::Portal::Result::Connected) {
+    Serial.println("Provisioning: complete; AP stopped, resuming station mode");
+    if (!bufferTried_) allocateBuffer();
+    // The portal's association is still up; serviceWifi() promotes it to TimeSyncing.
+    state_ = State::WifiConnecting;
+  } else {
+    Serial.println("Provisioning: timed out; AP stopped, resuming with stored credentials");
+    state_ = credentialsPresent() ? State::WifiConnecting : State::NoCredentials;
+  }
+}
+
+void NetworkService::requestProvisioning() {
+  if (!kDefaultNetworkConfig.enabled) {
+    Serial.println("Network: DISABLED; cannot start setup mode");
+    return;
+  }
+  recoveryRequested_ = true;
+}
+
+bool NetworkService::forgetCredentials() {
+  const bool ok = store().clear();
+  memset(&gActive, 0, sizeof(gActive));
+  gActiveFromNvs = false;
+  Serial.printf("Network: stored Wi-Fi credentials %s\n", ok ? "ERASED (map namespace only)" : "erase FAILED");
+  return ok;
 }
 
 void NetworkService::allocateBuffer() {
@@ -201,11 +293,14 @@ void NetworkService::serviceWifi(uint32_t nowMs) {
     // Retries are spaced by wifiRetryMs: never a tight reconnect loop.
     const int statusBefore = static_cast<int>(WiFi.status());
     WiFi.mode(WIFI_STA);
-    WiFi.begin(kSsid, kPassword);
+    WiFi.begin(gActive.ssid, gActive.password);
     wifiStarted_ = true;
     lastWifiAttemptMs_ = nowMs;
     Serial.printf("Network: Wi-Fi association attempt (WiFi.status() before = %d)\n", statusBefore);
   }
+  // Credentials exist; an invisible SSID is a temporary condition, never a reason
+  // to erase credentials or enter the portal.
+  state_ = WiFi.status() == WL_NO_SSID_AVAIL ? State::TemporarilyUnavailable : State::WifiConnecting;
 }
 
 void NetworkService::serviceTime(uint32_t nowMs) {
@@ -264,6 +359,7 @@ void NetworkService::printStatus(const transport::CycleResult &r) const {
 
 void NetworkService::pollNow(uint32_t nowMs) {
   static const MillisClock clock;
+  static FailureLogger logger;
   transport::PipelineSink sink(pipeline_);
   sink.setNow(static_cast<uint32_t>(time(nullptr)));
   const transport::PollPreconditions pre{WiFi.status() == WL_CONNECTED,
@@ -271,18 +367,30 @@ void NetworkService::pollNow(uint32_t nowMs) {
   const transport::CycleResult r = transport::runPollCycle(
       sink, connection(), buffer_, kFeeds, kFeedCount, pre,
       kDefaultNetworkConfig.acceptUnknownLength, counters_,
-      transport::CycleBudget{&clock, kDefaultNetworkConfig.cycleBudgetMs});
+      transport::CycleBudget{&clock, kDefaultNetworkConfig.cycleBudgetMs}, &logger);
   scheduler_.cycleFinished(millis());
   (void)nowMs;
   printStatus(r);
 }
 
 void NetworkService::update(uint32_t nowMs) {
+  if (state_ == State::Disabled) return;
+  if (recoveryRequested_) {
+    recoveryRequested_ = false;
+    if (state_ != State::Provisioning) {
+      Serial.println("Network: setup mode requested by user (stored credentials kept)");
+      startProvisioning(nowMs);
+    }
+  }
   switch (state_) {
     case State::Disabled:
     case State::NoCredentials:
       return;
+    case State::Provisioning:
+      serviceProvisioning(nowMs);
+      return;
     case State::WifiConnecting:
+    case State::TemporarilyUnavailable:
       serviceWifi(nowMs);
       return;
     case State::TimeSyncing:
@@ -304,9 +412,16 @@ void NetworkService::update(uint32_t nowMs) {
 NetworkService::NetworkService(pipeline::TrainPipeline &pipeline)
     : pipeline_(pipeline), counters_{}, buffer_{nullptr, 0}, scheduler_{},
       state_(State::Disabled), bufferTried_(false), wifiStarted_(false),
-      timeStarted_(false), lastWifiAttemptMs_(0), timeStartMs_(0) {}
+      timeStarted_(false), recoveryRequested_(false), lastWifiAttemptMs_(0), timeStartMs_(0) {}
 
 bool NetworkService::credentialsPresent() const { return false; }
+void NetworkService::loadCredentials() {}
+void NetworkService::startProvisioning(uint32_t) {}
+void NetworkService::serviceProvisioning(uint32_t) {}
+void NetworkService::requestProvisioning() {
+  Serial.println("Network: DISABLED; cannot start setup mode");
+}
+bool NetworkService::forgetCredentials() { return false; }
 void NetworkService::allocateBuffer() {}
 void NetworkService::serviceWifi(uint32_t) {}
 void NetworkService::serviceTime(uint32_t) {}

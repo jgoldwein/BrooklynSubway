@@ -21,10 +21,12 @@ namespace brooklyn::network {
 
 enum class State : uint8_t {
   Disabled,        // compile-time/config disabled
-  NoCredentials,   // enabled but secrets.h missing or SSID empty
-  WifiConnecting,
-  TimeSyncing,
-  Ready,
+  NoCredentials,   // enabled, no credentials anywhere, portal not (yet) running
+  Provisioning,    // setup AP + captive portal active; poller not running
+  WifiConnecting,  // credentials exist; associating
+  TemporarilyUnavailable,  // credentials exist; SSID not visible (keeps retrying)
+  TimeSyncing,     // associated, waiting for SNTP
+  Ready,           // online: polling
 };
 
 class NetworkService {
@@ -35,12 +37,20 @@ class NetworkService {
   // Call from loop(). Returns immediately when disabled.
   void update(uint32_t nowMs);
 
+  // Explicit user recovery: enter the setup portal. Credentials are kept.
+  void requestProvisioning();
+  // Explicit user action: erase the map's own stored credentials (NVS namespace only).
+  bool forgetCredentials();
+
   State state() const { return state_; }
   const transport::TransportCounters &counters() const { return counters_; }
   size_t bufferCapacity() const { return buffer_.capacity; }
 
  private:
   bool credentialsPresent() const;
+  void loadCredentials();
+  void startProvisioning(uint32_t nowMs);
+  void serviceProvisioning(uint32_t nowMs);
   void allocateBuffer();
   void serviceWifi(uint32_t nowMs);
   void serviceTime(uint32_t nowMs);
@@ -55,6 +65,7 @@ class NetworkService {
   bool bufferTried_;
   bool wifiStarted_;
   bool timeStarted_;
+  bool recoveryRequested_;
   uint32_t lastWifiAttemptMs_;
   uint32_t timeStartMs_;
 };
