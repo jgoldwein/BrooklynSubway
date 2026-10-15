@@ -101,9 +101,31 @@ enum class DownloadStatus : uint8_t {
 
 // Downloads one complete body into `buffer`. `length` is meaningful only on Ok.
 // The connection is always closed before returning.
+// If bytesReceived is non-null it receives the body bytes read before the call
+// ended (diagnostic only; for failures it is the partial amount, never processed).
 DownloadStatus downloadFeed(FeedConnection &connection, const char *url,
                             const FeedBuffer &buffer, bool acceptUnknownLength,
-                            size_t &length);
+                            size_t &length, size_t *bytesReceived = nullptr);
+
+// Diagnostic record for one failed feed download. Does not affect counters,
+// timeouts or control flow.
+struct FeedFailure {
+  const char *name;       // feed short name
+  uint8_t index;
+  DownloadStatus status;
+  size_t bytesReceived;   // body bytes received before the failure
+  uint32_t elapsedMs;     // request + download time (0 if no clock)
+};
+
+class FeedFailureObserver {
+ public:
+  virtual ~FeedFailureObserver() = default;
+  virtual void onFeedFailure(const FeedFailure &failure) = 0;
+};
+
+const char *downloadStatusName(DownloadStatus status);
+// "Feed ACE FAIL: timeout bytes=1234 elapsed=8012ms" (no body content).
+size_t formatFeedFailure(char *out, size_t capacity, const FeedFailure &failure);
 
 // Adds the counters implied by a non-Ok status.
 void countDownloadFailure(DownloadStatus status, TransportCounters &counters);
@@ -184,7 +206,8 @@ CycleResult runPollCycle(FeedSink &sink, FeedConnection &connection,
                          const FeedBuffer &buffer, const network::FeedSpec *feeds,
                          size_t feedCount, const PollPreconditions &pre,
                          bool acceptUnknownLength, TransportCounters &counters,
-                         const CycleBudget &budget = CycleBudget{});
+                         const CycleBudget &budget = CycleBudget{},
+                         FeedFailureObserver *observer = nullptr);
 
 // ---- Scheduler ----------------------------------------------------------------
 

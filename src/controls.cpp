@@ -4,6 +4,7 @@
 #include "controls.h"
 
 #include "board_pins.h"
+#include "wifi_policy.h"
 
 #include <Arduino.h>
 
@@ -35,10 +36,23 @@ bool isPressed(uint8_t pin) {
   return digitalRead(pin) == LOW;
 }
 
+brooklyn::wifi::HoldDetector rotaryHold;
+bool wifiRecoveryRequested = false;
+
 }  // namespace
 #endif
 
 namespace brooklyn::controls {
+
+bool consumeWifiRecoveryRequest() {
+#if defined(BROOKLYN_TARGET_PCB)
+  const bool requested = wifiRecoveryRequested;
+  wifiRecoveryRequested = false;
+  return requested;
+#else
+  return false;
+#endif
+}
 
 void begin() {
 #if defined(BROOKLYN_TARGET_PCB)
@@ -74,6 +88,11 @@ void update() {
         Serial.printf("Control RELEASE: %s (held %lu ms)\n", button.name,
                       static_cast<unsigned long>(heldMs));
       }
+    }
+    if (button.pin == brooklyn::pins::ROTARY_PUSH &&
+        rotaryHold.update(button.stablePressed, now)) {
+      wifiRecoveryRequested = true;
+      Serial.println("Control HOLD: ROTARY_PUSH 10 s -> Wi-Fi setup mode requested");
     }
   }
 #endif

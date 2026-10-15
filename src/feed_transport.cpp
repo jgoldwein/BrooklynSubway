@@ -3,6 +3,7 @@
 
 #include "feed_transport.h"
 
+#include <stdio.h>
 namespace brooklyn::transport {
 
 namespace {
@@ -32,7 +33,7 @@ DownloadStatus fromRead(int32_t code) {
 
 // Body download proper; the caller closes the connection.
 DownloadStatus readBody(FeedConnection &connection, const FeedBuffer &buffer,
-                        int32_t contentLength, size_t &length) {
+                        int32_t contentLength, size_t &length, size_t &received) {
   const bool known = contentLength >= 0;
   if (known && contentLength == 0) return DownloadStatus::ZeroLength;
   if (known && static_cast<size_t>(contentLength) > buffer.capacity) {
@@ -47,6 +48,7 @@ DownloadStatus readBody(FeedConnection &connection, const FeedBuffer &buffer,
     if (got > 0) {
       if (static_cast<size_t>(got) > want) return DownloadStatus::Partial;  // broken adapter
       total += static_cast<size_t>(got);
+      received = total;
     } else if (got == kReadEof) {
       break;
     } else {
@@ -74,8 +76,10 @@ DownloadStatus readBody(FeedConnection &connection, const FeedBuffer &buffer,
 
 DownloadStatus downloadFeed(FeedConnection &connection, const char *url,
                             const FeedBuffer &buffer, bool acceptUnknownLength,
-                            size_t &length) {
+                            size_t &length, size_t *bytesReceived) {
   length = 0;
+  size_t received = 0;
+  if (bytesReceived != nullptr) *bytesReceived = 0;
   if (buffer.data == nullptr || buffer.capacity == 0) return DownloadStatus::BufferUnavailable;
 
   int32_t contentLength = kUnknownLength;
@@ -89,11 +93,41 @@ DownloadStatus downloadFeed(FeedConnection &connection, const char *url,
   if (contentLength < 0 && !acceptUnknownLength) {
     status = DownloadStatus::UnknownLength;
   } else {
-    status = readBody(connection, buffer, contentLength, length);
+    status = readBody(connection, buffer, contentLength, length, received);
   }
   connection.close();
+  if (bytesReceived != nullptr) *bytesReceived = received;
   if (status != DownloadStatus::Ok) length = 0;
   return status;
+}
+
+const char *downloadStatusName(DownloadStatus status) {
+  switch (status) {
+    case DownloadStatus::Ok: return "ok";
+    case DownloadStatus::WifiUnavailable: return "wifi-unavailable";
+    case DownloadStatus::SecureConnectFailure: return "connect/tls-failure";
+    case DownloadStatus::HttpFailure: return "http-failure";
+    case DownloadStatus::Timeout: return "timeout";
+    case DownloadStatus::ZeroLength: return "zero-length";
+    case DownloadStatus::TooLarge: return "too-large";
+    case DownloadStatus::Partial: return "partial/closed-early";
+    case DownloadStatus::UnknownLength: return "unknown-length";
+    case DownloadStatus::BufferUnavailable: return "no-buffer";
+  }
+  return "?";
+}
+
+size_t formatFeedFailure(char *out, size_t capacity, const FeedFailure &failure) {
+  if (capacity == 0) return 0;
+  const int n = snprintf(out, capacity, "Feed %s FAIL: %s bytes=%lu elapsed=%lums", failure.name,
+                         downloadStatusName(failure.status),
+                         static_cast<unsigned long>(failure.bytesReceived),
+                         static_cast<unsigned long>(failure.elapsedMs));
+  if (n < 0) {
+    out[0] = 0;
+    return 0;
+  }
+  return static_cast<size_t>(n) < capacity ? static_cast<size_t>(n) : capacity - 1;
 }
 
 void countDownloadFailure(DownloadStatus status, TransportCounters &counters) {
@@ -127,7 +161,7 @@ CycleResult runPollCycle(FeedSink &sink, FeedConnection &connection,
                          const FeedBuffer &buffer, const network::FeedSpec *feeds,
                          size_t feedCount, const PollPreconditions &pre,
                          bool acceptUnknownLength, TransportCounters &counters,
-                         const CycleBudget &budget) {
+                         const CycleBudget &budget, FeedFailureObserver *observer) {
   CycleResult result{CycleOutcome::NoFeeds, 0, 0, 0, 0, 0};
 
   if (buffer.data == nullptr || buffer.capacity == 0) {
@@ -164,10 +198,18 @@ CycleResult runPollCycle(FeedSink &sink, FeedConnection &connection,
     if (result.attempted != 0xFF) ++result.attempted;
 
     size_t length = 0;
-    const DownloadStatus status =
-        downloadFeed(connection, feeds[i].url, buffer, acceptUnknownLength, length);
+    size_t received = 0;
+    const uint32_t feedStartMs = budget.clock != nullptr ? budget.clock->nowMs() : 0;
+    const DownloadStatus status = downloadFeed(connection, feeds[i].url, buffer,
+                                               acceptUnknownLength, length, &received);
     if (status != DownloadStatus::Ok) {
       countDownloadFailure(status, counters);
+      if (observer != nullptr) {
+        const uint32_t elapsed =
+            budget.clock != nullptr ? static_cast<uint32_t>(budget.clock->nowMs() - feedStartMs) : 0;
+        observer->onFeedFailure(
+            FeedFailure{feeds[i].name, static_cast<uint8_t>(i), status, received, elapsed});
+      }
       continue;
     }
     bump(counters.feedsDownloaded);

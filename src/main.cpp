@@ -29,7 +29,7 @@ void runXiaoLedTest() {
   if (brooklyn::led::runSelfTest()) {
     brooklyn::led::runXiaoDemonstration();
   }
-  Serial.println("XIAO bench: T reruns LED self-test; M validates logical map");
+  Serial.println("XIAO bench: T LED self-test; M semantic report; W Wi-Fi setup portal; X,X forget Wi-Fi");
 }
 
 void runXiaoLogicalMapTest() {
@@ -100,21 +100,36 @@ void setup() {
   if (brooklyn::led::runSelfTest()) {
     brooklyn::led::runXiaoDemonstration();
   }
-  Serial.println("XIAO bench: T reruns LED self-test; M validates logical map");
+  Serial.println("XIAO bench: T LED self-test; M semantic report; W Wi-Fi setup portal; X,X forget Wi-Fi");
 #endif
 }
 
 void loop() {
   brooklyn::controls::update();
+  if (brooklyn::controls::consumeWifiRecoveryRequest()) {
+    networkService.requestProvisioning();
+  }
   brooklyn::diagnostics::update();
   networkService.update(millis());
 #if defined(BROOKLYN_TARGET_XIAO)
+  static uint32_t forgetArmedAtMs = 0;
   while (Serial.available() > 0) {
     const int command = Serial.read();
     if (command == 't' || command == 'T') {
       runXiaoLedTest();
     } else if (command == 'm' || command == 'M') {
       runXiaoLogicalMapTest();
+    } else if (command == 'w' || command == 'W') {
+      networkService.requestProvisioning();
+    } else if (command == 'x' || command == 'X') {
+      const uint32_t now = millis();
+      if (forgetArmedAtMs != 0 && static_cast<uint32_t>(now - forgetArmedAtMs) < 5000) {
+        forgetArmedAtMs = 0;
+        (void)networkService.forgetCredentials();
+      } else {
+        forgetArmedAtMs = now != 0 ? now : 1;
+        Serial.println("Send X again within 5 s to ERASE stored Wi-Fi credentials");
+      }
     }
   }
 #endif
