@@ -259,7 +259,7 @@ Portal::Result Portal::service(uint32_t nowMs) {
         lastStatus_ = PortalStatus::ConnectFailed;
         Serial.println("Provisioning: association OK but save failed; old credentials kept");
       }
-    } else if (static_cast<uint32_t>(nowMs - connectStartMs_) >= kConnectAttemptMs) {
+    } else if (static_cast<uint32_t>(millis() - connectStartMs_) >= kConnectAttemptMs) {
       connecting_ = false;
       // 1=NO_SSID_AVAIL (not seen / 5 GHz), 4=CONNECT_FAILED (usually wrong password), 6=DISCONNECTED
       Serial.printf("Provisioning: WiFi.status() = %d\n", static_cast<int>(WiFi.status()));
