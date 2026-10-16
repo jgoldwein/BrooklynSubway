@@ -68,24 +68,59 @@ It is never required and never printed. Priority: NVS credentials, then
   label) is a possible future hardening.
 - Wildcard DNS answers every name with 192.168.4.1. Probe URLs (Android
   `/generate_204`, iOS `/hotspot-detect.html`, Windows `/connecttest.txt`
-  `/ncsi.txt`) and every unknown path redirect (302) to `http://192.168.4.1/`.
-  `http://192.168.4.1/` always serves the page directly.
+  `/ncsi.txt`) receive the portal page directly (HTTP 200); every unknown path
+  redirects (302) to `http://192.168.4.1/`. Explicit root, scan and credential
+  submission routes are registered before a wildcard HTTP handler. This
+  catches unmatched paths/methods before Arduino `WebServer` logs its
+  "request handler not found" diagnostic; `onNotFound` remains a fallback.
+  Unknown paths redirect to the root; captive probes receive root-page HTML.
+  The wildcard does not intercept the explicit `POST /connect` save route.
+  Sending HTML on probe requests
+  ensures it differs from the expected no-content/success response and gives
+  captive assistants the portal content without requiring redirect handling.
+  `http://192.168.4.1/` always serves the page directly. This can prompt
+  supported phone OSes to offer their captive-portal sign-in view, but
+  automatic launch is controlled by the phone OS and cannot be guaranteed
+  across all devices and settings. Users must be able to open the setup address
+  manually.
+- Provisioning starts as AP-only so the setup SSID can beacon before station
+  scanning or association begins. The first portal-page request enables
+  AP+STA mode to scan nearby networks; submitting credentials uses AP+STA to
+  validate the connection while keeping the setup AP available.
 - The page shows the heading, "Wi-Fi setup mode", a 2.4 GHz-only notice, a
   de-duplicated scan list (SSID, RSSI, secured/open, strongest first), a
   password field and Save/Connect. There is no manual SSID field; hidden
   networks cannot be provisioned through the portal.
+- After a successful LAN association and credential save, the page explicitly
+  reports the joined SSID (for example, `Successfully connected to Wi-Fi:
+  JWGS26U. Settings saved. LAN address: 192.168.1.42.`). The DHCP-assigned LAN
+  address is a clickable `http://<LAN-IP>/` link to the device and is only
+  shown once a nonzero address is available. Open it after reconnecting the
+  phone to the same Wi-Fi network. SSIDs and addresses are HTML-escaped.
+  If the association succeeds but saving credentials fails, the page still
+  identifies the joined SSID and LAN IP and clearly reports the storage
+  failure. The serial console reports the association/save result and LAN IP;
+  passwords are never printed. The
+  confirmation includes a link to `http://192.168.4.1/` and explains it only
+  works while the setup AP remains available; the AP closes shortly after a
+  successful save.
 - The 2.4 GHz-only limit of the ESP32-S3 is stated in the UI.
 - Scanning is required to choose a network; use Rescan if the list is empty.
 
 ## Save / replace transaction
 
 1. Input is validated (invalid input leaves everything unchanged).
-2. The device tries to associate with the candidate (20 s) **before** saving.
-3. Only on association success is the candidate written to NVS
-   (`commitIfAssociated`). On failure, previously stored credentials are
+2. The device tries to join the network and obtain a nonzero LAN IP address
+   (up to 20 s) **before** saving.
+3. Only after Wi-Fi association and IP acquisition is the candidate written to
+   NVS (`commitIfAssociated`). On failure, previously stored credentials are
    untouched and the portal stays available for a retry.
-4. On success the portal lingers 3 s (so the "saved" page reaches the phone),
-   stops the AP, returns to station mode, performs SNTP and resumes polling.
+4. On success the portal serves the confirmation as HTTP 200 and lingers for
+   8 seconds after association, DHCP address acquisition and credential save.
+   While connecting, the page requests a refresh every 2 seconds; the 8-second
+   post-save linger gives the refreshed success page time to reach/render before
+   the AP stops. It then returns to station mode, performs SNTP and resumes
+   polling. The AP does not remain active indefinitely after success.
    With no old credentials the portal simply stays until valid ones work. With
    stored credentials, an unused portal times out after 10 minutes and the
    device resumes with them.
@@ -122,13 +157,24 @@ connect 8 s, read-idle 8 s, body deadline 12 s, cycle budget 60 s.
 
 ## Host tests
 
-`python tools/run_wifi_provisioning_tests.py`: **273 checks, 0 failures**
+`python tools/run_wifi_provisioning_tests.py`: **310 checks, 0 failures**
 covering validation (empty, 32-byte max, over-long, password length, hidden),
 boot policy, temporary events never erasing/entering setup, replacement
 success/failure, forget scope, hold detector, scan de-duplication, portal HTML
 (no password, escaping, tiny-buffer safety), path classification, and feed
 failure diagnostics (feed name, bytes, elapsed, optional observer).
-The Wi-Fi stack itself is not emulated.
+The Wi-Fi stack itself is not emulated. Build the XIAO bench firmware with
+`pio run -e xiao-s3-network`; the default `xiao-s3` build leaves networking off.
+For a production image with provisioning and MTA polling enabled, build
+`pio run -e brooklyn-s3-network`. The default `brooklyn-s3` environment still
+compiles networking out. The network-enabled production target has not been
+uploaded to or validated on the manufactured PCB.
+
+The PCB setup flow is deliberately usable without automatic captive-portal
+launch: hold the rotary push for 10 seconds, join `BrooklynMap-Avi`, and open
+`http://192.168.4.1/` manually if the phone does not offer its sign-in view.
+Select a visible 2.4 GHz SSID and enter its Wi-Fi password on the page. Only
+visible networks are selectable; hidden SSIDs are not currently supported.
 
 Regression (unchanged): semantic 302/276/26/188 passed; resolver, GTFS adapter,
 GTFS-RT, topology (672) passed; Phase 4F 8,098, 4G 5,232, 4H 71,785, 4I
@@ -140,16 +186,23 @@ GTFS-RT, topology (672) passed; Phase 4F 8,098, 4G 5,232, 4H 71,785, 4I
 |---|---|---|
 | brooklyn-s3 default | 34,264 B | 306,481 B |
 | xiao-s3 default | 33,124 B | 286,529 B |
-| brooklyn-s3 network-enabled | 69,712 B | 1,021,021 B |
-| xiao-s3 network-enabled | 68,600 B | 1,002,449 B |
+| brooklyn-s3-network | 69,740 B | 1,025,285 B |
+| xiao-s3-network | 68,628 B | 1,006,757 B |
 
 Versus Phase 4K: default brooklyn-s3 +24 B RAM / +360 B flash; default xiao-s3
 +8 B RAM / +324 B flash. Captive-portal cost versus the Phase 4K network-enabled
 XIAO test build (60,344 B RAM / 955,349 B flash): about +8.3 KB RAM and
 +47 KB flash (includes `WebServer`, `DNSServer`, `Preferences`, the portal
-page and the new state machine).
+page and the new state machine). Network-enabled sizes are from the
+2026-10-16 builds; sizes include the joined-SSID, DHCP-IP and captive-path
+wildcard handling.
 
-## XIAO hardware results (this session; the user left before the phone steps)
+## XIAO hardware results
+
+The initial bring-up notes below are historical; the later dated results
+record the subsequent completed provisioning and reboot validation.
+
+### Initial bring-up (historical)
 
 Verified on the physical XIAO (network-enabled test build, `secrets.h`
 developer fallback, no NVS record yet):
@@ -166,14 +219,87 @@ developer fallback, no NVS record yet):
   then reported the AP visible and the page reachable, but left before
   confirming the rendered list. **The rendered scan list and the
   "password not exposed" check on the phone are therefore NOT confirmed.**
-- D-G (provision a test network from the phone, NVS persistence across reboot,
-  AP shutdown after save, SNTP/polling resume after provisioning, temporary
-  SSID loss with credentials kept, invalid-credential replacement) were
-  **NOT performed**. They remain to be run.
+- In the initial hardware run, D-G (phone provisioning, NVS persistence across
+  reboot, AP shutdown after save, SNTP/polling resume, temporary SSID loss, and
+  invalid-credential replacement) were **NOT performed**.
+
+### Subsequent validation
+- **2026-10-16 retest:** Added `xiao-s3-network` and changed setup startup to
+  start AP-only before enabling station scan/association. On the XIAO, firmware
+  reported the AP started and the user confirmed `BrooklynMap-Avi` became
+  visible on Android. Android did **not** open its captive-portal view
+  automatically; manually opening `http://192.168.4.1/` loaded the setup page.
+  The portal scanned 17 networks. The user submitted credentials; association
+  succeeded, NVS save succeeded, and the AP closed normally. SNTP synchronized,
+  but the first MTA cycle had DNS errors. A PC Wi-Fi scan did not list the AP
+  during this retest. Automatic OS launch remains best-effort and is not
+  universal.
+- **2026-10-16 reboot follow-up:** Opened COM4, rebooting the XIAO. It loaded
+  credentials from NVS, synchronized time, and completed an 8/8 MTA feed cycle
+  (57 trains, 53 LEDs, 451,239 bytes). This confirms NVS persistence across
+  reboot and upstream DNS/feed access; the earlier DNS failure was transient.
+- **2026-10-16 invalid replacement:** From the portal, submitted a deliberately
+  incorrect password for the saved hotspot SSID. The STA disconnect reported
+  reason 15; association failed after the configured 20 s attempt, and the
+  portal reported that stored credentials were unchanged. Rebooted through
+  COM4 afterward: the device loaded credentials from NVS, synchronized time,
+  and completed an 8/8 feed cycle. The previous valid credentials therefore
+  survived the failed replacement.
+- **2026-10-16 network-loss recovery:** With COM4 open, temporarily turned the
+  saved phone hotspot off. The XIAO stayed in station mode, did not start the
+  provisioning AP, and retried association at approximately 30 s intervals.
+  After the hotspot was restored it synchronized time and completed an 8/8
+  feed cycle. One feed cycle during the outage was partial due to Wi-Fi loss.
+- **2026-10-16 Android fresh-join retest:** After forgetting and rejoining
+  `BrooklynMap-Avi`, Android still did not show a captive sign-in prompt. The
+  user can open the portal manually. Updated recognized probe URLs to serve
+  portal HTML directly (HTTP 200) instead of a redirect; after flashing this
+  build and repeating the fresh join, Android still did not show a prompt, but
+  the manual portal URL worked. Automatic launch is phone-OS controlled and
+  remains best-effort.
+- **2026-10-16 Tailscale-off retest:** With Tailscale disabled, repeated the
+  XIAO portal test and joined the AP from Android. The captive sign-in prompt
+  still did not appear; manually opening the portal worked. The firmware
+  accepted the submitted hotspot credentials, saved them, and closed the AP.
+  Tailscale being enabled was therefore not the cause of the missing Android
+  prompt in this test.
+- **2026-10-16 confirmed LAN provisioning:** User-observed XIAO results:
+  stored NVS credentials survived firmware upload/reboot and were used for an
+  automatic 8/8 feed cycle before setup mode. Serial `W` entered recovery
+  without erasing credentials. `BrooklynMap-Avi` started at
+  `192.168.4.1`; a phone joined and the scan returned visible networks.
+  Submitted credentials were accepted (only password length logged), the XIAO
+  joined the selected LAN, obtained DHCP address `10.110.202.133` for that run,
+  and saved the credentials. The AP shut down, SNTP synchronized, and MTA
+  polling resumed; cycles 2, 3 and 4 completed 8/8. A preceding DNS failure
+  recovered automatically and remains a transient network/Internet failure,
+  not a credential failure. Physical LED output remained disabled.
+- **Latest portal UI verification:** User visually confirmed the success page
+  showed the joined SSID, a clickable DHCP LAN-IP link, a clickable
+  `http://192.168.4.1/` setup link, and the note that setup Wi-Fi closes
+  shortly. The LAN link is intended for use after the client rejoins the same
+  LAN; it is not reachable from the isolated setup AP after that AP stops.
+- **Post-provision reset check:** After the updated `xiao-s3-network` image was
+  uploaded, the XIAO was reset without sending `W`. The serial capture showed
+  two complete 8/8 MTA cycles and repeated `LED outputs DISABLED` heartbeats.
+  No setup/provisioning messages appeared in the captured output, consistent
+  with automatic use of stored credentials and no setup AP. Startup output
+  disconnected during USB reset, so the explicit boot-time NVS-source and SNTP
+  lines were not captured in this reset retest. The earlier user-confirmed
+  provisioning run did show SNTP synchronization and polling resumption.
+- The WebServer diagnostic root cause was verified in the installed Arduino
+  WebServer implementation: it logged "request handler not found" before
+  invoking `onNotFound` whenever no exact route matched. The portal now
+  registers a wildcard `HTTP_ANY` handler after `/`, `/scan`, and `POST
+  /connect`, so it redirects otherwise unmatched requests without intercepting
+  credential submission. Recognized OS captive probes still serve the portal
+  page directly. Host tests and both network builds pass after this change;
+  production PCB has not been physically tested.
 
 ## Not validated
 
-Production PCB (rotary hold, GPIO17), the phone-side provisioning transaction
-end to end, NVS persistence/reboot, OS captive-portal pop-ups on
-Android/iOS/Windows (only direct `http://192.168.4.1/` was exercised), and
-flash/NVS encryption.
+Production PCB (rotary hold, GPIO17), a physical-browser request to an
+arbitrary unknown URL (the wildcard is host-tested, built and flashed, but
+this specific browser test was not captured), the phone-side provisioning
+transaction on iOS/Windows, Android automatic captive-portal launch,
+production PCB recovery, and flash/NVS encryption.

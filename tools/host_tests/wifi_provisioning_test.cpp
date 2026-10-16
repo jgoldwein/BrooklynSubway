@@ -182,6 +182,7 @@ void testPortal() {
   static char page[8192];
   const PortalStatus all[] = {PortalStatus::None,       PortalStatus::Scanning,
                               PortalStatus::Connecting, PortalStatus::Saved,
+                              PortalStatus::SaveFailed,
                               PortalStatus::ConnectFailed, PortalStatus::InvalidInput};
   for (PortalStatus s : all) {
     const size_t len = renderPortalPage(page, sizeof(page), e, 2, s, true);
@@ -195,7 +196,27 @@ void testPortal() {
     CHECK(strstr(page, ">OpenNet</option>") != nullptr);
     CHECK(strstr(page, "dBm") == nullptr);
     CHECK(strstr(page, "&lt;b&gt;&quot;Wi&amp;Fi&quot;") != nullptr);
+    CHECK((strstr(page, "http-equiv=\"refresh\"") != nullptr) ==
+          (s == PortalStatus::Scanning || s == PortalStatus::Connecting));
   }
+  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "JWGS26U", "192.168.1.42");
+  CHECK(strstr(page, "Successfully connected to Wi-Fi: <b>JWGS26U</b>") != nullptr);
+  CHECK(strstr(page, "Settings saved") != nullptr);
+  CHECK(strstr(page, "LAN address: <a href=\"http://192.168.1.42/\">192.168.1.42</a>") != nullptr);
+  CHECK(strstr(page, "open after reconnecting your phone to the same Wi-Fi") != nullptr);
+  CHECK(strstr(page, "go to <a href=\"http://192.168.4.1/\">192.168.4.1</a>") != nullptr);
+  CHECK(strstr(page, "The setup network closes shortly.") != nullptr);
+  CHECK(strstr(page, kSecret) == nullptr);
+  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "JWGS26U", "10.110.202.133");
+  CHECK(strstr(page, "http://10.110.202.133/\">10.110.202.133</a>") != nullptr);
+  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, e[0].ssid, "192.168.1.42");
+  CHECK(strstr(page, "Wi-Fi: <b>Cafe &lt;b&gt;&quot;Wi&amp;Fi&quot;&lt;/b&gt;</b>") != nullptr);
+  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::SaveFailed, true, "JWGS26U", "192.168.1.42");
+  CHECK(strstr(page, "Successfully connected to Wi-Fi: <b>JWGS26U</b>") != nullptr);
+  CHECK(strstr(page, "settings could not be saved") != nullptr);
+  CHECK(strstr(page, "LAN address: <a href=\"http://192.168.1.42/\">192.168.1.42</a>") != nullptr);
+  CHECK(strstr(page, "<a href=\"http://192.168.4.1/\">192.168.4.1</a>") != nullptr);
+  CHECK(strstr(page, kSecret) == nullptr);
 
   // Tiny buffers never overflow and stay NUL-terminated.
   for (size_t cap = 0; cap < 40; ++cap) {
@@ -218,11 +239,17 @@ void testRoutes() {
   CHECK(classifyPath("/scan") == PortalRoute::Scan);
   CHECK(classifyPath("/connect") == PortalRoute::Connect);
   CHECK(classifyPath("/generate_204") == PortalRoute::Probe);
+  CHECK(classifyPath("/gen_204") == PortalRoute::Probe);
   CHECK(classifyPath("/hotspot-detect.html") == PortalRoute::Probe);
+  CHECK(classifyPath("/library/test/success.html") == PortalRoute::Probe);
   CHECK(classifyPath("/connecttest.txt") == PortalRoute::Probe);
   CHECK(classifyPath("/ncsi.txt") == PortalRoute::Probe);
+  CHECK(classifyPath("/redirect") == PortalRoute::Probe);
+  CHECK(classifyPath("/fwlink") == PortalRoute::Probe);
   CHECK(classifyPath("/fwlink/abc") == PortalRoute::Probe);
   CHECK(classifyPath("/anything/else") == PortalRoute::Redirect);
+  CHECK(classifyPath("/favicon.ico") == PortalRoute::Redirect);
+  CHECK(classifyPath("/unknown/captive-check") == PortalRoute::Redirect);
 }
 
 // ---- Feed diagnostics -----------------------------------------------------

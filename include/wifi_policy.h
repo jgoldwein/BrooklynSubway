@@ -114,14 +114,16 @@ enum class PortalStatus : uint8_t {
   Scanning,
   Connecting,
   Saved,           // connected and stored
+  SaveFailed,      // connected but could not store credentials
   ConnectFailed,   // old credentials kept
   InvalidInput,
 };
 
 // Writes NUL-terminated HTML into out (never overflows; truncates safely).
-// Returns the length. `hasStored` only toggles a hint; no secret is rendered.
+// Returns the length. `hasStored` only toggles a hint; no password is rendered.
 size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, size_t count,
-                        PortalStatus status, bool hasStored);
+                        PortalStatus status, bool hasStored, const char *connectedSsid = nullptr,
+                        const char *connectedIp = nullptr);
 
 // Escapes &, <, >, ", ' for HTML text/attributes. Returns the length written.
 size_t htmlEscape(char *out, size_t capacity, const char *in);
