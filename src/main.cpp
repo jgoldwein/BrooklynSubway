@@ -5,9 +5,9 @@
 #include "controls.h"
 #include "diagnostics.h"
 #include "hardware.h"
-#include "led_backend.h"
 #include "led_engine.h"
 #include "network_service.h"
+#include "operational_display.h"
 #include "semantic_api.h"
 #include "train_pipeline.h"
 
@@ -15,13 +15,82 @@
 
 namespace {
 
-// Phase 4I: in-memory train pipeline. No feed source exists yet; it is exercised
-// once at startup with an empty cycle and never drives LEDs.
+// The pipeline builds each cycle's candidate independently of the committed display frame.
 brooklyn::pipeline::TrainPipeline trainPipeline;
+brooklyn::display::Controller operationalDisplay;
+brooklyn::semantic::RgbFrame logicalDisplayFrame{};
+bool systemHealthy = true;
+uint32_t renderedFrameRevision = UINT32_MAX;
 
-// Phase 4J: GTFS-RT transport. Disabled unless built with
-// -DBROOKLYN_NETWORK_ENABLED=1 and credentials exist; never drives LEDs.
+// Network service is disabled unless explicitly enabled; it never drives LEDs.
 brooklyn::network::NetworkService networkService(trainPipeline);
+
+brooklyn::display::WifiIndicator wifiIndicator(brooklyn::network::State state) {
+  using brooklyn::display::WifiIndicator;
+  using brooklyn::network::State;
+  switch (state) {
+    case State::Disabled: return WifiIndicator::Disabled;
+    case State::NoCredentials:
+    case State::Provisioning: return WifiIndicator::Unavailable;
+    case State::WifiConnecting: return WifiIndicator::Connecting;
+    case State::TemporarilyUnavailable: return WifiIndicator::Unavailable;
+    case State::TimeSyncing: return WifiIndicator::TimeSyncing;
+    case State::Ready: return WifiIndicator::Associated;
+  }
+  return WifiIndicator::Unavailable;
+}
+
+void reportDisplayTransition(brooklyn::display::State previous,
+                             brooklyn::display::Event event, uint32_t nowMs) {
+  using brooklyn::display::Event;
+  const brooklyn::display::State current = operationalDisplay.state();
+  if (previous == current) return;
+
+  const char *reason = "display policy";
+  if (event == Event::PartialHeld) reason = "partial cycle, holding prior frame";
+  else if (event == Event::PartialCommitted) reason = "usable partial candidate committed";
+  else if (event == Event::NoFeeds) reason = "no usable feeds";
+  else if (event == Event::AgedStale) reason = "no usable frame within grace";
+  else if (event == Event::HardStale) reason = "hard stale limit reached";
+  if (event == Event::HardStale) {
+    Serial.printf("Display: %s -> %s (%s; data age >= %lu ms)\n",
+                  brooklyn::display::stateName(previous),
+                  brooklyn::display::stateName(current), reason,
+                  static_cast<unsigned long>(brooklyn::display::kHardStaleLimitMs));
+    return;
+  }
+  if (event == Event::NoFeeds && !operationalDisplay.hasFrame()) {
+    Serial.printf("Display: %s -> %s (%s; no prior usable frame)\n",
+                  brooklyn::display::stateName(previous),
+                  brooklyn::display::stateName(current), reason);
+    return;
+  }
+  Serial.printf("Display: %s -> %s (%s; data age %lu ms)\n",
+                brooklyn::display::stateName(previous),
+                brooklyn::display::stateName(current), reason,
+                static_cast<unsigned long>(operationalDisplay.dataAgeMs(nowMs)));
+}
+
+void updateLogicalDisplay(uint32_t nowMs) {
+  if (renderedFrameRevision != operationalDisplay.frameRevision()) {
+    brooklyn::semantic::renderTrainFrame(operationalDisplay.frame(), logicalDisplayFrame);
+    renderedFrameRevision = operationalDisplay.frameRevision();
+  }
+  const brooklyn::display::StatusIndicators status{
+      systemHealthy,
+      wifiIndicator(networkService.state()),
+      networkService.state() == brooklyn::network::State::Provisioning,
+      operationalDisplay.feedAttempted(),
+      operationalDisplay.state(),
+      brooklyn::semantic::kDefaultRenderBrightness,
+  };
+  static bool reportedStatusMapFailure = false;
+  if (!brooklyn::display::applyStatusOverlay(logicalDisplayFrame, status) &&
+      !reportedStatusMapFailure) {
+    reportedStatusMapFailure = true;
+    Serial.println("Display: canonical status LED mapping failed");
+  }
+}
 
 void runXiaoLedTest() {
   brooklyn::diagnostics::begin();
@@ -76,27 +145,17 @@ void setup() {
 
   brooklyn::controls::begin();
   brooklyn::led::begin();
-#if defined(BROOKLYN_TARGET_PCB)
-  const bool physicalBackendReady =
-      brooklyn::led::backend::initializePhysicalLedBackend();
-#endif
 
   brooklyn::diagnostics::begin();
+  const bool pipelineReady = brooklyn::pipeline::selfCheckEmptyCycle(trainPipeline);
+  systemHealthy = hardwareReady && pipelineReady;
   Serial.printf("Train pipeline self-check (no feeds, no LED output): %s\n",
-                brooklyn::pipeline::selfCheckEmptyCycle(trainPipeline) ? "PASS" : "FAIL");
+                pipelineReady ? "PASS" : "FAIL");
   networkService.begin();
   if (!hardwareReady) {
     Serial.println("ERROR: I2C initialization failed; LED outputs remain disabled.");
   }
-#if defined(BROOKLYN_TARGET_PCB)
-  if (!physicalBackendReady) {
-    brooklyn::led::backend::disarmLedOutputs();
-    Serial.println(
-        "ERROR: Physical LED backend initialization failed; outputs DISARMED.");
-  }
-#endif
 #if defined(BROOKLYN_TARGET_XIAO)
-  (void)brooklyn::led::backend::initializePhysicalLedBackend();
   if (brooklyn::led::runSelfTest()) {
     brooklyn::led::runXiaoDemonstration();
   }
@@ -111,6 +170,40 @@ void loop() {
   }
   brooklyn::diagnostics::update();
   networkService.update(millis());
+  brooklyn::transport::CycleResult completedCycle{};
+  uint32_t completedAtMs = 0;
+  if (networkService.consumeCompletedCycle(completedCycle, completedAtMs)) {
+    using brooklyn::display::CycleQuality;
+    using brooklyn::transport::CycleOutcome;
+    if (completedCycle.outcome == CycleOutcome::Complete ||
+        completedCycle.outcome == CycleOutcome::Partial ||
+        completedCycle.outcome == CycleOutcome::NoFeeds) {
+      const brooklyn::display::State previous = operationalDisplay.state();
+      const brooklyn::pipeline::Counters &counts = trainPipeline.counters();
+      if (counts.feedsProcessed != completedCycle.processed ||
+          counts.feedDecodeFailures > counts.feedsProcessed) {
+        Serial.println("Display: poll/pipeline feed accounting mismatch; candidate not committed");
+      } else {
+        const uint32_t usableFeeds = counts.feedsProcessed - counts.feedDecodeFailures;
+        CycleQuality quality = CycleQuality::NoFeeds;
+        if (usableFeeds != 0) {
+          quality = completedCycle.outcome == CycleOutcome::Complete &&
+                            usableFeeds == completedCycle.processed &&
+                            completedCycle.processed == completedCycle.attempted
+                        ? CycleQuality::Complete
+                        : CycleQuality::Partial;
+        }
+        const brooklyn::display::Event event = operationalDisplay.completeCycle(
+            trainPipeline.frame(), quality, completedAtMs);
+        reportDisplayTransition(previous, event, completedAtMs);
+      }
+    }
+  }
+  const uint32_t displayNowMs = millis();
+  const brooklyn::display::State beforeAging = operationalDisplay.state();
+  const brooklyn::display::Event agingEvent = operationalDisplay.update(displayNowMs);
+  reportDisplayTransition(beforeAging, agingEvent, displayNowMs);
+  updateLogicalDisplay(displayNowMs);
 #if defined(BROOKLYN_TARGET_XIAO)
   static uint32_t forgetArmedAtMs = 0;
   while (Serial.available() > 0) {
