@@ -31,11 +31,17 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Current checkpoint — Phase 4N pushed; Phase 4O docs ready, 2026-10-16
+## Current checkpoint — Phase 4O pushed; Phase 4P audit ready, 2026-10-16
 
 - **Phase 4N checkpoint:** commit
   `ce80187b31267caa2a7006151cb3188c8cd3de46`, tag
   `phase-4n-output-bridge`, pushed to `origin/main` and `origin`.
+- **Phase 4O checkpoint:** commit
+  `e520d45af8a536cb8aba7926e864f277edaddd83`, tag
+  `phase-4o-production-bringup-readiness`, pushed to `origin/main` and
+  `origin`. Its exact files are `docs/PRODUCTION_PCB_BRINGUP_CHECKLIST.md`
+  and `RESUME.md`; commit was documentation-only. The working tree was
+  verified clean immediately after push.
 - **Phase 4N result:** memory-only bridge accepts a completed 306-pixel RGB
   frame, validates all canonical map round trips and the 302-map / 4-status
   split, stages it, and publishes through the LED engine's inactive buffer
@@ -51,8 +57,10 @@ clarification only if the requested next action remains ambiguous.
 - **Phase 4O readiness:** `docs/PRODUCTION_PCB_BRINGUP_CHECKLIST.md` was
   reviewed against the requested staged sequence and stop conditions. It
   clearly limits the initial stage to USB-only with external 5-V/barrel power
-  disconnected and stops before physical-LED testing. This documentation is
-  uncommitted and separate from Phase 4N.
+  disconnected and stops before physical-LED testing. It states that LED
+  output, external LED power, and LED_ENABLE are not authorized; all builds
+  must retain `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0`. Existing current/power
+  policy is not validated on real production hardware.
 - **Validation:** semantic data (302 map LEDs, 276 STATION, 26 SEGMENT, 188
   registry entities) and complete host regression passed: resolver 958,614;
   GTFS adapter 7,383; GTFS-RT 429; previous stop 8,098; TrainFrame 5,232;
@@ -67,8 +75,26 @@ clarification only if the requested next action remains ambiguous.
   The production PCB has not been made available for this validation and
   remains physically unvalidated. External 5 V and physical LEDs remain
   prohibited until separately authorized.
+- **Phase 4P audit:** read-only source/build audit is documented in
+  `docs/PHASE4P_PHYSICAL_OUTPUT_AUDIT.md`. Current production main only
+  publishes the logical frame; renderer/backend init/arm/transmit are not
+  linked/reached in the present production ELF. The flag-zero arm path cannot
+  raise GPIO1, but backend initialization is not itself guarded in source.
+  Initialization's black waveform is sent while the level shifters are
+  disabled, so it does not guarantee that the LEDs received a black/reset
+  frame. Powered WS2812 LEDs retain their last latched color through an MCU
+  reset until they lose power or latch another frame; LED_ENABLE LOW blocks
+  new data but cannot make them immediately dark. Establish and verify a
+  known-black-first-transmission-after-enable invariant before permitting any
+  color output. The installed RMT transmission path is synchronous; buffer
+  sharing must be re-audited before introducing concurrency.
+- **Phase 4P changes:** documentation only:
+  `docs/PHASE4P_PHYSICAL_OUTPUT_AUDIT.md` and this `RESUME.md`. Phase 4P
+  remains uncommitted, untagged, and unpushed. No source/header/platform
+  changes were made.
 - **Next safe hardware action:** when the production PCB is available, perform
   the checklist's USB-only bring-up with external 5-V/barrel power
   disconnected. Stop before any physical-LED action.
-- **Next repository action:** complete the Phase 4O documentation-only
-  checkpoint separately. Never record credentials.
+- **Next repository action:** Joel reviews the Phase 4P audit. Do not change
+  implementation or enable physical LED output before that review. Never
+  record credentials.
