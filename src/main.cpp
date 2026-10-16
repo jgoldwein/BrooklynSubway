@@ -4,6 +4,7 @@
 #include "board_pins.h"
 #include "controls.h"
 #include "diagnostics.h"
+#include "display_output.h"
 #include "hardware.h"
 #include "led_engine.h"
 #include "network_service.h"
@@ -72,9 +73,11 @@ void reportDisplayTransition(brooklyn::display::State previous,
 }
 
 void updateLogicalDisplay(uint32_t nowMs) {
+  bool changed = false;
   if (renderedFrameRevision != operationalDisplay.frameRevision()) {
     brooklyn::semantic::renderTrainFrame(operationalDisplay.frame(), logicalDisplayFrame);
     renderedFrameRevision = operationalDisplay.frameRevision();
+    changed = true;
   }
   const brooklyn::display::StatusIndicators status{
       systemHealthy,
@@ -84,11 +87,39 @@ void updateLogicalDisplay(uint32_t nowMs) {
       operationalDisplay.state(),
       brooklyn::semantic::kDefaultRenderBrightness,
   };
+  static brooklyn::display::StatusIndicators previousStatus{};
+  static bool hasPreviousStatus = false;
+  const bool statusChanged =
+      !hasPreviousStatus ||
+      previousStatus.systemHealthy != status.systemHealthy ||
+      previousStatus.wifi != status.wifi ||
+      previousStatus.provisioning != status.provisioning ||
+      previousStatus.feedAttempted != status.feedAttempted ||
+      previousStatus.displayState != status.displayState ||
+      previousStatus.brightness != status.brightness;
+  changed = changed || statusChanged;
   static bool reportedStatusMapFailure = false;
-  if (!brooklyn::display::applyStatusOverlay(logicalDisplayFrame, status) &&
-      !reportedStatusMapFailure) {
+  const bool statusApplied =
+      brooklyn::display::applyStatusOverlay(logicalDisplayFrame, status);
+  if (!statusApplied && !reportedStatusMapFailure) {
     reportedStatusMapFailure = true;
     Serial.println("Display: canonical status LED mapping failed");
+  }
+  if (statusApplied) {
+    previousStatus = status;
+    hasPreviousStatus = true;
+    static bool outputPending = true;
+    static bool reportedOutputFailure = false;
+    outputPending = outputPending || changed;
+    if (outputPending) {
+      if (brooklyn::display::output::publish(&logicalDisplayFrame)) {
+        outputPending = false;
+        reportedOutputFailure = false;
+      } else if (!reportedOutputFailure) {
+        reportedOutputFailure = true;
+        Serial.println("Display: output bridge rejected completed RGB frame");
+      }
+    }
   }
 }
 

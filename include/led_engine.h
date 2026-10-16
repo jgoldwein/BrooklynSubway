@@ -17,6 +17,7 @@ bool getLed(PhysicalAddress address, Rgb &color);
 bool getGlobalLed(GlobalPhysicalIndex index, Rgb &color);
 bool setStatusLed(StatusLed status, Rgb color);
 bool fillChannel(PhysicalChannel channel, Rgb color);
+bool publishFrame(const DisplayState *frame, uint16_t count);
 void setGlobalBrightness(uint16_t brightness);
 uint8_t globalBrightness();
 void render();
