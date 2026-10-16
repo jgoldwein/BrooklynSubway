@@ -31,17 +31,13 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Current checkpoint — Phase 4O pushed; Phase 4P audit ready, 2026-10-16
+## Current checkpoint — Phase 4Q safe output arming checkpointed
 
-- **Phase 4N checkpoint:** commit
-  `ce80187b31267caa2a7006151cb3188c8cd3de46`, tag
-  `phase-4n-output-bridge`, pushed to `origin/main` and `origin`.
-- **Phase 4O checkpoint:** commit
-  `e520d45af8a536cb8aba7926e864f277edaddd83`, tag
-  `phase-4o-production-bringup-readiness`, pushed to `origin/main` and
-  `origin`. Its exact files are `docs/PRODUCTION_PCB_BRINGUP_CHECKLIST.md`
-  and `RESUME.md`; commit was documentation-only. The working tree was
-  verified clean immediately after push.
+- **Phase 4P baseline:** commit `da3195f`, tag
+  `phase-4p-physical-output-audit`.
+- **Phase 4Q checkpoint:** tag `phase-4q-safe-output-arming` is the recovery
+  reference; verify it resolves to HEAD before any future work. Phase 4Q is
+  the latest firmware phase. Do not begin another firmware phase.
 - **Phase 4N result:** memory-only bridge accepts a completed 306-pixel RGB
   frame, validates all canonical map round trips and the 302-map / 4-status
   split, stages it, and publishes through the LED engine's inactive buffer
@@ -66,35 +62,53 @@ clarification only if the requested next action remains ambiguous.
   GTFS adapter 7,383; GTFS-RT 429; previous stop 8,098; TrainFrame 5,232;
   RGB renderer 71,785; TrainPipeline 4,538; feed transport 1,209; Wi-Fi
   provisioning 310; OperationalDisplay 1,534; output bridge 476,271 checks.
-  All had zero failures. Four clean builds passed: brooklyn-s3 36,236 B RAM /
-  304,353 B flash; xiao-s3 35,348 B / 289,453 B;
-  brooklyn-s3-network 71,740 B / 1,024,605 B;
-  xiao-s3-network 70,852 B / 1,009,733 B.
+  All had zero failures. Phase 4N baseline clean builds: brooklyn-s3 36,228 B
+  RAM / 304,181 B flash; xiao-s3 35,340 B / 289,281 B;
+  brooklyn-s3-network 71,732 B / 1,024,453 B;
+  xiao-s3-network 70,844 B / 1,009,581 B.
 - **Safety:** every PlatformIO environment keeps
   `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0`. No firmware upload or physical test.
   The production PCB has not been made available for this validation and
   remains physically unvalidated. External 5 V and physical LEDs remain
   prohibited until separately authorized.
-- **Phase 4P audit:** read-only source/build audit is documented in
-  `docs/PHASE4P_PHYSICAL_OUTPUT_AUDIT.md`. Current production main only
-  publishes the logical frame; renderer/backend init/arm/transmit are not
-  linked/reached in the present production ELF. The flag-zero arm path cannot
-  raise GPIO1, but backend initialization is not itself guarded in source.
-  Initialization's black waveform is sent while the level shifters are
-  disabled, so it does not guarantee that the LEDs received a black/reset
-  frame. Powered WS2812 LEDs retain their last latched color through an MCU
-  reset until they lose power or latch another frame; LED_ENABLE LOW blocks
-  new data but cannot make them immediately dark. Establish and verify a
-  known-black-first-transmission-after-enable invariant before permitting any
-  color output. The installed RMT transmission path is synchronous; buffer
-  sharing must be re-audited before introducing concurrency.
-- **Phase 4P changes:** documentation only:
-  `docs/PHASE4P_PHYSICAL_OUTPUT_AUDIT.md` and this `RESUME.md`. Phase 4P
-  remains uncommitted, untagged, and unpushed. No source/header/platform
-  changes were made.
-- **Next safe hardware action:** when the production PCB is available, perform
-  the checklist's USB-only bring-up with external 5-V/barrel power
-  disconnected. Stop before any physical-LED action.
-- **Next repository action:** Joel reviews the Phase 4P audit. Do not change
-  implementation or enable physical LED output before that review. Never
-  record credentials.
+- **Phase 4P audit:** `docs/PHASE4P_PHYSICAL_OUTPUT_AUDIT.md` documents the
+  read-only audit. It identified that powered WS2812-compatible LEDs may
+  retain their last latched color through MCU reset; LED_ENABLE LOW alone does
+  not clear them.
+- **Phase 4Q implementation:** `docs/PHASE4Q_SAFE_OUTPUT_ARMING.md` records
+  the black-first state controller, backend integration, validation, and
+  limitations. The invariant is: no non-black physical frame can be
+  transmitted unless a successful post-enable all-black transmission has
+  completed during the current arming session. The ordinary `main.cpp` path
+  remains memory-only.
+- **Phase 4Q files:** `include/physical_output_safety.h`,
+  `src/physical_output_safety.cpp`, `src/led_backend.cpp`, `src/led_power.cpp`,
+  `tools/host_tests/physical_output_safety_test.cpp`,
+  `tools/run_physical_output_safety_tests.py`, the Phase 4Q document, and
+  this handoff.
+- **Validation:** all twelve Phase 4 host regression runners passed. The
+  black-first safety runner passed 3,630 checks using the production limiter;
+  final checks cover color-transmission failure and fresh-black re-arming.
+  Semantic validation confirmed 302 map LEDs, 276 STATION, 26 SEGMENT, and
+  188 registry entities. Clean-build sizes, Phase 4N deltas, and all
+  regression counts are in `docs/PHASE4Q_SAFE_OUTPUT_ARMING.md`. The
+  production zero-permission ELF has no linked physical renderer,
+  initializer, arming, transmission, interlock, strip-construction, or
+  NeoPixel `show()` symbols.
+- **Safety:** all environments retain
+  `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0`. No upload, physical LED write, or
+  physical test occurred. The production PCB remains untested. Phase 4Q is
+  checkpointed to `origin/main` with tag `phase-4q-safe-output-arming`.
+- **Next safe action:** WAIT FOR THE PRODUCTION PCB, then perform the
+  documented USB-only Phase 4O bring-up with external 5-V/barrel supply
+  disconnected. Do not enable physical LEDs or begin another firmware phase.
+  Never record credentials.
+
+## Recovery when the manufactured PCB is available
+
+1. Read this file and `docs/PRODUCTION_PCB_BRINGUP_CHECKLIST.md`.
+2. Verify the current tag is `phase-4q-safe-output-arming`.
+3. Keep external 5-V/barrel supply disconnected; connect USB only.
+4. Keep physical LED output disabled.
+5. Perform the USB-only checklist in order.
+6. Stop and report results before any external LED-power step.

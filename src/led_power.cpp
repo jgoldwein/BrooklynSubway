@@ -3,8 +3,6 @@
 
 #include "led_power.h"
 
-#include <algorithm>
-
 namespace brooklyn::led::power {
 namespace {
 
@@ -71,7 +69,7 @@ void limitFrameToBudget(const DisplayState *source, uint16_t count,
   }
 
   const uint8_t effectiveBrightness =
-      std::min(requestedBrightness, brightnessCap);
+      requestedBrightness < brightnessCap ? requestedBrightness : brightnessCap;
   report.effectiveBrightness = effectiveBrightness;
   report.estimatedCurrentMa =
       estimateFrameCurrentMa(source, count, effectiveBrightness);
