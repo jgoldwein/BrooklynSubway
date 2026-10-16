@@ -23,7 +23,7 @@ namespace brooklyn::wifi {
 
 constexpr const char *kApSsid = "BrooklynMap-Avi";  // setup AP contract
 constexpr uint32_t kConnectAttemptMs = 20000;       // one portal association attempt
-constexpr uint32_t kSavedLingerMs = 3000;           // let the "saved" page reach the phone
+constexpr uint32_t kSavedLingerMs = 8000;           // let the "saved" page reach the phone
 constexpr uint32_t kStoredPortalTimeoutMs = 10UL * 60UL * 1000UL;  // only when creds exist
 
 // NVS namespace "bkmap_wifi" (versioned, map-owned). clear() empties only it.

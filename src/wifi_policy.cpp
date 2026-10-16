@@ -164,8 +164,9 @@ PortalRoute classifyPath(const char *path) {
 size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, size_t count,
                         PortalStatus status, bool hasStored) {
   Out o(out, capacity);
-  o.put("<!DOCTYPE html><html><head><meta charset=\"utf-8\">"
-        "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+  o.put("<!DOCTYPE html><html><head><meta charset=\"utf-8\">");
+  if (status == PortalStatus::Connecting) o.put("<meta http-equiv=\"refresh\" content=\"2\">");
+  o.put("<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
         "<title>Brooklyn Active Subway Map</title>"
         "<style>body{font-family:sans-serif;max-width:30em;margin:1em auto;padding:0 1em}"
         "input,select,button{font-size:1em;width:100%;margin:.3em 0;padding:.4em}"
@@ -179,7 +180,8 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
     case PortalStatus::Scanning: o.put("<p class=\"s\">Scan in progress; reload in a moment.</p>"); break;
     case PortalStatus::Connecting: o.put("<p class=\"s\">Connecting...</p>"); break;
     case PortalStatus::Saved:
-      o.put("<p class=\"s\">Connected. Settings saved; setup mode is closing.</p>");
+      o.put("<p class=\"s\">Connected. Settings saved. The map is joining your Wi-Fi and "
+            "this setup network is closing; you can close this page.</p>");
       break;
     case PortalStatus::ConnectFailed:
       o.put("<p class=\"s\">Could not connect. Check the name and password"
