@@ -5,6 +5,8 @@
 
 #include "board_pins.h"
 #include "led_map.h"
+#include "led_power.h"
+#include "physical_output_safety.h"
 
 #include <Arduino.h>
 
@@ -20,6 +22,10 @@
 #endif
 
 namespace {
+
+using brooklyn::led::DisplayState;
+using brooklyn::led::Rgb;
+namespace safety = brooklyn::led::safety;
 
 Adafruit_NeoPixel *productionStrips() {
   static Adafruit_NeoPixel strips[8] = {
@@ -52,7 +58,7 @@ Adafruit_NeoPixel *productionStrips() {
 }
 
 bool initialized = false;
-bool armed = false;
+safety::Controller outputController;
 
 void forceDataPinsLow() {
   for (uint8_t pin : brooklyn::pins::LED_DATA) {
@@ -60,16 +66,25 @@ void forceDataPinsLow() {
   }
 }
 
-}  // namespace
+bool setEnable(void *, bool enabled) {
+  if (enabled) {
+#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1
+    digitalWrite(brooklyn::pins::LED_ENABLE, HIGH);
+    return true;
+#else
+    return false;
 #endif
+  }
+  digitalWrite(brooklyn::pins::LED_ENABLE, LOW);
+  return true;
+}
 
-namespace brooklyn::led::backend {
-
-bool initializePhysicalLedBackend() {
-#if defined(BROOKLYN_TARGET_PCB)
-  disarmLedOutputs();
+bool initializeStrips(void *) {
+#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1
+  initialized = false;
   auto *strips = productionStrips();
-  for (uint8_t channel = 0; channel < map::CHANNEL_COUNT; ++channel) {
+  for (uint8_t channel = 0; channel < brooklyn::led::map::CHANNEL_COUNT;
+       ++channel) {
     if (strips[channel].getPixels() == nullptr) {
       Serial.printf("LED backend initialization failed: CH%u buffer allocation\n",
                     channel + 1);
@@ -78,20 +93,95 @@ bool initializePhysicalLedBackend() {
       return false;
     }
   }
-
-  for (uint8_t channel = 0; channel < map::CHANNEL_COUNT; ++channel) {
+  for (uint8_t channel = 0; channel < brooklyn::led::map::CHANNEL_COUNT;
+       ++channel) {
     strips[channel].begin();
-    strips[channel].clear();
-    strips[channel].show();
-    digitalWrite(pins::LED_DATA[channel], LOW);
+    digitalWrite(brooklyn::pins::LED_DATA[channel], LOW);
   }
-
   forceDataPinsLow();
   initialized = true;
-  armed = false;
-  Serial.println(
-      "Physical LED backend initialized; black frame sent with outputs DISARMED.");
   return true;
+#else
+  return false;
+#endif
+}
+
+bool setDataPinsLow(void *) {
+#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1
+  forceDataPinsLow();
+  return true;
+#else
+  return false;
+#endif
+}
+
+bool prepareBlack(void *, const DisplayState *black, DisplayState *limited,
+                  uint16_t count) {
+#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1
+  if (black == nullptr || limited == nullptr ||
+      count != brooklyn::led::map::TOTAL_LED_COUNT) {
+    return false;
+  }
+  brooklyn::led::power::FramePowerReport report{};
+  brooklyn::led::power::limitFrameToBudget(
+      black, count, 255,
+      brooklyn::led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP, limited,
+      report);
+  return safety::isBlackFrame(limited, count);
+#else
+  (void)black;
+  (void)limited;
+  (void)count;
+  return false;
+#endif
+}
+
+bool transmitOnHardware(void *, const DisplayState *frame, uint16_t count) {
+#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1
+  if (!initialized || frame == nullptr ||
+      count != brooklyn::led::map::TOTAL_LED_COUNT) {
+    return false;
+  }
+  auto *strips = productionStrips();
+  uint16_t start = 0;
+  for (uint8_t channel = 0; channel < brooklyn::led::map::CHANNEL_COUNT;
+       ++channel) {
+    for (uint8_t index = 0;
+         index < brooklyn::pins::LED_COUNT[channel]; ++index) {
+      const Rgb color = frame[start + index].color;
+      strips[channel].setPixelColor(index, color.red, color.green, color.blue);
+    }
+    strips[channel].show();
+    digitalWrite(brooklyn::pins::LED_DATA[channel], LOW);
+    start += brooklyn::pins::LED_COUNT[channel];
+  }
+  forceDataPinsLow();
+  return true;
+#else
+  (void)frame;
+  (void)count;
+  return false;
+#endif
+}
+
+const safety::Operations kOutputOperations = {
+    nullptr, setEnable, initializeStrips, setDataPinsLow, prepareBlack,
+    transmitOnHardware};
+
+}  // namespace
+#endif
+
+namespace brooklyn::led::backend {
+
+bool initializePhysicalLedBackend() {
+#if defined(BROOKLYN_TARGET_PCB)
+  const bool ready = outputController.initialize(
+      kOutputOperations, physicalLedOutputPermissionEnabled());
+  if (ready) {
+    Serial.println(
+        "Physical LED backend initialized; post-enable black required.");
+  }
+  return ready;
 #else
   return false;
 #endif
@@ -99,23 +189,14 @@ bool initializePhysicalLedBackend() {
 
 bool armLedOutputs() {
 #if defined(BROOKLYN_TARGET_PCB)
-#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1
-  if (!initialized) {
-    Serial.println("LED output arm refused: physical backend not initialized.");
-    disarmLedOutputs();
-    return false;
+  const bool armed = outputController.arm(
+      kOutputOperations, physicalLedOutputPermissionEnabled());
+  if (!armed) {
+    Serial.println("LED output arm refused; black-first interlock not satisfied.");
+  } else {
+    Serial.println("Physical LED outputs ARMED after post-enable black frame.");
   }
-  disarmLedOutputs();
-  digitalWrite(pins::LED_ENABLE, HIGH);
-  armed = true;
-  Serial.println("Physical LED outputs ARMED.");
-  return true;
-#else
-  disarmLedOutputs();
-  Serial.println(
-      "LED output arm refused: disabled by BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0.");
-  return false;
-#endif
+  return armed;
 #else
   Serial.println("LED output arm refused: XIAO is software-simulation only.");
   return false;
@@ -124,17 +205,13 @@ bool armLedOutputs() {
 
 void disarmLedOutputs() {
 #if defined(BROOKLYN_TARGET_PCB)
-  digitalWrite(pins::LED_ENABLE, LOW);
-  armed = false;
-  if (initialized) {
-    forceDataPinsLow();
-  }
+  outputController.disarm(kOutputOperations);
 #endif
 }
 
 bool physicalLedOutputsArmed() {
 #if defined(BROOKLYN_TARGET_PCB)
-  return armed;
+  return outputController.state() == safety::State::Armed;
 #else
   return false;
 #endif
@@ -158,28 +235,12 @@ bool physicalLedOutputPermissionEnabled() {
 
 bool transmitFrame(const DisplayState *frame, uint16_t count) {
 #if defined(BROOKLYN_TARGET_PCB)
-  if (!initialized || !armed || !physicalLedOutputPermissionEnabled()) {
-    return false;
+  const bool transmitted = outputController.transmit(
+      kOutputOperations, physicalLedOutputPermissionEnabled(), frame, count);
+  if (!transmitted && outputController.state() == safety::State::Fault) {
+    Serial.println("LED transmission fault; outputs disabled.");
   }
-  if (frame == nullptr || count != map::TOTAL_LED_COUNT) {
-    Serial.println("LED frame rejected: invalid framebuffer; outputs DISARMED.");
-    disarmLedOutputs();
-    return false;
-  }
-
-  Adafruit_NeoPixel *strips = productionStrips();
-  uint16_t start = 0;
-  for (uint8_t channel = 0; channel < map::CHANNEL_COUNT; ++channel) {
-    for (uint8_t index = 0; index < pins::LED_COUNT[channel]; ++index) {
-      const Rgb color = frame[start + index].color;
-      strips[channel].setPixelColor(index, color.red, color.green, color.blue);
-    }
-    strips[channel].show();
-    digitalWrite(pins::LED_DATA[channel], LOW);
-    start += pins::LED_COUNT[channel];
-  }
-  forceDataPinsLow();
-  return true;
+  return transmitted;
 #else
   (void)frame;
   (void)count;
