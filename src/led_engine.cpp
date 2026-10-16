@@ -9,11 +9,13 @@
 #include "led_power.h"
 
 #include <Arduino.h>
+#include <string.h>
 
 namespace brooklyn::led {
 namespace {
 
-DisplayState framebuffer[map::TOTAL_LED_COUNT]{};
+DisplayState frameBuffers[2][map::TOTAL_LED_COUNT]{};
+DisplayState *framebuffer = frameBuffers[0];
 uint8_t brightness = 255;
 
 constexpr Rgb BLACK = {0, 0, 0};
@@ -79,8 +81,8 @@ void begin() {
 }
 
 void clear() {
-  for (DisplayState &state : framebuffer) {
-    state.color = BLACK;
+  for (uint16_t index = 0; index < map::TOTAL_LED_COUNT; ++index) {
+    framebuffer[index].color = BLACK;
   }
 }
 
@@ -133,6 +135,18 @@ bool fillChannel(PhysicalChannel channel, Rgb color) {
       return false;
     }
   }
+  return true;
+}
+
+bool publishFrame(const DisplayState *frame, uint16_t count) {
+  if (frame == nullptr || count != map::TOTAL_LED_COUNT) {
+    return false;
+  }
+
+  DisplayState *inactive =
+      framebuffer == frameBuffers[0] ? frameBuffers[1] : frameBuffers[0];
+  memcpy(inactive, frame, sizeof(frameBuffers[0]));
+  framebuffer = inactive;
   return true;
 }
 
