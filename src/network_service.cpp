@@ -172,7 +172,17 @@ const char *stateName(State s) {
 NetworkService::NetworkService(pipeline::TrainPipeline &pipeline)
     : pipeline_(pipeline), counters_{}, buffer_{nullptr, 0}, scheduler_{},
       state_(State::Disabled), bufferTried_(false), wifiStarted_(false),
-      timeStarted_(false), recoveryRequested_(false), lastWifiAttemptMs_(0), timeStartMs_(0) {}
+      timeStarted_(false), recoveryRequested_(false), lastWifiAttemptMs_(0), timeStartMs_(0),
+      completedCycle_{}, completedCycleAtMs_(0), completedCyclePending_(false) {}
+
+bool NetworkService::consumeCompletedCycle(transport::CycleResult &result,
+                                           uint32_t &completedAtMs) {
+  if (!completedCyclePending_) return false;
+  result = completedCycle_;
+  completedAtMs = completedCycleAtMs_;
+  completedCyclePending_ = false;
+  return true;
+}
 
 bool NetworkService::credentialsPresent() const { return gActive.ssid[0] != '\0'; }
 
@@ -368,7 +378,10 @@ void NetworkService::pollNow(uint32_t nowMs) {
       sink, connection(), buffer_, kFeeds, kFeedCount, pre,
       kDefaultNetworkConfig.acceptUnknownLength, counters_,
       transport::CycleBudget{&clock, kDefaultNetworkConfig.cycleBudgetMs}, &logger);
-  scheduler_.cycleFinished(millis());
+  completedCycle_ = r;
+  completedCycleAtMs_ = millis();
+  completedCyclePending_ = true;
+  scheduler_.cycleFinished(completedCycleAtMs_);
   (void)nowMs;
   printStatus(r);
 }
@@ -413,6 +426,10 @@ NetworkService::NetworkService(pipeline::TrainPipeline &pipeline)
     : pipeline_(pipeline), counters_{}, buffer_{nullptr, 0}, scheduler_{},
       state_(State::Disabled), bufferTried_(false), wifiStarted_(false),
       timeStarted_(false), recoveryRequested_(false), lastWifiAttemptMs_(0), timeStartMs_(0) {}
+
+bool NetworkService::consumeCompletedCycle(transport::CycleResult &, uint32_t &) {
+  return false;
+}
 
 bool NetworkService::credentialsPresent() const { return false; }
 void NetworkService::loadCredentials() {}

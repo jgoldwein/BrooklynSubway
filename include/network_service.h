@@ -32,10 +32,12 @@ enum class State : uint8_t {
 class NetworkService {
  public:
   explicit NetworkService(pipeline::TrainPipeline &pipeline);
-  // Never blocks on the network. Prints the network status line.
+  // Association retries are asynchronous; a due multi-feed poll runs synchronously.
   void begin();
   // Call from loop(). Returns immediately when disabled.
   void update(uint32_t nowMs);
+  // Returns each finished transport cycle once; skipped cycles leave the pipeline untouched.
+  bool consumeCompletedCycle(transport::CycleResult &result, uint32_t &completedAtMs);
 
   // Explicit user recovery: enter the setup portal. Credentials are kept.
   void requestProvisioning();
@@ -68,6 +70,9 @@ class NetworkService {
   bool recoveryRequested_;
   uint32_t lastWifiAttemptMs_;
   uint32_t timeStartMs_;
+  transport::CycleResult completedCycle_{};
+  uint32_t completedCycleAtMs_ = 0;
+  bool completedCyclePending_ = false;
 };
 
 }  // namespace brooklyn::network
