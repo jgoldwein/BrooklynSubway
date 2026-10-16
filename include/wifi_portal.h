@@ -54,6 +54,7 @@ class Portal {
   void handleScan();
   void handleConnect();
   void handleOther();
+  void startScan();
   void redirectHome();
   void sendPage(PortalStatus status);
   void harvestScan();
@@ -71,6 +72,7 @@ class Portal {
   uint32_t connectStartMs_ = 0;
   uint32_t savedAtMs_ = 0;
   Credentials candidate_{};
+  char connectedIp_[16] = {};
   ScanEntry scan_[kMaxScanEntries];
   size_t scanCount_ = 0;
   char page_[6144];

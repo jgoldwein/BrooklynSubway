@@ -5,16 +5,21 @@ Initial firmware scaffold for the manufactured Brooklyn Active Subway Map V1.1 P
 ## Start here
 
 1. Read `PROJECT_CONTEXT.md`.
-2. In VS Code with the official OpenAI Codex extension, open this folder.
-3. Codex automatically uses the root `AGENTS.md` as project instructions.
-4. First Codex prompt:
+2. After a computer or session reboot, follow [`RESUME.md`](RESUME.md) before
+   continuing existing work.
+3. In VS Code with the official OpenAI Codex extension, open this folder.
+4. Codex automatically uses the root `AGENTS.md` as project instructions.
+5. First Codex prompt:
 
    `Read AGENTS.md and PROJECT_CONTEXT.md. Summarize the manufactured hardware constraints and do not change any files yet.`
 
 ## PlatformIO targets
 
 - `xiao-s3`: travel/bench compiler target (default initially).
+- `xiao-s3-network`: bench-only target with Wi-Fi provisioning enabled.
 - `brooklyn-s3`: manufactured V1.1 PCB target.
+- `brooklyn-s3-network`: manufactured PCB target with Wi-Fi provisioning and
+  MTA feed polling enabled.
 
 Phase 1 initializes only production-board controls, power status, the user
 indicator, and I2C. GPIO1 LED output-enable remains LOW; no addressable LEDs
@@ -49,11 +54,34 @@ Build the bench target:
 pio run -e xiao-s3
 ```
 
+Build the network-enabled bench target for Wi-Fi provisioning tests:
+
+```powershell
+pio run -e xiao-s3-network
+```
+
+This does not change the default targets and is not electrically equivalent to
+the manufactured PCB.
+
 Build the production target:
 
 ```powershell
 pio run -e brooklyn-s3
 ```
+
+Build the network-enabled production target for the manufactured PCB:
+
+```powershell
+pio run -e brooklyn-s3-network
+```
+
+With this firmware, the user enters setup mode by holding the rotary push for
+10 seconds, joins the open `BrooklynMap-Avi` Wi-Fi network, and opens
+`http://192.168.4.1/` manually if the phone does not show a captive-portal
+prompt. Select a visible 2.4 GHz network and enter its Wi-Fi password on the
+setup page. The network-disabled `brooklyn-s3` environment remains unchanged;
+do not upload either production environment until the assembled PCB has passed
+the reviewed electrical bring-up checks.
 
 ## Licensing
 

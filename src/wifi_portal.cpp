@@ -9,6 +9,7 @@
 #include <Preferences.h>
 #include <WiFi.h>
 #include <esp_wifi.h>
+#include <uri/UriGlob.h>
 
 #include <string.h>
 
@@ -85,6 +86,7 @@ bool Portal::begin(bool hasStored, uint32_t nowMs) {
   saved_ = false;
   lastStatus_ = PortalStatus::None;
   memset(&candidate_, 0, sizeof(candidate_));
+  memset(connectedIp_, 0, sizeof(connectedIp_));
 
   WiFi.persistent(false);  // the driver must not keep its own copy of credentials
   if (!gEventHooked) {
@@ -94,7 +96,7 @@ bool Portal::begin(bool hasStored, uint32_t nowMs) {
   WiFi.setAutoReconnect(false);
   WiFi.disconnect(false);
   delay(200);
-  WiFi.mode(WIFI_AP_STA);
+  WiFi.mode(WIFI_AP);
   if (!WiFi.softAP(kApSsid)) {  // open AP; see docs/PHASE4L_WIFI_PROVISIONING.md
     WiFi.mode(WIFI_STA);
     return false;
@@ -109,13 +111,12 @@ bool Portal::begin(bool hasStored, uint32_t nowMs) {
   server_.on("/", HTTP_GET, [this]() { handleRoot(); });
   server_.on("/scan", HTTP_GET, [this]() { handleScan(); });
   server_.on("/connect", HTTP_POST, [this]() { handleConnect(); });
+  server_.on(UriGlob("*"), HTTP_ANY, [this]() { handleOther(); });
   server_.onNotFound([this]() { handleOther(); });
   server_.begin();
 
   scanCount_ = 0;
-  delay(500);
-  WiFi.scanNetworks(true);
-  scanPending_ = true;
+  scanPending_ = false;
   active_ = true;
   return true;
 }
@@ -136,15 +137,26 @@ void Portal::redirectHome() {
 }
 
 void Portal::sendPage(PortalStatus status) {
-  renderPortalPage(page_, sizeof(page_), scan_, scanCount_, status, hasStored_);
+  const char *connectedSsid =
+      (status == PortalStatus::Saved || status == PortalStatus::SaveFailed) ? candidate_.ssid : nullptr;
+  const char *connectedIp =
+      (status == PortalStatus::Saved || status == PortalStatus::SaveFailed) ? connectedIp_ : nullptr;
+  renderPortalPage(page_, sizeof(page_), scan_, scanCount_, status, hasStored_, connectedSsid, connectedIp);
   server_.sendHeader("Cache-Control", "no-store");
   server_.send(200, "text/html", page_);
 }
 
+void Portal::startScan() {
+  if (scanPending_) return;
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.disconnect(false);
+  WiFi.scanNetworks(true);
+  scanPending_ = true;
+}
+
 void Portal::handleRoot() {
   if (scanCount_ == 0 && !scanPending_ && !connecting_ && !saved_) {
-    WiFi.scanNetworks(true);
-    scanPending_ = true;
+    startScan();
   }
   PortalStatus s = lastStatus_;
   if (scanPending_ && s == PortalStatus::None) s = PortalStatus::Scanning;
@@ -152,15 +164,15 @@ void Portal::handleRoot() {
 }
 
 void Portal::handleScan() {
-  if (!scanPending_) {
-    WiFi.scanNetworks(true);
-    scanPending_ = true;
-  }
+  startScan();
   redirectHome();
 }
 
 void Portal::handleOther() {
-  // Probe URLs and unknown paths all lead back to the portal root.
+  if (classifyPath(server_.uri().c_str()) == PortalRoute::Probe) {
+    handleRoot();
+    return;
+  }
   redirectHome();
 }
 
@@ -248,16 +260,23 @@ Portal::Result Portal::service(uint32_t nowMs) {
       Serial.printf("Provisioning: STA disconnect reason %u, WiFi.status() = %d\n",
                     static_cast<unsigned>(reason), static_cast<int>(WiFi.status()));
     }
-    if (WiFi.status() == WL_CONNECTED) {
+    const IPAddress stationIp = WiFi.localIP();
+    const bool hasStationIp =
+        stationIp[0] != 0 || stationIp[1] != 0 || stationIp[2] != 0 || stationIp[3] != 0;
+    if (WiFi.status() == WL_CONNECTED && hasStationIp) {
       connecting_ = false;
+      const String stationIpText = stationIp.toString();
+      stationIpText.toCharArray(connectedIp_, sizeof(connectedIp_));
       if (commitIfAssociated(store_, candidate_, true)) {
         saved_ = true;
         savedAtMs_ = nowMs;
         lastStatus_ = PortalStatus::Saved;
-        Serial.println("Provisioning: association OK; credentials saved");
+        Serial.printf("Provisioning: SUCCESS - joined selected Wi-Fi network; LAN IP %s; credentials saved\n",
+                      connectedIp_);
       } else {
-        lastStatus_ = PortalStatus::ConnectFailed;
-        Serial.println("Provisioning: association OK but save failed; old credentials kept");
+        lastStatus_ = PortalStatus::SaveFailed;
+        Serial.printf("Provisioning: joined selected Wi-Fi network; LAN IP %s; saving credentials failed, old credentials kept\n",
+                      connectedIp_);
       }
     } else if (static_cast<uint32_t>(millis() - connectStartMs_) >= kConnectAttemptMs) {
       connecting_ = false;
@@ -265,7 +284,7 @@ Portal::Result Portal::service(uint32_t nowMs) {
       Serial.printf("Provisioning: WiFi.status() = %d\n", static_cast<int>(WiFi.status()));
       WiFi.disconnect(false);
       lastStatus_ = PortalStatus::ConnectFailed;
-      Serial.println("Provisioning: association FAILED; stored credentials unchanged");
+      Serial.println("Provisioning: association or DHCP FAILED; stored credentials unchanged");
     }
   }
 

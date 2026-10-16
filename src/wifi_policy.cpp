@@ -162,10 +162,13 @@ PortalRoute classifyPath(const char *path) {
 }
 
 size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, size_t count,
-                        PortalStatus status, bool hasStored) {
+                        PortalStatus status, bool hasStored, const char *connectedSsid,
+                        const char *connectedIp) {
   Out o(out, capacity);
   o.put("<!DOCTYPE html><html><head><meta charset=\"utf-8\">");
-  if (status == PortalStatus::Connecting) o.put("<meta http-equiv=\"refresh\" content=\"2\">");
+  if (status == PortalStatus::Scanning || status == PortalStatus::Connecting) {
+    o.put("<meta http-equiv=\"refresh\" content=\"2\">");
+  }
   o.put("<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
         "<title>Brooklyn Active Subway Map</title>"
         "<style>body{font-family:sans-serif;max-width:30em;margin:1em auto;padding:0 1em}"
@@ -180,8 +183,41 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
     case PortalStatus::Scanning: o.put("<p class=\"s\">Scan in progress; reload in a moment.</p>"); break;
     case PortalStatus::Connecting: o.put("<p class=\"s\">Connecting...</p>"); break;
     case PortalStatus::Saved:
-      o.put("<p class=\"s\">Connected. Settings saved. The map is joining your Wi-Fi and "
-            "this setup network is closing; you can close this page.</p>");
+      o.put("<p class=\"s\">Successfully connected to Wi-Fi");
+      if (connectedSsid != nullptr && connectedSsid[0] != 0) {
+        o.put(": <b>");
+        o.escaped(connectedSsid);
+        o.put("</b>");
+      }
+      o.put(". Settings saved.");
+      if (connectedIp != nullptr && connectedIp[0] != 0) {
+        o.put(" LAN address: <a href=\"http://");
+        o.escaped(connectedIp);
+        o.put("/\">");
+        o.escaped(connectedIp);
+        o.put("</a> (open after reconnecting your phone to the same Wi-Fi).");
+      }
+      o.put(" To return to this setup page while setup Wi-Fi is "
+            "available, go to <a href=\"http://192.168.4.1/\">192.168.4.1</a>. "
+            "The setup network closes shortly.</p>");
+      break;
+    case PortalStatus::SaveFailed:
+      o.put("<p class=\"s\">Successfully connected to Wi-Fi");
+      if (connectedSsid != nullptr && connectedSsid[0] != 0) {
+        o.put(": <b>");
+        o.escaped(connectedSsid);
+        o.put("</b>");
+      }
+      o.put(", but settings could not be saved. The previous saved settings are unchanged. ");
+      if (connectedIp != nullptr && connectedIp[0] != 0) {
+        o.put("LAN address: <a href=\"http://");
+        o.escaped(connectedIp);
+        o.put("/\">");
+        o.escaped(connectedIp);
+        o.put("</a> (open after reconnecting your phone to the same Wi-Fi). ");
+      }
+      o.put("To return to this setup page while setup Wi-Fi is available, go to "
+            "<a href=\"http://192.168.4.1/\">192.168.4.1</a>.</p>");
       break;
     case PortalStatus::ConnectFailed:
       o.put("<p class=\"s\">Could not connect. Check the name and password"
