@@ -93,7 +93,7 @@ It is never required and never printed. Priority: NVS credentials, then
   networks cannot be provisioned through the portal.
 - After a successful LAN association and credential save, the page explicitly
   reports the joined SSID (for example, `Successfully connected to Wi-Fi:
-  JWGS26U. Settings saved. LAN address: 192.168.1.42.`). The DHCP-assigned LAN
+  TestNetwork. Settings saved. LAN address: 192.168.1.42.`). The DHCP-assigned LAN
   address is a clickable `http://<LAN-IP>/` link to the device and is only
   shown once a nonzero address is available. Open it after reconnecting the
   phone to the same Wi-Fi network. SSIDs and addresses are HTML-escaped.

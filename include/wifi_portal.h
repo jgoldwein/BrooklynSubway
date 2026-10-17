@@ -62,6 +62,7 @@ class Portal {
   CredentialStore &store_;
   DNSServer dns_;
   WebServer server_;
+  RouteRegistration routeRegistration_;
   bool active_ = false;
   bool hasStored_ = false;
   bool scanPending_ = false;

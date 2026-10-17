@@ -108,11 +108,13 @@ bool Portal::begin(bool hasStored, uint32_t nowMs) {
   dns_.setErrorReplyCode(DNSReplyCode::NoError);
   dns_.start(53, "*", kApIp);
 
-  server_.on("/", HTTP_GET, [this]() { handleRoot(); });
-  server_.on("/scan", HTTP_GET, [this]() { handleScan(); });
-  server_.on("/connect", HTTP_POST, [this]() { handleConnect(); });
-  server_.on(UriGlob("*"), HTTP_ANY, [this]() { handleOther(); });
-  server_.onNotFound([this]() { handleOther(); });
+  if (routeRegistration_.beginRegistration()) {
+    server_.on("/", HTTP_GET, [this]() { handleRoot(); });
+    server_.on("/scan", HTTP_GET, [this]() { handleScan(); });
+    server_.on("/connect", HTTP_POST, [this]() { handleConnect(); });
+    server_.on(UriGlob("*"), HTTP_ANY, [this]() { handleOther(); });
+    server_.onNotFound([this]() { handleOther(); });
+  }
   server_.begin();
 
   scanCount_ = 0;

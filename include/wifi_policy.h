@@ -48,6 +48,18 @@ class CredentialStore {
   virtual bool clear() = 0;                 // removes only the map's own record
 };
 
+class RouteRegistration {
+ public:
+  bool beginRegistration() {
+    if (registered_) return false;
+    registered_ = true;
+    return true;
+  }
+
+ private:
+  bool registered_ = false;
+};
+
 // Replacement transaction: the candidate is persisted ONLY if the association
 // with it succeeded. On failure the stored credentials are untouched.
 bool commitIfAssociated(CredentialStore &store, const Credentials &candidate, bool associated);

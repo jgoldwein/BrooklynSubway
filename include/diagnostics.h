@@ -7,5 +7,6 @@ namespace brooklyn::diagnostics {
 
 void begin();
 void update();
+const char *resetReasonName();
 
 }  // namespace brooklyn::diagnostics
