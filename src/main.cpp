@@ -14,6 +14,8 @@
 
 #include <Arduino.h>
 
+#include <string.h>
+
 namespace {
 
 // The pipeline builds each cycle's candidate independently of the committed display frame.
@@ -22,6 +24,7 @@ brooklyn::display::Controller operationalDisplay;
 brooklyn::semantic::RgbFrame logicalDisplayFrame{};
 bool systemHealthy = true;
 uint32_t renderedFrameRevision = UINT32_MAX;
+uint8_t renderedBrightness = UINT8_MAX;
 
 // Network service is disabled unless explicitly enabled; it never drives LEDs.
 brooklyn::network::NetworkService networkService(trainPipeline);
@@ -74,9 +77,15 @@ void reportDisplayTransition(brooklyn::display::State previous,
 
 void updateLogicalDisplay(uint32_t nowMs) {
   bool changed = false;
-  if (renderedFrameRevision != operationalDisplay.frameRevision()) {
-    brooklyn::semantic::renderTrainFrame(operationalDisplay.frame(), logicalDisplayFrame);
+  const uint8_t brightness = networkService.brightness();
+  if (renderedFrameRevision != operationalDisplay.frameRevision() ||
+      renderedBrightness != brightness) {
+    brooklyn::semantic::RenderConfig renderConfig{};
+    renderConfig.brightness = brightness;
+    brooklyn::semantic::renderTrainFrame(operationalDisplay.frame(),
+                                         logicalDisplayFrame, renderConfig);
     renderedFrameRevision = operationalDisplay.frameRevision();
+    renderedBrightness = brightness;
     changed = true;
   }
   const brooklyn::display::StatusIndicators status{
@@ -85,7 +94,7 @@ void updateLogicalDisplay(uint32_t nowMs) {
       networkService.state() == brooklyn::network::State::Provisioning,
       operationalDisplay.feedAttempted(),
       operationalDisplay.state(),
-      brooklyn::semantic::kDefaultRenderBrightness,
+      brightness,
   };
   static brooklyn::display::StatusIndicators previousStatus{};
   static bool hasPreviousStatus = false;
@@ -235,6 +244,25 @@ void loop() {
   const brooklyn::display::Event agingEvent = operationalDisplay.update(displayNowMs);
   reportDisplayTransition(beforeAging, agingEvent, displayNowMs);
   updateLogicalDisplay(displayNowMs);
+#if BROOKLYN_NETWORK_ENABLED
+  brooklyn::web::StatusSnapshot webStatus{};
+  strncpy(webStatus.deviceName, brooklyn::web::kDefaultDeviceName,
+          sizeof(webStatus.deviceName) - 1);
+  webStatus.displayState = operationalDisplay.state();
+  webStatus.hasDataAge = operationalDisplay.hasFrame();
+  if (webStatus.hasDataAge) {
+    webStatus.dataAgeSeconds = operationalDisplay.dataAgeMs(displayNowMs) / 1000;
+  }
+  webStatus.hasCompleteAge = operationalDisplay.hasCompleteCycle();
+  if (webStatus.hasCompleteAge) {
+    webStatus.completeAgeSeconds =
+        operationalDisplay.completeAgeMs(displayNowMs) / 1000;
+  }
+  webStatus.resolvedTrains = operationalDisplay.frame().resolvedTrains;
+  webStatus.occupiedLeds = operationalDisplay.frame().occupiedLeds;
+  webStatus.collisionCount = operationalDisplay.frame().collisionLeds;
+  networkService.setWebStatus(webStatus);
+#endif
 #if defined(BROOKLYN_TARGET_XIAO)
   static uint32_t forgetArmedAtMs = 0;
   while (Serial.available() > 0) {

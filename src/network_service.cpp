@@ -6,6 +6,7 @@
 
 #include "network_service.h"
 
+#include "diagnostics.h"
 #include "wifi_policy.h"
 
 #include <Arduino.h>
@@ -14,11 +15,13 @@
 #include "wifi_portal.h"
 
 #include <HTTPClient.h>
+#include <ESPmDNS.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <esp_heap_caps.h>
 #include <soc/soc_memory_types.h>
 #include <time.h>
+#include <string.h>
 
 #if __has_include("secrets.h")
 #include "secrets.h"
@@ -173,7 +176,25 @@ NetworkService::NetworkService(pipeline::TrainPipeline &pipeline)
     : pipeline_(pipeline), counters_{}, buffer_{nullptr, 0}, scheduler_{},
       state_(State::Disabled), bufferTried_(false), wifiStarted_(false),
       timeStarted_(false), recoveryRequested_(false), lastWifiAttemptMs_(0), timeStartMs_(0),
-      completedCycle_{}, completedCycleAtMs_(0), completedCyclePending_(false) {}
+      completedCycle_{}, completedCycleAtMs_(0), completedCyclePending_(false),
+      configuration_(config::nvsStore()),
+      lanWebUi_(configuration_), serverOwnership_{}, webStatus_{}, latestCycle_{},
+      hasLatestCycle_(false), mdnsAttempted_(false), mdnsStarted_(false) {}
+
+uint8_t NetworkService::brightness() const {
+  return configuration_.brightness();
+}
+
+void NetworkService::setWebStatus(const web::StatusSnapshot &status) {
+  webStatus_.displayState = status.displayState;
+  webStatus_.hasDataAge = status.hasDataAge;
+  webStatus_.dataAgeSeconds = status.dataAgeSeconds;
+  webStatus_.hasCompleteAge = status.hasCompleteAge;
+  webStatus_.completeAgeSeconds = status.completeAgeSeconds;
+  webStatus_.resolvedTrains = status.resolvedTrains;
+  webStatus_.occupiedLeds = status.occupiedLeds;
+  webStatus_.collisionCount = status.collisionCount;
+}
 
 bool NetworkService::consumeCompletedCycle(transport::CycleResult &result,
                                            uint32_t &completedAtMs) {
@@ -205,7 +226,28 @@ void NetworkService::begin() {
     Serial.printf("Network: %s\n", stateName(state_));
     return;
   }
+  const bool savedConfigurationLoaded = configuration_.load();
+  strncpy(webStatus_.deviceName, web::kDefaultDeviceName,
+          sizeof(webStatus_.deviceName) - 1);
+  strncpy(webStatus_.resetReason, diagnostics::resetReasonName(),
+          sizeof(webStatus_.resetReason) - 1);
+#if defined(BROOKLYN_TARGET_PCB)
+  strncpy(webStatus_.target, "Brooklyn PCB / ESP32-S3-WROOM-1U-N16R8",
+          sizeof(webStatus_.target) - 1);
+#else
+  strncpy(webStatus_.target, "XIAO ESP32-S3 bench target",
+          sizeof(webStatus_.target) - 1);
+#endif
+  Serial.printf("LAN UI: config namespace %s; brightness %u/255 (%s); "
+                "config state %u B, web service state %u B\n",
+                config::kNvsNamespace, configuration_.brightness(),
+                savedConfigurationLoaded ? "NVS" : "default",
+                static_cast<unsigned>(sizeof(configuration_)),
+                static_cast<unsigned>(sizeof(lanWebUi_)));
   WiFi.persistent(false);  // the Wi-Fi driver must not keep its own copy of the password
+  if (!WiFi.setHostname(web::kHostname)) {
+    Serial.println("LAN UI: station hostname configuration failed");
+  }
   loadCredentials();
   scheduler_.configure(kDefaultNetworkConfig.pollIntervalMs);
   const bool fallback = !gActiveFromNvs && credentialsPresent();
@@ -221,10 +263,18 @@ void NetworkService::begin() {
 }
 
 void NetworkService::startProvisioning(uint32_t nowMs) {
+  stopLanWebUi();
+  serverOwnership_.stop();
+  if (!serverOwnership_.enterProvisioning()) {
+    Serial.println("Provisioning: refused while LAN HTTP server owns port 80");
+    state_ = State::NoCredentials;
+    return;
+  }
   if (portal().begin(gActiveFromNvs, nowMs)) {
     state_ = State::Provisioning;
     Serial.println("Provisioning: setup AP \"BrooklynMap-Avi\" at http://192.168.4.1/ (2.4 GHz only)");
   } else {
+    serverOwnership_.stop();
     state_ = State::NoCredentials;
     Serial.println("Provisioning: FAILED to start the setup AP");
   }
@@ -233,6 +283,7 @@ void NetworkService::startProvisioning(uint32_t nowMs) {
 void NetworkService::serviceProvisioning(uint32_t nowMs) {
   const wifi::Portal::Result r = portal().service(nowMs);
   if (r == wifi::Portal::Result::Active) return;
+  serverOwnership_.stop();
   loadCredentials();
   wifiStarted_ = false;
   timeStarted_ = false;
@@ -370,7 +421,9 @@ void NetworkService::printStatus(const transport::CycleResult &r) const {
 void NetworkService::pollNow(uint32_t nowMs) {
   static const MillisClock clock;
   static FailureLogger logger;
-  transport::PipelineSink sink(pipeline_);
+  semantic::RenderConfig renderConfig{};
+  renderConfig.brightness = configuration_.brightness();
+  transport::PipelineSink sink(pipeline_, renderConfig);
   sink.setNow(static_cast<uint32_t>(time(nullptr)));
   const transport::PollPreconditions pre{WiFi.status() == WL_CONNECTED,
                                          static_cast<uint32_t>(time(nullptr)) >= kMinValidUnixTime};
@@ -378,6 +431,8 @@ void NetworkService::pollNow(uint32_t nowMs) {
       sink, connection(), buffer_, kFeeds, kFeedCount, pre,
       kDefaultNetworkConfig.acceptUnknownLength, counters_,
       transport::CycleBudget{&clock, kDefaultNetworkConfig.cycleBudgetMs}, &logger);
+  latestCycle_ = r;
+  hasLatestCycle_ = true;
   completedCycle_ = r;
   completedCycleAtMs_ = millis();
   completedCyclePending_ = true;
@@ -395,12 +450,16 @@ void NetworkService::update(uint32_t nowMs) {
       startProvisioning(nowMs);
     }
   }
+  if (state_ == State::Provisioning) {
+    serviceProvisioning(nowMs);
+    if (state_ == State::Provisioning) return;
+  }
+  serviceLanWebUi(nowMs);
   switch (state_) {
     case State::Disabled:
     case State::NoCredentials:
       return;
     case State::Provisioning:
-      serviceProvisioning(nowMs);
       return;
     case State::WifiConnecting:
     case State::TemporarilyUnavailable:
@@ -420,12 +479,123 @@ void NetworkService::update(uint32_t nowMs) {
   }
 }
 
+void NetworkService::stopLanWebUi() {
+  lanWebUi_.stop();
+  if (mdnsStarted_) {
+    MDNS.end();
+    mdnsStarted_ = false;
+  }
+  mdnsAttempted_ = false;
+}
+
+void NetworkService::serviceLanWebUi(uint32_t nowMs) {
+  if (state_ == State::Provisioning || WiFi.status() != WL_CONNECTED) {
+    if (serverOwnership_.mode() == web::ServerMode::NormalLan) {
+      stopLanWebUi();
+      serverOwnership_.stop();
+    }
+    webStatus_.networkConnected = false;
+    webStatus_.ssid[0] = '\0';
+    webStatus_.ip[0] = '\0';
+    webStatus_.rssi = -127;
+    webStatus_.mdnsAvailable = false;
+    return;
+  }
+
+  if (!mdnsAttempted_) {
+    mdnsAttempted_ = true;
+    mdnsStarted_ = MDNS.begin(web::kHostname);
+    if (mdnsStarted_) {
+      MDNS.addService("http", "tcp", 80);
+      Serial.printf("LAN UI: mDNS available at %s\n", web::kMdnsUrl);
+    } else {
+      Serial.println("LAN UI: mDNS unavailable; DHCP address remains available");
+    }
+  }
+
+  if (serverOwnership_.mode() == web::ServerMode::Provisioning) return;
+  bool serverStarted = false;
+  if (serverOwnership_.mode() != web::ServerMode::NormalLan) {
+    if (!serverOwnership_.enterNormalLan()) return;
+    if (!lanWebUi_.begin()) {
+      serverOwnership_.stop();
+      Serial.println("LAN UI: failed to start HTTP server");
+      return;
+    }
+    serverStarted = true;
+  }
+
+  if (serverStarted) {
+    const IPAddress ip = WiFi.localIP();
+    const String connectedSsid = WiFi.SSID();
+    const String ipText = ip.toString();
+    connectedSsid.toCharArray(webStatus_.ssid, sizeof(webStatus_.ssid));
+    ipText.toCharArray(webStatus_.ip, sizeof(webStatus_.ip));
+  }
+  webStatus_.uptimeSeconds = millis() / 1000;
+  webStatus_.networkConnected = true;
+  webStatus_.rssi = static_cast<int16_t>(WiFi.RSSI());
+  webStatus_.mdnsAvailable = mdnsStarted_;
+  webStatus_.timeSynchronized =
+      static_cast<uint32_t>(time(nullptr)) >= kMinValidUnixTime;
+  webStatus_.hasCycle = hasLatestCycle_;
+  if (hasLatestCycle_) {
+    webStatus_.cycleOutcome = latestCycle_.outcome;
+    webStatus_.feedsTotal = latestCycle_.attempted;
+    if (latestCycle_.outcome == transport::CycleOutcome::Complete ||
+        latestCycle_.outcome == transport::CycleOutcome::Partial ||
+        latestCycle_.outcome == transport::CycleOutcome::NoFeeds) {
+      const pipeline::Counters &counts = pipeline_.counters();
+      const uint32_t processed = counts.feedsProcessed;
+      const uint32_t usable =
+          processed > counts.feedDecodeFailures
+              ? processed - counts.feedDecodeFailures
+              : 0;
+      webStatus_.feedsSucceeded =
+          usable > UINT8_MAX ? UINT8_MAX : static_cast<uint8_t>(usable);
+    } else {
+      webStatus_.feedsSucceeded = 0;
+    }
+  }
+  webStatus_.freeInternalHeap =
+      static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+  webStatus_.minimumInternalHeap = static_cast<uint32_t>(
+      heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));
+  webStatus_.psramPresent = psramFound();
+  webStatus_.freePsram = webStatus_.psramPresent
+                             ? static_cast<uint32_t>(
+                                   heap_caps_get_free_size(MALLOC_CAP_SPIRAM))
+                             : 0;
+  webStatus_.minimumFreePsram =
+      webStatus_.psramPresent
+          ? static_cast<uint32_t>(
+                heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM))
+          : 0;
+  webStatus_.psramFeedBufferPresent = buffer_.data != nullptr;
+  lanWebUi_.service(webStatus_);
+
+  if (lanWebUi_.consumeSetupRequest()) {
+    Serial.println("LAN UI: user requested Wi-Fi setup; existing credentials kept");
+    startProvisioning(nowMs);
+    return;
+  }
+  if (lanWebUi_.consumeRebootRequest()) {
+    Serial.println("LAN UI: user requested reboot");
+    delay(250);
+    ESP.restart();
+  }
+}
+
 #else  // !BROOKLYN_NETWORK_ENABLED: no Wi-Fi, TLS or SNTP code is linked.
 
 NetworkService::NetworkService(pipeline::TrainPipeline &pipeline)
     : pipeline_(pipeline), counters_{}, buffer_{nullptr, 0}, scheduler_{},
       state_(State::Disabled), bufferTried_(false), wifiStarted_(false),
       timeStarted_(false), recoveryRequested_(false), lastWifiAttemptMs_(0), timeStartMs_(0) {}
+
+uint8_t NetworkService::brightness() const {
+  return config::kDefaultBrightness;
+}
 
 bool NetworkService::consumeCompletedCycle(transport::CycleResult &, uint32_t &) {
   return false;

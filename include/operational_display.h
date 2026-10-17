@@ -67,6 +67,7 @@ class Controller {
 
   State state() const { return state_; }
   bool hasFrame() const { return hasFrame_; }
+  bool hasCompleteCycle() const { return hasComplete_; }
   bool feedAttempted() const { return feedAttempted_; }
   uint32_t frameRevision() const { return frameRevision_; }
   uint32_t dataAgeMs(uint32_t nowMs) const;

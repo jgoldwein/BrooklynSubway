@@ -98,6 +98,13 @@ void testBootPolicy() {
   CHECK(eventErasesCredentials(LinkEvent::UserRequestedForget));
 }
 
+void testRouteRegistrationIsIdempotent() {
+  RouteRegistration routes;
+  CHECK(routes.beginRegistration());
+  CHECK(!routes.beginRegistration());
+  CHECK(!routes.beginRegistration());
+}
+
 void testTransaction() {
   FakeStore store;
   const Credentials a = make("NetA", "passwordA1");
@@ -199,20 +206,20 @@ void testPortal() {
     CHECK((strstr(page, "http-equiv=\"refresh\"") != nullptr) ==
           (s == PortalStatus::Scanning || s == PortalStatus::Connecting));
   }
-  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "JWGS26U", "192.168.1.42");
-  CHECK(strstr(page, "Successfully connected to Wi-Fi: <b>JWGS26U</b>") != nullptr);
+  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "TestNetwork", "192.168.1.42");
+  CHECK(strstr(page, "Successfully connected to Wi-Fi: <b>TestNetwork</b>") != nullptr);
   CHECK(strstr(page, "Settings saved") != nullptr);
   CHECK(strstr(page, "LAN address: <a href=\"http://192.168.1.42/\">192.168.1.42</a>") != nullptr);
   CHECK(strstr(page, "open after reconnecting your phone to the same Wi-Fi") != nullptr);
   CHECK(strstr(page, "go to <a href=\"http://192.168.4.1/\">192.168.4.1</a>") != nullptr);
   CHECK(strstr(page, "The setup network closes shortly.") != nullptr);
   CHECK(strstr(page, kSecret) == nullptr);
-  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "JWGS26U", "10.110.202.133");
+  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "TestNetwork", "10.110.202.133");
   CHECK(strstr(page, "http://10.110.202.133/\">10.110.202.133</a>") != nullptr);
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, e[0].ssid, "192.168.1.42");
   CHECK(strstr(page, "Wi-Fi: <b>Cafe &lt;b&gt;&quot;Wi&amp;Fi&quot;&lt;/b&gt;</b>") != nullptr);
-  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::SaveFailed, true, "JWGS26U", "192.168.1.42");
-  CHECK(strstr(page, "Successfully connected to Wi-Fi: <b>JWGS26U</b>") != nullptr);
+  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::SaveFailed, true, "TestNetwork", "192.168.1.42");
+  CHECK(strstr(page, "Successfully connected to Wi-Fi: <b>TestNetwork</b>") != nullptr);
   CHECK(strstr(page, "settings could not be saved") != nullptr);
   CHECK(strstr(page, "LAN address: <a href=\"http://192.168.1.42/\">192.168.1.42</a>") != nullptr);
   CHECK(strstr(page, "<a href=\"http://192.168.4.1/\">192.168.4.1</a>") != nullptr);
@@ -364,6 +371,7 @@ void testFeedDiagnostics() {
 int main() {
   testValidation();
   testBootPolicy();
+  testRouteRegistrationIsIdempotent();
   testTransaction();
   testHold();
   testScan();

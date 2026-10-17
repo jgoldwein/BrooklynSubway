@@ -14,6 +14,12 @@
 #include "feed_transport.h"
 #include "network_config.h"
 #include "train_pipeline.h"
+#include "normal_config.h"
+
+#if BROOKLYN_NETWORK_ENABLED
+#include "lan_web_policy.h"
+#include "lan_web_ui.h"
+#endif
 
 #include <stdint.h>
 
@@ -43,6 +49,10 @@ class NetworkService {
   void requestProvisioning();
   // Explicit user action: erase the map's own stored credentials (NVS namespace only).
   bool forgetCredentials();
+  uint8_t brightness() const;
+#if BROOKLYN_NETWORK_ENABLED
+  void setWebStatus(const web::StatusSnapshot &status);
+#endif
 
   State state() const { return state_; }
   const transport::TransportCounters &counters() const { return counters_; }
@@ -58,6 +68,10 @@ class NetworkService {
   void serviceTime(uint32_t nowMs);
   void pollNow(uint32_t nowMs);
   void printStatus(const transport::CycleResult &result) const;
+#if BROOKLYN_NETWORK_ENABLED
+  void serviceLanWebUi(uint32_t nowMs);
+  void stopLanWebUi();
+#endif
 
   pipeline::TrainPipeline &pipeline_;
   transport::TransportCounters counters_;
@@ -73,6 +87,16 @@ class NetworkService {
   transport::CycleResult completedCycle_{};
   uint32_t completedCycleAtMs_ = 0;
   bool completedCyclePending_ = false;
+#if BROOKLYN_NETWORK_ENABLED
+  config::DeviceConfiguration configuration_;
+  web::LanWebUi lanWebUi_;
+  web::ServerOwnership serverOwnership_;
+  web::StatusSnapshot webStatus_{};
+  transport::CycleResult latestCycle_{};
+  bool hasLatestCycle_ = false;
+  bool mdnsAttempted_ = false;
+  bool mdnsStarted_ = false;
+#endif
 };
 
 }  // namespace brooklyn::network

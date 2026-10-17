@@ -15,7 +15,7 @@ namespace {
 
 uint32_t lastHeartbeatMs = 0;
 
-const char *resetReasonName(esp_reset_reason_t reason) {
+const char *resetReasonLabel(esp_reset_reason_t reason) {
   switch (reason) {
     case ESP_RST_POWERON:
       return "power-on";
@@ -46,6 +46,10 @@ const char *resetReasonName(esp_reset_reason_t reason) {
 
 namespace brooklyn::diagnostics {
 
+const char *resetReasonName() {
+  return resetReasonLabel(esp_reset_reason());
+}
+
 void begin() {
   const esp_reset_reason_t resetReason = esp_reset_reason();
   const bool hasPsram = psramFound();
@@ -65,7 +69,7 @@ void begin() {
                 static_cast<unsigned long>(hasPsram ? ESP.getPsramSize() : 0));
   Serial.printf("Free heap: %lu bytes\n",
                 static_cast<unsigned long>(ESP.getFreeHeap()));
-  Serial.printf("Reset reason: %s (%d)\n", resetReasonName(resetReason),
+  Serial.printf("Reset reason: %s (%d)\n", resetReasonLabel(resetReason),
                 static_cast<int>(resetReason));
 #if defined(BROOKLYN_TARGET_PCB)
   Serial.printf("Physical LED backend: %s\n",
