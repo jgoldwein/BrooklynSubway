@@ -31,18 +31,20 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Current checkpoint — Phase 4R hardware validation complete, checkpoint pending
+## Current checkpoint — Phase 4R LAN UI validated, committed, and pushed
 
 - **Checkpoint date:** 2026-10-17.
-- **Baseline / HEAD:** Phase 4Q commit
-  `7d7f21e255510b09820df0f6d3a7f0f552b69b35`, tag
-  `phase-4q-safe-output-arming`, on `main`.
-- **Phase 4R status:** implementation remains uncommitted. Live XIAO
-  validation was completed on the PC Mobile Hotspot, including one
+- **Release commit / HEAD:** `57886a3b3a5927e77b3a0e3630e92e926a60782f`,
+  `Phase 4R: add LAN configuration and status UI`, on `main`.
+- **Tag / remote:** annotated tag `phase-4r-lan-configuration-ui`
+  (`Phase 4R LAN configuration UI validated on XIAO`) points to the release
+  commit. The commit and tag were pushed to `origin`; remote `main` was
+  verified at the release commit. Previous baseline was Phase 4Q
+  `7d7f21e255510b09820df0f6d3a7f0f552b69b35`.
+- **Phase 4R status:** final review, commit, tag, and push are complete. Live
+  XIAO validation was completed on the PC Mobile Hotspot, including one
   Change-Wi-Fi handoff and USB reset back to the saved network. Final
-  regression, clean builds, and ELF audit passed. Only full diff review,
-  commit/tag/push, and clean-worktree verification remain. Do not start
-  Phase 4S.
+  regression, clean builds, and ELF audit passed. Do not start Phase 4S.
 - **Hardware action:** uploaded `xiao-s3-network` to the authorized XIAO on
   COM4. Esptool verified the upload. Image SHA-256:
   `6A2732A5B5A63A51DB274CC63710B2F7398A8C9D4C22E1719799B147ACEB5B3A`
@@ -198,10 +200,11 @@ clarification only if the requested next action remains ambiguous.
   construction/transmit, `Adafruit_NeoPixel::show`, or Phase 4Q output
   controller symbols. No firmware was uploaded after the authorized XIAO
   image. Keep the manufactured PCB untouched.
-- **Next action:** review/stage only intentional Phase 4R files, run
-  `git diff --check`, commit using the authorized Phase 4R message, create
-  the annotated Phase 4R tag, push `main` and that tag, then verify a clean
-  worktree. Do not start Phase 4S.
+- **Next action:** no Phase 4R work remains. Before future work, verify the
+  checked-out branch and worktree against `origin/main` and confirm the
+  release tag still points to the Phase 4R commit. Do not start Phase 4S
+  without a separate request. The low-priority Tailscale idea remains
+  separate and unimplemented.
 
 ## Recovery when the manufactured PCB is available
 
