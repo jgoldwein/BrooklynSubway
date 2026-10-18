@@ -15,7 +15,7 @@ namespace brooklyn::web {
 constexpr const char *kDefaultDeviceName = "BrooklynMap";
 constexpr const char *kHostname = "brooklynmap";
 constexpr const char *kMdnsUrl = "http://brooklynmap.local/";
-constexpr const char *kFirmwareId = "Phase 4U";
+constexpr const char *kFirmwareId = "Phase 4V";
 
 enum class ServerMode : uint8_t { Stopped, Provisioning, NormalLan };
 
@@ -48,6 +48,8 @@ struct StatusSnapshot {
   char effectiveDnsServer[16] = {};
   char effectiveDnsSource[12] = "Unavailable";
   char dnsConfigStatus[16] = "disabled";
+  bool adminConfigured = false;
+  bool adminSessionActive = false;
   int16_t rssi = -127;
   bool mdnsAvailable = false;
   bool timeSynchronized = false;
@@ -94,7 +96,9 @@ bool parseRouteSelection(const RouteSelectionParam *parameters, size_t count,
                          uint32_t &visibilityMask);
 size_t renderHomePage(char *out, size_t capacity,
                       const StatusSnapshot &status, uint8_t brightness,
-                      uint32_t routeVisibilityMask);
+                      uint32_t routeVisibilityMask,
+                      const char *csrfToken = nullptr);
+size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken);
 size_t renderStatusJson(char *out, size_t capacity,
                         const StatusSnapshot &status, uint8_t brightness,
                         uint32_t routeVisibilityMask);

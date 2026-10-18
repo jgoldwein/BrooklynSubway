@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "wifi_portal.h"
+#include "admin_auth.h"
 
 #if BROOKLYN_NETWORK_ENABLED
 
@@ -26,6 +27,20 @@ const IPAddress kApIp(192, 168, 4, 1);
 // 202 = auth failed, 205 = connection failed, 2 = auth expired.
 volatile uint8_t gLastDisconnectReason = 0;
 bool gEventHooked = false;
+
+void eraseString(String &value) {
+  for (size_t i = 0; i < value.length(); ++i) value.setCharAt(i, '\0');
+  value.clear();
+}
+
+void eraseBytes(void *memory, size_t length) {
+  volatile uint8_t *bytes = static_cast<volatile uint8_t *>(memory);
+  while (length-- != 0) *bytes++ = 0;
+}
+
+bool hasNoEmbeddedNull(const String &value) {
+  return strlen(value.c_str()) == value.length();
+}
 
 void onWifiEvent(arduino_event_id_t event, arduino_event_info_t info) {
   Serial.printf("Provisioning: wifi event %d\n", static_cast<int>(event));
@@ -112,6 +127,7 @@ bool Portal::begin(bool hasStored, uint32_t nowMs) {
     server_.on("/", HTTP_GET, [this]() { handleRoot(); });
     server_.on("/scan", HTTP_GET, [this]() { handleScan(); });
     server_.on("/connect", HTTP_POST, [this]() { handleConnect(); });
+    server_.on("/admin/setup", HTTP_POST, [this]() { handleAdminSetup(); });
     server_.on(UriGlob("*"), HTTP_ANY, [this]() { handleOther(); });
     server_.onNotFound([this]() { handleOther(); });
   }
@@ -139,11 +155,19 @@ void Portal::redirectHome() {
 }
 
 void Portal::sendPage(PortalStatus status) {
+  admin::Manager adminManager(admin::nvsCredentialStore(),
+                              admin::espCryptoProvider());
+  if (!adminManager.load()) {
+    server_.send(500, "text/plain",
+                 "Unable to load administrator settings");
+    return;
+  }
   const char *connectedSsid =
       (status == PortalStatus::Saved || status == PortalStatus::SaveFailed) ? candidate_.ssid : nullptr;
   const char *connectedIp =
       (status == PortalStatus::Saved || status == PortalStatus::SaveFailed) ? connectedIp_ : nullptr;
-  renderPortalPage(page_, sizeof(page_), scan_, scanCount_, status, hasStored_, connectedSsid, connectedIp);
+  renderPortalPage(page_, sizeof(page_), scan_, scanCount_, status, hasStored_,
+                   connectedSsid, connectedIp, adminManager.configured());
   server_.sendHeader("Cache-Control", "no-store");
   server_.send(200, "text/html", page_);
 }
@@ -163,6 +187,54 @@ void Portal::handleRoot() {
   PortalStatus s = lastStatus_;
   if (scanPending_ && s == PortalStatus::None) s = PortalStatus::Scanning;
   sendPage(s);
+}
+
+void Portal::handleAdminSetup() {
+  String password = server_.arg("password");
+  String confirmation = server_.arg("confirmation");
+  if (server_.args() != 2 ||
+      password.length() < admin::kPasswordMinLength ||
+      password.length() > admin::kPasswordMaxLength ||
+      !hasNoEmbeddedNull(password) ||
+      !hasNoEmbeddedNull(confirmation) ||
+      confirmation.length() > admin::kPasswordMaxLength) {
+    eraseString(password);
+    eraseString(confirmation);
+    server_.send(
+        400, "text/plain",
+        "Password and matching confirmation are required (8 to 128 characters)");
+    return;
+  }
+
+  char passwordBuffer[admin::kPasswordMaxLength + 1] = {};
+  char confirmationBuffer[admin::kPasswordMaxLength + 1] = {};
+  password.toCharArray(passwordBuffer, sizeof(passwordBuffer));
+  confirmation.toCharArray(confirmationBuffer, sizeof(confirmationBuffer));
+  eraseString(password);
+  eraseString(confirmation);
+
+  admin::Manager adminManager(admin::nvsCredentialStore(),
+                              admin::espCryptoProvider());
+  const bool loaded = adminManager.load();
+  const bool saved =
+      loaded && adminManager.setPassword(passwordBuffer, confirmationBuffer);
+  eraseBytes(passwordBuffer, sizeof(passwordBuffer));
+  eraseBytes(confirmationBuffer, sizeof(confirmationBuffer));
+  if (!loaded) {
+    server_.send(500, "text/plain",
+                 "Unable to load administrator settings");
+    return;
+  }
+  if (!saved) {
+    server_.send(
+        400, "text/plain",
+        "Passwords must match and meet the length requirements; "
+        "administrator settings were not changed");
+    return;
+  }
+  Serial.println("Provisioning: administrator password set or reset locally");
+  server_.sendHeader("Location", "/", true);
+  server_.send(303, "text/plain", "");
 }
 
 void Portal::handleScan() {

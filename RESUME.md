@@ -31,7 +31,64 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Current checkpoint — Phase 4U DNS resilience validated
+## Current checkpoint — Phase 4V LAN access protection validated on XIAO
+
+- **Checkpoint date:** 2026-10-18. Starting baseline was clean `main` at
+  `10095a40ad23aa4e1b15dbb728b6f3a2bf127d17`, tagged
+  `phase-4u-dns-resilience`.
+- **Release restriction:** Phase 4V has been uploaded to the authorized XIAO
+  bench target only. Do not upload the manufactured-board environment.
+- **Implementation:** public read-only status remains available. All normal
+  LAN mutation endpoints require an administrator session and CSRF, including
+  login's separate one-use challenge. First-time administrator setup and
+  password reset are only exposed in the separate local `BrooklynMap-Avi`
+  provisioning portal. Password verifiers use salted PBKDF2-HMAC-SHA256;
+  session pool, expiry, lockout, cookies, and narrowly scoped NVS persistence
+  are documented in `docs/PHASE4V_LAN_ACCESS_PROTECTION.md`.
+- **Host validation:** all 16 host runners passed **1,554,395 checks, 0
+  failures**.
+  Focused results: administrator auth 120, LAN policy/rendering 303, and Wi-Fi
+  provisioning 332 checks, all with zero failures. `git diff --check` passed.
+- **Clean builds:** all four PlatformIO environments compiled after clean:
+  `xiao-s3` 35,380 B RAM / 290,189 B flash; `brooklyn-s3` 36,268 B /
+  304,873 B; `xiao-s3-network` 92,388 B / 1,089,053 B; and
+  `brooklyn-s3-network` 93,276 B / 1,105,709 B. All environments retain
+  `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0`. Both network ELFs were inspected;
+  no project physical-output, strip-transmit, `Adafruit_NeoPixel::show()`, or
+  safety-controller symbols were present.
+- **XIAO live validation:** verified COM4 USB serial MAC
+  `94:A9:90:D0:94:54`; uploaded only `xiao-s3-network`. Esptool reported
+  successful flash writes with each data hash verified; the device then
+  reported Phase 4V at `192.168.137.25`. Before upload, Phase 4U state was
+  brightness 64, all 18 routes visible (`262143`), manual DNS disabled, and
+  physical LED output disabled. After upload these values remained unchanged;
+  Wi-Fi reconnected and `adminConfigured` was false. Public page/status/
+  diagnostics returned 200. Unconfigured login and every tested anonymous
+  LAN mutation returned 403; `/admin/setup` on the LAN returned 404. No
+  configuration changed. A public-response scan found no credential, CSRF,
+  verifier, or session-token fields. Forty repeated status reads passed;
+  free internal heap changed from 235,856 B to 235,096 B and PSRAM stayed at
+  7,844,479 B. No administrator password has been entered or recorded.
+- **Live admin checks (passed):** first-time setup via the local AP, locked
+  state, wrong-password 401, 429 lockout, user login, CSRF denial and success,
+  logout, reboot persistence, `W` setup re-entry, and a secret-leak scan all
+  passed on the XIAO. Details and deferred items (two-session limit, repeated
+  cycles, AP password reset submit, heap tracking) are in
+  `docs/PHASE4V_LAN_ACCESS_PROTECTION.md`. The final image (success page shows
+  only the result) was flashed to the XIAO only; its network ELF audits are
+  clean (final sizes: `xiao-s3-network` 1,089,245 B flash, `brooklyn-s3-network`
+  1,105,901 B).
+- **Hardware/network safety:** only the XIAO was flashed; the manufactured
+  PCB was not accessed. No host network, hotspot, or Tailscale settings were
+  changed. Physical LED output remains disabled.
+- **Changed files:** `include/admin_auth.h`, `src/admin_auth.cpp`,
+  `src/admin_auth_esp.cpp`, LAN web policy/UI headers and sources, Wi-Fi
+  portal/policy headers and sources, focused host tests and runner, this
+  checkpoint, and `docs/PHASE4V_LAN_ACCESS_PROTECTION.md`.
+- **Next actions:** Phase 4V is released (tag
+  `phase-4v-lan-access-protection`). Do not start Phase 4W without direction.
+
+## Phase 4U checkpoint — DNS resilience validated (historical)
 
 - **Checkpoint date:** 2026-10-18. Phase 4U started with `main` at
   `67221f3` (`docs: record Phase 4T release checkpoint`), after the Phase 4S
@@ -91,9 +148,8 @@ clarification only if the requested next action remains ambiguous.
   `tools/run_lan_web_policy_tests.py`,
   `tools/run_network_diagnostics_tests.py`,
   `docs/PHASE4U_DNS_RESILIENCE.md`, and this file.
-- **Next action:** Phase 4U is complete. Preserve the override-disabled XIAO
-  state and host network settings; do not start Phase 4V without new
-  authorization.
+- **Historical next action:** Phase 4U was complete. Phase 4V was later
+  explicitly authorized and is tracked in the current checkpoint above.
 
 ### Phase 4R hardware validation history (historical)
 

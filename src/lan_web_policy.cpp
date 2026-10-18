@@ -297,7 +297,7 @@ bool parseRouteSelection(const RouteSelectionParam *parameters, size_t count,
 
 size_t renderHomePage(char *out, size_t capacity,
                       const StatusSnapshot &status, uint8_t brightness,
-                      uint32_t routeVisibilityMask) {
+                      uint32_t routeVisibilityMask, const char *csrfToken) {
   Writer writer(out, capacity);
   writer.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
                 "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
@@ -330,6 +330,37 @@ size_t renderHomePage(char *out, size_t capacity,
   writer.append("</dd><dt>Reset reason</dt><dd>");
   writer.html(status.resetReason);
   writer.append("</dd><dt>Physical LED output</dt><dd>DISABLED</dd></dl></section>"
+                "<section><h2>Administrator</h2><p>");
+  if (!status.adminConfigured) {
+    writer.append("Administrator setup is required through the local "
+                  "BrooklynMap-Avi provisioning network.");
+  } else if (status.adminSessionActive) {
+    writer.append("Signed in. Normal-LAN settings are unlocked.");
+  } else {
+    writer.append("Settings are locked. <a href=\"/login\">Sign in</a>");
+  }
+  writer.append("</p>");
+  if (status.adminSessionActive && csrfToken != nullptr &&
+      csrfToken[0] != '\0') {
+    writer.append("<form method=\"post\" action=\"/logout\">"
+                  "<input type=\"hidden\" name=\"csrf\" value=\"");
+    writer.html(csrfToken);
+    writer.append("\"><button type=\"submit\">Sign out</button></form>"
+                  "<h3>Change administrator password</h3>"
+                  "<form method=\"post\" action=\"/admin/password\">"
+                  "<input type=\"hidden\" name=\"csrf\" value=\"");
+    writer.html(csrfToken);
+    writer.append("\"><label>New password <input type=\"password\" "
+                  "name=\"password\" minlength=\"8\" maxlength=\"128\" "
+                  "autocomplete=\"new-password\" required></label> "
+                  "<label>Confirm password <input type=\"password\" "
+                  "name=\"confirmation\" minlength=\"8\" maxlength=\"128\" "
+                  "autocomplete=\"new-password\" required></label> "
+                  "<button type=\"submit\">Change password</button></form>");
+  }
+  writer.append("<p class=\"muted\">Normal-LAN access uses HTTP; passwords "
+                "and page contents are not encrypted in transit. Do not use "
+                "this interface on an untrusted network.</p></section>"
                 "<section><h2>Network</h2><dl><dt>Connection</dt><dd>");
   writer.append(status.networkConnected ? "Connected" : "Disconnected");
   writer.append("</dd><dt>SSID</dt><dd>");
@@ -376,9 +407,15 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.append(kMdnsUrl);
     writer.append("</a></dd>");
   }
-  writer.append("</dl><form method=\"post\" action=\"/wifi/setup\">"
-                "<button type=\"submit\">Change Wi-Fi</button></form>"
-                "<p class=\"muted\">Setup uses the separate BrooklynMap-Avi "
+  writer.append("</dl>");
+  if (status.adminSessionActive && csrfToken != nullptr &&
+      csrfToken[0] != '\0') {
+    writer.append("<form method=\"post\" action=\"/wifi/setup\">"
+                  "<input type=\"hidden\" name=\"csrf\" value=\"");
+    writer.html(csrfToken);
+    writer.append("\"><button type=\"submit\">Change Wi-Fi</button></form>");
+  }
+  writer.append("<p class=\"muted\">Setup uses the separate BrooklynMap-Avi "
                 "provisioning network and keeps existing credentials unless "
                 "a replacement successfully connects.</p></section>"
                 "<section><h2>DNS configuration</h2><dl>"
@@ -392,8 +429,13 @@ size_t renderHomePage(char *out, size_t capacity,
   writer.html(status.effectiveDnsServer[0] != '\0'
                   ? status.effectiveDnsServer
                   : "Unavailable");
-  writer.append("</dd></dl><form method=\"post\" action=\"/config/dns\">"
-                "<input type=\"hidden\" name=\"dnsForm\" value=\"1\">"
+  writer.append("</dd></dl>");
+  if (status.adminSessionActive && csrfToken != nullptr &&
+      csrfToken[0] != '\0') {
+    writer.append("<form method=\"post\" action=\"/config/dns\">"
+                  "<input type=\"hidden\" name=\"csrf\" value=\"");
+    writer.html(csrfToken);
+    writer.append("\"><input type=\"hidden\" name=\"dnsForm\" value=\"1\">"
                 "<label><input type=\"checkbox\" name=\"manualDnsEnabled\" "
                 "value=\"1\"");
   if (status.manualDnsEnabled) writer.append(" checked");
@@ -402,8 +444,9 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<input id=\"dnsServer\" name=\"dnsServer\" type=\"text\" "
                 "inputmode=\"decimal\" maxlength=\"15\" value=\"");
   writer.html(status.manualDnsServer);
-  writer.append("\"><button type=\"submit\">Save DNS settings</button></form>"
-                "<p class=\"muted\">Disabled by default. This changes only "
+    writer.append("\"><button type=\"submit\">Save DNS settings</button></form>");
+  }
+  writer.append("<p class=\"muted\">Disabled by default. This changes only "
                 "the resolver; DHCP, Wi-Fi credentials, feeds, and TLS policy "
                 "are unchanged.</p></section>"
                 "<section><h2>MTA / data</h2><dl><dt>Last poll cycle</dt><dd>");
@@ -502,26 +545,41 @@ size_t renderHomePage(char *out, size_t capacity,
   } else {
     writer.append("<dt>Last feed failure</dt><dd>None recorded</dd>");
   }
-  writer.format("</dd></dl><form method=\"post\" "
-                "action=\"/network-diagnostics/run\"><button type=\"submit\">"
-                "Run Network Diagnostics</button></form>"
-                "<p class=\"muted\">Read-only connectivity checks; raw TCP "
+  writer.append("</dd></dl>");
+  if (status.adminSessionActive && csrfToken != nullptr &&
+      csrfToken[0] != '\0') {
+    writer.append("<form method=\"post\" action=\"/network-diagnostics/run\">"
+                  "<input type=\"hidden\" name=\"csrf\" value=\"");
+    writer.html(csrfToken);
+    writer.append("\"><button type=\"submit\">Run Network Diagnostics</button>"
+                  "</form>");
+  }
+  writer.append("<p class=\"muted\">Read-only connectivity checks; raw TCP "
                 "success does not verify TLS or HTTPS.</p></section>"
-                "<section><h2>Display brightness</h2>"
-                "<form method=\"post\" action=\"/config/brightness\">"
-                "<label for=\"brightness\">Brightness: %u / 255 (%u%%)</label>"
-                "<input id=\"brightness\" name=\"brightness\" type=\"range\" "
-                "min=\"0\" max=\"255\" value=\"%u\" "
-                "oninput=\"document.getElementById('brightness-value').value=this.value\">"
-                "<input id=\"brightness-value\" aria-label=\"Brightness value\" "
-                "type=\"number\" min=\"0\" max=\"255\" value=\"%u\" "
-                "oninput=\"document.getElementById('brightness').value=this.value\">"
-                "<button type=\"submit\">Save brightness</button></form>"
-                "<p class=\"muted\">Logical display setting. Physical output "
-                "remains disabled; the production power cap is separate.</p></section>",
-                brightness,
-                static_cast<unsigned>(brightness) * 100 / 255, brightness,
-                brightness);
+                "<section><h2>Display brightness</h2>");
+  if (status.adminSessionActive && csrfToken != nullptr &&
+      csrfToken[0] != '\0') {
+    writer.append("<form method=\"post\" action=\"/config/brightness\">"
+                  "<input type=\"hidden\" name=\"csrf\" value=\"");
+    writer.html(csrfToken);
+    writer.format(
+        "\"><label for=\"brightness\">Brightness: %u / 255 (%u%%)</label>"
+        "<input id=\"brightness\" name=\"brightness\" type=\"range\" "
+        "min=\"0\" max=\"255\" value=\"%u\" "
+        "oninput=\"document.getElementById('brightness-value').value=this.value\">"
+        "<input id=\"brightness-value\" aria-label=\"Brightness value\" "
+        "type=\"number\" min=\"0\" max=\"255\" value=\"%u\" "
+        "oninput=\"document.getElementById('brightness').value=this.value\">"
+        "<button type=\"submit\">Save brightness</button></form>",
+        brightness, static_cast<unsigned>(brightness) * 100 / 255, brightness,
+        brightness);
+  } else {
+    writer.format("<p>Current setting: %u / 255 (%u%%).</p>", brightness,
+                  static_cast<unsigned>(brightness) * 100 / 255);
+  }
+  writer.append("<p class=\"muted\">Logical display setting. Physical output "
+                "remains disabled; the production power cap is separate."
+                "</p></section>");
   uint8_t visibleRoutes = 0;
   for (uint8_t route = 1; route <= semantic::kRouteCount; ++route) {
     if ((routeVisibilityMask & (uint32_t{1} << (route - 1))) != 0) {
@@ -530,30 +588,37 @@ size_t renderHomePage(char *out, size_t capacity,
   }
   writer.format("<section><h2>Routes to display</h2><p>%u of %u routes enabled. "
                 "This affects map rendering only; feeds and status indicators "
-                "continue normally.</p><form id=\"route-settings\" method=\"post\" "
-                "action=\"/config/routes\"><input type=\"hidden\" name=\"routeForm\" "
-                "value=\"1\"><div class=\"route-controls\">"
+                "continue normally.</p>",
+                visibleRoutes, semantic::kRouteCount);
+  if (status.adminSessionActive && csrfToken != nullptr &&
+      csrfToken[0] != '\0') {
+    writer.append("<form id=\"route-settings\" method=\"post\" "
+                  "action=\"/config/routes\"><input type=\"hidden\" "
+                  "name=\"routeForm\" value=\"1\"><input type=\"hidden\" "
+                  "name=\"csrf\" value=\"");
+    writer.html(csrfToken);
+    writer.append("\"><div class=\"route-controls\">"
                 "<button type=\"button\" onclick=\"document.querySelectorAll("
                 "'#route-settings input[name=route]').forEach(function(x){x.checked=true})\">"
                 "Select all</button><button type=\"button\" onclick=\"document."
                 "querySelectorAll('#route-settings input[name=route]').forEach("
                 "function(x){x.checked=false})\">Clear all</button></div>"
-                "<div class=\"route-list\">",
-                visibleRoutes, semantic::kRouteCount);
-  for (uint8_t route = 1; route <= semantic::kRouteCount; ++route) {
-    const char *name = semantic::kRouteNames[route];
-    writer.append("<label><input type=\"checkbox\" name=\"route\" value=\"");
-    writer.html(name);
-    writer.append("\"");
-    if ((routeVisibilityMask & (uint32_t{1} << (route - 1))) != 0) {
-      writer.append(" checked");
+                "<div class=\"route-list\">");
+    for (uint8_t route = 1; route <= semantic::kRouteCount; ++route) {
+      const char *name = semantic::kRouteNames[route];
+      writer.append("<label><input type=\"checkbox\" name=\"route\" value=\"");
+      writer.html(name);
+      writer.append("\"");
+      if ((routeVisibilityMask & (uint32_t{1} << (route - 1))) != 0) {
+        writer.append(" checked");
+      }
+      writer.append("> ");
+      writer.html(name);
+      writer.append("</label>");
     }
-    writer.append("> ");
-    writer.html(name);
-    writer.append("</label>");
+    writer.append("</div><button type=\"submit\">Save routes</button></form>");
   }
-  writer.append("</div><button type=\"submit\">Save routes</button></form>"
-                "<p class=\"muted\">All routes may be hidden. Status indicators "
+  writer.append("<p class=\"muted\">All routes may be hidden. Status indicators "
                 "remain independent.</p></section>");
   writer.append("<details><summary>Memory diagnostics</summary><dl>"
                 "<dt>Free internal heap</dt><dd>");
@@ -574,12 +639,37 @@ size_t renderHomePage(char *out, size_t capacity,
   }
   writer.append("</dd><dt>PSRAM feed buffer</dt><dd>");
   writer.append(status.psramFeedBufferPresent ? "Present" : "Unavailable");
-  writer.append("</dd></dl></details><section><h2>Device actions</h2>"
-                "<form method=\"post\" action=\"/reboot\" "
-                "onsubmit=\"return confirm('Reboot the map? Settings are retained.')\">"
-                "<button type=\"submit\">Reboot Device</button></form>"
-                "<p class=\"muted\">A reboot retains Wi-Fi credentials and "
+  writer.append("</dd></dl></details><section><h2>Device actions</h2>");
+  if (status.adminSessionActive && csrfToken != nullptr &&
+      csrfToken[0] != '\0') {
+    writer.append("<form method=\"post\" action=\"/reboot\" "
+                  "onsubmit=\"return confirm('Reboot the map? Settings are retained.')\">"
+                  "<input type=\"hidden\" name=\"csrf\" value=\"");
+    writer.html(csrfToken);
+    writer.append("\"><button type=\"submit\">Reboot Device</button></form>");
+  }
+  writer.append("<p class=\"muted\">A reboot retains Wi-Fi credentials and "
                 "configuration.</p></section></body></html>");
+  return writer.size();
+}
+
+size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken) {
+  if (csrfToken == nullptr || csrfToken[0] == '\0') return 0;
+  Writer writer(out, capacity);
+  writer.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+                "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+                "<meta name=\"referrer\" content=\"same-origin\">"
+                "<title>Administrator sign in</title></head><body>"
+                "<h1>Administrator sign in</h1>"
+                "<form method=\"post\" action=\"/login\">"
+                "<input type=\"hidden\" name=\"csrf\" value=\"");
+  writer.html(csrfToken);
+  writer.append("\"><label>Password <input type=\"password\" name=\"password\" "
+                "autocomplete=\"current-password\" required></label> "
+                "<button type=\"submit\">Sign in</button></form>"
+                "<p><a href=\"/\">Return to status</a></p>"
+                "<p>Normal-LAN access uses unencrypted HTTP.</p>"
+                "</body></html>");
   return writer.size();
 }
 
@@ -626,9 +716,12 @@ size_t renderStatusJson(char *out, size_t capacity,
   writer.json(status.effectiveDnsServer);
   writer.append("\",\"dnsConfigStatus\":\"");
   writer.json(status.dnsConfigStatus);
-  writer.format("\",\"rssi\":%d,\"hostname\":\"%s\","
+  writer.format("\",\"adminConfigured\":%s,\"adminSessionActive\":%s,"
+                "\"rssi\":%d,\"hostname\":\"%s\","
                 "\"mdnsAvailable\":%s,\"timeSynchronized\":%s,"
                 "\"displayState\":\"%s\",\"feedCycleState\":\"",
+                status.adminConfigured ? "true" : "false",
+                status.adminSessionActive ? "true" : "false",
                 static_cast<int>(status.rssi), kHostname,
                 status.mdnsAvailable ? "true" : "false",
                 status.timeSynchronized ? "true" : "false",

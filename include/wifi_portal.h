@@ -53,6 +53,7 @@ class Portal {
   void handleRoot();
   void handleScan();
   void handleConnect();
+  void handleAdminSetup();
   void handleOther();
   void startScan();
   void redirectHome();
