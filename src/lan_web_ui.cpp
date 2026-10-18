@@ -14,7 +14,7 @@ namespace {
 
 constexpr size_t kPageCapacity = 8192;
 constexpr size_t kJsonCapacity = 2048;
-constexpr size_t kNetworkDiagnosticsJsonCapacity = 768;
+constexpr size_t kNetworkDiagnosticsJsonCapacity = 1536;
 char gPage[kPageCapacity];
 char gJson[kJsonCapacity];
 char gNetworkDiagnosticsJson[kNetworkDiagnosticsJsonCapacity];
@@ -67,6 +67,7 @@ void LanWebUi::registerRoutes() {
              [this]() { handleRunNetworkDiagnostics(); });
   server_.on("/config/brightness", HTTP_POST,
              [this]() { handleBrightness(); });
+  server_.on("/config/dns", HTTP_POST, [this]() { handleDnsSettings(); });
   server_.on("/config/routes", HTTP_POST, [this]() { handleRoutes(); });
   server_.on("/wifi/setup", HTTP_GET,
              [this]() { handleSetupConfirmation(); });
@@ -165,6 +166,53 @@ void LanWebUi::handleBrightness() {
     server_.send(500, "text/plain", "Unable to save brightness");
     return;
   }
+  server_.sendHeader("Location", "/", true);
+  server_.send(303, "text/plain", "");
+}
+
+void LanWebUi::handleDnsSettings() {
+  constexpr size_t kMaxParameters = 3;
+  constexpr size_t kNameCapacity = 24;
+  constexpr size_t kValueCapacity = 16;
+  const int argumentCount = server_.args();
+  if (argumentCount < 2 ||
+      static_cast<size_t>(argumentCount) > kMaxParameters) {
+    server_.send(400, "text/plain", "Invalid DNS settings");
+    return;
+  }
+
+  char names[kMaxParameters][kNameCapacity]{};
+  char values[kMaxParameters][kValueCapacity]{};
+  DnsSettingsParam parameters[kMaxParameters]{};
+  for (int i = 0; i < argumentCount; ++i) {
+    const String name = server_.argName(i);
+    const String value = server_.arg(i);
+    if (name.length() >= kNameCapacity || value.length() >= kValueCapacity) {
+      server_.send(400, "text/plain", "Invalid DNS settings");
+      return;
+    }
+    name.toCharArray(names[i], kNameCapacity);
+    value.toCharArray(values[i], kValueCapacity);
+    parameters[i] = {names[i], values[i]};
+  }
+
+  bool enabled = false;
+  uint32_t ipv4 = 0;
+  if (!parseDnsSettings(parameters, static_cast<size_t>(argumentCount),
+                        enabled, ipv4)) {
+    server_.send(400, "text/plain",
+                 "Enter a valid unicast IPv4 DNS server address");
+    return;
+  }
+  if (!configuration_.setDnsOverride(enabled, ipv4)) {
+    server_.send(500, "text/plain", "Unable to save DNS settings");
+    return;
+  }
+  char address[16] = {};
+  config::formatDnsIpv4(ipv4, address, sizeof(address));
+  Serial.printf("LAN UI: manual DNS %s%s%s%s\n",
+                enabled ? "enabled" : "disabled", ipv4 != 0 ? " (" : "",
+                ipv4 != 0 ? address : "", ipv4 != 0 ? ")" : "");
   server_.sendHeader("Location", "/", true);
   server_.send(303, "text/plain", "");
 }

@@ -31,82 +31,64 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Current checkpoint — Phase 4T validated and pushed
+## Current checkpoint — Phase 4U DNS resilience validated
 
-- **Checkpoint date:** 2026-10-18.
-- **Baseline / Phase 4S release:** `main`, local and `origin/main`, is at
-  `e39bfbd9eefeeb4c02ee2bda36d694b2bcde4ae4`, tagged
-  `phase-4s-route-display-preferences`. The Phase 4S commit and annotated tag
-  were pushed successfully. Phase 4S validation and remaining feed/time-sync
-  limitation are documented in `docs/PHASE4S_ROUTE_DISPLAY_PREFERENCES.md`.
-- **Phase 4T release:** commit `a5e8da19b567e5956c53770ad1e3b0ba8bf83944`,
-  `Phase 4T: add bounded network diagnostics`, is tagged
-  `phase-4t-network-diagnostics`; the commit, tag, and `main` update were
-  pushed to `origin` and the remote refs were verified. Phase 4T is complete.
-  Do not start Phase 4U without new authorization.
-- **Current XIAO observation:** read-only `GET /api/status` at
-  `192.168.137.25` returned Wi-Fi connected, `timeSynchronized=false`,
-  `feedCycleState=NOT RUN`, `physicalLedOutputEnabled=false`, brightness 64,
-  and `routeVisibilityMask=262143` (all 18 routes visible). Do not alter
-  credentials, route preferences, provisioning, or NVS during Phase 4T. The
-  active USB identity is COM4,
-  matching the previously verified XIAO USB serial number.
-- **Implementation:** added a fixed-size staged runner and asynchronous lwIP
-  DNS/TCP diagnostic probe; the callback-shared DNS state now uses atomics.
-  Added `POST /network-diagnostics/run`,
-  `GET /api/network-diagnostics`, LAN rendering for the latest feed-failure
-  summary and transport counters, and `docs/PHASE4T_NETWORK_DIAGNOSTICS.md`.
-  The probe resolves `pool.ntp.org` and `api-endpoint.mta.info`, then attempts
-  raw TCP/443 only when MTA DNS succeeds. DNS timeout is 4 seconds; raw TCP
-  timeout is 2.5 seconds. Raw TCP does not establish TLS/HTTPS success. UDP
-  port 123 is intentionally not probed. No feed, SNTP, Wi-Fi, credential,
-  TLS, power, mapping, or physical-output policy is changed.
-- **Current validation:** after diagnostic summary assertions, the LAN suite
-  passes **199 checks, 0 failures**; the focused diagnostic runner suite passes
-  **52 checks, 0 failures**. All 15 host regression runners passed
-  **1,554,092 checks, 0 failures**. All four clean builds passed:
-  `brooklyn-s3` 36,268 B RAM / 304,689 B flash;
-  `xiao-s3` 35,380 B / 290,005 B;
-  `brooklyn-s3-network` 86,468 B / 1,076,985 B;
-  `xiao-s3-network` 85,580 B / 1,060,269 B. Relative to Phase 4S, the
-  respective deltas are +0/+152 B, +0/+152 B, +3,832/+6,660 B, and
-  +3,832/+6,764 B. The production-network ELF has none of the audited
-  physical initializer, arm/transmit, NeoPixel `show()`, renderer, or
-  Phase 4Q controller symbols. The XIAO ELF retains logical
-  `brooklyn::led::render()` only; both network ELFs lack the physical-output
-  symbols. All four environments retain
-  `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0`.
-- **XIAO diagnostic exercise:** uploaded only `xiao-s3-network` to verified
-  COM4; esptool verified flash writes. The image SHA-256 is
-  `D7382220CD20C363C526F1638426172C2F2A4F607C4A0FB7A6BEF74C3847E42B`.
-  `GET /` returned 200 (6,315 B); `GET /api/network-diagnostics` initially
-  returned `not-run`; two `POST /network-diagnostics/run` requests each
-  returned 202 and completed read-only runs. Both reported DHCP
-  `192.168.137.25/24`, gateway `192.168.137.1`, DNS primary/secondary
-  `0.0.0.0`, no valid Unix time, NTP DNS failed (0 ms), MTA DNS failed (0 ms),
-  and TCP/443 skipped. No password fields were exposed. Device status remained
-  `timeSynchronized=false`, `feedCycleState=NOT RUN`, 0/0 feeds, physical
-  output disabled, brightness 64, and route mask `262143`. The probes expose
-  the missing DHCP DNS and do not imply TLS/HTTPS reachability; no network,
-  NVS, credential, or feed-transport settings were changed.
+- **Checkpoint date:** 2026-10-18. Phase 4U started with `main` at
+  `67221f3` (`docs: record Phase 4T release checkpoint`), after the Phase 4S
+  and Phase 4T releases below. The Phase 4U implementation, documentation,
+  commit, tag, and remote push are the current closeout actions.
+- **Phase 4S / 4T history:** Phase 4S is commit `e39bfbd9eefeeb4c02ee2bda36d694b2bcde4ae4`,
+  tagged `phase-4s-route-display-preferences`. Phase 4T is commit
+  `a5e8da19b567e5956c53770ad1e3b0ba8bf83944`, tagged
+  `phase-4t-network-diagnostics`. Both releases and tags were pushed to
+  `origin`; Phase 4T diagnostics are documented in
+  `docs/PHASE4T_NETWORK_DIAGNOSTICS.md`.
+- **Phase 4U implementation:** direct DNS probes remain read-only and do not
+  alter the system resolver. The user-facing override is disabled by default,
+  validates unicast IPv4, persists as one `bkmap_cfg` blob, applies only after
+  DHCP association, re-applies after restart/reassociation, and restores the
+  captured DHCP resolvers when disabled. LAN controls, status JSON, and
+  diagnostics identify DHCP versus effective DNS. No Wi-Fi credentials,
+  station IP configuration, feed URLs, SNTP hostnames, TLS policy, transport
+  timeouts, GPIO, PCB, or physical-output policy changed. Details are in
+  `docs/PHASE4U_DNS_RESILIENCE.md`.
+- **Validation:** all 15 host runners passed **1,554,232 checks, 0 failures**;
+  focused LAN tests passed **279 checks**, and diagnostics tests passed
+  **112 checks**. All four clean builds passed: `brooklyn-s3` 36,268 B RAM /
+  304,737 B flash; `xiao-s3` 35,380 B / 290,053 B;
+  `brooklyn-s3-network` 88,932 B / 1,086,577 B; `xiao-s3-network`
+  88,044 B / 1,069,957 B. `git diff --check` passed. Both network ELFs have
+  none of the audited physical-output initialization, arm/transmit,
+  `Adafruit_NeoPixel::show()`, or safety-controller symbols; all environments
+  keep `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0`.
+- **XIAO validation:** verified COM4 identity
+  `94:A9:90:D0:94:54`; only `xiao-s3-network` was uploaded. Four direct UDP/53
+  DNS checks succeeded against `1.1.1.1` and `8.8.8.8`. With manual DNS
+  `1.1.1.1` enabled, NTP and MTA DNS, raw TCP/443, SNTP, and polling succeeded;
+  feeds completed **8/8**. After reboot and DHCP association, the setting
+  persisted and was reapplied. Disabling it restored the hotspot's DHCP DNS
+  value (`0.0.0.0`); a multicast DNS address was rejected with HTTP 400 and
+  did not alter the disabled state.
+- **Current device state:** XIAO connected at `192.168.137.25`, Phase 4U
+  firmware, manual DNS disabled, effective source DHCP, physical LED output
+  disabled, brightness 64, and all 18 routes visible (`262143`). This hotspot
+  still supplies DHCP DNS `0.0.0.0`; with the override disabled the latest
+  status reported `NO FEEDS` (0/8), while the enabled-resolver test completed
+  8/8 feeds. No production firmware was uploaded and the production PCB was
+  not accessed.
+  Tailscale and Windows network configuration were not changed.
 - **Changed files:** `include/lan_web_policy.h`, `include/lan_web_ui.h`,
-  `include/network_service.h`, `include/network_diagnostics.h`,
-  `src/lan_web_policy.cpp`, `src/lan_web_ui.cpp`,
-  `src/network_service.cpp`, `src/network_diagnostics.cpp`,
+  `include/network_diagnostics.h`, `include/network_service.h`,
+  `include/normal_config.h`, `src/lan_web_policy.cpp`, `src/lan_web_ui.cpp`,
+  `src/network_diagnostics.cpp`, `src/network_service.cpp`,
+  `src/normal_config.cpp`, `src/normal_config_esp.cpp`,
   `tools/host_tests/lan_web_policy_test.cpp`,
   `tools/host_tests/network_diagnostics_test.cpp`,
   `tools/run_lan_web_policy_tests.py`,
   `tools/run_network_diagnostics_tests.py`,
-  `docs/PHASE4T_NETWORK_DIAGNOSTICS.md`, and this file.
-- **Final state:** worktree was clean after the tagged release push. The
-  manufacturing board file, `platformio.ini`, pin map, Wi-Fi provisioning,
-  credentials, NVS settings, feed transport/security policy, and physical
-  output configuration were not changed. The production PCB was not uploaded
-  to or accessed. The XIAO remains on the Phase 4T diagnostic image with
-  physical output disabled.
-- **Next action:** no further firmware/network work is authorized by the
-  Phase 4T checkpoint. Preserve the current XIAO preferences and host network
-  state. Wait for Joel's next direction; do not start Phase 4U.
+  `docs/PHASE4U_DNS_RESILIENCE.md`, and this file.
+- **Next action:** finish the Phase 4U release commit/tag/push, verify remote
+  refs, then stop. Do not start Phase 4V.
 
 ### Phase 4R hardware validation history (historical)
 

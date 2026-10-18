@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "lan_web_policy.h"
+#include "normal_config.h"
 #include "semantic_api.h"
 
 #include <stdarg.h>
@@ -223,6 +224,43 @@ bool parseBrightness(const char *text, uint8_t &brightness) {
   return true;
 }
 
+bool parseDnsSettings(const DnsSettingsParam *parameters, size_t count,
+                      bool &enabled, uint32_t &ipv4) {
+  if (parameters == nullptr || (count != 2 && count != 3)) return false;
+  bool markerSeen = false;
+  bool enabledSeen = false;
+  bool serverSeen = false;
+  bool candidateEnabled = false;
+  uint32_t candidateIpv4 = 0;
+  for (size_t i = 0; i < count; ++i) {
+    const DnsSettingsParam &parameter = parameters[i];
+    if (parameter.name == nullptr || parameter.value == nullptr) return false;
+    if (strcmp(parameter.name, "dnsForm") == 0) {
+      if (markerSeen || strcmp(parameter.value, "1") != 0) return false;
+      markerSeen = true;
+    } else if (strcmp(parameter.name, "manualDnsEnabled") == 0) {
+      if (enabledSeen || strcmp(parameter.value, "1") != 0) return false;
+      enabledSeen = true;
+      candidateEnabled = true;
+    } else if (strcmp(parameter.name, "dnsServer") == 0) {
+      if (serverSeen) return false;
+      serverSeen = true;
+      if (parameter.value[0] != '\0' &&
+          !config::parseDnsIpv4(parameter.value, candidateIpv4)) {
+        return false;
+      }
+    } else {
+      return false;
+    }
+  }
+  if (!markerSeen || !serverSeen || (candidateEnabled && candidateIpv4 == 0)) {
+    return false;
+  }
+  enabled = candidateEnabled;
+  ipv4 = candidateIpv4;
+  return true;
+}
+
 bool parseRouteSelection(const RouteSelectionParam *parameters, size_t count,
                          uint32_t &visibilityMask) {
   if (parameters == nullptr || count == 0 ||
@@ -316,9 +354,9 @@ size_t renderHomePage(char *out, size_t capacity,
   writer.html(status.subnet[0] != '\0' ? status.subnet : "Unavailable");
   writer.append("</dd><dt>Gateway</dt><dd>");
   writer.html(status.gateway[0] != '\0' ? status.gateway : "Unavailable");
-  writer.append("</dd><dt>Primary DNS</dt><dd>");
+  writer.append("</dd><dt>DHCP DNS 1</dt><dd>");
   writer.html(status.dnsPrimary[0] != '\0' ? status.dnsPrimary : "Unavailable");
-  writer.append("</dd><dt>Secondary DNS</dt><dd>");
+  writer.append("</dd><dt>DHCP DNS 2</dt><dd>");
   writer.html(status.dnsSecondary[0] != '\0' ? status.dnsSecondary : "Unavailable");
   writer.append("</dd><dt>Hostname</dt><dd>");
   writer.append(kHostname);
@@ -343,6 +381,31 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<p class=\"muted\">Setup uses the separate BrooklynMap-Avi "
                 "provisioning network and keeps existing credentials unless "
                 "a replacement successfully connects.</p></section>"
+                "<section><h2>DNS configuration</h2><dl>"
+                "<dt>Manual override</dt><dd>");
+  writer.append(status.manualDnsEnabled ? "Enabled" : "Disabled");
+  writer.append("</dd><dt>Override status</dt><dd>");
+  writer.html(status.dnsConfigStatus);
+  writer.append("</dd><dt>Effective DNS source</dt><dd>");
+  writer.html(status.effectiveDnsSource);
+  writer.append("</dd><dt>Effective DNS server</dt><dd>");
+  writer.html(status.effectiveDnsServer[0] != '\0'
+                  ? status.effectiveDnsServer
+                  : "Unavailable");
+  writer.append("</dd></dl><form method=\"post\" action=\"/config/dns\">"
+                "<input type=\"hidden\" name=\"dnsForm\" value=\"1\">"
+                "<label><input type=\"checkbox\" name=\"manualDnsEnabled\" "
+                "value=\"1\"");
+  if (status.manualDnsEnabled) writer.append(" checked");
+  writer.append("> Use manual DNS</label><br>"
+                "<label for=\"dnsServer\">Manual DNS IPv4 address</label> "
+                "<input id=\"dnsServer\" name=\"dnsServer\" type=\"text\" "
+                "inputmode=\"decimal\" maxlength=\"15\" value=\"");
+  writer.html(status.manualDnsServer);
+  writer.append("\"><button type=\"submit\">Save DNS settings</button></form>"
+                "<p class=\"muted\">Disabled by default. This changes only "
+                "the resolver; DHCP, Wi-Fi credentials, feeds, and TLS policy "
+                "are unchanged.</p></section>"
                 "<section><h2>MTA / data</h2><dl><dt>Last poll cycle</dt><dd>");
   writer.append(status.hasCycle ? cycleStateName(status.cycleOutcome) : "Not run");
   writer.append("</dd><dt>Feeds succeeded / total</dt><dd>");
@@ -393,6 +456,30 @@ size_t renderHomePage(char *out, size_t capacity,
   writer.append("</dd><dt>MTA TCP 443</dt><dd>");
   writer.append(network::diagnostics::checkStateName(
       status.networkDiagnostics.tcp443.state));
+  writer.append("</dd><dt>Direct DNS (UDP/53)</dt><dd>");
+  for (size_t i = 0; i < network::diagnostics::kDirectDnsCheckCount; ++i) {
+    const network::diagnostics::DirectDnsResult &result =
+        status.networkDiagnostics.directDns[i];
+    if (i != 0) writer.append("<br>");
+    writer.html(result.resolver);
+    writer.append(" -> ");
+    writer.html(result.hostname);
+    writer.append(": ");
+    writer.append(network::diagnostics::checkStateName(result.state));
+    writer.append(result.responseReceived ? ", response" : ", no response");
+    if (result.hasRcode) {
+      writer.format(", RCODE %u", result.rcode);
+    }
+    if (result.addressCount != 0) {
+      writer.append(", ");
+      for (uint8_t address = 0; address < result.addressCount; ++address) {
+        if (address != 0) writer.append(", ");
+        writer.html(result.addresses[address]);
+      }
+    }
+    writer.format(", %lu ms",
+                  static_cast<unsigned long>(result.elapsedMs));
+  }
   writer.append("</dd><dt>Secure-connect failures</dt><dd>");
   writer.format("%lu</dd><dt>HTTP failures</dt><dd>%lu</dd>"
                 "<dt>Transport timeouts</dt><dd>%lu</dd>"
@@ -523,6 +610,22 @@ size_t renderStatusJson(char *out, size_t capacity,
   writer.json(status.dnsPrimary);
   writer.append("\",\"dnsSecondary\":\"");
   writer.json(status.dnsSecondary);
+  writer.append("\",\"dhcpDns1\":\"");
+  writer.json(status.dnsPrimary);
+  writer.append("\",\"dhcpDns2\":\"");
+  writer.json(status.dnsSecondary);
+  writer.append("\",\"manualDnsEnabled\":");
+  writer.append(status.manualDnsEnabled ? "true" : "false");
+  writer.append(",\"manualDnsApplied\":");
+  writer.append(status.manualDnsApplied ? "true" : "false");
+  writer.append(",\"effectiveDnsSource\":\"");
+  writer.json(status.effectiveDnsSource);
+  writer.append("\",\"manualDnsServer\":\"");
+  writer.json(status.manualDnsServer);
+  writer.append("\",\"effectiveDnsServer\":\"");
+  writer.json(status.effectiveDnsServer);
+  writer.append("\",\"dnsConfigStatus\":\"");
+  writer.json(status.dnsConfigStatus);
   writer.format("\",\"rssi\":%d,\"hostname\":\"%s\","
                 "\"mdnsAvailable\":%s,\"timeSynchronized\":%s,"
                 "\"displayState\":\"%s\",\"feedCycleState\":\"",
@@ -609,6 +712,10 @@ size_t renderNetworkDiagnosticsJson(
   writer.json(diagnostics.dnsPrimary);
   writer.append("\",\"dnsSecondary\":\"");
   writer.json(diagnostics.dnsSecondary);
+  writer.append("\",\"effectiveDns1\":\"");
+  writer.json(diagnostics.dnsPrimary);
+  writer.append("\",\"effectiveDns2\":\"");
+  writer.json(diagnostics.dnsSecondary);
   writer.append("\",\"unixTime\":");
   if (diagnostics.hasUnixTime) {
     writer.format("%lu", static_cast<unsigned long>(diagnostics.unixTime));
@@ -621,6 +728,35 @@ size_t renderNetworkDiagnosticsJson(
   appendCheckJson(writer, diagnostics.mtaDns);
   writer.append(",\"mtaTcp443\":");
   appendCheckJson(writer, diagnostics.tcp443);
+  writer.append(",\"directDns\":[");
+  for (size_t i = 0; i < network::diagnostics::kDirectDnsCheckCount; ++i) {
+    if (i != 0) writer.append(",");
+    const network::diagnostics::DirectDnsResult &result =
+        diagnostics.directDns[i];
+    writer.append("{\"resolver\":\"");
+    writer.json(result.resolver);
+    writer.append("\",\"hostname\":\"");
+    writer.json(result.hostname);
+    writer.append("\",\"state\":\"");
+    writer.append(network::diagnostics::checkStateName(result.state));
+    writer.format("\",\"responseReceived\":%s,\"rcode\":",
+                  result.responseReceived ? "true" : "false");
+    if (result.hasRcode) {
+      writer.format("%u", result.rcode);
+    } else {
+      writer.append("null");
+    }
+    writer.append(",\"addresses\":[");
+    for (uint8_t address = 0; address < result.addressCount; ++address) {
+      if (address != 0) writer.append(",");
+      writer.append("\"");
+      writer.json(result.addresses[address]);
+      writer.append("\"");
+    }
+    writer.format("],\"elapsedMs\":%lu}",
+                  static_cast<unsigned long>(result.elapsedMs));
+  }
+  writer.append("]");
   writer.append("}");
   return writer.size();
 }
