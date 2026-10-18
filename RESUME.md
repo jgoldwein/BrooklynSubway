@@ -85,6 +85,14 @@ clarification only if the requested next action remains ambiguous.
   `src/admin_auth_esp.cpp`, LAN web policy/UI headers and sources, Wi-Fi
   portal/policy headers and sources, focused host tests and runner, this
   checkpoint, and `docs/PHASE4V_LAN_ACCESS_PROTECTION.md`.
+- **Captive-portal audit (post-4V):** wildcard captive DNS already existed;
+  no firmware change was needed or kept. Android auto-popup was not achieved
+  on the user's phone (it probes `/generate_204`, then leaves); manual
+  `http://192.168.4.1/` is the accepted setup path; arbitrary plain-HTTP
+  hostnames also reach the setup page. Temporary 302/logging experiments were
+  reverted. Details in
+  `docs/PHASE4L_WIFI_PROVISIONING.md`. The XIAO runs the released Phase 4V
+  image.
 - **Next actions:** Phase 4V is released (tag
   `phase-4v-lan-access-protection`). Do not start Phase 4W without direction.
 

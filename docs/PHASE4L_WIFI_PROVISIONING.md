@@ -107,6 +107,33 @@ It is never required and never printed. Priority: NVS credentials, then
 - The 2.4 GHz-only limit of the ESP32-S3 is stated in the UI.
 - Scanning is required to choose a network; use Rescan if the list is empty.
 
+### Captive DNS, probes and Android behavior (audit, 2026-10-18)
+
+- Wildcard captive DNS **already existed** and was not changed:
+  `DNSServer` in `include/wifi_portal.h`; `Portal::begin` calls
+  `dns_.start(53, "*", 192.168.4.1)` after the AP address is set;
+  `Portal::service` calls `processNextRequest()`; `Portal::stop` calls
+  `dns_.stop()`. It runs only while the setup AP is active; the normal LAN
+  server uses a plain 404 for unknown paths and no captive DNS.
+- Probe paths (`classifyPath`): `/generate_204`, `/gen_204`,
+  `/hotspot-detect.html`, `/library/test/success.html`, `/connecttest.txt`,
+  `/ncsi.txt`, `/redirect`, `/fwlink*`. Probes are served the setup page with
+  200 (never 204); unknown paths redirect to `http://192.168.4.1/`. Explicit
+  routes (`/`, `/scan`, `/connect`, `/admin/setup`) precede the wildcard.
+- XIAO hardware result: an arbitrary hostname (`example.com`) resolved to
+  `192.168.4.1` and, in the browser, reached the setup page. The Android phone
+  requested `http://connectivitycheck.gstatic.com/generate_204` twice per join.
+  A temporary experiment answering it with a 302 to `http://192.168.4.1/`
+  (plus temporary path logging) made no difference and both were reverted;
+  the released Phase 4V firmware source is unchanged. The phone showed
+  "connected without internet" and no sign-in prompt, and repeatedly left and
+  rejoined the AP. The Android auto-popup was therefore **not** achieved on
+  this phone. Physical LED output stayed disabled throughout.
+- Not investigated: newer Android versions can also use a DHCP captive-portal
+  URL (option 114); no support was found in the installed core headers and it
+  was not pursued. Manually opening `http://192.168.4.1/`, or any plain-HTTP
+  address, is the supported setup path and always works.
+
 ## Save / replace transaction
 
 1. Input is validated (invalid input leaves everything unchanged).
