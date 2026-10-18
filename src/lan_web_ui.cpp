@@ -5,6 +5,8 @@
 
 #if BROOKLYN_NETWORK_ENABLED
 
+#include "ota_upload_gate.h"
+
 #include <Arduino.h>
 
 #include <stdio.h>
@@ -88,8 +90,11 @@ bool LanWebUi::begin() {
 }
 
 void LanWebUi::registerRoutes() {
-  const char *headers[] = {"Cookie"};
-  server_.collectHeaders(headers, 1);
+  const char *headers[] = {"Cookie", "X-CSRF-Token", "Content-Type"};
+  server_.collectHeaders(headers, 3);
+  server_.on("/update", HTTP_GET, [this]() { handleUpdatePage(); });
+  server_.on("/update", HTTP_POST, [this]() { handleUpdateComplete(); },
+             [this]() { handleUpdateRaw(); });
   server_.on("/", HTTP_GET, [this]() { handleHome(); });
   server_.on("/login", HTTP_GET, [this]() { handleLoginPage(); });
   server_.on("/login", HTTP_POST, [this]() { handleLogin(); });
@@ -590,6 +595,152 @@ void LanWebUi::handlePasswordChange() {
       "Set-Cookie",
       "bkmap_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0");
   sendLoginRedirect();
+}
+
+bool LanWebUi::updateContentTypeAccepted() {
+  const String type = server_.header("Content-Type");
+  return type.startsWith("application/octet-stream");
+}
+
+// Authorization for the streamed upload: session cookie plus CSRF token in
+// the X-CSRF-Token header, evaluated before any body byte is consumed.
+int LanWebUi::updateAuthorizationStatus() {
+  String cookieHeader = server_.header("Cookie");
+  String csrf = server_.header("X-CSRF-Token");
+  int status = 403;
+  if (hasNoEmbeddedNull(csrf) && hasNoEmbeddedNull(cookieHeader)) {
+    status = ota::authorizeUpload(auth_, cookieHeader.c_str(), csrf.c_str(),
+                                  millis());
+  }
+  eraseString(csrf);
+  eraseString(cookieHeader);
+  return status;
+}
+
+void LanWebUi::handleUpdatePage() {
+  if (!authorizeRequest(false)) return;
+  char csrf[96];
+  if (!requestSession(csrf, sizeof(csrf))) {
+    server_.send(401, "text/plain", "Administrator sign-in is required");
+    return;
+  }
+  for (const char *c = csrf; *c != '\0'; ++c) {
+    const bool safe = (*c >= '0' && *c <= '9') || (*c >= 'a' && *c <= 'z') ||
+                      (*c >= 'A' && *c <= 'Z') || *c == '-' || *c == '_';
+    if (!safe) {
+      server_.send(500, "text/plain", "Unsupported session token");
+      return;
+    }
+  }
+  const int length = snprintf(
+      gPage, kPageCapacity,
+      "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+      "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+      "<title>Update firmware</title><style>"
+      "body{font:16px system-ui,sans-serif;max-width:40rem;margin:1rem auto;"
+      "padding:0 1rem}.warn{padding:.7rem;background:#fff4d6}"
+      "button,input{font:inherit;padding:.5rem}</style></head><body>"
+      "<h1>Update firmware</h1>"
+      "<p>Running: %s | Target: %s</p>"
+      "<p class=\"warn\">Upload a signed <b>.bkota</b> package built for this "
+      "target. Unsigned or wrong-target packages are rejected. HTTP is not "
+      "encrypted; use only a trusted network. Older signed versions are "
+      "accepted (downgrade). Configuration and Wi-Fi credentials are kept. "
+      "The device reboots after a verified update.</p>"
+      "<input type=\"file\" id=\"f\" accept=\".bkota\"> "
+      "<button id=\"b\">Upload and install</button>"
+      "<p id=\"s\" role=\"status\"></p><p><a href=\"/\">Back</a></p>"
+      "<script>var t=\"%s\";document.getElementById(\"b\").onclick=function(){"
+      "var f=document.getElementById(\"f\").files[0],s=document.getElementById"
+      "(\"s\");if(!f){s.textContent=\"Choose a package first.\";return}"
+      "var x=new XMLHttpRequest();x.open(\"POST\",\"/update\");"
+      "x.setRequestHeader(\"X-CSRF-Token\",t);x.setRequestHeader("
+      "\"Content-Type\",\"application/octet-stream\");x.upload.onprogress="
+      "function(e){s.textContent=\"Uploading \"+Math.round(100*e.loaded/"
+      "e.total)+\"%%\"};x.onload=function(){s.textContent=x.status+\": \"+"
+      "x.responseText};x.onerror=function(){s.textContent=\"Connection lost"
+      " (the device may be rebooting).\"};x.send(f)}</script></body></html>",
+      web::kFirmwareId, ota::WebOtaSession::targetName(), csrf);
+  eraseBytes(csrf, sizeof(csrf));
+  if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
+    server_.send(500, "text/plain", "Page too large");
+    return;
+  }
+  sendHtml(gPage, static_cast<size_t>(length));
+}
+
+// Streaming callback. Never sends a response; handleUpdateComplete() does.
+void LanWebUi::handleUpdateRaw() {
+  if (server_.uri() != "/update" || !updateContentTypeAccepted()) return;
+  HTTPRaw &raw = server_.raw();
+  switch (raw.status) {
+    case RAW_START: {
+      updateStarted_ = true;
+      updateDeniedStatus_ = updateAuthorizationStatus();
+      updateResult_ = ota::Result::NotStarted;
+      if (updateDeniedStatus_ != 0) {
+        Serial.printf("OTA: upload denied (HTTP %d)\n", updateDeniedStatus_);
+        break;
+      }
+      const int length = server_.clientContentLength();
+      updateResult_ =
+          otaSession_.start(length > 0 ? static_cast<size_t>(length) : 0);
+      break;
+    }
+    case RAW_WRITE:
+      if (updateStarted_ && updateDeniedStatus_ == 0 &&
+          updateResult_ == ota::Result::Ok) {
+        updateResult_ = otaSession_.feed(raw.buf, raw.currentSize);
+      }
+      break;
+    case RAW_END:
+      if (updateStarted_ && updateDeniedStatus_ == 0 &&
+          updateResult_ == ota::Result::Ok) {
+        updateResult_ = otaSession_.finish();
+      }
+      break;
+    case RAW_ABORTED:
+      otaSession_.abort();
+      updateStarted_ = false;
+      break;
+  }
+}
+
+void LanWebUi::handleUpdateComplete() {
+  server_.sendHeader("Cache-Control", "no-store");
+  const bool started = updateStarted_;
+  const int denied = updateDeniedStatus_;
+  const ota::Result result = updateResult_;
+  updateStarted_ = false;
+  updateDeniedStatus_ = 0;
+  updateResult_ = ota::Result::NotStarted;
+  if (!updateContentTypeAccepted() || !started) {
+    server_.send(415, "text/plain",
+                 "Send the package as application/octet-stream");
+    return;
+  }
+  if (denied == 401) {
+    server_.send(401, "text/plain", "Administrator sign-in is required");
+    return;
+  }
+  if (denied != 0) {
+    server_.send(denied, "text/plain", "A valid CSRF token is required");
+    return;
+  }
+  if (result != ota::Result::Ok) {
+    server_.send(ota::resultHttpStatus(result), "text/plain",
+                 ota::resultName(result));
+    return;
+  }
+  const ota::Installer *installer = otaSession_.installer();
+  const bool downgrade = installer != nullptr && installer->downgrade();
+  const int length = snprintf(
+      gPage, kPageCapacity,
+      "Firmware %s verified and installed. Rebooting.%s",
+      installer != nullptr ? installer->header().version : "?",
+      downgrade ? " WARNING: this is an older version (downgrade)." : "");
+  rebootRequested_ = true;
+  server_.send(200, "text/plain", length > 0 ? gPage : "Installed. Rebooting.");
 }
 
 bool LanWebUi::authorizeRequest(bool requireCsrf) {

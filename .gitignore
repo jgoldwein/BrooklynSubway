@@ -10,3 +10,9 @@ __pycache__/
 *.pyc
 
 include/secrets.h
+
+# Release artifacts and signing keys must never be committed
+dist/
+*.bkota
+*.pem
+*.key

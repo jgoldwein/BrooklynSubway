@@ -9,6 +9,7 @@
 #include "led_engine.h"
 #include "network_service.h"
 #include "operational_display.h"
+#include "ota_esp.h"
 #include "semantic_api.h"
 #include "train_pipeline.h"
 
@@ -197,6 +198,9 @@ void setup() {
   Serial.printf("Train pipeline self-check (no feeds, no LED output): %s\n",
                 pipelineReady ? "PASS" : "FAIL");
   networkService.begin();
+#if BROOKLYN_NETWORK_ENABLED
+  brooklyn::ota::healthSetupComplete(systemHealthy);
+#endif
   if (!hardwareReady) {
     Serial.println("ERROR: I2C initialization failed; LED outputs remain disabled.");
   }
@@ -210,6 +214,9 @@ void setup() {
 
 void loop() {
   brooklyn::controls::update();
+#if BROOKLYN_NETWORK_ENABLED
+  brooklyn::ota::healthService(millis());
+#endif
   if (brooklyn::controls::consumeWifiRecoveryRequest()) {
     networkService.requestProvisioning();
   }

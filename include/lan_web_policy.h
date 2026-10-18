@@ -15,7 +15,7 @@ namespace brooklyn::web {
 constexpr const char *kDefaultDeviceName = "BrooklynMap";
 constexpr const char *kHostname = "brooklynmap";
 constexpr const char *kMdnsUrl = "http://brooklynmap.local/";
-constexpr const char *kFirmwareId = "Phase 4V";
+constexpr const char *kFirmwareId = "Phase 4W";
 
 enum class ServerMode : uint8_t { Stopped, Provisioning, NormalLan };
 
