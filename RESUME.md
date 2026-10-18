@@ -93,6 +93,10 @@ clarification only if the requested next action remains ambiguous.
   reverted. Details in
   `docs/PHASE4L_WIFI_PROVISIONING.md`. The XIAO runs the released Phase 4V
   image.
+- **Remote-access audit (read-only):** `docs/TAILSCALE_REMOTE_ACCESS_PLAN.md`
+  recommends an existing LAN subnet router plus a DHCP reservation; no
+  firmware change. Windows Tailscale is stopped; no network changes made. XIAO
+  currently at `192.168.137.191` on the temporary hotspot.
 - **Next actions:** Phase 4V is released (tag
   `phase-4v-lan-access-protection`). Do not start Phase 4W without direction.
 
