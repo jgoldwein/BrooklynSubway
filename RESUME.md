@@ -71,7 +71,9 @@ clarification only if the requested next action remains ambiguous.
   description in `RELEASE_NOTES.md`. Both signatures, targets, payloads against
   the tagged network-build binaries, and package checksums were verified. The
   directory contains only these four files; the private signing key remains
-  outside Git.
+  outside Git. Upload exactly `xiao-s3-network-0.1.0-rc1.bkota`,
+  `brooklyn-s3-network-0.1.0-rc1.bkota`, and `SHA256SUMS.txt`; paste
+  `RELEASE_NOTES.md` as the release description, not as an asset.
 - **GitHub Release:** not created. `gh` is not installed and the available
   GitHub integration has no release-creation operation; do not install tooling
   or use credential workarounds. Joel must manually create and publish the
