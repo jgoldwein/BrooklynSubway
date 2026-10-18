@@ -35,8 +35,12 @@ clarification only if the requested next action remains ambiguous.
 
 - **Checkpoint date:** 2026-10-18. Phase 4U started with `main` at
   `67221f3` (`docs: record Phase 4T release checkpoint`), after the Phase 4S
-  and Phase 4T releases below. The Phase 4U implementation, documentation,
-  commit, tag, and remote push are the current closeout actions.
+  and Phase 4T releases below. Its validated implementation commit is
+  `e8a7aba` (`Phase 4U: add optional manual DNS override`).
+- **Phase 4U release marker:** annotated tag `phase-4u-dns-resilience`
+  identifies the validated Phase 4U release including this final handoff.
+  Verify the tag and `main` remote refs if resuming after an interrupted
+  release push.
 - **Phase 4S / 4T history:** Phase 4S is commit `e39bfbd9eefeeb4c02ee2bda36d694b2bcde4ae4`,
   tagged `phase-4s-route-display-preferences`. Phase 4T is commit
   `a5e8da19b567e5956c53770ad1e3b0ba8bf83944`, tagged
@@ -87,8 +91,9 @@ clarification only if the requested next action remains ambiguous.
   `tools/run_lan_web_policy_tests.py`,
   `tools/run_network_diagnostics_tests.py`,
   `docs/PHASE4U_DNS_RESILIENCE.md`, and this file.
-- **Next action:** finish the Phase 4U release commit/tag/push, verify remote
-  refs, then stop. Do not start Phase 4V.
+- **Next action:** Phase 4U is complete. Preserve the override-disabled XIAO
+  state and host network settings; do not start Phase 4V without new
+  authorization.
 
 ### Phase 4R hardware validation history (historical)
 
