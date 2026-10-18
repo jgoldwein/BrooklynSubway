@@ -31,7 +31,7 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Current checkpoint — Phase 4T network diagnostics in progress
+## Current checkpoint — Phase 4T validated and pushed
 
 - **Checkpoint date:** 2026-10-18.
 - **Baseline / Phase 4S release:** `main`, local and `origin/main`, is at
@@ -39,9 +39,11 @@ clarification only if the requested next action remains ambiguous.
   `phase-4s-route-display-preferences`. The Phase 4S commit and annotated tag
   were pushed successfully. Phase 4S validation and remaining feed/time-sync
   limitation are documented in `docs/PHASE4S_ROUTE_DISPLAY_PREFERENCES.md`.
-- **Phase 4T status:** diagnostic-only changes are in progress and currently
-  uncommitted. No Phase 4T image has been uploaded yet. Production hardware
-  has not been uploaded or accessed. Do not start Phase 4U.
+- **Phase 4T release:** commit `a5e8da19b567e5956c53770ad1e3b0ba8bf83944`,
+  `Phase 4T: add bounded network diagnostics`, is tagged
+  `phase-4t-network-diagnostics`; the commit, tag, and `main` update were
+  pushed to `origin` and the remote refs were verified. Phase 4T is complete.
+  Do not start Phase 4U without new authorization.
 - **Current XIAO observation:** read-only `GET /api/status` at
   `192.168.137.25` returned Wi-Fi connected, `timeSynchronized=false`,
   `feedCycleState=NOT RUN`, `physicalLedOutputEnabled=false`, brightness 64,
@@ -96,13 +98,15 @@ clarification only if the requested next action remains ambiguous.
   `tools/run_lan_web_policy_tests.py`,
   `tools/run_network_diagnostics_tests.py`,
   `docs/PHASE4T_NETWORK_DIAGNOSTICS.md`, and this file.
-- **Next actions:** run all host tests once more after the final test edits,
-  repeat `git diff --check`, inspect the complete final source/doc diff and
-  protected files, and verify the live API still reports the XIAO connected
-  with physical output disabled. If those final checks remain clean, create
-  the Phase 4T commit and annotated tag and push both to `origin`, as
-  authorized. Do not change device configuration to make DNS probes pass and
-  do not begin Phase 4U.
+- **Final state:** worktree was clean after the tagged release push. The
+  manufacturing board file, `platformio.ini`, pin map, Wi-Fi provisioning,
+  credentials, NVS settings, feed transport/security policy, and physical
+  output configuration were not changed. The production PCB was not uploaded
+  to or accessed. The XIAO remains on the Phase 4T diagnostic image with
+  physical output disabled.
+- **Next action:** no further firmware/network work is authorized by the
+  Phase 4T checkpoint. Preserve the current XIAO preferences and host network
+  state. Wait for Joel's next direction; do not start Phase 4U.
 
 ### Phase 4R hardware validation history (historical)
 
