@@ -27,9 +27,12 @@ int failures = 0;
 struct MemoryStore {
   bool brightnessPresent = false;
   bool routeMaskPresent = false;
+  bool dnsOverridePresent = false;
+  bool dnsOverrideEnabled = false;
   bool failSave = false;
   uint32_t brightnessValue = 0;
   uint32_t routeMaskValue = 0;
+  uint32_t dnsOverrideIpv4 = 0;
   uint32_t saves = 0;
 };
 
@@ -65,9 +68,27 @@ bool saveRouteVisibilityMask(void *context, uint32_t value) {
   return true;
 }
 
+bool loadDnsOverride(void *context, bool &enabled, uint32_t &ipv4) {
+  auto &store = *static_cast<MemoryStore *>(context);
+  if (!store.dnsOverridePresent) return false;
+  enabled = store.dnsOverrideEnabled;
+  ipv4 = store.dnsOverrideIpv4;
+  return true;
+}
+
+bool saveDnsOverride(void *context, bool enabled, uint32_t ipv4) {
+  auto &store = *static_cast<MemoryStore *>(context);
+  if (store.failSave) return false;
+  store.dnsOverridePresent = true;
+  store.dnsOverrideEnabled = enabled;
+  store.dnsOverrideIpv4 = ipv4;
+  ++store.saves;
+  return true;
+}
+
 brooklyn::config::Store configStore(MemoryStore &memory) {
   return {&memory, loadBrightness, saveBrightness, loadRouteVisibilityMask,
-          saveRouteVisibilityMask};
+          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride};
 }
 
 void testBrightnessParsing() {
@@ -118,7 +139,126 @@ void testPersistentConfiguration() {
   CHECK(memory.brightnessValue == 256);
   CHECK(memory.saves == savesBeforeFailure);
   CHECK(brooklyn::led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP == 16);
-  CHECK(sizeof(brooklyn::config::DeviceConfiguration) <= sizeof(void *) * 6);
+  CHECK(sizeof(brooklyn::config::DeviceConfiguration) <= sizeof(void *) * 9);
+}
+
+void testDnsConfigurationAndValidation() {
+  using brooklyn::config::DeviceConfiguration;
+  MemoryStore memory;
+  DeviceConfiguration config(configStore(memory));
+  CHECK(!config.load());
+  CHECK(!config.dnsOverrideEnabled());
+  CHECK(config.dnsOverrideIpv4() == 0);
+
+  uint32_t address = 0;
+  CHECK(brooklyn::config::parseDnsIpv4("1.1.1.1", address));
+  CHECK(address == 0x01010101);
+  CHECK(brooklyn::config::parseDnsIpv4("192.168.137.25", address));
+  CHECK(address == 0xc0a88919);
+  CHECK(brooklyn::config::validDnsIpv4(address));
+  char formatted[16] = {};
+  CHECK(brooklyn::config::formatDnsIpv4(address, formatted,
+                                         sizeof(formatted)) == 14);
+  CHECK(strcmp(formatted, "192.168.137.25") == 0);
+  CHECK(!brooklyn::config::parseDnsIpv4(nullptr, address));
+  CHECK(!brooklyn::config::parseDnsIpv4("", address));
+  CHECK(!brooklyn::config::parseDnsIpv4("1.1.1", address));
+  CHECK(!brooklyn::config::parseDnsIpv4("1.1.1.1.1", address));
+  CHECK(!brooklyn::config::parseDnsIpv4("256.1.1.1", address));
+  CHECK(!brooklyn::config::parseDnsIpv4("1.1.1.999", address));
+  CHECK(!brooklyn::config::parseDnsIpv4("01.1.1.1x", address));
+  CHECK(!brooklyn::config::parseDnsIpv4("1.1.1.1 ", address));
+  CHECK(!brooklyn::config::parseDnsIpv4("0.1.1.1", address));
+  CHECK(!brooklyn::config::parseDnsIpv4("127.0.0.1", address));
+  CHECK(!brooklyn::config::parseDnsIpv4("224.0.0.1", address));
+  CHECK(!brooklyn::config::parseDnsIpv4("255.255.255.255", address));
+  CHECK(!brooklyn::config::validDnsIpv4(0));
+  CHECK(!brooklyn::config::validDnsIpv4(0xe0000001));
+  CHECK(!brooklyn::config::validDnsIpv4(0xffffffff));
+
+  CHECK(config.setBrightness(77));
+  CHECK(config.setRouteVisibilityMask(5));
+  CHECK(!config.setDnsOverride(true, 0));
+  CHECK(!memory.dnsOverridePresent);
+  CHECK(config.setDnsOverride(true, 0x01010101));
+  CHECK(config.dnsOverrideEnabled());
+  CHECK(config.dnsOverrideIpv4() == 0x01010101);
+  DeviceConfiguration reconstructed(configStore(memory));
+  CHECK(reconstructed.load());
+  CHECK(reconstructed.dnsOverrideEnabled());
+  CHECK(reconstructed.dnsOverrideIpv4() == 0x01010101);
+  CHECK(reconstructed.brightness() == 77);
+  CHECK(reconstructed.routeVisibilityMask() == 5);
+
+  const uint32_t savesBeforeInvalid = memory.saves;
+  CHECK(!config.setDnsOverride(true, 0xe0000001));
+  CHECK(!config.setDnsOverride(false, 0xffffffff));
+  CHECK(memory.saves == savesBeforeInvalid);
+  CHECK(config.setDnsOverride(false, 0x01010101));
+  CHECK(!config.dnsOverrideEnabled());
+  CHECK(config.dnsOverrideIpv4() == 0x01010101);
+  DeviceConfiguration disabled(configStore(memory));
+  CHECK(disabled.load());
+  CHECK(!disabled.dnsOverrideEnabled());
+  CHECK(disabled.dnsOverrideIpv4() == 0x01010101);
+
+  memory.dnsOverrideEnabled = true;
+  memory.dnsOverrideIpv4 = 0xe0000001;
+  DeviceConfiguration corrupt(configStore(memory));
+  CHECK(corrupt.load());
+  CHECK(!corrupt.dnsOverrideEnabled());
+  CHECK(corrupt.dnsOverrideIpv4() == 0);
+
+  memory.dnsOverridePresent = false;
+  memory.dnsOverrideEnabled = false;
+  memory.dnsOverrideIpv4 = 0;
+  memory.brightnessPresent = true;
+  memory.brightnessValue = 71;
+  memory.routeMaskPresent = true;
+  memory.routeMaskValue = 5;
+  DeviceConfiguration upgraded(configStore(memory));
+  CHECK(upgraded.load());
+  CHECK(!upgraded.dnsOverrideEnabled());
+  CHECK(upgraded.brightness() == 71);
+  CHECK(upgraded.routeVisibilityMask() == 5);
+  memory.failSave = true;
+  CHECK(!upgraded.setDnsOverride(true, 0x08080808));
+  CHECK(!upgraded.dnsOverrideEnabled());
+  CHECK(upgraded.brightness() == 71);
+  CHECK(upgraded.routeVisibilityMask() == 5);
+}
+
+void testDnsSettingsFormParsing() {
+  using brooklyn::web::DnsSettingsParam;
+  bool enabled = false;
+  uint32_t address = 0;
+  const DnsSettingsParam enabledForm[] = {
+      {"dnsForm", "1"}, {"dnsServer", "1.1.1.1"},
+      {"manualDnsEnabled", "1"}};
+  CHECK(brooklyn::web::parseDnsSettings(enabledForm, 3, enabled, address));
+  CHECK(enabled && address == 0x01010101);
+
+  const DnsSettingsParam disabledForm[] = {
+      {"dnsForm", "1"}, {"dnsServer", ""}};
+  CHECK(brooklyn::web::parseDnsSettings(disabledForm, 2, enabled, address));
+  CHECK(!enabled && address == 0);
+  const DnsSettingsParam invalidAddress[] = {
+      {"dnsForm", "1"}, {"dnsServer", "224.0.0.1"}};
+  CHECK(!brooklyn::web::parseDnsSettings(invalidAddress, 2, enabled, address));
+  const DnsSettingsParam missingAddress[] = {
+      {"dnsForm", "1"}, {"manualDnsEnabled", "1"}};
+  CHECK(!brooklyn::web::parseDnsSettings(missingAddress, 2, enabled, address));
+  const DnsSettingsParam duplicate[] = {
+      {"dnsForm", "1"}, {"dnsServer", "1.1.1.1"},
+      {"dnsServer", "8.8.8.8"}};
+  CHECK(!brooklyn::web::parseDnsSettings(duplicate, 3, enabled, address));
+  const DnsSettingsParam unknownParameter[] = {
+      {"dnsForm", "1"}, {"dnsServer", "1.1.1.1"}, {"other", "1"}};
+  CHECK(!brooklyn::web::parseDnsSettings(unknownParameter, 3, enabled,
+                                         address));
+  const DnsSettingsParam malformedMarker[] = {
+      {"dnsForm", "0"}, {"dnsServer", ""}};
+  CHECK(!brooklyn::web::parseDnsSettings(malformedMarker, 2, enabled, address));
 }
 
 void testRouteVisibilityPersistenceAndMigration() {
@@ -183,6 +323,19 @@ brooklyn::web::StatusSnapshot sampleStatus() {
   strncpy(status.resetReason, "power-on", sizeof(status.resetReason) - 1);
   status.networkConnected = true;
   strncpy(status.ssid, "TestNetwork", sizeof(status.ssid) - 1);
+  strncpy(status.dnsPrimary, "0.0.0.0", sizeof(status.dnsPrimary) - 1);
+  strncpy(status.dnsSecondary, "192.168.137.1",
+          sizeof(status.dnsSecondary) - 1);
+  status.manualDnsEnabled = true;
+  status.manualDnsApplied = true;
+  strncpy(status.manualDnsServer, "1.1.1.1",
+          sizeof(status.manualDnsServer) - 1);
+  strncpy(status.effectiveDnsServer, "1.1.1.1",
+          sizeof(status.effectiveDnsServer) - 1);
+  strncpy(status.effectiveDnsSource, "Manual",
+          sizeof(status.effectiveDnsSource) - 1);
+  strncpy(status.dnsConfigStatus, "applied",
+          sizeof(status.dnsConfigStatus) - 1);
   strncpy(status.ip, "192.0.2.17", sizeof(status.ip) - 1);
   status.rssi = -58;
   status.mdnsAvailable = true;
@@ -233,6 +386,19 @@ brooklyn::web::StatusSnapshot sampleStatus() {
   status.networkDiagnostics.mtaDns.elapsedMs = 67;
   status.networkDiagnostics.tcp443.state =
       brooklyn::network::diagnostics::CheckState::Skipped;
+  status.networkDiagnostics.directDns[0].state =
+      brooklyn::network::diagnostics::CheckState::Succeeded;
+  strncpy(status.networkDiagnostics.directDns[0].resolver, "1.1.1.1",
+          sizeof(status.networkDiagnostics.directDns[0].resolver) - 1);
+  strncpy(status.networkDiagnostics.directDns[0].hostname, "pool.ntp.org",
+          sizeof(status.networkDiagnostics.directDns[0].hostname) - 1);
+  status.networkDiagnostics.directDns[0].responseReceived = true;
+  status.networkDiagnostics.directDns[0].hasRcode = true;
+  status.networkDiagnostics.directDns[0].rcode = 0;
+  status.networkDiagnostics.directDns[0].addressCount = 1;
+  strncpy(status.networkDiagnostics.directDns[0].addresses[0], "192.0.2.53",
+          sizeof(status.networkDiagnostics.directDns[0].addresses[0]) - 1);
+  status.networkDiagnostics.directDns[0].elapsedMs = 18;
   return status;
 }
 
@@ -264,6 +430,13 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "Routes to display") != nullptr);
   CHECK(strstr(page, "18 of 18 routes enabled") != nullptr);
   CHECK(strstr(page, "method=\"post\" action=\"/config/routes\"") != nullptr);
+  CHECK(strstr(page, "method=\"post\" action=\"/config/dns\"") != nullptr);
+  CHECK(strstr(page, "Use manual DNS") != nullptr);
+  CHECK(strstr(page, "DHCP DNS 1") != nullptr);
+  CHECK(strstr(page, "Effective DNS source") != nullptr);
+  CHECK(strstr(page, "value=\"1.1.1.1\"") != nullptr);
+  CHECK(strstr(page, "resolver; DHCP, Wi-Fi credentials, feeds, and TLS policy") !=
+        nullptr);
   CHECK(strstr(page, "Select all") != nullptr);
   CHECK(strstr(page, "Clear all") != nullptr);
   CHECK(strstr(page, "Save routes") != nullptr);
@@ -274,6 +447,8 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "MTA TCP 443") != nullptr);
   CHECK(strstr(page, "Diagnostic run</dt><dd>complete</dd>") != nullptr);
   CHECK(strstr(page, "succeeded (198.51.100.10)") != nullptr);
+  CHECK(strstr(page, "1.1.1.1 -> pool.ntp.org: succeeded, response, "
+                     "RCODE 0, 192.0.2.53, 18 ms") != nullptr);
   CHECK(strstr(page, "<dt>Secure-connect failures</dt><dd>2</dd>") != nullptr);
   CHECK(strstr(page, "<dt>HTTP failures</dt><dd>3</dd>") != nullptr);
   CHECK(strstr(page, "<dt>Transport timeouts</dt><dd>4</dd>") != nullptr);
@@ -348,7 +523,14 @@ void testJsonStatusIsEscapedAndSecretFree() {
             json, sizeof(json), status, 64,
             brooklyn::semantic::kAllRoutesVisibleMask) > 0);
   CHECK(strstr(json, "\"physicalLedOutputEnabled\":false") != nullptr);
-  CHECK(strstr(json, "\"firmware\":\"Phase 4T\"") != nullptr);
+  CHECK(strstr(json, "\"firmware\":\"Phase 4U\"") != nullptr);
+  CHECK(strstr(json, "\"dhcpDns1\":\"0.0.0.0\"") != nullptr);
+  CHECK(strstr(json, "\"dhcpDns2\":\"192.168.137.1\"") != nullptr);
+  CHECK(strstr(json, "\"manualDnsEnabled\":true") != nullptr);
+  CHECK(strstr(json, "\"manualDnsApplied\":true") != nullptr);
+  CHECK(strstr(json, "\"manualDnsServer\":\"1.1.1.1\"") != nullptr);
+  CHECK(strstr(json, "\"effectiveDnsSource\":\"Manual\"") != nullptr);
+  CHECK(strstr(json, "\"effectiveDnsServer\":\"1.1.1.1\"") != nullptr);
   CHECK(strstr(json, "\"resetReason\":\"boot\\rready\"") != nullptr);
   CHECK(strstr(json, "\"brightness\":64") != nullptr);
   CHECK(strstr(json, "\"routeVisibilityMask\":262143,\"routeCount\":18") !=
@@ -474,6 +656,8 @@ void testServerOwnershipTransitions() {
 int main() {
   testBrightnessParsing();
   testPersistentConfiguration();
+  testDnsConfigurationAndValidation();
+  testDnsSettingsFormParsing();
   testRouteVisibilityPersistenceAndMigration();
   testPageEscapingAndRequiredContent();
   testJsonStatusIsEscapedAndSecretFree();

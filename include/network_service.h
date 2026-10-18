@@ -71,6 +71,7 @@ class NetworkService {
   void printStatus(const transport::CycleResult &result) const;
 #if BROOKLYN_NETWORK_ENABLED
   void serviceLanWebUi(uint32_t nowMs);
+  void applyDnsOverride();
   void serviceNetworkDiagnostics(uint32_t nowMs);
   void stopLanWebUi();
 #endif
@@ -99,6 +100,10 @@ class NetworkService {
   bool hasLatestCycle_ = false;
   bool mdnsAttempted_ = false;
   bool mdnsStarted_ = false;
+  bool dnsAssociationReady_ = false;
+  bool dnsManualApplied_ = false;
+  bool dnsApplyErrorLogged_ = false;
+  uint32_t appliedDnsOverrideIpv4_ = 0;
 #endif
 };
 

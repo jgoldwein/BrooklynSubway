@@ -30,6 +30,7 @@ class LanWebUi {
   void handleStatus();
   void handleNetworkDiagnostics();
   void handleBrightness();
+  void handleDnsSettings();
   void handleRoutes();
   void handleRunNetworkDiagnostics();
   void handleSetupConfirmation();

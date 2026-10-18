@@ -55,6 +55,18 @@ def main():
             ) != 18:
                 print("API JSON route-visibility sample did not match expectation")
                 return 1
+            if (
+                payload.get("dhcpDns1") != "0.0.0.0"
+                or payload.get("dhcpDns2") != "192.168.137.1"
+                or payload.get("manualDnsEnabled") is not True
+                or payload.get("manualDnsApplied") is not True
+                or payload.get("manualDnsServer") != "1.1.1.1"
+                or payload.get("effectiveDnsSource") != "Manual"
+                or payload.get("effectiveDnsServer") != "1.1.1.1"
+                or payload.get("dnsConfigStatus") != "applied"
+            ):
+                print("API JSON DNS configuration sample did not match expectation")
+                return 1
         print(run.stderr, end="")
         return run.returncode
 

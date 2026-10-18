@@ -21,14 +21,18 @@
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
+#include <fcntl.h>
 #include <esp_heap_caps.h>
 #include <soc/soc_memory_types.h>
 #include <lwip/dns.h>
 #include <lwip/err.h>
+#include <lwip/inet.h>
 #include <lwip/ip_addr.h>
+#include <lwip/sockets.h>
 #include <time.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #if __has_include("secrets.h")
 #include "secrets.h"
@@ -99,6 +103,18 @@ class FailureLogger : public transport::FeedFailureObserver {
 };
 
 constexpr uint32_t elapsed(uint32_t now, uint32_t since) { return now - since; }
+
+bool setDnsServer(uint8_t index, const char *text) {
+  ip_addr_t address{};
+  if (text == nullptr || text[0] == '\0') {
+    IP_ADDR4(&address, 0, 0, 0, 0);
+  } else if (ip4addr_aton(text, ip_2_ip4(&address)) == 0) {
+    return false;
+  }
+  dns_setserver(index, &address);
+  const ip_addr_t *effective = dns_getserver(index);
+  return effective != nullptr && ip_addr_cmp(effective, &address);
+}
 
 struct DnsProbeContext {
   std::atomic<bool> pending{false};
@@ -223,6 +239,117 @@ class EspNetworkDiagnosticProbe : public diagnostics::Probe {
                      : diagnostics::CheckState::Failed;
   }
 
+  void startDirectDns(size_t checkIndex, uint32_t, uint32_t nowMs) override {
+    closeDirectDnsSocket();
+    directDnsIndex_ = checkIndex;
+    directDnsStartedAtMs_ = nowMs;
+    directDnsImmediateState_ = diagnostics::CheckState::Pending;
+    if (checkIndex >= diagnostics::kDirectDnsCheckCount) {
+      directDnsImmediateState_ = diagnostics::CheckState::Failed;
+      return;
+    }
+
+    directDnsTransactionId_ = static_cast<uint16_t>(directDnsTransactionId_ + 1);
+    if (directDnsTransactionId_ == 0) ++directDnsTransactionId_;
+    uint8_t query[256];
+    const size_t queryLength = diagnostics::buildDirectDnsQuery(
+        diagnostics::directDnsHostname(checkIndex), directDnsTransactionId_,
+        query, sizeof(query));
+    if (queryLength == 0) {
+      directDnsImmediateState_ = diagnostics::CheckState::Failed;
+      return;
+    }
+
+    memset(&directDnsResolverAddress_, 0, sizeof(directDnsResolverAddress_));
+    directDnsResolverAddress_.sin_family = AF_INET;
+    directDnsResolverAddress_.sin_port = htons(53);
+    if (inet_aton(diagnostics::directDnsResolver(checkIndex),
+                  &directDnsResolverAddress_.sin_addr) == 0) {
+      directDnsImmediateState_ = diagnostics::CheckState::Failed;
+      return;
+    }
+
+    directDnsSocket_ = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    if (directDnsSocket_ < 0 ||
+        fcntl(directDnsSocket_, F_SETFL, O_NONBLOCK) < 0) {
+      closeDirectDnsSocket();
+      directDnsImmediateState_ = diagnostics::CheckState::Failed;
+      return;
+    }
+    const ssize_t sent = sendto(
+        directDnsSocket_, query, queryLength, 0,
+        reinterpret_cast<const sockaddr *>(&directDnsResolverAddress_),
+        sizeof(directDnsResolverAddress_));
+    if (sent != static_cast<ssize_t>(queryLength)) {
+      closeDirectDnsSocket();
+      directDnsImmediateState_ = diagnostics::CheckState::Failed;
+    }
+  }
+
+  diagnostics::CheckState pollDirectDns(
+      size_t checkIndex, uint32_t nowMs,
+      diagnostics::DirectDnsResult &result) override {
+    if (checkIndex != directDnsIndex_) {
+      result.elapsedMs = 0;
+      return diagnostics::CheckState::Failed;
+    }
+    if (directDnsImmediateState_ != diagnostics::CheckState::Pending) {
+      result.elapsedMs = elapsed(nowMs, directDnsStartedAtMs_);
+      return directDnsImmediateState_;
+    }
+
+    uint8_t response[512];
+    sockaddr_in sourceAddress{};
+    socklen_t sourceLength = sizeof(sourceAddress);
+    const ssize_t received =
+        recvfrom(directDnsSocket_, response, sizeof(response), 0,
+                 reinterpret_cast<sockaddr *>(&sourceAddress), &sourceLength);
+    if (received >= 0) {
+      if (sourceAddress.sin_family == AF_INET &&
+          sourceAddress.sin_port == htons(53) &&
+          sourceAddress.sin_addr.s_addr ==
+              directDnsResolverAddress_.sin_addr.s_addr) {
+        const diagnostics::DirectDnsParseState parsed =
+            diagnostics::parseDirectDnsResponse(
+                response, static_cast<size_t>(received),
+                directDnsTransactionId_,
+                diagnostics::directDnsHostname(checkIndex), result);
+        if (parsed == diagnostics::DirectDnsParseState::Malformed) {
+          result.elapsedMs = elapsed(nowMs, directDnsStartedAtMs_);
+          closeDirectDnsSocket();
+          return diagnostics::CheckState::Failed;
+        }
+        if (parsed == diagnostics::DirectDnsParseState::UnrelatedQuestion) {
+          result.responseReceived = false;
+          result.hasRcode = false;
+          result.rcode = 0;
+          result.addressCount = 0;
+          memset(result.addresses, 0, sizeof(result.addresses));
+        }
+        if (parsed == diagnostics::DirectDnsParseState::Response) {
+          result.elapsedMs = elapsed(nowMs, directDnsStartedAtMs_);
+          closeDirectDnsSocket();
+          return result.hasRcode && result.rcode == 0 &&
+                         result.addressCount != 0
+                     ? diagnostics::CheckState::Succeeded
+                     : diagnostics::CheckState::Failed;
+        }
+      }
+    } else if (errno != EAGAIN && errno != EWOULDBLOCK && errno != EINTR) {
+      result.elapsedMs = elapsed(nowMs, directDnsStartedAtMs_);
+      closeDirectDnsSocket();
+      return diagnostics::CheckState::Failed;
+    }
+
+    if (elapsed(nowMs, directDnsStartedAtMs_) >=
+        diagnostics::kDirectDnsTimeoutMs) {
+      result.elapsedMs = elapsed(nowMs, directDnsStartedAtMs_);
+      closeDirectDnsSocket();
+      return diagnostics::CheckState::TimedOut;
+    }
+    return diagnostics::CheckState::Pending;
+  }
+
  private:
   enum class CheckResultState : uint8_t { Pending, Busy, Available };
 
@@ -235,6 +362,13 @@ class EspNetworkDiagnosticProbe : public diagnostics::Probe {
                           const IPAddress &address) {
     const String text = address.toString();
     text.toCharArray(destination, capacity);
+  }
+
+  void closeDirectDnsSocket() {
+    if (directDnsSocket_ >= 0) {
+      close(directDnsSocket_);
+      directDnsSocket_ = -1;
+    }
   }
 
   DnsProbeContext &dnsContext(diagnostics::DnsTarget target) {
@@ -250,6 +384,13 @@ class EspNetworkDiagnosticProbe : public diagnostics::Probe {
   DnsProbeContext mtaDns_{};
   CheckResultState ntpImmediate_ = CheckResultState::Available;
   CheckResultState mtaImmediate_ = CheckResultState::Available;
+  int directDnsSocket_ = -1;
+  size_t directDnsIndex_ = diagnostics::kDirectDnsCheckCount;
+  uint16_t directDnsTransactionId_ = 0;
+  uint32_t directDnsStartedAtMs_ = 0;
+  diagnostics::CheckState directDnsImmediateState_ =
+      diagnostics::CheckState::NotRun;
+  sockaddr_in directDnsResolverAddress_{};
 };
 
 EspNetworkDiagnosticProbe &diagnosticProbe() {
@@ -430,6 +571,14 @@ void NetworkService::begin() {
                 savedConfigurationLoaded ? "NVS" : "default",
                 static_cast<unsigned>(sizeof(configuration_)),
                 static_cast<unsigned>(sizeof(lanWebUi_)));
+  char dnsSetting[16] = {};
+  if (configuration_.dnsOverrideIpv4() != 0) {
+    config::formatDnsIpv4(configuration_.dnsOverrideIpv4(), dnsSetting,
+                          sizeof(dnsSetting));
+  }
+  Serial.printf("LAN UI: manual DNS override %s (%s)\n",
+                configuration_.dnsOverrideEnabled() ? "enabled" : "disabled",
+                dnsSetting[0] != '\0' ? dnsSetting : "no address");
   WiFi.persistent(false);  // the Wi-Fi driver must not keep its own copy of the password
   if (!WiFi.setHostname(web::kHostname)) {
     Serial.println("LAN UI: station hostname configuration failed");
@@ -451,6 +600,9 @@ void NetworkService::begin() {
 void NetworkService::startProvisioning(uint32_t nowMs) {
   stopLanWebUi();
   serverOwnership_.stop();
+  dnsAssociationReady_ = false;
+  dnsManualApplied_ = false;
+  appliedDnsOverrideIpv4_ = 0;
   if (!serverOwnership_.enterProvisioning()) {
     Serial.println("Provisioning: refused while LAN HTTP server owns port 80");
     state_ = State::NoCredentials;
@@ -685,6 +837,23 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
     webStatus_.ip[0] = '\0';
     webStatus_.rssi = -127;
     webStatus_.mdnsAvailable = false;
+    dnsAssociationReady_ = false;
+    dnsManualApplied_ = false;
+    appliedDnsOverrideIpv4_ = 0;
+    webStatus_.manualDnsEnabled = configuration_.dnsOverrideEnabled();
+    webStatus_.manualDnsApplied = false;
+    webStatus_.manualDnsServer[0] = '\0';
+    if (configuration_.dnsOverrideIpv4() != 0) {
+      config::formatDnsIpv4(configuration_.dnsOverrideIpv4(),
+                            webStatus_.manualDnsServer,
+                            sizeof(webStatus_.manualDnsServer));
+    }
+    webStatus_.effectiveDnsServer[0] = '\0';
+    strncpy(webStatus_.effectiveDnsSource, "Unavailable",
+            sizeof(webStatus_.effectiveDnsSource) - 1);
+    strncpy(webStatus_.dnsConfigStatus,
+            webStatus_.manualDnsEnabled ? "waiting" : "disabled",
+            sizeof(webStatus_.dnsConfigStatus) - 1);
     return;
   }
 
@@ -731,6 +900,10 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
                                sizeof(webStatus_.dnsPrimary));
     dnsSecondaryText.toCharArray(webStatus_.dnsSecondary,
                                  sizeof(webStatus_.dnsSecondary));
+    dnsAssociationReady_ = true;
+    dnsManualApplied_ = false;
+    appliedDnsOverrideIpv4_ = 0;
+    dnsApplyErrorLogged_ = false;
   }
   webStatus_.uptimeSeconds = millis() / 1000;
   webStatus_.networkConnected = true;
@@ -778,6 +951,7 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
   webStatus_.transportCounters = counters_;
   webStatus_.networkDiagnostics = networkDiagnostics_.snapshot();
   lanWebUi_.service(webStatus_);
+  applyDnsOverride();
 
   if (lanWebUi_.consumeNetworkDiagnosticsRequest()) {
     if (networkDiagnostics_.start(diagnosticProbe())) {
@@ -799,6 +973,83 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
   }
 }
 
+void NetworkService::applyDnsOverride() {
+  webStatus_.manualDnsEnabled = configuration_.dnsOverrideEnabled();
+  webStatus_.manualDnsApplied = dnsManualApplied_;
+  webStatus_.manualDnsServer[0] = '\0';
+  if (configuration_.dnsOverrideIpv4() != 0) {
+    config::formatDnsIpv4(configuration_.dnsOverrideIpv4(),
+                          webStatus_.manualDnsServer,
+                          sizeof(webStatus_.manualDnsServer));
+  }
+  if (!dnsAssociationReady_) {
+    strncpy(webStatus_.dnsConfigStatus,
+            webStatus_.manualDnsEnabled ? "waiting" : "disabled",
+            sizeof(webStatus_.dnsConfigStatus) - 1);
+    return;
+  }
+
+  if (webStatus_.manualDnsEnabled) {
+    const uint32_t requestedIpv4 = configuration_.dnsOverrideIpv4();
+    if (!dnsManualApplied_ || appliedDnsOverrideIpv4_ != requestedIpv4) {
+      char requested[16] = {};
+      config::formatDnsIpv4(requestedIpv4, requested, sizeof(requested));
+      if (setDnsServer(0, requested)) {
+        dnsManualApplied_ = true;
+        appliedDnsOverrideIpv4_ = requestedIpv4;
+        dnsApplyErrorLogged_ = false;
+        Serial.printf("Network: manual DNS resolver applied: %s\n", requested);
+      } else {
+        if (!dnsApplyErrorLogged_) {
+          Serial.println("Network: FAILED to apply manual DNS resolver");
+          dnsApplyErrorLogged_ = true;
+        }
+        strncpy(webStatus_.dnsConfigStatus, "error",
+                sizeof(webStatus_.dnsConfigStatus) - 1);
+      }
+    }
+    if (dnsManualApplied_ && appliedDnsOverrideIpv4_ == requestedIpv4) {
+      strncpy(webStatus_.dnsConfigStatus, "applied",
+              sizeof(webStatus_.dnsConfigStatus) - 1);
+    } else {
+      strncpy(webStatus_.dnsConfigStatus, "error",
+              sizeof(webStatus_.dnsConfigStatus) - 1);
+    }
+  } else if (dnsManualApplied_) {
+    const bool primaryRestored =
+        setDnsServer(0, webStatus_.dnsPrimary);
+    const bool secondaryRestored =
+        setDnsServer(1, webStatus_.dnsSecondary);
+    if (primaryRestored && secondaryRestored) {
+      dnsManualApplied_ = false;
+      appliedDnsOverrideIpv4_ = 0;
+      dnsApplyErrorLogged_ = false;
+      strncpy(webStatus_.dnsConfigStatus, "disabled",
+              sizeof(webStatus_.dnsConfigStatus) - 1);
+      Serial.println("Network: DHCP DNS resolvers restored");
+    } else {
+      if (!dnsApplyErrorLogged_) {
+        Serial.println("Network: FAILED to restore DHCP DNS resolvers");
+        dnsApplyErrorLogged_ = true;
+      }
+      strncpy(webStatus_.dnsConfigStatus, "error",
+              sizeof(webStatus_.dnsConfigStatus) - 1);
+    }
+  } else {
+    strncpy(webStatus_.dnsConfigStatus, "disabled",
+            sizeof(webStatus_.dnsConfigStatus) - 1);
+  }
+
+  webStatus_.manualDnsApplied = dnsManualApplied_;
+  strncpy(webStatus_.effectiveDnsSource,
+          dnsManualApplied_ ? "Manual" : "DHCP",
+          sizeof(webStatus_.effectiveDnsSource) - 1);
+  const IPAddress effectiveDns = WiFi.dnsIP(0);
+  const String effectiveDnsText = effectiveDns.toString();
+  effectiveDnsText.toCharArray(webStatus_.effectiveDnsServer,
+                               sizeof(webStatus_.effectiveDnsServer));
+}
+
 void NetworkService::serviceNetworkDiagnostics(uint32_t nowMs) {
   const diagnostics::RunState previousState =
       networkDiagnostics_.snapshot().state;
@@ -817,6 +1068,23 @@ void NetworkService::serviceNetworkDiagnostics(uint32_t nowMs) {
         static_cast<unsigned long>(result.mtaDns.elapsedMs),
         diagnostics::checkStateName(result.tcp443.state),
         static_cast<unsigned long>(result.tcp443.elapsedMs));
+    for (const diagnostics::DirectDnsResult &check : result.directDns) {
+      Serial.printf("Network diagnostics direct DNS: %s %s %s response=%s ",
+                    check.resolver, check.hostname,
+                    diagnostics::checkStateName(check.state),
+                    check.responseReceived ? "yes" : "no");
+      if (check.hasRcode) {
+        Serial.printf("rcode=%u ", check.rcode);
+      } else {
+        Serial.print("rcode=unavailable ");
+      }
+      Serial.printf("addresses=%u elapsed=%lums", check.addressCount,
+                    static_cast<unsigned long>(check.elapsedMs));
+      for (uint8_t i = 0; i < check.addressCount; ++i) {
+        Serial.printf(" %s", check.addresses[i]);
+      }
+      Serial.println();
+    }
   }
 }
 
