@@ -24,6 +24,16 @@ int failures = 0;
     }                                                                       \
   } while (0)
 
+size_t countSubstring(const char *text, const char *needle) {
+  size_t count = 0;
+  const size_t needleLength = strlen(needle);
+  for (const char *cursor = text; (cursor = strstr(cursor, needle)) != nullptr;
+       cursor += needleLength) {
+    ++count;
+  }
+  return count;
+}
+
 struct MemoryStore {
   bool brightnessPresent = false;
   bool routeMaskPresent = false;
@@ -403,11 +413,18 @@ brooklyn::web::StatusSnapshot sampleStatus() {
 }
 
 void testPageEscapingAndRequiredContent() {
-  char page[8192];
+  char page[12288];
   brooklyn::web::StatusSnapshot status = sampleStatus();
-  CHECK(brooklyn::web::renderHomePage(
-            page, sizeof(page), status, 64,
-            brooklyn::semantic::kAllRoutesVisibleMask) > 0);
+  status.adminConfigured = true;
+  status.adminSessionActive = true;
+  const char csrfToken[] = "0123456789abcdef0123456789abcdef";
+  const size_t authenticatedPageSize = brooklyn::web::renderHomePage(
+      page, sizeof(page), status, 64,
+      brooklyn::semantic::kAllRoutesVisibleMask, csrfToken);
+  CHECK(authenticatedPageSize > 0);
+  CHECK(authenticatedPageSize < sizeof(page));
+  printf("Authenticated status page: %lu B\n",
+         static_cast<unsigned long>(authenticatedPageSize));
   CHECK(strstr(page, "TestNetwork") != nullptr);
   CHECK(strstr(page, "href=\"http://192.0.2.17/\"") != nullptr);
   CHECK(strstr(page, "http://brooklynmap.local/") != nullptr);
@@ -425,7 +442,7 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "https://") == nullptr);
   CHECK(strstr(page, "cdn") == nullptr);
   CHECK(strstr(page, "<script src=") == nullptr);
-  CHECK(strstr(page, "name=\"password\"") == nullptr);
+  CHECK(strstr(page, "value=\"password sentinel\"") == nullptr);
   CHECK(strstr(page, "password sentinel") == nullptr);
   CHECK(strstr(page, "Routes to display") != nullptr);
   CHECK(strstr(page, "18 of 18 routes enabled") != nullptr);
@@ -444,6 +461,7 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "Run Network Diagnostics") != nullptr);
   CHECK(strstr(page, "method=\"post\" action=\"/network-diagnostics/run\"") !=
         nullptr);
+  CHECK(countSubstring(page, csrfToken) == 8);
   CHECK(strstr(page, "MTA TCP 443") != nullptr);
   CHECK(strstr(page, "Diagnostic run</dt><dd>complete</dd>") != nullptr);
   CHECK(strstr(page, "succeeded (198.51.100.10)") != nullptr);
@@ -475,7 +493,7 @@ void testPageEscapingAndRequiredContent() {
       ~brooklyn::semantic::routeVisibilityBit(
           brooklyn::semantic::Route::RouteA);
   CHECK(brooklyn::web::renderHomePage(page, sizeof(page), status, 0,
-                                      hiddenRoutes) > 0);
+                                      hiddenRoutes, csrfToken) > 0);
   CHECK(strstr(page, "&lt;test&amp;&quot;wifi&#39;&gt;") != nullptr);
   CHECK(strstr(page, "&lt;script&gt;alert(1)&lt;/script&gt;") != nullptr);
   CHECK(strstr(page, "<script>alert(1)</script>") == nullptr);
@@ -487,27 +505,56 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "http://brooklynmap.local/") != nullptr);
 
   status.mdnsAvailable = false;
-  CHECK(brooklyn::web::renderHomePage(page, sizeof(page), status, 255, 0) > 0);
+  CHECK(brooklyn::web::renderHomePage(page, sizeof(page), status, 255, 0,
+                                      csrfToken) > 0);
   CHECK(strstr(page, "brooklynmap.local") == nullptr);
   CHECK(strstr(page, "Brightness: 255 / 255") != nullptr);
   CHECK(strstr(page, "0 of 18 routes enabled") != nullptr);
 
+  status.adminSessionActive = false;
+  CHECK(brooklyn::web::renderHomePage(
+            page, sizeof(page), status, 255, 0) > 0);
+  CHECK(strstr(page, "method=\"post\" action=\"/config/brightness\"") ==
+        nullptr);
+  CHECK(strstr(page, "method=\"post\" action=\"/reboot\"") == nullptr);
+  CHECK(strstr(page, "method=\"post\" action=\"/logout\"") == nullptr);
+  CHECK(strstr(page, "method=\"post\" action=\"/admin/password\"") == nullptr);
+  CHECK(strstr(page, "method=\"post\" action=\"/wifi/setup\"") == nullptr);
+  CHECK(strstr(page, "method=\"post\" action=\"/config/dns\"") == nullptr);
+  CHECK(strstr(page, "method=\"post\" action=\"/config/routes\"") == nullptr);
+  CHECK(strstr(page,
+               "method=\"post\" action=\"/network-diagnostics/run\"") ==
+        nullptr);
+
+  status.adminSessionActive = true;
   strncpy(status.ip, "javascript:alert(1)", sizeof(status.ip) - 1);
   CHECK(brooklyn::web::renderHomePage(
             page, sizeof(page), status, 64,
-            brooklyn::semantic::kAllRoutesVisibleMask) > 0);
+            brooklyn::semantic::kAllRoutesVisibleMask, csrfToken) > 0);
   CHECK(strstr(page, "javascript:") == nullptr);
   CHECK(strstr(page, "Unavailable</dd>") != nullptr);
   status.hasDataAge = false;
   status.hasCompleteAge = false;
   CHECK(brooklyn::web::renderHomePage(
             page, sizeof(page), status, 64,
-            brooklyn::semantic::kAllRoutesVisibleMask) > 0);
+            brooklyn::semantic::kAllRoutesVisibleMask, csrfToken) > 0);
   CHECK(strstr(page, "<dt>Last usable update age</dt><dd>Not available</dd>") !=
         nullptr);
   CHECK(brooklyn::web::renderHomePage(
             page, 8, status, 64,
-            brooklyn::semantic::kAllRoutesVisibleMask) == 0);
+            brooklyn::semantic::kAllRoutesVisibleMask, csrfToken) == 0);
+}
+
+void testLoginPageCsrfRendering() {
+  char page[1024] = {};
+  const char csrf[] = "abcdef0123456789abcdef0123456789";
+  CHECK(brooklyn::web::renderLoginPage(page, sizeof(page), csrf) > 0);
+  CHECK(strstr(page, "method=\"post\" action=\"/login\"") != nullptr);
+  CHECK(strstr(page, "name=\"csrf\"") != nullptr);
+  CHECK(strstr(page, csrf) != nullptr);
+  CHECK(strstr(page, "type=\"password\"") != nullptr);
+  CHECK(strstr(page, "value=\"password") == nullptr);
+  CHECK(brooklyn::web::renderLoginPage(page, sizeof(page), nullptr) == 0);
 }
 
 void testJsonStatusIsEscapedAndSecretFree() {
@@ -523,7 +570,9 @@ void testJsonStatusIsEscapedAndSecretFree() {
             json, sizeof(json), status, 64,
             brooklyn::semantic::kAllRoutesVisibleMask) > 0);
   CHECK(strstr(json, "\"physicalLedOutputEnabled\":false") != nullptr);
-  CHECK(strstr(json, "\"firmware\":\"Phase 4U\"") != nullptr);
+  CHECK(strstr(json, "\"firmware\":\"Phase 4V\"") != nullptr);
+  CHECK(strstr(json, "\"adminConfigured\":false") != nullptr);
+  CHECK(strstr(json, "\"adminSessionActive\":false") != nullptr);
   CHECK(strstr(json, "\"dhcpDns1\":\"0.0.0.0\"") != nullptr);
   CHECK(strstr(json, "\"dhcpDns2\":\"192.168.137.1\"") != nullptr);
   CHECK(strstr(json, "\"manualDnsEnabled\":true") != nullptr);
@@ -556,6 +605,14 @@ void testJsonStatusIsEscapedAndSecretFree() {
         0);
   CHECK(strstr(json, "\"dataAgeSeconds\":null") != nullptr);
   CHECK(strstr(json, "\"completeAgeSeconds\":null") != nullptr);
+  status.adminConfigured = true;
+  status.adminSessionActive = true;
+  CHECK(brooklyn::web::renderStatusJson(
+            json, sizeof(json), status, 64,
+            brooklyn::semantic::kAllRoutesVisibleMask) > 0);
+  CHECK(strstr(json, "\"adminConfigured\":true") != nullptr);
+  CHECK(strstr(json, "\"adminSessionActive\":true") != nullptr);
+  CHECK(strstr(json, "0123456789abcdef") == nullptr);
   CHECK(brooklyn::web::renderStatusJson(
             json, 8, status, 64,
             brooklyn::semantic::kAllRoutesVisibleMask) == 0);
@@ -660,6 +717,7 @@ int main() {
   testDnsSettingsFormParsing();
   testRouteVisibilityPersistenceAndMigration();
   testPageEscapingAndRequiredContent();
+  testLoginPageCsrfRendering();
   testJsonStatusIsEscapedAndSecretFree();
   testRouteVisibilityApiMasks();
   testRouteSelectionParsing();

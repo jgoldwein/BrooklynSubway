@@ -197,15 +197,30 @@ void testPortal() {
     CHECK(strstr(page, kSecret) == nullptr);  // no password ever rendered
     CHECK(strstr(page, "Wi-Fi setup mode") != nullptr);
     CHECK(strstr(page, "2.4 GHz") != nullptr);
-    CHECK(strstr(page, "name=\"pass\"") != nullptr);  // alpha: password shown as plain text
     CHECK(strstr(page, "name=\"ssid\"") == nullptr);       // no manual/hidden entry
     CHECK(strstr(page, "<b>\"Wi&Fi\"") == nullptr);        // SSID is escaped
-    CHECK(strstr(page, ">OpenNet</option>") != nullptr);
     CHECK(strstr(page, "dBm") == nullptr);
-    CHECK(strstr(page, "&lt;b&gt;&quot;Wi&amp;Fi&quot;") != nullptr);
+    if (s == PortalStatus::Saved) {
+      CHECK(strstr(page, "<form") == nullptr);  // result page only
+      CHECK(strstr(page, "name=\"confirmation\"") == nullptr);
+    } else {
+      CHECK(strstr(page, "name=\"pass\"") != nullptr);
+      CHECK(strstr(page, "name=\"pass\" type=\"password\"") != nullptr);
+      CHECK(strstr(page, "name=\"confirmation\"") != nullptr);
+      CHECK(strstr(page, ">OpenNet</option>") != nullptr);
+      CHECK(strstr(page, "&lt;b&gt;&quot;Wi&amp;Fi&quot;") != nullptr);
+    }
     CHECK((strstr(page, "http-equiv=\"refresh\"") != nullptr) ==
           (s == PortalStatus::Scanning || s == PortalStatus::Connecting));
   }
+  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::None, false);
+  CHECK(strstr(page, "Set the initial administrator password") != nullptr);
+  CHECK(strstr(page, "name=\"password\" type=\"password\"") != nullptr);
+  CHECK(strstr(page, "value=\"password") == nullptr);
+  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::None, true,
+                   nullptr, nullptr, true);
+  CHECK(strstr(page, "An administrator password is configured") != nullptr);
+  CHECK(strstr(page, "Reset administrator password") != nullptr);
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "TestNetwork", "192.168.1.42");
   CHECK(strstr(page, "Successfully connected to Wi-Fi: <b>TestNetwork</b>") != nullptr);
   CHECK(strstr(page, "Settings saved") != nullptr);
@@ -213,7 +228,11 @@ void testPortal() {
   CHECK(strstr(page, "open after reconnecting your phone to the same Wi-Fi") != nullptr);
   CHECK(strstr(page, "go to <a href=\"http://192.168.4.1/\">192.168.4.1</a>") != nullptr);
   CHECK(strstr(page, "The setup network closes shortly.") != nullptr);
+  CHECK(strstr(page, "No administrator password is set") != nullptr);
   CHECK(strstr(page, kSecret) == nullptr);
+  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "TestNetwork", "192.168.1.42", true);
+  CHECK(strstr(page, "No administrator password is set") == nullptr);
+  CHECK(strstr(page, "<form") == nullptr);
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "TestNetwork", "10.110.202.133");
   CHECK(strstr(page, "http://10.110.202.133/\">10.110.202.133</a>") != nullptr);
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, e[0].ssid, "192.168.1.42");

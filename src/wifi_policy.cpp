@@ -163,7 +163,7 @@ PortalRoute classifyPath(const char *path) {
 
 size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, size_t count,
                         PortalStatus status, bool hasStored, const char *connectedSsid,
-                        const char *connectedIp) {
+                        const char *connectedIp, bool adminConfigured) {
   Out o(out, capacity);
   o.put("<!DOCTYPE html><html><head><meta charset=\"utf-8\">");
   if (status == PortalStatus::Scanning || status == PortalStatus::Connecting) {
@@ -227,6 +227,16 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
       o.put("<p class=\"s\">Invalid network name or password.</p>");
       break;
   }
+  if (status == PortalStatus::Saved) {
+    // Provisioning is done: show only the result, not the setup forms.
+    if (!adminConfigured) {
+      o.put("<p>No administrator password is set, so the LAN page stays "
+            "locked. Reconnect to the setup Wi-Fi at "
+            "<a href=\"http://192.168.4.1/\">192.168.4.1</a> to set one.</p>");
+    }
+    o.put("</body></html>");
+    return o.length();
+  }
   if (hasStored) o.put("<p>Saved Wi-Fi settings exist and stay in place until a new network connects.</p>");
 
   o.put("<form method=\"POST\" action=\"/connect\"><label>Visible networks</label>"
@@ -240,8 +250,27 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
   }
   o.put("</select>"
         "<label>Password (leave empty for an open network)</label>"
-        "<input name=\"pass\" type=\"text\" maxlength=\"63\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\">"
+        "<input name=\"pass\" type=\"password\" maxlength=\"63\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\">"
         "<button type=\"submit\">Save and connect</button></form>"
+        "<section><h2>Administrator password</h2>");
+  if (adminConfigured) {
+    o.put("<p>An administrator password is configured. Setting a new one "
+          "here resets normal-LAN administrator sessions.</p>");
+  } else {
+    o.put("<p>Set the initial administrator password to unlock normal-LAN "
+          "configuration.</p>");
+  }
+  o.put("<form method=\"POST\" action=\"/admin/setup\">"
+        "<label>New password (8 to 128 characters)</label>"
+        "<input name=\"password\" type=\"password\" minlength=\"8\" "
+        "maxlength=\"128\" autocomplete=\"new-password\" required>"
+        "<label>Confirm password</label>"
+        "<input name=\"confirmation\" type=\"password\" minlength=\"8\" "
+        "maxlength=\"128\" autocomplete=\"new-password\" required>"
+        "<button type=\"submit\">");
+  o.put(adminConfigured ? "Reset administrator password"
+                        : "Set administrator password");
+  o.put("</button></form></section>"
         "<p><a href=\"/scan\">Rescan</a></p></body></html>");
   return o.length();
 }

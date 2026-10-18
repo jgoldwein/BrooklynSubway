@@ -135,7 +135,8 @@ enum class PortalStatus : uint8_t {
 // Returns the length. `hasStored` only toggles a hint; no password is rendered.
 size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, size_t count,
                         PortalStatus status, bool hasStored, const char *connectedSsid = nullptr,
-                        const char *connectedIp = nullptr);
+                        const char *connectedIp = nullptr,
+                        bool adminConfigured = false);
 
 // Escapes &, <, >, ", ' for HTML text/attributes. Returns the length written.
 size_t htmlEscape(char *out, size_t capacity, const char *in);
