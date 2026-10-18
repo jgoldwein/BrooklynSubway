@@ -570,7 +570,7 @@ void testJsonStatusIsEscapedAndSecretFree() {
             json, sizeof(json), status, 64,
             brooklyn::semantic::kAllRoutesVisibleMask) > 0);
   CHECK(strstr(json, "\"physicalLedOutputEnabled\":false") != nullptr);
-  CHECK(strstr(json, "\"firmware\":\"Phase 4V\"") != nullptr);
+  CHECK(strstr(json, "\"firmware\":\"Phase 4W\"") != nullptr);
   CHECK(strstr(json, "\"adminConfigured\":false") != nullptr);
   CHECK(strstr(json, "\"adminSessionActive\":false") != nullptr);
   CHECK(strstr(json, "\"dhcpDns1\":\"0.0.0.0\"") != nullptr);

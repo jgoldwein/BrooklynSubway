@@ -10,6 +10,8 @@
 
 #if BROOKLYN_NETWORK_ENABLED
 
+#include "ota_esp.h"
+
 #include <WebServer.h>
 
 namespace brooklyn::web {
@@ -41,6 +43,11 @@ class LanWebUi {
   void handleLogin();
   void handleLogout();
   void handlePasswordChange();
+  void handleUpdatePage();
+  void handleUpdateRaw();
+  void handleUpdateComplete();
+  int updateAuthorizationStatus();
+  bool updateContentTypeAccepted();
   void sendHtml(const char *body, size_t length);
   bool authorizeRequest(bool requireCsrf);
   bool requestSession(char *csrfToken, size_t capacity);
@@ -57,6 +64,10 @@ class LanWebUi {
   bool setupRequested_ = false;
   bool rebootRequested_ = false;
   bool networkDiagnosticsRequested_ = false;
+  ota::WebOtaSession otaSession_;
+  int updateDeniedStatus_ = 0;
+  bool updateStarted_ = false;
+  ota::Result updateResult_ = ota::Result::NotStarted;
 };
 
 }  // namespace brooklyn::web

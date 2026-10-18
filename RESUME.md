@@ -31,6 +31,40 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
+## Phase 4W status — secure web OTA validated; release wrap-up
+
+- **Checkpoint date:** 2026-10-18. Starting baseline was clean `main` at
+  `10095a40ad23aa4e1b15dbb728b6f3a2bf127d17`, tagged
+  `phase-4u-dns-resilience`.
+- **Implementation and complete results:**
+  [docs/PHASE4W_SECURE_WEB_OTA.md](docs/PHASE4W_SECURE_WEB_OTA.md).
+  Signed `.bkota` uses ECDSA P-256/SHA-256, an 84-byte authenticated header,
+  raw 64-byte signature, and streamed firmware payload. Public key id 1 is
+  provisioned; key id 2 is reserved. Fingerprint:
+  `75cb7adec5d6d542cef403f65d9df5387816eb47a3bc237dcd27068754e93717`.
+  The private key remains outside the repo at
+  `C:\Users\jgold\.brooklynmap\ota\brooklyn_ota_p256.pem`; Joel must keep an
+  encrypted/offline backup.
+- **Validation:** all 17 host runners passed **1,554,602 checks, 0 failures**;
+  all four clean PlatformIO builds and both network ELF safety audits passed.
+  `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0` in every environment.
+- **XIAO only:** COM4 identity was checked (ESP32-S3, MAC
+  `94:A9:90:D0:94:54`). Actual signed install, negative packages, health
+  confirmation, and bootloader rollback were validated. The final normal
+  Phase 4W image is restored. After the provisioning-portal check, public
+  `brooklynmap.local/api/status` returned HTTP 200: Phase 4W, connected at
+  `192.168.137.191`, administrator configured, brightness 64, manual DNS
+  disabled, and physical output disabled.
+- **Final flash check:** read-only `otadata` read showed valid sequence 3
+  selecting `app0` at `0x10000`; sequence 2 in `app1` was also valid. Serial
+  heartbeats continued through 60 seconds with LED outputs disabled. No
+  production PCB was connected or programmed.
+- **Release:** no GitHub CLI is installed. Do not install it. The authorized
+  commit/tag/push may proceed after final diff checks; prepare the signed
+  `0.1.0-rc1` XIAO and production-target packages locally for review. Do not
+  publish a final release; any GitHub distribution must remain a draft or
+  prerelease and explicitly state that production-PCB OTA is unvalidated.
+
 ## Current checkpoint — Phase 4V LAN access protection validated on XIAO
 
 - **Checkpoint date:** 2026-10-18. Starting baseline was clean `main` at

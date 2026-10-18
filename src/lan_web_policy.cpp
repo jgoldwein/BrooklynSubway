@@ -346,6 +346,7 @@ size_t renderHomePage(char *out, size_t capacity,
                   "<input type=\"hidden\" name=\"csrf\" value=\"");
     writer.html(csrfToken);
     writer.append("\"><button type=\"submit\">Sign out</button></form>"
+                  "<p><a href=\"/update\">Update firmware</a></p>"
                   "<h3>Change administrator password</h3>"
                   "<form method=\"post\" action=\"/admin/password\">"
                   "<input type=\"hidden\" name=\"csrf\" value=\"");
