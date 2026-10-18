@@ -59,11 +59,19 @@ clarification only if the requested next action remains ambiguous.
   selecting `app0` at `0x10000`; sequence 2 in `app1` was also valid. Serial
   heartbeats continued through 60 seconds with LED outputs disabled. No
   production PCB was connected or programmed.
-- **Release:** no GitHub CLI is installed. Do not install it. The authorized
-  commit/tag/push may proceed after final diff checks; prepare the signed
-  `0.1.0-rc1` XIAO and production-target packages locally for review. Do not
-  publish a final release; any GitHub distribution must remain a draft or
-  prerelease and explicitly state that production-PCB OTA is unvalidated.
+- **Release commit:** `e874b9f46590cdb47f86648e73d2652657ee0ac4`
+  (`Phase 4W: add secure signed web OTA`), tagged
+  `phase-4w-secure-web-ota` (`Phase 4W secure signed web OTA validated on
+  XIAO`). Both `main` and the tag were pushed and verified on `origin`.
+- **Prerelease artifacts:** `dist/0.1.0-rc1/` contains signed packages for
+  XIAO and production targets, SHA-256 checksums, and release notes. Both
+  signatures and target IDs were verified. No GitHub Release was created:
+  `gh` is not installed, and it must not be installed for this task. Keep any
+  eventual distribution a draft/prerelease and explicitly state that
+  production-PCB OTA is unvalidated. The private signing key is not an asset.
+- **Next action:** Joel should verify the encrypted/offline private-key backup
+  and review the prepared release notes/packages before deciding whether to
+  create a GitHub draft. No production hardware action is authorized or needed.
 
 ## Current checkpoint — Phase 4V LAN access protection validated on XIAO
 
