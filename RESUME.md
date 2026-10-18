@@ -63,15 +63,22 @@ clarification only if the requested next action remains ambiguous.
   (`Phase 4W: add secure signed web OTA`), tagged
   `phase-4w-secure-web-ota` (`Phase 4W secure signed web OTA validated on
   XIAO`). Both `main` and the tag were pushed and verified on `origin`.
+- **Semantic prerelease tag:** annotated `v0.1.0-rc1` points directly to
+  `e874b9f`; it is pushed to `origin`. The engineering milestone tag remains
+  unchanged.
 - **Prerelease artifacts:** `dist/0.1.0-rc1/` contains signed packages for
-  XIAO and production targets, SHA-256 checksums, and release notes. Both
-  signatures and target IDs were verified. No GitHub Release was created:
-  `gh` is not installed, and it must not be installed for this task. Keep any
-  eventual distribution a draft/prerelease and explicitly state that
-  production-PCB OTA is unvalidated. The private signing key is not an asset.
-- **Next action:** Joel should verify the encrypted/offline private-key backup
-  and review the prepared release notes/packages before deciding whether to
-  create a GitHub draft. No production hardware action is authorized or needed.
+  XIAO and production targets, `SHA256SUMS.txt`, and the prepared GitHub
+  description in `RELEASE_NOTES.md`. Both signatures, targets, payloads against
+  the tagged network-build binaries, and package checksums were verified. The
+  directory contains only these four files; the private signing key remains
+  outside Git.
+- **GitHub Release:** not created. `gh` is not installed and the available
+  GitHub integration has no release-creation operation; do not install tooling
+  or use credential workarounds. Joel must manually create and publish the
+  prerelease, selecting tag `v0.1.0-rc1`, title `Brooklyn Map Firmware
+  0.1.0-rc1`, checking the prerelease option, and uploading only the two
+  `.bkota` packages and `SHA256SUMS.txt`. Paste `RELEASE_NOTES.md` as the
+  description. The notes explicitly state production-PCB OTA is unvalidated.
 
 ## Current checkpoint — Phase 4V LAN access protection validated on XIAO
 
