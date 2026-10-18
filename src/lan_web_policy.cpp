@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "lan_web_policy.h"
+#include "semantic_api.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -206,8 +207,43 @@ bool parseBrightness(const char *text, uint8_t &brightness) {
   return true;
 }
 
+bool parseRouteSelection(const RouteSelectionParam *parameters, size_t count,
+                         uint32_t &visibilityMask) {
+  if (parameters == nullptr || count == 0 ||
+      count > semantic::kRouteCount + 1) {
+    return false;
+  }
+
+  bool formMarkerSeen = false;
+  uint32_t candidate = 0;
+  for (size_t i = 0; i < count; ++i) {
+    const RouteSelectionParam &parameter = parameters[i];
+    if (parameter.name == nullptr || parameter.value == nullptr) return false;
+    if (strcmp(parameter.name, "routeForm") == 0) {
+      if (formMarkerSeen || strcmp(parameter.value, "1") != 0) return false;
+      formMarkerSeen = true;
+      continue;
+    }
+    if (strcmp(parameter.name, "route") != 0) return false;
+
+    uint32_t bit = 0;
+    for (uint8_t route = 1; route <= semantic::kRouteCount; ++route) {
+      if (strcmp(parameter.value, semantic::kRouteNames[route]) == 0) {
+        bit = uint32_t{1} << (route - 1);
+        break;
+      }
+    }
+    if (bit == 0 || (candidate & bit) != 0) return false;
+    candidate |= bit;
+  }
+  if (!formMarkerSeen) return false;
+  visibilityMask = candidate;
+  return true;
+}
+
 size_t renderHomePage(char *out, size_t capacity,
-                      const StatusSnapshot &status, uint8_t brightness) {
+                      const StatusSnapshot &status, uint8_t brightness,
+                      uint32_t routeVisibilityMask) {
   Writer writer(out, capacity);
   writer.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
                 "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
@@ -221,6 +257,9 @@ size_t renderHomePage(char *out, size_t capacity,
                 "dd{margin:0;overflow-wrap:anywhere}input,button{font:inherit;"
                 "padding:.5rem}input[type=range]{width:100%}form{margin:.6rem 0}"
                 "button{cursor:pointer}.muted{color:#52616b}details{margin-top:1rem}"
+                ".route-list{display:grid;grid-template-columns:repeat(auto-fit,"
+                "minmax(7rem,1fr));gap:.35rem}.route-controls{display:flex;gap:.5rem;"
+                "flex-wrap:wrap}"
                 "</style></head><body><h1>Brooklyn Active Subway Map</h1>"
                 "<p class=\"status\">");
   writer.html(status.deviceName);
@@ -315,6 +354,39 @@ size_t renderHomePage(char *out, size_t capacity,
                 status.occupiedLeds, status.collisionCount, brightness,
                 static_cast<unsigned>(brightness) * 100 / 255, brightness,
                 brightness);
+  uint8_t visibleRoutes = 0;
+  for (uint8_t route = 1; route <= semantic::kRouteCount; ++route) {
+    if ((routeVisibilityMask & (uint32_t{1} << (route - 1))) != 0) {
+      ++visibleRoutes;
+    }
+  }
+  writer.format("<section><h2>Routes to display</h2><p>%u of %u routes enabled. "
+                "This affects map rendering only; feeds and status indicators "
+                "continue normally.</p><form id=\"route-settings\" method=\"post\" "
+                "action=\"/config/routes\"><input type=\"hidden\" name=\"routeForm\" "
+                "value=\"1\"><div class=\"route-controls\">"
+                "<button type=\"button\" onclick=\"document.querySelectorAll("
+                "'#route-settings input[name=route]').forEach(function(x){x.checked=true})\">"
+                "Select all</button><button type=\"button\" onclick=\"document."
+                "querySelectorAll('#route-settings input[name=route]').forEach("
+                "function(x){x.checked=false})\">Clear all</button></div>"
+                "<div class=\"route-list\">",
+                visibleRoutes, semantic::kRouteCount);
+  for (uint8_t route = 1; route <= semantic::kRouteCount; ++route) {
+    const char *name = semantic::kRouteNames[route];
+    writer.append("<label><input type=\"checkbox\" name=\"route\" value=\"");
+    writer.html(name);
+    writer.append("\"");
+    if ((routeVisibilityMask & (uint32_t{1} << (route - 1))) != 0) {
+      writer.append(" checked");
+    }
+    writer.append("> ");
+    writer.html(name);
+    writer.append("</label>");
+  }
+  writer.append("</div><button type=\"submit\">Save routes</button></form>"
+                "<p class=\"muted\">All routes may be hidden. Status indicators "
+                "remain independent.</p></section>");
   writer.append("<details><summary>Memory diagnostics</summary><dl>"
                 "<dt>Free internal heap</dt><dd>");
   writer.format("%lu B", static_cast<unsigned long>(status.freeInternalHeap));
@@ -344,7 +416,8 @@ size_t renderHomePage(char *out, size_t capacity,
 }
 
 size_t renderStatusJson(char *out, size_t capacity,
-                        const StatusSnapshot &status, uint8_t brightness) {
+                        const StatusSnapshot &status, uint8_t brightness,
+                        uint32_t routeVisibilityMask) {
   Writer writer(out, capacity);
   writer.append("{\"firmware\":\"");
   writer.append(kFirmwareId);
@@ -377,11 +450,15 @@ size_t renderStatusJson(char *out, size_t capacity,
   appendNullableAge(writer, status.hasCompleteAge, status.completeAgeSeconds);
   writer.format(",\"resolvedTrains\":%lu,\"occupiedLeds\":%u,"
                 "\"collisionCount\":%u,\"brightness\":%u,"
+                "\"routeVisibilityMask\":%lu,\"routeCount\":%u,"
                 "\"physicalLedOutputEnabled\":false,"
                 "\"freeInternalHeap\":%lu,\"minimumInternalHeap\":%lu,"
                 "\"freePsram\":",
                 static_cast<unsigned long>(status.resolvedTrains),
                 status.occupiedLeds, status.collisionCount, brightness,
+                static_cast<unsigned long>(routeVisibilityMask &
+                                           semantic::kAllRoutesVisibleMask),
+                semantic::kRouteCount,
                 static_cast<unsigned long>(status.freeInternalHeap),
                 static_cast<unsigned long>(status.minimumInternalHeap));
   if (status.psramPresent) {

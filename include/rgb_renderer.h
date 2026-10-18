@@ -4,6 +4,7 @@
 #pragma once
 
 #include "led_types.h"
+#include "semantic_api.h"
 #include "train_frame.h"
 
 #include <stdint.h>
@@ -35,6 +36,7 @@ struct RgbFrame {
 
 struct RenderConfig {
   uint8_t brightness = kDefaultRenderBrightness;  // 0..255 global scale
+  uint32_t routeVisibilityMask = kAllRoutesVisibleMask;
 };
 
 struct RenderResult {
@@ -52,8 +54,9 @@ Rgb nominalRouteColor(Route route);
 // (component * brightness + 127) / 255 per component; 0 -> black, 255 -> unchanged.
 Rgb scaleBrightness(Rgb color, uint8_t brightness);
 
-// Clears `output`, then paints every valid occupied map LED. Pure function of
-// `input` and `config`; `input` is never modified.
+// Clears `output`, then paints every valid occupied, visible map LED. Hidden
+// routes remain in `input`; visibility affects only this final RGB rendering.
+// Pure function of `input` and `config`; `input` is never modified.
 RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
                               const RenderConfig &config = RenderConfig{});
 

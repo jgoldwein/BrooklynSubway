@@ -28,6 +28,7 @@ class LanWebUi {
   void handleHome();
   void handleStatus();
   void handleBrightness();
+  void handleRoutes();
   void handleSetupConfirmation();
   void handleSetupRequest();
   void handleReboot();

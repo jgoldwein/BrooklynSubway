@@ -90,6 +90,7 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
       ++result.rejectedLeds;
       continue;
     }
+    if (!routeVisible(config.routeVisibilityMask, semantic->route)) continue;
 
     output.pixels[i] = scaleBrightness(nominalRouteColor(semantic->route), config.brightness);
     ++result.renderedLeds;
