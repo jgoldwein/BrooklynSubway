@@ -185,6 +185,10 @@ uint8_t NetworkService::brightness() const {
   return configuration_.brightness();
 }
 
+uint32_t NetworkService::routeVisibilityMask() const {
+  return configuration_.routeVisibilityMask();
+}
+
 void NetworkService::setWebStatus(const web::StatusSnapshot &status) {
   webStatus_.displayState = status.displayState;
   webStatus_.hasDataAge = status.hasDataAge;
@@ -238,9 +242,11 @@ void NetworkService::begin() {
   strncpy(webStatus_.target, "XIAO ESP32-S3 bench target",
           sizeof(webStatus_.target) - 1);
 #endif
-  Serial.printf("LAN UI: config namespace %s; brightness %u/255 (%s); "
-                "config state %u B, web service state %u B\n",
+  Serial.printf("LAN UI: config namespace %s; brightness %u/255; "
+                "route mask 0x%05lx (%s); config state %u B, web service state %u B\n",
                 config::kNvsNamespace, configuration_.brightness(),
+                static_cast<unsigned long>(
+                    configuration_.routeVisibilityMask()),
                 savedConfigurationLoaded ? "NVS" : "default",
                 static_cast<unsigned>(sizeof(configuration_)),
                 static_cast<unsigned>(sizeof(lanWebUi_)));
@@ -595,6 +601,10 @@ NetworkService::NetworkService(pipeline::TrainPipeline &pipeline)
 
 uint8_t NetworkService::brightness() const {
   return config::kDefaultBrightness;
+}
+
+uint32_t NetworkService::routeVisibilityMask() const {
+  return config::kDefaultRouteVisibilityMask;
 }
 
 bool NetworkService::consumeCompletedCycle(transport::CycleResult &, uint32_t &) {

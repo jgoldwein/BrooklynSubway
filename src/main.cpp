@@ -25,6 +25,7 @@ brooklyn::semantic::RgbFrame logicalDisplayFrame{};
 bool systemHealthy = true;
 uint32_t renderedFrameRevision = UINT32_MAX;
 uint8_t renderedBrightness = UINT8_MAX;
+uint32_t renderedRouteVisibilityMask = UINT32_MAX;
 
 // Network service is disabled unless explicitly enabled; it never drives LEDs.
 brooklyn::network::NetworkService networkService(trainPipeline);
@@ -78,14 +79,18 @@ void reportDisplayTransition(brooklyn::display::State previous,
 void updateLogicalDisplay(uint32_t nowMs) {
   bool changed = false;
   const uint8_t brightness = networkService.brightness();
+  const uint32_t routeVisibilityMask = networkService.routeVisibilityMask();
   if (renderedFrameRevision != operationalDisplay.frameRevision() ||
-      renderedBrightness != brightness) {
+      renderedBrightness != brightness ||
+      renderedRouteVisibilityMask != routeVisibilityMask) {
     brooklyn::semantic::RenderConfig renderConfig{};
     renderConfig.brightness = brightness;
+    renderConfig.routeVisibilityMask = routeVisibilityMask;
     brooklyn::semantic::renderTrainFrame(operationalDisplay.frame(),
                                          logicalDisplayFrame, renderConfig);
     renderedFrameRevision = operationalDisplay.frameRevision();
     renderedBrightness = brightness;
+    renderedRouteVisibilityMask = routeVisibilityMask;
     changed = true;
   }
   const brooklyn::display::StatusIndicators status{

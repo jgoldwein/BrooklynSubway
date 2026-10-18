@@ -50,6 +50,7 @@ class NetworkService {
   // Explicit user action: erase the map's own stored credentials (NVS namespace only).
   bool forgetCredentials();
   uint8_t brightness() const;
+  uint32_t routeVisibilityMask() const;
 #if BROOKLYN_NETWORK_ENABLED
   void setWebStatus(const web::StatusSnapshot &status);
 #endif

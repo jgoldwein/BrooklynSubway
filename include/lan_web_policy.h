@@ -14,7 +14,7 @@ namespace brooklyn::web {
 constexpr const char *kDefaultDeviceName = "BrooklynMap";
 constexpr const char *kHostname = "brooklynmap";
 constexpr const char *kMdnsUrl = "http://brooklynmap.local/";
-constexpr const char *kFirmwareId = "Phase 4R";
+constexpr const char *kFirmwareId = "Phase 4S";
 
 enum class ServerMode : uint8_t { Stopped, Provisioning, NormalLan };
 
@@ -61,9 +61,17 @@ struct StatusSnapshot {
 };
 
 bool parseBrightness(const char *text, uint8_t &brightness);
+struct RouteSelectionParam {
+  const char *name;
+  const char *value;
+};
+bool parseRouteSelection(const RouteSelectionParam *parameters, size_t count,
+                         uint32_t &visibilityMask);
 size_t renderHomePage(char *out, size_t capacity,
-                      const StatusSnapshot &status, uint8_t brightness);
+                      const StatusSnapshot &status, uint8_t brightness,
+                      uint32_t routeVisibilityMask);
 size_t renderStatusJson(char *out, size_t capacity,
-                        const StatusSnapshot &status, uint8_t brightness);
+                        const StatusSnapshot &status, uint8_t brightness,
+                        uint32_t routeVisibilityMask);
 
 }  // namespace brooklyn::web

@@ -61,6 +61,7 @@ void LanWebUi::registerRoutes() {
   server_.on("/api/status", HTTP_GET, [this]() { handleStatus(); });
   server_.on("/config/brightness", HTTP_POST,
              [this]() { handleBrightness(); });
+  server_.on("/config/routes", HTTP_POST, [this]() { handleRoutes(); });
   server_.on("/wifi/setup", HTTP_GET,
              [this]() { handleSetupConfirmation(); });
   server_.on("/wifi/setup", HTTP_POST,
@@ -93,7 +94,8 @@ void LanWebUi::sendHtml(const char *body, size_t length) {
 
 void LanWebUi::handleHome() {
   const size_t length =
-      renderHomePage(gPage, sizeof(gPage), status_, configuration_.brightness());
+        renderHomePage(gPage, sizeof(gPage), status_, configuration_.brightness(),
+                       configuration_.routeVisibilityMask());
   if (length == 0) {
     server_.send(500, "text/plain", "Unable to render status page");
     return;
@@ -103,7 +105,8 @@ void LanWebUi::handleHome() {
 
 void LanWebUi::handleStatus() {
   const size_t length = renderStatusJson(
-      gJson, sizeof(gJson), status_, configuration_.brightness());
+      gJson, sizeof(gJson), status_, configuration_.brightness(),
+      configuration_.routeVisibilityMask());
   if (length == 0) {
     server_.send(500, "text/plain", "Unable to render status");
     return;
@@ -133,6 +136,48 @@ void LanWebUi::handleBrightness() {
     server_.send(500, "text/plain", "Unable to save brightness");
     return;
   }
+  server_.sendHeader("Location", "/", true);
+  server_.send(303, "text/plain", "");
+}
+
+void LanWebUi::handleRoutes() {
+  constexpr size_t kMaxRouteParameters = semantic::kRouteCount + 1;
+  constexpr size_t kNameCapacity = 16;
+  constexpr size_t kValueCapacity = 8;
+  const int argumentCount = server_.args();
+  if (argumentCount < 1 ||
+      static_cast<size_t>(argumentCount) > kMaxRouteParameters) {
+    server_.send(400, "text/plain", "Invalid route selection");
+    return;
+  }
+
+  char names[kMaxRouteParameters][kNameCapacity]{};
+  char values[kMaxRouteParameters][kValueCapacity]{};
+  RouteSelectionParam parameters[kMaxRouteParameters]{};
+  for (int i = 0; i < argumentCount; ++i) {
+    const String name = server_.argName(i);
+    const String value = server_.arg(i);
+    if (name.length() >= kNameCapacity || value.length() >= kValueCapacity) {
+      server_.send(400, "text/plain", "Invalid route selection");
+      return;
+    }
+    name.toCharArray(names[i], kNameCapacity);
+    value.toCharArray(values[i], kValueCapacity);
+    parameters[i] = {names[i], values[i]};
+  }
+
+  uint32_t visibilityMask = 0;
+  if (!parseRouteSelection(parameters, static_cast<size_t>(argumentCount),
+                           visibilityMask)) {
+    server_.send(400, "text/plain", "Invalid route selection");
+    return;
+  }
+  if (!configuration_.setRouteVisibilityMask(visibilityMask)) {
+    server_.send(500, "text/plain", "Unable to save route selection");
+    return;
+  }
+  Serial.printf("LAN UI: route visibility saved (mask 0x%05lx)\n",
+                static_cast<unsigned long>(visibilityMask));
   server_.sendHeader("Location", "/", true);
   server_.send(303, "text/plain", "");
 }

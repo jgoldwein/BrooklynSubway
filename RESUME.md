@@ -31,7 +31,82 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Current checkpoint — Phase 4R LAN UI validated, committed, and pushed
+## Current checkpoint — Phase 4S hardware validation partially complete
+
+- **Checkpoint date:** 2026-10-18.
+- **Baseline:** local `main` and `origin/main` were clean at
+  `9f4f6ea85abbf74ef506af728694851f21e158d6` before Phase 4S edits. The
+  Phase 4R release is commit `57886a3`, annotated tag
+  `phase-4r-lan-configuration-ui`.
+- **Phase 4S status:** implementation and documentation are complete locally.
+  The authorized `xiao-s3-network` image was uploaded only to the XIAO bench
+  target on COM4. Changes remain uncommitted, unpushed, and untagged because
+  the XIAO has not synchronized time or started a feed cycle. The production
+  PCB was not touched.
+- **Route model:** canonical Phase 3B semantic definitions contain 18 routes:
+  `2, 3, 4, 5, A, B, C, D, F, G, J, L, M, N, Q, R, S, Z`. `bkmap_cfg`
+  key `route_mask` stores a uint32 mask; enum values 1–18 map to bits 0–17.
+  Default `0x0003FFFF` shows every route. Renderer-only filtering leaves
+  feeds, TrainFrame, freshness, status pixels, and U23 independent.
+- **XIAO validation:** the device retained Wi-Fi and brightness 64 and migrated
+  to all routes visible without an NVS clear or provisioning. Route `2` alone
+  was hidden (`262142`), survived reboot, all-hidden (`0`) survived reboot,
+  and all routes were restored (`262143`) and survived the final reboot.
+  LAN page/API state matched each value; output reported DISABLED. The flashed
+  image hash was
+  `1eec38b7fe94ad8c7539bb08a2dd06d0ab15063149c6f059076d4554762c837f`.
+- **Hardware blocker:** after more than 9 minutes online following the final
+  reboot, the XIAO API still reported `timeSynchronized=false`,
+  `feedCycleState=NOT RUN`, and feed counters 0/0. This persisted for more
+  than 3 minutes after Joel disabled Tailscale on the host. The host resolved
+  `pool.ntp.org` and reached the MTA HTTPS endpoint. No transport policy or
+  Wi-Fi credentials were changed. Runtime feed and operational-state
+  independence is not yet proven on hardware.
+- **Files changed:** `include/semantic_api.h`, `include/rgb_renderer.h`,
+  `include/normal_config.h`, `include/lan_web_policy.h`,
+  `include/lan_web_ui.h`, `include/network_service.h`,
+  `src/rgb_renderer.cpp`, `src/normal_config.cpp`,
+  `src/normal_config_esp.cpp`, `src/lan_web_policy.cpp`,
+  `src/lan_web_ui.cpp`, `src/network_service.cpp`, `src/main.cpp`,
+  `tools/host_tests/lan_web_policy_test.cpp`,
+  `tools/host_tests/route_visibility_test.cpp`,
+  `tools/run_lan_web_policy_tests.py`,
+  `tools/run_route_visibility_tests.py`,
+  `docs/PHASE4S_ROUTE_DISPLAY_PREFERENCES.md`, and this file.
+- **Validation:** all 14 host regression runners passed: **1,554,025 checks,
+  0 failures**. The LAN/config suite passed 184 checks; the dedicated route
+  filter suite passed 14,805 checks. Existing pipeline, renderer, operational
+  display, network/provisioning, and physical-output safety suites passed.
+- **Final clean builds:** all four PlatformIO environments passed after a
+  clean:
+  `brooklyn-s3` 36,268 B RAM / 304,537 B flash (+32 / +108);
+  `xiao-s3` 35,380 B / 289,853 B (+32 / +112);
+  `brooklyn-s3-network` 82,636 B / 1,070,325 B (+40 / +5,868);
+  `xiao-s3-network` 81,748 B / 1,053,505 B (+40 / +3,616).
+  `DeviceConfiguration` is 28 B (Phase 4R: 16 B); `LanWebUi` remains 508 B.
+- **Safety/hardware:** `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0` remains set in
+  every environment. The production-network linked ELF lacks physical
+  initializer, arm/transmit, renderer, NeoPixel `show`, and Phase 4Q
+  safety-controller symbols. The XIAO ELF lacks production physical-output
+  symbols. Physical output reported disabled throughout; the production PCB
+  remains untested.
+- **Final review:** `git diff --check` passed. Protected canonical semantic
+  tables, LED mapping, GTFS, transport, Wi-Fi provisioning, safety, power,
+  manufacturing files, and `platformio.ini` are unchanged. The worktree
+  contains only the intended Phase 4S source, tests, documentation, and resume
+  updates.
+- **Checkpoint decision:** Joel explicitly authorized Phase 4S checkpointing
+  despite the live feed-polling limitation, because the route/NVS hardware
+  checks passed and the Phase 4S diff is orthogonal to time sync, DNS, feed
+  transport, TLS, Wi-Fi association, and provisioning.
+- **Next action:** finish the final diff/safety review, create the Phase 4S
+  commit and annotated tag, and push them to `origin`. Then begin Phase 4T
+  network diagnostics under Joel's bounded authorization. Keep the
+  time-sync/feed-polling result classified as an environment/network
+  limitation; do not change transport policy, credentials, or host networking.
+  Do not begin Phase 4U.
+
+### Phase 4R hardware validation history (historical)
 
 - **Checkpoint date:** 2026-10-17.
 - **Release commit / HEAD:** `57886a3b3a5927e77b3a0e3630e92e926a60782f`,
@@ -44,7 +119,8 @@ clarification only if the requested next action remains ambiguous.
 - **Phase 4R status:** final review, commit, tag, and push are complete. Live
   XIAO validation was completed on the PC Mobile Hotspot, including one
   Change-Wi-Fi handoff and USB reset back to the saved network. Final
-  regression, clean builds, and ELF audit passed. Do not start Phase 4S.
+  regression, clean builds, and ELF audit passed. Phase 4S is tracked in the
+  current checkpoint above.
 - **Hardware action:** uploaded `xiao-s3-network` to the authorized XIAO on
   COM4. Esptool verified the upload. Image SHA-256:
   `6A2732A5B5A63A51DB274CC63710B2F7398A8C9D4C22E1719799B147ACEB5B3A`
@@ -53,7 +129,8 @@ clarification only if the requested next action remains ambiguous.
   Phase 4R page visually in a browser. PC Mobile Hotspot remained at
   `192.168.137.1/24`; XIAO DHCP address was `192.168.137.31`, then changed
   after reboot to `192.168.137.25` (the latter matched USB MAC
-  `94-A9-90-D0-94-54`). Current IP at checkpoint: `192.168.137.25`.
+  `94-A9-90-D0-94-54`). IP at the end of Phase 4R validation:
+  `192.168.137.25`.
   `GET /` and `/api/status` both returned HTTP 200 with correct content
   types; JSON parsed successfully. The page displayed Phase 4R status,
   connected network/IP/RSSI, display/feed state, brightness 64, and controls
@@ -200,11 +277,9 @@ clarification only if the requested next action remains ambiguous.
   construction/transmit, `Adafruit_NeoPixel::show`, or Phase 4Q output
   controller symbols. No firmware was uploaded after the authorized XIAO
   image. Keep the manufactured PCB untouched.
-- **Next action:** no Phase 4R work remains. Before future work, verify the
-  checked-out branch and worktree against `origin/main` and confirm the
-  release tag still points to the Phase 4R commit. Do not start Phase 4S
-  without a separate request. The low-priority Tailscale idea remains
-  separate and unimplemented.
+- **Phase 4R closeout:** the final review, release commit/tag, remote push,
+  resume checkpoint update, and clean-worktree check were completed. The
+  low-priority Tailscale idea remains separate and unimplemented.
 
 ## Recovery when the manufactured PCB is available
 
