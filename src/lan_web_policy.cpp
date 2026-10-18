@@ -181,6 +181,22 @@ bool appendNullableAge(Writer &writer, bool available, uint32_t age) {
                    : writer.append("null");
 }
 
+void appendCheckJson(Writer &writer,
+                     const network::diagnostics::CheckResult &result) {
+  writer.append("{\"state\":\"");
+  writer.append(network::diagnostics::checkStateName(result.state));
+  writer.append("\",\"address\":");
+  if (result.address[0] != '\0') {
+    writer.append("\"");
+    writer.json(result.address);
+    writer.append("\"");
+  } else {
+    writer.append("null");
+  }
+  writer.format(",\"elapsedMs\":%lu}",
+                static_cast<unsigned long>(result.elapsedMs));
+}
+
 }  // namespace
 
 bool ServerOwnership::enterProvisioning() {
@@ -296,10 +312,24 @@ size_t renderHomePage(char *out, size_t capacity,
   } else {
     writer.append("Unavailable");
   }
+  writer.append("</dd><dt>Subnet</dt><dd>");
+  writer.html(status.subnet[0] != '\0' ? status.subnet : "Unavailable");
+  writer.append("</dd><dt>Gateway</dt><dd>");
+  writer.html(status.gateway[0] != '\0' ? status.gateway : "Unavailable");
+  writer.append("</dd><dt>Primary DNS</dt><dd>");
+  writer.html(status.dnsPrimary[0] != '\0' ? status.dnsPrimary : "Unavailable");
+  writer.append("</dd><dt>Secondary DNS</dt><dd>");
+  writer.html(status.dnsSecondary[0] != '\0' ? status.dnsSecondary : "Unavailable");
   writer.append("</dd><dt>Hostname</dt><dd>");
   writer.append(kHostname);
   writer.append("</dd><dt>Time synchronization</dt><dd>");
   writer.append(status.timeSynchronized ? "Synchronized" : "Waiting");
+  writer.append("</dd><dt>Unix time</dt><dd>");
+  if (status.timeSynchronized) {
+    writer.format("%lu", static_cast<unsigned long>(status.unixTime));
+  } else {
+    writer.append("Unavailable");
+  }
   writer.append("</dd>");
   if (status.mdnsAvailable) {
     writer.append("<dt>Local name</dt><dd><a href=\"");
@@ -338,6 +368,58 @@ size_t renderHomePage(char *out, size_t capacity,
   writer.format("</dd><dt>Resolved trains</dt><dd>%lu</dd>"
                 "<dt>Occupied LEDs</dt><dd>%u</dd>"
                 "<dt>Collision count</dt><dd>%u</dd></dl></section>"
+                "<section><h2>Network diagnostics</h2><dl>"
+                "<dt>Diagnostic run</dt><dd>%s</dd>"
+                "<dt>NTP DNS</dt><dd>%s",
+                static_cast<unsigned long>(status.resolvedTrains),
+                status.occupiedLeds, status.collisionCount,
+                network::diagnostics::runStateName(
+                    status.networkDiagnostics.state),
+                network::diagnostics::checkStateName(
+                    status.networkDiagnostics.ntpDns.state));
+  if (status.networkDiagnostics.ntpDns.address[0] != '\0') {
+    writer.append(" (");
+    writer.html(status.networkDiagnostics.ntpDns.address);
+    writer.append(")");
+  }
+  writer.append("</dd><dt>MTA DNS</dt><dd>");
+  writer.append(network::diagnostics::checkStateName(
+      status.networkDiagnostics.mtaDns.state));
+  if (status.networkDiagnostics.mtaDns.address[0] != '\0') {
+    writer.append(" (");
+    writer.html(status.networkDiagnostics.mtaDns.address);
+    writer.append(")");
+  }
+  writer.append("</dd><dt>MTA TCP 443</dt><dd>");
+  writer.append(network::diagnostics::checkStateName(
+      status.networkDiagnostics.tcp443.state));
+  writer.append("</dd><dt>Secure-connect failures</dt><dd>");
+  writer.format("%lu</dd><dt>HTTP failures</dt><dd>%lu</dd>"
+                "<dt>Transport timeouts</dt><dd>%lu</dd>"
+                "<dt>Complete-body bytes</dt><dd>%llu</dd>",
+                static_cast<unsigned long>(
+                    status.transportCounters.secureConnectFailures),
+                static_cast<unsigned long>(status.transportCounters.httpFailures),
+                static_cast<unsigned long>(status.transportCounters.timeouts),
+                static_cast<unsigned long long>(
+                    status.transportCounters.bytesDownloaded));
+  if (status.hasLastFeedFailure) {
+    writer.append("<dt>Last feed failure</dt><dd>");
+    writer.html(status.lastFeedFailureName);
+    writer.append(": ");
+    writer.html(status.lastFeedFailureCategory);
+    writer.format(", %lu bytes, %lu ms",
+                  static_cast<unsigned long>(status.lastFeedFailureBytes),
+                  static_cast<unsigned long>(
+                      status.lastFeedFailureElapsedMs));
+  } else {
+    writer.append("<dt>Last feed failure</dt><dd>None recorded</dd>");
+  }
+  writer.format("</dd></dl><form method=\"post\" "
+                "action=\"/network-diagnostics/run\"><button type=\"submit\">"
+                "Run Network Diagnostics</button></form>"
+                "<p class=\"muted\">Read-only connectivity checks; raw TCP "
+                "success does not verify TLS or HTTPS.</p></section>"
                 "<section><h2>Display brightness</h2>"
                 "<form method=\"post\" action=\"/config/brightness\">"
                 "<label for=\"brightness\">Brightness: %u / 255 (%u%%)</label>"
@@ -350,8 +432,7 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<button type=\"submit\">Save brightness</button></form>"
                 "<p class=\"muted\">Logical display setting. Physical output "
                 "remains disabled; the production power cap is separate.</p></section>",
-                static_cast<unsigned long>(status.resolvedTrains),
-                status.occupiedLeds, status.collisionCount, brightness,
+                brightness,
                 static_cast<unsigned>(brightness) * 100 / 255, brightness,
                 brightness);
   uint8_t visibleRoutes = 0;
@@ -434,6 +515,14 @@ size_t renderStatusJson(char *out, size_t capacity,
   writer.json(status.ssid);
   writer.append("\",\"ip\":\"");
   writer.json(status.ip);
+  writer.append("\",\"subnetMask\":\"");
+  writer.json(status.subnet);
+  writer.append("\",\"gateway\":\"");
+  writer.json(status.gateway);
+  writer.append("\",\"dnsPrimary\":\"");
+  writer.json(status.dnsPrimary);
+  writer.append("\",\"dnsSecondary\":\"");
+  writer.json(status.dnsSecondary);
   writer.format("\",\"rssi\":%d,\"hostname\":\"%s\","
                 "\"mdnsAvailable\":%s,\"timeSynchronized\":%s,"
                 "\"displayState\":\"%s\",\"feedCycleState\":\"",
@@ -442,7 +531,12 @@ size_t renderStatusJson(char *out, size_t capacity,
                 status.timeSynchronized ? "true" : "false",
                 displayStateName(status.displayState));
   writer.json(status.hasCycle ? cycleStateName(status.cycleOutcome) : "NOT RUN");
-  writer.format("\",\"feedsSucceeded\":%u,\"feedsTotal\":%u,"
+  writer.format("\",\"unixTime\":%s",
+                status.timeSynchronized ? "" : "null");
+  if (status.timeSynchronized) {
+    writer.format("%lu", static_cast<unsigned long>(status.unixTime));
+  }
+  writer.format(",\"feedsSucceeded\":%u,\"feedsTotal\":%u,"
                 "\"dataAgeSeconds\":",
                 status.feedsSucceeded, status.feedsTotal);
   appendNullableAge(writer, status.hasDataAge, status.dataAgeSeconds);
@@ -452,6 +546,8 @@ size_t renderStatusJson(char *out, size_t capacity,
                 "\"collisionCount\":%u,\"brightness\":%u,"
                 "\"routeVisibilityMask\":%lu,\"routeCount\":%u,"
                 "\"physicalLedOutputEnabled\":false,"
+                "\"secureConnectFailures\":%lu,\"httpFailures\":%lu,"
+                "\"transportTimeouts\":%lu,\"bytesDownloaded\":%llu,"
                 "\"freeInternalHeap\":%lu,\"minimumInternalHeap\":%lu,"
                 "\"freePsram\":",
                 static_cast<unsigned long>(status.resolvedTrains),
@@ -459,6 +555,13 @@ size_t renderStatusJson(char *out, size_t capacity,
                 static_cast<unsigned long>(routeVisibilityMask &
                                            semantic::kAllRoutesVisibleMask),
                 semantic::kRouteCount,
+                static_cast<unsigned long>(
+                    status.transportCounters.secureConnectFailures),
+                static_cast<unsigned long>(
+                    status.transportCounters.httpFailures),
+                static_cast<unsigned long>(status.transportCounters.timeouts),
+                static_cast<unsigned long long>(
+                    status.transportCounters.bytesDownloaded),
                 static_cast<unsigned long>(status.freeInternalHeap),
                 static_cast<unsigned long>(status.minimumInternalHeap));
   if (status.psramPresent) {
@@ -468,9 +571,57 @@ size_t renderStatusJson(char *out, size_t capacity,
   } else {
     writer.append("null,\"minimumFreePsram\":null");
   }
-  writer.format(",\"psramPresent\":%s,\"psramFeedBufferPresent\":%s}",
+  writer.format(",\"psramPresent\":%s,\"psramFeedBufferPresent\":%s",
                 status.psramPresent ? "true" : "false",
                 status.psramFeedBufferPresent ? "true" : "false");
+  if (status.hasLastFeedFailure) {
+    writer.append(",\"lastFeedFailure\":{\"feed\":\"");
+    writer.json(status.lastFeedFailureName);
+    writer.append("\",\"category\":\"");
+    writer.json(status.lastFeedFailureCategory);
+    writer.format("\",\"bytes\":%lu,\"elapsedMs\":%lu}",
+                  static_cast<unsigned long>(status.lastFeedFailureBytes),
+                  static_cast<unsigned long>(
+                      status.lastFeedFailureElapsedMs));
+  } else {
+    writer.append(",\"lastFeedFailure\":null");
+  }
+  writer.append("}");
+  return writer.size();
+}
+
+size_t renderNetworkDiagnosticsJson(
+    char *out, size_t capacity,
+    const network::diagnostics::Snapshot &diagnostics) {
+  Writer writer(out, capacity);
+  writer.append("{\"state\":\"");
+  writer.append(network::diagnostics::runStateName(diagnostics.state));
+  writer.format("\",\"wifiAssociated\":%s,\"ssid\":\"",
+                diagnostics.wifiAssociated ? "true" : "false");
+  writer.json(diagnostics.ssid);
+  writer.append("\",\"ip\":\"");
+  writer.json(diagnostics.ip);
+  writer.append("\",\"subnetMask\":\"");
+  writer.json(diagnostics.subnet);
+  writer.append("\",\"gateway\":\"");
+  writer.json(diagnostics.gateway);
+  writer.append("\",\"dnsPrimary\":\"");
+  writer.json(diagnostics.dnsPrimary);
+  writer.append("\",\"dnsSecondary\":\"");
+  writer.json(diagnostics.dnsSecondary);
+  writer.append("\",\"unixTime\":");
+  if (diagnostics.hasUnixTime) {
+    writer.format("%lu", static_cast<unsigned long>(diagnostics.unixTime));
+  } else {
+    writer.append("null");
+  }
+  writer.append(",\"ntpDns\":");
+  appendCheckJson(writer, diagnostics.ntpDns);
+  writer.append(",\"mtaDns\":");
+  appendCheckJson(writer, diagnostics.mtaDns);
+  writer.append(",\"mtaTcp443\":");
+  appendCheckJson(writer, diagnostics.tcp443);
+  writer.append("}");
   return writer.size();
 }
 

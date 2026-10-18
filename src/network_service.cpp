@@ -11,16 +11,23 @@
 
 #include <Arduino.h>
 
+#include <atomic>
+
 #if BROOKLYN_NETWORK_ENABLED
 #include "wifi_portal.h"
 
 #include <HTTPClient.h>
 #include <ESPmDNS.h>
 #include <WiFi.h>
+#include <WiFiClient.h>
 #include <WiFiClientSecure.h>
 #include <esp_heap_caps.h>
 #include <soc/soc_memory_types.h>
+#include <lwip/dns.h>
+#include <lwip/err.h>
+#include <lwip/ip_addr.h>
 #include <time.h>
+#include <stdio.h>
 #include <string.h>
 
 #if __has_include("secrets.h")
@@ -68,14 +75,187 @@ wifi::Portal &portal() {
 // Logs feed failures (name, category, bytes, elapsed). Diagnostic only.
 class FailureLogger : public transport::FeedFailureObserver {
  public:
+  explicit FailureLogger(web::StatusSnapshot &status) : status_(status) {}
+
   void onFeedFailure(const transport::FeedFailure &failure) override {
     char line[112];
     transport::formatFeedFailure(line, sizeof(line), failure);
     Serial.println(line);
+    status_.hasLastFeedFailure = true;
+    snprintf(status_.lastFeedFailureName, sizeof(status_.lastFeedFailureName),
+             "%s", failure.name);
+    snprintf(status_.lastFeedFailureCategory,
+             sizeof(status_.lastFeedFailureCategory), "%s",
+             transport::downloadStatusName(failure.status));
+    status_.lastFeedFailureBytes =
+        failure.bytesReceived > UINT32_MAX
+            ? UINT32_MAX
+            : static_cast<uint32_t>(failure.bytesReceived);
+    status_.lastFeedFailureElapsedMs = failure.elapsedMs;
   }
+
+ private:
+  web::StatusSnapshot &status_;
 };
 
 constexpr uint32_t elapsed(uint32_t now, uint32_t since) { return now - since; }
+
+struct DnsProbeContext {
+  std::atomic<bool> pending{false};
+  std::atomic<bool> complete{false};
+  std::atomic<bool> succeeded{false};
+  std::atomic<uint32_t> address{0};
+  uint32_t startedAtMs = 0;
+};
+
+void dnsProbeCallback(const char *, const ip_addr_t *address, void *context) {
+  auto *probe = static_cast<DnsProbeContext *>(context);
+  if (address != nullptr && IP_IS_V4(address)) {
+    const uint32_t resolvedAddress = address->u_addr.ip4.addr;
+    probe->address.store(resolvedAddress, std::memory_order_relaxed);
+    probe->succeeded.store(resolvedAddress != 0, std::memory_order_relaxed);
+  } else {
+    probe->succeeded.store(false, std::memory_order_relaxed);
+  }
+  probe->complete.store(true, std::memory_order_release);
+  probe->pending.store(false, std::memory_order_release);
+}
+
+class EspNetworkDiagnosticProbe : public diagnostics::Probe {
+ public:
+  void capture(diagnostics::Snapshot &snapshot) override {
+    snapshot.wifiAssociated = WiFi.status() == WL_CONNECTED;
+    if (!snapshot.wifiAssociated) return;
+    copyString(snapshot.ssid, sizeof(snapshot.ssid), WiFi.SSID());
+    copyAddress(snapshot.ip, sizeof(snapshot.ip), WiFi.localIP());
+    copyAddress(snapshot.subnet, sizeof(snapshot.subnet), WiFi.subnetMask());
+    copyAddress(snapshot.gateway, sizeof(snapshot.gateway), WiFi.gatewayIP());
+    copyAddress(snapshot.dnsPrimary, sizeof(snapshot.dnsPrimary), WiFi.dnsIP(0));
+    copyAddress(snapshot.dnsSecondary, sizeof(snapshot.dnsSecondary),
+                WiFi.dnsIP(1));
+    const uint32_t unixTime = static_cast<uint32_t>(time(nullptr));
+    if (unixTime >= kMinValidUnixTime) {
+      snapshot.unixTime = unixTime;
+      snapshot.hasUnixTime = true;
+    }
+  }
+
+  void startDns(diagnostics::DnsTarget target, const char *hostname,
+                uint32_t, uint32_t nowMs) override {
+    DnsProbeContext &context = dnsContext(target);
+    CheckResultState &result = immediateState(target);
+    if (context.pending.load(std::memory_order_acquire)) {
+      result = CheckResultState::Busy;
+      return;
+    }
+    context.complete.store(false, std::memory_order_relaxed);
+    context.succeeded.store(false, std::memory_order_relaxed);
+    context.address.store(0, std::memory_order_relaxed);
+    context.startedAtMs = nowMs;
+    context.pending.store(true, std::memory_order_release);
+    result = CheckResultState::Pending;
+
+    ip_addr_t address{};
+    const err_t error =
+        dns_gethostbyname(hostname, &address, dnsProbeCallback, &context);
+    if (error == ERR_OK) {
+      const uint32_t resolvedAddress =
+          IP_IS_V4(&address) ? address.u_addr.ip4.addr : 0;
+      context.address.store(resolvedAddress, std::memory_order_relaxed);
+      context.succeeded.store(resolvedAddress != 0, std::memory_order_relaxed);
+      context.complete.store(true, std::memory_order_release);
+      context.pending.store(false, std::memory_order_release);
+    } else if (error != ERR_INPROGRESS) {
+      context.succeeded.store(false, std::memory_order_relaxed);
+      context.complete.store(true, std::memory_order_release);
+      context.pending.store(false, std::memory_order_release);
+    }
+  }
+
+  diagnostics::CheckState pollDns(diagnostics::DnsTarget target,
+                                  uint32_t nowMs,
+                                  diagnostics::CheckResult &result) override {
+    const CheckResultState immediate = immediateState(target);
+    if (immediate == CheckResultState::Busy) {
+      result.elapsedMs = 0;
+      return diagnostics::CheckState::Busy;
+    }
+    DnsProbeContext &context = dnsContext(target);
+    if (context.complete.load(std::memory_order_acquire)) {
+      result.elapsedMs = elapsed(nowMs, context.startedAtMs);
+      result.address[0] = '\0';
+      if (context.succeeded.load(std::memory_order_relaxed)) {
+        const IPAddress address(
+            context.address.load(std::memory_order_relaxed));
+        copyAddress(result.address, sizeof(result.address), address);
+      }
+      context.complete.store(false, std::memory_order_relaxed);
+      return context.succeeded.load(std::memory_order_relaxed)
+                 ? diagnostics::CheckState::Succeeded
+                 : diagnostics::CheckState::Failed;
+    }
+    if (!context.pending.load(std::memory_order_acquire)) {
+      result.elapsedMs = 0;
+      return diagnostics::CheckState::Failed;
+    }
+    if (elapsed(nowMs, context.startedAtMs) >= diagnostics::kDnsTimeoutMs) {
+      result.elapsedMs = elapsed(nowMs, context.startedAtMs);
+      return diagnostics::CheckState::TimedOut;
+    }
+    return diagnostics::CheckState::Pending;
+  }
+
+  diagnostics::CheckState connectTcp(const char *ipv4, uint16_t port,
+                                     uint32_t timeoutMs, uint32_t,
+                                     uint32_t &elapsedMs) override {
+    IPAddress address;
+    if (!address.fromString(ipv4)) {
+      elapsedMs = 0;
+      return diagnostics::CheckState::Failed;
+    }
+    const uint32_t startedAtMs = millis();
+    WiFiClient client;
+    const bool connected =
+        client.connect(address, port, static_cast<int32_t>(timeoutMs)) == 1;
+    elapsedMs = elapsed(millis(), startedAtMs);
+    client.stop();
+    return connected ? diagnostics::CheckState::Succeeded
+                     : diagnostics::CheckState::Failed;
+  }
+
+ private:
+  enum class CheckResultState : uint8_t { Pending, Busy, Available };
+
+  static void copyString(char *destination, size_t capacity,
+                         const String &value) {
+    value.toCharArray(destination, capacity);
+  }
+
+  static void copyAddress(char *destination, size_t capacity,
+                          const IPAddress &address) {
+    const String text = address.toString();
+    text.toCharArray(destination, capacity);
+  }
+
+  DnsProbeContext &dnsContext(diagnostics::DnsTarget target) {
+    return target == diagnostics::DnsTarget::Ntp ? ntpDns_ : mtaDns_;
+  }
+
+  CheckResultState &immediateState(diagnostics::DnsTarget target) {
+    return target == diagnostics::DnsTarget::Ntp ? ntpImmediate_
+                                                  : mtaImmediate_;
+  }
+
+  DnsProbeContext ntpDns_{};
+  DnsProbeContext mtaDns_{};
+  CheckResultState ntpImmediate_ = CheckResultState::Available;
+  CheckResultState mtaImmediate_ = CheckResultState::Available;
+};
+
+EspNetworkDiagnosticProbe &diagnosticProbe() {
+  static EspNetworkDiagnosticProbe instance;
+  return instance;
+}
 
 class HttpsFeedConnection : public transport::FeedConnection {
  public:
@@ -233,7 +413,7 @@ void NetworkService::begin() {
   const bool savedConfigurationLoaded = configuration_.load();
   strncpy(webStatus_.deviceName, web::kDefaultDeviceName,
           sizeof(webStatus_.deviceName) - 1);
-  strncpy(webStatus_.resetReason, diagnostics::resetReasonName(),
+  strncpy(webStatus_.resetReason, brooklyn::diagnostics::resetReasonName(),
           sizeof(webStatus_.resetReason) - 1);
 #if defined(BROOKLYN_TARGET_PCB)
   strncpy(webStatus_.target, "Brooklyn PCB / ESP32-S3-WROOM-1U-N16R8",
@@ -426,7 +606,7 @@ void NetworkService::printStatus(const transport::CycleResult &r) const {
 
 void NetworkService::pollNow(uint32_t nowMs) {
   static const MillisClock clock;
-  static FailureLogger logger;
+  FailureLogger logger(webStatus_);
   semantic::RenderConfig renderConfig{};
   renderConfig.brightness = configuration_.brightness();
   transport::PipelineSink sink(pipeline_, renderConfig);
@@ -533,10 +713,24 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
 
   if (serverStarted) {
     const IPAddress ip = WiFi.localIP();
+    const IPAddress subnet = WiFi.subnetMask();
+    const IPAddress gateway = WiFi.gatewayIP();
+    const IPAddress dnsPrimary = WiFi.dnsIP(0);
+    const IPAddress dnsSecondary = WiFi.dnsIP(1);
     const String connectedSsid = WiFi.SSID();
     const String ipText = ip.toString();
+    const String subnetText = subnet.toString();
+    const String gatewayText = gateway.toString();
+    const String dnsPrimaryText = dnsPrimary.toString();
+    const String dnsSecondaryText = dnsSecondary.toString();
     connectedSsid.toCharArray(webStatus_.ssid, sizeof(webStatus_.ssid));
     ipText.toCharArray(webStatus_.ip, sizeof(webStatus_.ip));
+    subnetText.toCharArray(webStatus_.subnet, sizeof(webStatus_.subnet));
+    gatewayText.toCharArray(webStatus_.gateway, sizeof(webStatus_.gateway));
+    dnsPrimaryText.toCharArray(webStatus_.dnsPrimary,
+                               sizeof(webStatus_.dnsPrimary));
+    dnsSecondaryText.toCharArray(webStatus_.dnsSecondary,
+                                 sizeof(webStatus_.dnsSecondary));
   }
   webStatus_.uptimeSeconds = millis() / 1000;
   webStatus_.networkConnected = true;
@@ -544,6 +738,9 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
   webStatus_.mdnsAvailable = mdnsStarted_;
   webStatus_.timeSynchronized =
       static_cast<uint32_t>(time(nullptr)) >= kMinValidUnixTime;
+  webStatus_.unixTime = webStatus_.timeSynchronized
+                            ? static_cast<uint32_t>(time(nullptr))
+                            : 0;
   webStatus_.hasCycle = hasLatestCycle_;
   if (hasLatestCycle_) {
     webStatus_.cycleOutcome = latestCycle_.outcome;
@@ -578,7 +775,17 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
                 heap_caps_get_minimum_free_size(MALLOC_CAP_SPIRAM))
           : 0;
   webStatus_.psramFeedBufferPresent = buffer_.data != nullptr;
+  webStatus_.transportCounters = counters_;
+  webStatus_.networkDiagnostics = networkDiagnostics_.snapshot();
   lanWebUi_.service(webStatus_);
+
+  if (lanWebUi_.consumeNetworkDiagnosticsRequest()) {
+    if (networkDiagnostics_.start(diagnosticProbe())) {
+      webStatus_.networkDiagnostics = networkDiagnostics_.snapshot();
+      Serial.println("Network diagnostics: user-triggered read-only run started");
+    }
+  }
+  serviceNetworkDiagnostics(nowMs);
 
   if (lanWebUi_.consumeSetupRequest()) {
     Serial.println("LAN UI: user requested Wi-Fi setup; existing credentials kept");
@@ -589,6 +796,27 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
     Serial.println("LAN UI: user requested reboot");
     delay(250);
     ESP.restart();
+  }
+}
+
+void NetworkService::serviceNetworkDiagnostics(uint32_t nowMs) {
+  const diagnostics::RunState previousState =
+      networkDiagnostics_.snapshot().state;
+  if (previousState != diagnostics::RunState::Running) return;
+  networkDiagnostics_.step(diagnosticProbe(), nowMs);
+  webStatus_.networkDiagnostics = networkDiagnostics_.snapshot();
+  if (webStatus_.networkDiagnostics.state == diagnostics::RunState::Complete) {
+    const diagnostics::Snapshot &result = webStatus_.networkDiagnostics;
+    Serial.printf(
+        "Network diagnostics complete: wifi=%s ntp-dns=%s (%lums) "
+        "mta-dns=%s (%lums) tcp443=%s (%lums)\n",
+        result.wifiAssociated ? "associated" : "disconnected",
+        diagnostics::checkStateName(result.ntpDns.state),
+        static_cast<unsigned long>(result.ntpDns.elapsedMs),
+        diagnostics::checkStateName(result.mtaDns.state),
+        static_cast<unsigned long>(result.mtaDns.elapsedMs),
+        diagnostics::checkStateName(result.tcp443.state),
+        static_cast<unsigned long>(result.tcp443.elapsedMs));
   }
 }
 

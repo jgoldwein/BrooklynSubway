@@ -12,10 +12,12 @@
 namespace brooklyn::web {
 namespace {
 
-constexpr size_t kPageCapacity = 6144;
+constexpr size_t kPageCapacity = 8192;
 constexpr size_t kJsonCapacity = 2048;
+constexpr size_t kNetworkDiagnosticsJsonCapacity = 768;
 char gPage[kPageCapacity];
 char gJson[kJsonCapacity];
+char gNetworkDiagnosticsJson[kNetworkDiagnosticsJsonCapacity];
 
 constexpr const char *kSetupConfirmation =
     "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
@@ -59,6 +61,10 @@ bool LanWebUi::begin() {
 void LanWebUi::registerRoutes() {
   server_.on("/", HTTP_GET, [this]() { handleHome(); });
   server_.on("/api/status", HTTP_GET, [this]() { handleStatus(); });
+  server_.on("/api/network-diagnostics", HTTP_GET,
+             [this]() { handleNetworkDiagnostics(); });
+  server_.on("/network-diagnostics/run", HTTP_POST,
+             [this]() { handleRunNetworkDiagnostics(); });
   server_.on("/config/brightness", HTTP_POST,
              [this]() { handleBrightness(); });
   server_.on("/config/routes", HTTP_POST, [this]() { handleRoutes(); });
@@ -113,6 +119,29 @@ void LanWebUi::handleStatus() {
   }
   server_.sendHeader("Cache-Control", "no-store");
   server_.send(200, "application/json", gJson);
+}
+
+void LanWebUi::handleNetworkDiagnostics() {
+  const size_t length = renderNetworkDiagnosticsJson(
+      gNetworkDiagnosticsJson, sizeof(gNetworkDiagnosticsJson),
+      status_.networkDiagnostics);
+  if (length == 0) {
+    server_.send(500, "text/plain", "Unable to render network diagnostics");
+    return;
+  }
+  server_.sendHeader("Cache-Control", "no-store");
+  server_.send(200, "application/json", gNetworkDiagnosticsJson);
+}
+
+void LanWebUi::handleRunNetworkDiagnostics() {
+  if (status_.networkDiagnostics.state == network::diagnostics::RunState::Running ||
+      networkDiagnosticsRequested_) {
+    server_.send(409, "application/json", "{\"state\":\"running\"}");
+    return;
+  }
+  networkDiagnosticsRequested_ = true;
+  server_.sendHeader("Cache-Control", "no-store");
+  server_.send(202, "application/json", "{\"state\":\"accepted\"}");
 }
 
 void LanWebUi::handleBrightness() {
@@ -205,6 +234,12 @@ bool LanWebUi::consumeSetupRequest() {
 bool LanWebUi::consumeRebootRequest() {
   const bool requested = rebootRequested_;
   rebootRequested_ = false;
+  return requested;
+}
+
+bool LanWebUi::consumeNetworkDiagnosticsRequest() {
+  const bool requested = networkDiagnosticsRequested_;
+  networkDiagnosticsRequested_ = false;
   return requested;
 }
 

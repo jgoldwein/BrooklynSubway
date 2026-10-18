@@ -71,6 +71,7 @@ class NetworkService {
   void printStatus(const transport::CycleResult &result) const;
 #if BROOKLYN_NETWORK_ENABLED
   void serviceLanWebUi(uint32_t nowMs);
+  void serviceNetworkDiagnostics(uint32_t nowMs);
   void stopLanWebUi();
 #endif
 
@@ -93,6 +94,7 @@ class NetworkService {
   web::LanWebUi lanWebUi_;
   web::ServerOwnership serverOwnership_;
   web::StatusSnapshot webStatus_{};
+  diagnostics::Runner networkDiagnostics_{};
   transport::CycleResult latestCycle_{};
   bool hasLatestCycle_ = false;
   bool mdnsAttempted_ = false;

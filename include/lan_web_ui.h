@@ -22,13 +22,16 @@ class LanWebUi {
   bool active() const { return active_; }
   bool consumeSetupRequest();
   bool consumeRebootRequest();
+  bool consumeNetworkDiagnosticsRequest();
 
  private:
   void registerRoutes();
   void handleHome();
   void handleStatus();
+  void handleNetworkDiagnostics();
   void handleBrightness();
   void handleRoutes();
+  void handleRunNetworkDiagnostics();
   void handleSetupConfirmation();
   void handleSetupRequest();
   void handleReboot();
@@ -41,6 +44,7 @@ class LanWebUi {
   bool routesRegistered_ = false;
   bool setupRequested_ = false;
   bool rebootRequested_ = false;
+  bool networkDiagnosticsRequested_ = false;
 };
 
 }  // namespace brooklyn::web
