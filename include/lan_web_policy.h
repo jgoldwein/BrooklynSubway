@@ -5,6 +5,7 @@
 
 #include "operational_display.h"
 #include "feed_transport.h"
+#include "network_diagnostics.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -14,7 +15,7 @@ namespace brooklyn::web {
 constexpr const char *kDefaultDeviceName = "BrooklynMap";
 constexpr const char *kHostname = "brooklynmap";
 constexpr const char *kMdnsUrl = "http://brooklynmap.local/";
-constexpr const char *kFirmwareId = "Phase 4S";
+constexpr const char *kFirmwareId = "Phase 4T";
 
 enum class ServerMode : uint8_t { Stopped, Provisioning, NormalLan };
 
@@ -37,9 +38,14 @@ struct StatusSnapshot {
   bool networkConnected = false;
   char ssid[33] = {};
   char ip[16] = {};
+  char subnet[16] = {};
+  char gateway[16] = {};
+  char dnsPrimary[16] = {};
+  char dnsSecondary[16] = {};
   int16_t rssi = -127;
   bool mdnsAvailable = false;
   bool timeSynchronized = false;
+  uint32_t unixTime = 0;
   display::State displayState = display::State::WaitingForData;
   bool hasCycle = false;
   transport::CycleOutcome cycleOutcome = transport::CycleOutcome::NoFeeds;
@@ -58,6 +64,13 @@ struct StatusSnapshot {
   uint32_t minimumFreePsram = 0;
   bool psramPresent = false;
   bool psramFeedBufferPresent = false;
+  transport::TransportCounters transportCounters{};
+  bool hasLastFeedFailure = false;
+  char lastFeedFailureName[8] = {};
+  char lastFeedFailureCategory[32] = {};
+  uint32_t lastFeedFailureBytes = 0;
+  uint32_t lastFeedFailureElapsedMs = 0;
+  network::diagnostics::Snapshot networkDiagnostics{};
 };
 
 bool parseBrightness(const char *text, uint8_t &brightness);
@@ -73,5 +86,8 @@ size_t renderHomePage(char *out, size_t capacity,
 size_t renderStatusJson(char *out, size_t capacity,
                         const StatusSnapshot &status, uint8_t brightness,
                         uint32_t routeVisibilityMask);
+size_t renderNetworkDiagnosticsJson(
+    char *out, size_t capacity,
+    const network::diagnostics::Snapshot &diagnostics);
 
 }  // namespace brooklyn::web

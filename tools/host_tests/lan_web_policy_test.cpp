@@ -205,11 +205,39 @@ brooklyn::web::StatusSnapshot sampleStatus() {
   status.freePsram = 3000000;
   status.minimumFreePsram = 2800000;
   status.psramFeedBufferPresent = true;
+  status.transportCounters.secureConnectFailures = 2;
+  status.transportCounters.httpFailures = 3;
+  status.transportCounters.timeouts = 4;
+  status.transportCounters.bytesDownloaded = 123456;
+  status.hasLastFeedFailure = true;
+  strncpy(status.lastFeedFailureName, "NQRW",
+          sizeof(status.lastFeedFailureName) - 1);
+  strncpy(status.lastFeedFailureCategory, "timed-out",
+          sizeof(status.lastFeedFailureCategory) - 1);
+  status.lastFeedFailureBytes = 143;
+  status.lastFeedFailureElapsedMs = 321;
+  status.networkDiagnostics.state =
+      brooklyn::network::diagnostics::RunState::Complete;
+  status.networkDiagnostics.wifiAssociated = true;
+  strncpy(status.networkDiagnostics.ip, "192.0.2.17",
+          sizeof(status.networkDiagnostics.ip) - 1);
+  strncpy(status.networkDiagnostics.dnsPrimary, "192.0.2.1",
+          sizeof(status.networkDiagnostics.dnsPrimary) - 1);
+  status.networkDiagnostics.ntpDns.state =
+      brooklyn::network::diagnostics::CheckState::Succeeded;
+  strncpy(status.networkDiagnostics.ntpDns.address, "198.51.100.10",
+          sizeof(status.networkDiagnostics.ntpDns.address) - 1);
+  status.networkDiagnostics.ntpDns.elapsedMs = 45;
+  status.networkDiagnostics.mtaDns.state =
+      brooklyn::network::diagnostics::CheckState::Failed;
+  status.networkDiagnostics.mtaDns.elapsedMs = 67;
+  status.networkDiagnostics.tcp443.state =
+      brooklyn::network::diagnostics::CheckState::Skipped;
   return status;
 }
 
 void testPageEscapingAndRequiredContent() {
-  char page[6144];
+  char page[8192];
   brooklyn::web::StatusSnapshot status = sampleStatus();
   CHECK(brooklyn::web::renderHomePage(
             page, sizeof(page), status, 64,
@@ -239,6 +267,19 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "Select all") != nullptr);
   CHECK(strstr(page, "Clear all") != nullptr);
   CHECK(strstr(page, "Save routes") != nullptr);
+  CHECK(strstr(page, "Network diagnostics") != nullptr);
+  CHECK(strstr(page, "Run Network Diagnostics") != nullptr);
+  CHECK(strstr(page, "method=\"post\" action=\"/network-diagnostics/run\"") !=
+        nullptr);
+  CHECK(strstr(page, "MTA TCP 443") != nullptr);
+  CHECK(strstr(page, "Diagnostic run</dt><dd>complete</dd>") != nullptr);
+  CHECK(strstr(page, "succeeded (198.51.100.10)") != nullptr);
+  CHECK(strstr(page, "<dt>Secure-connect failures</dt><dd>2</dd>") != nullptr);
+  CHECK(strstr(page, "<dt>HTTP failures</dt><dd>3</dd>") != nullptr);
+  CHECK(strstr(page, "<dt>Transport timeouts</dt><dd>4</dd>") != nullptr);
+  CHECK(strstr(page, "<dt>Complete-body bytes</dt><dd>123456</dd>") != nullptr);
+  CHECK(strstr(page, "NQRW: timed-out, 143 bytes, 321 ms") != nullptr);
+  CHECK(strstr(page, "Complete-body bytes") != nullptr);
   CHECK(strstr(page, "name=\"LED_ENABLE\"") == nullptr);
   CHECK(strstr(page, "name=\"physicalBrightness\"") == nullptr);
   CHECK(strstr(page, "name=\"channel\"") == nullptr);
@@ -307,6 +348,7 @@ void testJsonStatusIsEscapedAndSecretFree() {
             json, sizeof(json), status, 64,
             brooklyn::semantic::kAllRoutesVisibleMask) > 0);
   CHECK(strstr(json, "\"physicalLedOutputEnabled\":false") != nullptr);
+  CHECK(strstr(json, "\"firmware\":\"Phase 4T\"") != nullptr);
   CHECK(strstr(json, "\"resetReason\":\"boot\\rready\"") != nullptr);
   CHECK(strstr(json, "\"brightness\":64") != nullptr);
   CHECK(strstr(json, "\"routeVisibilityMask\":262143,\"routeCount\":18") !=
@@ -315,6 +357,12 @@ void testJsonStatusIsEscapedAndSecretFree() {
   CHECK(strstr(json, "\"resolvedTrains\":57,\"occupiedLeds\":53,"
                      "\"collisionCount\":4") != nullptr);
   CHECK(strstr(json, "\"displayState\":\"Fresh\"") != nullptr);
+  CHECK(strstr(json, "\"secureConnectFailures\":2,\"httpFailures\":3,"
+                     "\"transportTimeouts\":4,\"bytesDownloaded\":123456") !=
+        nullptr);
+  CHECK(strstr(json, "\"lastFeedFailure\":{\"feed\":\"NQRW\","
+                     "\"category\":\"timed-out\",\"bytes\":143,"
+                     "\"elapsedMs\":321}") != nullptr);
   CHECK(strstr(json, "\"ssid\":\"test\\\"\\\\wifi\\n\\t\"") != nullptr);
   CHECK(strstr(json, "\"deviceName\":\"device\\\"\\\\\\u0001\"") != nullptr);
   CHECK(strstr(json, "\"target\":\"<x>&\"") != nullptr);
@@ -432,7 +480,7 @@ int main() {
   testRouteVisibilityApiMasks();
   testRouteSelectionParsing();
   testServerOwnershipTransitions();
-  char page[6144];
+  char page[8192];
   char json[2048];
   const brooklyn::web::StatusSnapshot status = sampleStatus();
   printf("Sample generated response sizes: HTML %lu B, status JSON %lu B\n",

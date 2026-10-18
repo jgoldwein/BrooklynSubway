@@ -26,6 +26,7 @@ def main():
             f"-I{h.ROOT / 'include'}",
             str(h.ROOT / "tools/host_tests/lan_web_policy_test.cpp"),
             str(h.ROOT / "src/lan_web_policy.cpp"),
+            str(h.ROOT / "src/network_diagnostics.cpp"),
             str(h.ROOT / "src/normal_config.cpp"),
             str(h.ROOT / "src/generated/semantic_tables.cpp"),
             "-o",
