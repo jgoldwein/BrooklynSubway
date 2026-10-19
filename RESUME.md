@@ -31,7 +31,68 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Current checkpoint — Phase 4X host-only virtual map simulator
+## Current checkpoint — Phase 4Y GTFS-RT capture and replay
+
+- **Checkpoint date:** 2026-10-19. Phase 4Y work began on clean `main` at
+  `cd4ee44b53eeb778bdbefeaa458d276ad9f83385`
+  (`docs: record Phase 4X simulator checkpoint`). The Phase 4X implementation
+  commit/tag remain unchanged.
+- **Implementation:** host-only tools record raw response bodies from the
+  eight firmware-defined MTA GTFS-RT feeds, verify manifest/payload hashes,
+  and replay those bytes through the compiled firmware decoder, pipeline,
+  resolver, display policy, and renderer. The Phase 4X browser simulator
+  imports replay exports and displays feed health, train details, unresolved
+  observations, and renderer collisions. Capture and replay architecture,
+  options, and limitations are in
+  [docs/PHASE4Y_GTFS_RECORD_REPLAY.md](docs/PHASE4Y_GTFS_RECORD_REPLAY.md).
+- **Live capture:** `captures/20261019T062411Z-464a7da9/` contains ten cycles
+  with all eight feeds successful in every cycle. Its 80 raw `.pb` files
+  total 2,267,622 bytes and were integrity-checked before replay. The local
+  deterministic `replay.json` contains ten frames: 2,484 vehicles seen, 374
+  resolved, all `Fresh`, and zero parser failures. It reports 429
+  `UnknownStop` observations over 152 route/stop pairs and 100 `OperationalStop`
+  observations for H19N. These categories are diagnostic evidence only; no
+  route, station, or segment assignment was changed. The capture and replay
+  remain Git-ignored third-party data and must not be committed or published.
+  Two independent replay runs produced identical canonical output
+  (SHA-256 `b39513529049e353c67d8b6fc9d758231afbc6c0de11a34d2c1f09cc7e75c649`).
+  Non-payload aggregate counts for every unknown route/stop pair are retained
+  in [docs/PHASE4Y_UNKNOWN_STOP_COUNTS.csv](docs/PHASE4Y_UNKNOWN_STOP_COUNTS.csv).
+  Zero segment LED occupancies in this sample is not a failure; synthetic
+  regressions cover segment behavior. A dedicated unknown-stop audit is the
+  recommended follow-up, without presuming any mapping defect.
+- **Validation:** Phase 4Y focused tests passed **74 checks**; Phase 4X
+  focused tests passed **80 checks**. All **19 host runners passed
+  1,554,756 checks, 0 failures**. Generated simulator metadata synchronization
+  passed. Browser smoke verified 306 points, 302 audit rows, four status
+  indicators, first/middle/final cycle navigation, play/pause, search,
+  inspector, unresolved observations, actual firmware collision RGB, and
+  autoplay. The server bound only to `127.0.0.1` and was stopped. All four
+  clean PlatformIO builds and both network ELF safety audits passed earlier
+  in Phase 4Y and match the Phase 4X baseline:
+  `brooklyn-s3` 36,268 B RAM / 305,097 B flash;
+  `xiao-s3` 35,380 B / 290,413 B;
+  `brooklyn-s3-network` 93,308 B / 1,116,665 B;
+  `xiao-s3-network` 92,420 B / 1,100,089 B.
+  `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0` remains configured.
+- **Changed files (local, uncommitted):** `.gitignore`, this checkpoint,
+  `docs/PHASE4Y_GTFS_RECORD_REPLAY.md`, `tools/replay/` (host bridge,
+  recorder, replay CLI, validation and tests), `tools/run_replay_tests.py`,
+  and `tools/virtual_map/index.html` / `run.py`. No firmware source, PlatformIO
+  configuration, semantic assignments, physical-output code, OTA code, or
+  authentication code changed.
+- **Hardware/release state:** no firmware image was uploaded; no XIAO or
+  production PCB was accessed. Physical LED output remains disabled. No
+  Phase 4Y commit, push, or tag was created, and no later phase was started.
+- **Current Git state:** branch `main`, baseline commit
+  `cd4ee44b53eeb778bdbefeaa458d276ad9f83385`, tracking `origin/main`.
+  Preserve the uncommitted Phase 4Y changes. Do not commit, push, tag, or
+  publish the local MTA capture without Joel's explicit direction.
+- **Resume command:** from the repository root, open the complete capture in
+  the simulator initially paused with
+  `python tools\replay\replay.py captures\20261019T062411Z-464a7da9 --all --serve --step`.
+
+## Phase 4X checkpoint — host-only virtual map simulator
 
 - **Checkpoint date:** 2026-10-19. Work started on clean `main` at
   `3ea25cc4e1256d8a74ad8b8fba7c9358289b66e7`
@@ -68,9 +129,9 @@ clarification only if the requested next action remains ambiguous.
   `docs/PHASE4X_VIRTUAL_MAP_SIMULATOR.md`. The host-only simulator milestone
   uses the annotated tag `phase-4x-virtual-map-simulator`; it is not a
   semantic firmware release.
-- **Next action:** start the simulator from the repository root with
-  `python tools\virtual_map\run.py`. Do not start Phase 4Y or access hardware
-  without Joel's direction.
+- **Next action at that checkpoint:** start the simulator with
+  `python tools\virtual_map\run.py`. This historical next step has since been
+  exercised during Phase 4Y; see the current checkpoint above.
 
 ## Phase 4W status — secure web OTA validated; release wrap-up (historical)
 
