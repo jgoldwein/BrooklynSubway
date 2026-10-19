@@ -1,0 +1,41 @@
+# TEMPLATE ONLY - not installed by anything in this repository.
+# Install (operator, after review) to /etc/systemd/system/brooklyn-telemetry-dashboard.service
+# See docs/PHASE4AA_DEPLOYMENT.md.
+
+[Unit]
+Description=Brooklyn map telemetry dashboard (loopback, read-only)
+After=brooklyn-telemetry-collector.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=brooklyn-dashboard
+Group=brooklyn-telemetry
+WorkingDirectory=/opt/brooklyn-map/telemetry
+# No credentials: the dashboard never talks to MQTT. dashboard.py binds 127.0.0.1 only
+# (there is no option to bind elsewhere); Apache terminates TLS and authentication.
+ExecStart=/opt/brooklyn-map/venv/bin/python /opt/brooklyn-map/telemetry/tools/telemetry/dashboard.py --db /var/lib/brooklyn-map/telemetry.sqlite3 --port 8780
+Restart=on-failure
+RestartSec=15
+
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+# Read-only: the dashboard opens SQLite with mode=ro. See the deployment doc about the WAL -shm file.
+ReadOnlyPaths=/var/lib/brooklyn-map
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+IPAddressDeny=any
+IPAddressAllow=localhost
+
+[Install]
+WantedBy=multi-user.target

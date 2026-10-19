@@ -1,0 +1,47 @@
+# TEMPLATE ONLY - not installed by anything in this repository.
+# Install (operator, after review) to /etc/systemd/system/brooklyn-telemetry-collector.service
+# See docs/PHASE4AA_DEPLOYMENT.md.
+
+[Unit]
+Description=Brooklyn map telemetry collector (read-only MQTT subscriber)
+Documentation=https://github.com/jgoldwein/BrooklynSubway
+Wants=network-online.target
+After=network-online.target
+# Bounded restart behaviour: at most 5 starts per 5 minutes, then stay failed.
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=brooklyn-collector
+Group=brooklyn-telemetry
+WorkingDirectory=/opt/brooklyn-map/telemetry
+# MQTT host/port and the bkmap-collector credentials come from this file only.
+# TLS (port 8884) is mandatory; the collector refuses the plaintext MQTT port.
+EnvironmentFile=/etc/brooklyn-map/telemetry.env
+ExecStart=/opt/brooklyn-map/venv/bin/python /opt/brooklyn-map/telemetry/tools/telemetry/collect.py --db /var/lib/brooklyn-map/telemetry.sqlite3 --host ${BROOKLYN_MQTT_HOST} --port ${BROOKLYN_MQTT_PORT}
+Restart=on-failure
+RestartSec=15
+# Database files are group-readable so the dashboard can open them read-only.
+UMask=0027
+StateDirectory=brooklyn-map
+StateDirectoryMode=0750
+
+# Sandboxing: the collector only needs outbound TCP and its own state directory.
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/brooklyn-map
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=true
+LockPersonality=true
+CapabilityBoundingSet=
+SystemCallArchitectures=native
+
+[Install]
+WantedBy=multi-user.target
