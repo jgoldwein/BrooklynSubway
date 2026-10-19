@@ -1,0 +1,56 @@
+# TEMPLATE ONLY - not installed by anything in this repository.
+# Eventual vhost for https://monitor.goldwein.net/ :
+#   Internet -> Apache HTTPS -> authentication -> reverse proxy -> 127.0.0.1:8780
+# Assumes a valid TLS certificate for the name already exists (for example via the
+# operator's existing certbot setup); this template does not request or change certificates.
+# Required modules: ssl proxy proxy_http headers (plus fail2ban or mod_evasive/mod_qos for rate limiting).
+
+<VirtualHost *:80>
+    ServerName monitor.goldwein.net
+    Redirect permanent / https://monitor.goldwein.net/
+</VirtualHost>
+
+<VirtualHost *:443>
+    ServerName monitor.goldwein.net
+
+    SSLEngine on
+    SSLCertificateFile    /etc/letsencrypt/live/monitor.goldwein.net/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/monitor.goldwein.net/privkey.pem
+    SSLProtocol           -all +TLSv1.2 +TLSv1.3
+
+    Header always set Strict-Transport-Security "max-age=31536000"
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "DENY"
+    Header always set Referrer-Policy "no-referrer"
+
+    # Basic Auth is acceptable only because the site is HTTPS-only.
+    # Create the file with bcrypt (never commit it, never put real hashes in this repo):
+    #   sudo htpasswd -B -c /etc/apache2/brooklyn-monitor.htpasswd REPLACE_USER
+    <Location "/">
+        AuthType Basic
+        AuthName "Brooklyn map monitor"
+        AuthUserFile /etc/apache2/brooklyn-monitor.htpasswd
+        Require valid-user
+    </Location>
+
+    # Authentication happens before proxying. The dashboard only listens on loopback.
+    # ProxyPreserveHost Off makes the dashboard see Host: 127.0.0.1:8780, which its
+    # Host-header check accepts. If you turn it On, pass --allowed-host monitor.goldwein.net.
+    ProxyPreserveHost Off
+    ProxyPass        / http://127.0.0.1:8780/ timeout=10
+    ProxyPassReverse / http://127.0.0.1:8780/
+    RequestHeader unset Authorization
+
+    # Read-only dashboard: refuse anything but GET/HEAD.
+    <Location "/">
+        <LimitExcept GET HEAD>
+            Require all denied
+        </LimitExcept>
+    </Location>
+
+    # Failed-login rate limiting is NOT provided by Apache Basic Auth. Recommended:
+    # fail2ban with the apache-auth jail on this vhost's error log (for example
+    # maxretry 5, findtime 10m, bantime 1h), or mod_evasive/mod_qos.
+    ErrorLog  ${APACHE_LOG_DIR}/monitor-error.log
+    CustomLog ${APACHE_LOG_DIR}/monitor-access.log combined
+</VirtualHost>

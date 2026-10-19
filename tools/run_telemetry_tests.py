@@ -8,9 +8,10 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent / "telemetry"))
+import test_deploy  # noqa: E402
 import test_hardening  # noqa: E402
 import test_telemetry  # noqa: E402
 
 
 if __name__ == "__main__":
-    raise SystemExit(test_telemetry.main() | test_hardening.main())
+    raise SystemExit(test_telemetry.main() | test_hardening.main() | test_deploy.main())
