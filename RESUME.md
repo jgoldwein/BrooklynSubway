@@ -53,18 +53,24 @@ clarification only if the requested next action remains ambiguous.
   flash baseline. Both network ELF audits found no simulator, NeoPixel
   transmit, LED-backend arm/write, or physical safety-controller symbols.
   `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0` remains set in all environments.
+- **Checkpoint commit and tag:** commit
+  `8e315289002f28cae3bc9b4a941de7d645157f27`
+  (`Phase 4X: add virtual map simulator`) is pushed to `origin/main` and tagged
+  `phase-4x-virtual-map-simulator`. The milestone tag points to the simulator
+  implementation commit; no semantic firmware release tag was created.
 - **Safety/state:** no firmware sources or build configuration changed; no
-  device, XIAO, or production PCB was accessed or flashed. No commits, tags,
-  pushes, or Phase 4Y work. The private OTA signing key remains outside Git.
+  device, XIAO, or production PCB was accessed or flashed. No firmware image
+  was uploaded and Phase 4Y was not started. The private OTA signing key
+  remains outside Git.
 - **Changed files:** this checkpoint, the Phase 4X implementation and
   generated metadata under `tools/virtual_map/`, its runner
   `tools/run_virtual_map_tests.py`, and
   `docs/PHASE4X_VIRTUAL_MAP_SIMULATOR.md`. The host-only simulator milestone
   uses the annotated tag `phase-4x-virtual-map-simulator`; it is not a
   semantic firmware release.
-- **Next action:** review the uncommitted files; start the simulator from the
-  repository root with `python tools\virtual_map\run.py`. Do not start Phase
-  4Y or access hardware without Joel's direction.
+- **Next action:** start the simulator from the repository root with
+  `python tools\virtual_map\run.py`. Do not start Phase 4Y or access hardware
+  without Joel's direction.
 
 ## Phase 4W status — secure web OTA validated; release wrap-up (historical)
 
