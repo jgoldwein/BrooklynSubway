@@ -6,6 +6,7 @@
 
 .vscode/
 local_reference/
+captures/
 __pycache__/
 *.pyc
 

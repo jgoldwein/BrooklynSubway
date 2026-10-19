@@ -36,6 +36,12 @@
     dt { color:#aebdca; } dd { margin:0; }
     .rgb { font-family:ui-monospace,monospace; }
     .status { padding:9px; margin:8px 0; border-left:3px solid #58b4e5; background:#111a22; }
+    .replay-panel { margin-bottom:12px; border:1px solid #546573; border-radius:6px; padding:10px; background:#15202a; }
+    .replay-controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .replay-summary { margin-top:8px; color:#d7e1e9; overflow-wrap:anywhere; }
+    .observation-table { max-height:240px; margin-top:6px; }
+    .target-active { color:#f0cf7b; font-weight:700; }
+    .collision { border-left-color:#f67019; }
     .notice { color:#f0cf7b; min-height:1.5em; }
     .subtle { color:#aebdca; font-size:.9rem; }
     .audit { margin-top:14px; }
@@ -55,6 +61,26 @@
 </header>
 <main>
   <section>
+    <div id="replayPanel" class="replay-panel" hidden>
+      <h2>Recorded GTFS-Realtime replay</h2>
+      <div class="replay-controls">
+        <button id="replayPrevious">Previous</button>
+        <button id="replayNext">Next</button>
+        <button id="replayPlay">Play</button>
+        <button id="replayPause">Pause</button>
+        <label>Speed
+          <select id="replaySpeed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="2">2×</option><option value="4">4×</option></select>
+        </label>
+      </div>
+      <div id="replaySummary" class="replay-summary"></div>
+      <h3>Known semantic observation targets</h3>
+      <div id="replayTargets" class="subtle"></div>
+      <h3>Unresolved supported-route observations</h3>
+      <div id="observationSummary" class="subtle"></div>
+      <div class="table-wrap observation-table"><table><thead><tr><th>Route</th><th>Current stop</th><th>Category / reason</th><th>Previous-stop evidence</th><th>Trip</th></tr></thead><tbody id="observationRows"></tbody></table></div>
+      <h3>Actual-renderer collisions</h3>
+      <div id="collisionDetails" class="subtle">No collision in the selected cycle.</div>
+    </div>
     <div class="toolbar">
       <label>Scenario
         <select id="scenario">
@@ -129,8 +155,19 @@
 "use strict";
 const channelStroke = ["#4dc9f6","#f67019","#f53794","#537bc4","#acc236","#166a8f","#00a950","#58595b"];
 let metadata, frame, savedInput, selectedIndex = 0;
+let replayData = null, replayIndex = 0, replayTimer = null, activeReplayFrame = null;
 const $ = id => document.getElementById(id);
 const svgNS = "http://www.w3.org/2000/svg";
+const observationTargets = {
+  LED299:"L Broadway Junction → Atlantic Av segment",
+  LED96:"G Lorimer St",
+  LED308:"D Manhattan Bridge", LED309:"B Manhattan Bridge",
+  LED310:"Q Manhattan Bridge", LED311:"N Manhattan Bridge",
+  LED291:"F York St → East Broadway",
+  LED304:"S Botanic Garden → Park Pl",
+  LED287:"A Hoyt–Schermerhorn → Nostrand",
+  LED285:"B Manhattan-to-Brooklyn segment", LED286:"D Manhattan-to-Brooklyn segment"
+};
 const routeBits = () => Object.fromEntries(metadata.routes.map(r => [r.name, r.maskBit]));
 const mapPixels = () => metadata.pixels.filter(p => p.semanticType !== "STATUS");
 function rgbHex(p) { return "#" + [p.r,p.g,p.b].map(v => Number(v).toString(16).padStart(2,"0")).join(""); }
@@ -176,6 +213,10 @@ function initControls() {
   $("scenario").addEventListener("change",()=>loadScenario($("scenario").value));
   $("saveFrame").addEventListener("click",saveFrame);
   $("loadFrame").addEventListener("change",loadFrameFile);
+  $("replayPrevious").addEventListener("click",()=>loadReplayFrame(replayIndex-1));
+  $("replayNext").addEventListener("click",()=>loadReplayFrame(replayIndex+1));
+  $("replayPlay").addEventListener("click",playReplay);
+  $("replayPause").addEventListener("click",pauseReplay);
 }
 function drawMetadata() {
   const points=metadata.pixels;
@@ -200,6 +241,7 @@ function drawMetadata() {
     const desc=p.semanticType==="STATION"?p.stationName:p.endpointAName+" -> "+p.endpointBName;
     [p.designator,p.globalIndex,`CH${p.channel}/${p.channelIndex}`,p.semanticType,p.route,desc,p.x,p.y]
       .forEach(v=>htmlText(tr,"td",String(v)));
+    if(observationTargets[p.designator]) tr.title="Observation target: "+observationTargets[p.designator];
     tr.addEventListener("click",()=>{inspect(p.globalIndex,true);selectPoint(p.globalIndex);});
     body.appendChild(tr);
   }
@@ -211,7 +253,7 @@ function selectPoint(index) {
 }
 function trainInfo(index) {
   const trains=(frame&&frame.trains)||[];
-  return trains.filter(t=>t.globalIndex===index).map(t=>`${t.trainId||"train"}${t.route?" ("+t.route+")":""}`).join(", ")||"not supplied";
+  return trains.filter(t=>t.globalIndex===index).map(t=>`${t.vehicleId&&t.vehicleId!=="Unavailable"?t.vehicleId:t.trainId&&t.trainId!=="Unavailable"?t.trainId:t.tripId||"train"}${t.route?" ("+t.route+")":""}`).join(", ")||"not supplied";
 }
 function inspect(index,select) {
   if(!metadata||!frame)return;
@@ -227,6 +269,14 @@ function inspect(index,select) {
       ["PCB X/Y",p.x+" / "+p.y],["Occupancy",frame.occupancy[index]||0],
       ["Train IDs/routes",trainInfo(index)],["Route visible",frame.routeVisible[index]?"yes":"no"],
       ["Filtered by route",frame.filteredByRoute[index]?"yes":"no"]);
+    for(const train of (frame.trains||[]).filter(t=>t.globalIndex===index)) {
+      pairs.push(["Trip ID",train.tripId||"Unavailable"],
+        ["Vehicle ID",train.vehicleId||"Unavailable"],
+        ["Current stop",train.currentStop||"Unavailable"],
+        ["Next stop",train.nextStop||"Unavailable"],
+        ["Previous stop",train.previousStop||"Unavailable"],
+        ["Previous-stop source",train.previousStopSource||"Unavailable"]);
+    }
   }
   pairs.push(["Rendered RGB",`${rgbHex(color)} (${color.r}, ${color.g}, ${color.b})`]);
   for(const [k,v] of pairs){htmlText(box,"dt",k);htmlText(box,"dd",String(v));}
@@ -254,6 +304,45 @@ function renderStatus() {
     box.appendChild(line);
   }
 }
+function renderReplayDetails() {
+  if(!activeReplayFrame) return;
+  const source=activeReplayFrame, feeds=source.feeds, stats=source.pipeline;
+  const missing=(feeds.missing||[]).join(", ")||"none";
+  $("replaySummary").textContent=`Cycle ${replayIndex+1}/${replayData.frames.length} · ${source.recordedUtc} · capture +${source.captureElapsedMs} ms / simulated ${source.simulatedElapsedMs} ms · ${feeds.completeness} (${feeds.available}/${feeds.expected}; missing ${missing}) · ${stats.vehiclesSeen} vehicles / ${stats.resolvedTrains} resolved · ${stats.feedDecodeFailures} parse failures · ${source.displayState}`;
+  const collisions=source.collisions||[];
+  const collisionBox=$("collisionDetails"); collisionBox.replaceChildren();
+  if(!collisions.length) htmlText(collisionBox,"div","No collision in the selected cycle.");
+  for(const item of collisions) {
+    const line=document.createElement("div");line.className="status collision";
+    const location=item.semanticType==="STATION"?item.stationName:item.endpointAName+" → "+item.endpointBName;
+    htmlText(line,"strong",`${item.designator} · ${item.route} · ${location} · ${item.trainCount} trains`);
+    htmlText(line,"div",`Actual firmware RGB ${rgbHex(item.rgb)} · `+
+      (item.trains.map(t=>t.vehicleId||t.tripId||"Unavailable").join(", ")||"IDs unavailable"));
+    const inspectButton=htmlText(line,"button","Inspect LED");
+    inspectButton.addEventListener("click",()=>{inspect(item.globalIndex,true);selectPoint(item.globalIndex);});
+    collisionBox.appendChild(line);
+  }
+  const targets=$("replayTargets");targets.replaceChildren();
+  for(const [designator,label] of Object.entries(observationTargets)) {
+    const pixel=metadata.pixels.find(p=>p.designator===designator);
+    const occupied=pixel&&source.occupancy[pixel.globalIndex]>0;
+    const entry=htmlText(targets,"span",`${designator}: ${label}${occupied?" — ACTIVE":" — not observed"} · `);
+    if(occupied)entry.className="target-active";
+  }
+  const observations=source.observations||[];
+  $("observationSummary").textContent=observations.length
+    ? `${observations.length} unresolved observations from supported routes in this cycle; these are diagnostic evidence, not remapping instructions.`
+    : "No unresolved supported-route observations in this cycle.";
+  const observationRows=$("observationRows");observationRows.replaceChildren();
+  for(const item of observations) {
+    const row=document.createElement("tr");
+    const previous=[item.previousStop||"Unavailable",item.previousStopSource||"Unavailable",
+      item.previousStopFailure&&item.previousStopFailure!=="None"?item.previousStopFailure:""].filter(Boolean).join(" · ");
+    for(const value of [item.route,item.currentStop,item.category+(item.reason&&item.reason!=="None"?" / "+item.reason:""),previous,item.tripId])
+      htmlText(row,"td",value||"Unavailable");
+    observationRows.appendChild(row);
+  }
+}
 function renderFrame(frameData) {
   frame=frameData;
   for(const node of document.querySelectorAll(".led")) {
@@ -266,6 +355,7 @@ function renderFrame(frameData) {
     row.style.opacity=matches(metadata.pixels[Number(row.dataset.index)],Number(row.dataset.index))?"1":".35";
   }
   renderStatus();
+  if(activeReplayFrame) renderReplayDetails();
   $("frameSummary").textContent=`${frame.displayState} · ${frame.renderedLeds} rendered map LEDs · ${frame.resolvedTrains} trains · ${frame.collisionLeds} collision LEDs · brightness ${frame.brightness} · route mask 0x${Number(frame.routeVisibilityMask).toString(16).padStart(5,"0")}`;
   inspect(selectedIndex,false);
   applyFilters();
@@ -289,7 +379,7 @@ function applyFilters() {
   }
 }
 function makeRequest(input) {
-  return {schemaVersion:1,frameTimestamp:new Date().toISOString(),
+  return {schemaVersion:1,frameTimestamp:activeReplayFrame?activeReplayFrame.recordedUtc:new Date().toISOString(),
     trainFrame:{occupancy:input.occupancy,trains:input.trains||[]},
     brightness:Number($("brightness").value),routeVisibilityMask:currentMask(),
     displayState:$("displayState").value,
@@ -304,6 +394,10 @@ async function renderFirmware() {
   try {
     const response=await fetch("/api/render",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(makeRequest(savedInput.trainFrame))});
     const result=await response.json(); if(!response.ok)throw new Error(result.error||"renderer failed");
+    if(activeReplayFrame) {
+      result.feeds=activeReplayFrame.feeds;result.pipeline=activeReplayFrame.pipeline;
+      result.collisions=(activeReplayFrame.collisions||[]).map(item=>({...item,rgb:result.pixels[item.globalIndex]}));
+    }
     renderFrame(result); setMessage("");
   } catch(e) { setMessage("Render error: "+e.message); }
 }
@@ -314,6 +408,7 @@ function findRoutes(count) {
   return chosen;
 }
 async function loadScenario(name) {
+  activeReplayFrame=null;pauseReplay();
   const occupancy=Array(306).fill(0),trains=[];
   const allMask=0x3ffff;
   $("brightness").value="64"; $("brightnessValue").textContent="64 / 255";
@@ -333,6 +428,32 @@ async function loadScenario(name) {
   }
   savedInput={trainFrame:{occupancy,trains}};
   await renderFirmware();
+}
+async function loadReplayFrame(index) {
+  if(!replayData||index<0||index>=replayData.frames.length)return;
+  pauseReplay();replayIndex=index;activeReplayFrame=replayData.frames[index];
+  const selected=activeReplayFrame;
+  $("brightness").value=String(selected.brightness);$("brightnessValue").textContent=selected.brightness+" / 255";
+  $("displayState").value=selected.displayState;$("wifiState").value=selected.wifiState;
+  $("systemHealthy").checked=selected.systemHealthy;$("provisioning").checked=selected.provisioning;
+  setMask(selected.routeVisibilityMask);
+  savedInput={trainFrame:{occupancy:selected.occupancy,trains:selected.trains||[]}};
+  await renderFirmware();
+}
+function pauseReplay() {
+  if(replayTimer!==null){clearTimeout(replayTimer);replayTimer=null;}
+}
+function playReplay() {
+  if(!replayData||replayIndex>=replayData.frames.length-1)return;
+  pauseReplay();
+  const advance=()=> {
+    if(replayIndex>=replayData.frames.length-1){pauseReplay();return;}
+    const current=replayData.frames[replayIndex],next=replayData.frames[replayIndex+1];
+    const speed=Number($("replaySpeed").value);
+    const wait=Math.max(50,Math.min(60000,(next.simulatedElapsedMs-current.simulatedElapsedMs)/speed));
+    replayTimer=setTimeout(async()=>{await loadReplayFrame(replayIndex+1);advance();},wait);
+  };
+  advance();
 }
 function saveFrame() {
   if(!frame)return;
@@ -365,9 +486,24 @@ function loadFrameFile(event) {
 async function start() {
   const response=await fetch("/metadata.json");metadata=await response.json();
   initControls();drawMetadata();
-  await loadScenario("off");
+  if(replayData) {
+    $("replayPanel").hidden=false;
+    await loadReplayFrame(0);
+    if(new URLSearchParams(location.search).has("autoplay")) playReplay();
+  } else {
+    await loadScenario("off");
+  }
 }
-start().catch(e=>setMessage("Startup error: "+e.message));
+async function loadReplayData() {
+  try {
+    const response=await fetch("/replay.json");
+    if(response.ok) {
+      replayData=await response.json();
+      if(replayData.schema!=="brooklyn-gtfsrt-replay"||replayData.schemaVersion!==1||!Array.isArray(replayData.frames))throw new Error("unsupported replay export");
+    }
+  } catch(e) { setMessage("Replay load error: "+e.message); }
+}
+loadReplayData().then(start).catch(e=>setMessage("Startup error: "+e.message));
 </script>
 </body>
 </html>
