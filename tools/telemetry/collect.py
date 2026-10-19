@@ -14,7 +14,10 @@ publishes. TLS verification is always on; port 1883 is never used.
 """
 
 import argparse
+import logging
 import os
+import signal
+import sqlite3
 import ssl
 import sys
 import time
@@ -35,6 +38,8 @@ SUBSCRIPTIONS = [
     ("brooklyn/v1/+/availability", 1),
 ]
 PRUNE_INTERVAL_S = 3600
+SUMMARY_INTERVAL_S = 300
+LOG = logging.getLogger("brooklyn.collector")
 
 
 def credentials_from_env(env=os.environ):
@@ -55,9 +60,13 @@ def run(args):
         raise SystemExit("paho-mqtt is required for live collection: pip install -r tools/telemetry/requirements.txt")
 
     user, password = credentials_from_env()
-    store = Store(args.db)
+    try:
+        store = Store(args.db)
+    except (sqlite3.Error, RuntimeError) as error:
+        raise SystemExit(f"cannot open database: {type(error).__name__}")
     collector = Collector(store, time.time, interval_s=args.interval, topic_aliases=args.aliases)
     last_prune = [0.0]
+    last_summary = [time.time()]
 
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv311)
     client.username_pw_set(user, password)
@@ -65,27 +74,44 @@ def run(args):
 
     def on_connect(client, userdata, flags, reason_code, properties=None):
         if reason_code != 0:
-            print(f"connect refused: {reason_code}", file=sys.stderr)
+            LOG.error("connect refused: %s", reason_code)
             return
         client.subscribe(SUBSCRIPTIONS)
-        print("connected; subscribed (read-only)")
+        LOG.info("connected to %s:%s; subscribed (read-only)", args.host, args.port)
+
+    def on_disconnect(client, userdata, flags, reason_code, properties=None):
+        LOG.warning("disconnected (%s); automatic reconnect with backoff", reason_code)
 
     def on_message(client, userdata, message):
         collector.handle(message.topic, message.payload, bool(message.retain))
-        if time.time() - last_prune[0] > PRUNE_INTERVAL_S:
-            collector.prune()
-            last_prune[0] = time.time()
+        now = time.time()
+        if now - last_prune[0] > PRUNE_INTERVAL_S:
+            last_prune[0] = now
+            try:
+                collector.prune()
+            except sqlite3.Error as error:
+                LOG.error("event pruning failed: %s", type(error).__name__)
+        if now - last_summary[0] > SUMMARY_INTERVAL_S:
+            last_summary[0] = now
+            LOG.info("ingest summary: %s", collector.summary())
 
     client.on_connect = on_connect
+    client.on_disconnect = on_disconnect
     client.on_message = on_message
     client.reconnect_delay_set(min_delay=1, max_delay=120)
-    client.connect(args.host, args.port, keepalive=60)
-    try:
-        client.loop_forever()
-    except KeyboardInterrupt:
-        pass
-    finally:
+
+    def stop(signum, frame):
         client.disconnect()
+
+    signal.signal(signal.SIGINT, stop)
+    if hasattr(signal, "SIGTERM"):
+        signal.signal(signal.SIGTERM, stop)
+    # connect_async + retry_first_connection keeps retrying if the broker is down at start.
+    client.connect_async(args.host, args.port, keepalive=60)
+    try:
+        client.loop_forever(retry_first_connection=True)
+    finally:
+        LOG.info("shutting down; final summary: %s", collector.summary())
         store.close()
 
 
@@ -101,6 +127,7 @@ def main(argv=None):
     args.aliases = dict(item.split("=", 1) for item in args.test_alias)
     if args.port == 1883:
         raise SystemExit("Refusing plaintext port 1883")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     run(args)
 
 

@@ -9,6 +9,7 @@ tuples from a live MQTT subscriber or from synthetic tests. It never publishes.
 
 import json
 import re
+import sqlite3
 from datetime import datetime
 
 from .schema_validate import load_schema, validate
@@ -65,13 +66,25 @@ class Collector:
         self.counters[key] = self.counters.get(key, 0) + 1
 
     def handle(self, topic, payload, retained=False):
-        """Process one message; return a short outcome string (never raises)."""
+        """Process one message; return a short outcome string (never raises).
+
+        Only the outcome category is counted or returned; payload contents are
+        never logged. A database or internal fault is contained so one bad
+        message cannot stop ingestion for other devices.
+        """
         try:
             outcome = self._handle(topic, payload, retained)
         except _Reject as reject:
             outcome = f"rejected:{reject}"
+        except sqlite3.Error:
+            outcome = "error:database"
+        except Exception:  # noqa: BLE001 - containment boundary
+            outcome = "error:internal"
         self._count(outcome)
         return outcome
+
+    def summary(self):
+        return dict(sorted(self.counters.items()))
 
     def _handle(self, topic, payload, retained):
         match = TOPIC_RE.match(topic if isinstance(topic, str) else "")
@@ -182,6 +195,13 @@ def derive_health(status):
     """Application-reported severity, independent of reachability."""
     if not status:
         return UNKNOWN
+    try:
+        return _derive_health(status)
+    except (KeyError, TypeError):
+        return UNKNOWN
+
+
+def _derive_health(status):
     fault = (
         status["configuration"]["load_valid"] is False
         or status["firmware"]["ota_state"] == "rollback"
@@ -210,7 +230,12 @@ def derive_health(status):
 
 def describe_device(row, now, interval_s=DEFAULT_INTERVAL_S):
     state, age = derive_state(row, now, interval_s)
-    status = json.loads(row["status_json"]) if row.get("status_json") else None
+    try:
+        status = json.loads(row["status_json"]) if row.get("status_json") else None
+        if status is not None and not isinstance(status, dict):
+            status = None
+    except ValueError:
+        status = None
     return {
         "device_id": row["device_id"],
         "device_name": row.get("device_name"),

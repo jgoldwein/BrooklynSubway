@@ -109,7 +109,10 @@ clarification only if the requested next action remains ambiguous.
   preserved, so no individual timings are claimed; see "Live validation record"
   in docs/PHASE4AA_COLLECTOR.md. Credentials were env-only and not persisted.
   Decision memos are in docs/PHASE4AA_DECISION_MEMOS.md.
-- **Commits (all pushed to `main`):** `c657dc8` design (tag
+- **Hardening:** schema v2 (atomic migrations, WAL, batched prune, read-only
+  dashboard store, Host-header check, error containment, logging, signal
+  handling). `tools/telemetry/test_hardening.py` adds 122 checks (scale to 100
+  devices, failure injection, privacy); telemetry total 247 checks, 0 failures.- **Commits (all pushed to `main`):** `c657dc8` design (tag
   `phase-4aa-telemetry-design`), `1730533` host collector, `4316896` cross-boot
   fix, `5c2bc36` live E2E harness + memos; later work is listed in the
   "Unattended hardening" entry below if present.

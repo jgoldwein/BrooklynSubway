@@ -9,10 +9,20 @@ Heartbeat history is deliberately not kept. No credentials are stored.
 
 import json
 import sqlite3
+from pathlib import Path
 
-SCHEMA_VERSION = 1
+
+def _split_statements(script):
+    return [part.strip() for part in script.split(";") if part.strip()]
+
+SCHEMA_VERSION = 2
+PRUNE_BATCH = 500
+BUSY_TIMEOUT_S = 10
 
 _MIGRATIONS = {
+    2: """
+    CREATE INDEX events_received ON events (received_at);
+    """,
     1: """
     CREATE TABLE devices_current (
         device_id TEXT PRIMARY KEY,
@@ -44,11 +54,21 @@ _MIGRATIONS = {
 
 
 class Store:
-    def __init__(self, path=":memory:"):
-        self.db = sqlite3.connect(str(path))
+    def __init__(self, path=":memory:", readonly=False):
+        self.readonly = readonly
+        if readonly:
+            uri = Path(str(path)).resolve().as_uri() + "?mode=ro"
+            self.db = sqlite3.connect(uri, uri=True, timeout=BUSY_TIMEOUT_S)
+        else:
+            self.db = sqlite3.connect(str(path), timeout=BUSY_TIMEOUT_S)
         self.db.row_factory = sqlite3.Row
         try:
-            self._migrate()
+            if not readonly:
+                self.db.execute("PRAGMA journal_mode = WAL")
+                self.db.execute("PRAGMA synchronous = NORMAL")
+                self._migrate()
+            elif self.schema_version() != SCHEMA_VERSION:
+                raise RuntimeError("database schema does not match this dashboard version")
         except Exception:
             self.db.close()
             raise
@@ -61,9 +81,16 @@ class Store:
         if version > SCHEMA_VERSION:
             raise RuntimeError(f"database schema {version} is newer than supported {SCHEMA_VERSION}")
         for target in range(version + 1, SCHEMA_VERSION + 1):
-            with self.db:
-                self.db.executescript(_MIGRATIONS[target])
+            # Apply each step atomically: DDL and the version bump commit together.
+            self.db.execute("BEGIN IMMEDIATE")
+            try:
+                for statement in _split_statements(_MIGRATIONS[target]):
+                    self.db.execute(statement)
                 self.db.execute(f"PRAGMA user_version = {target}")
+                self.db.execute("COMMIT")
+            except Exception:
+                self.db.execute("ROLLBACK")
+                raise
 
     def schema_version(self):
         return self.db.execute("PRAGMA user_version").fetchone()[0]
@@ -117,11 +144,19 @@ class Store:
         return cursor.rowcount == 1
 
     def prune_events(self, now, retention_days):
-        with self.db:
-            cursor = self.db.execute(
-                "DELETE FROM events WHERE received_at < ?", (now - retention_days * 86400,)
-            )
-        return cursor.rowcount
+        """Delete expired events in small batches so ingestion is never blocked long."""
+        cutoff = now - retention_days * 86400
+        total = 0
+        while True:
+            with self.db:
+                cursor = self.db.execute(
+                    "DELETE FROM events WHERE id IN "
+                    "(SELECT id FROM events WHERE received_at < ? LIMIT ?)",
+                    (cutoff, PRUNE_BATCH),
+                )
+            total += cursor.rowcount
+            if cursor.rowcount < PRUNE_BATCH:
+                return total
 
     def list_devices(self):
         rows = self.db.execute("SELECT * FROM devices_current ORDER BY device_id").fetchall()
