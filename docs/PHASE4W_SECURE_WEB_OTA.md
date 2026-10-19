@@ -25,8 +25,9 @@ hostile LAN client could attempt uploads. Therefore:
   Unsigned, tampered, wrong-target or wrong-key packages are always rejected.
 - A tampered upload fails verification; it cannot be installed.
 - HTTP still exposes the administrator password/session to on-path observers
-  (existing Phase 4V caveat). Use a trusted network or a Tailscale subnet route
-  (see `TAILSCALE_REMOTE_ACCESS_PLAN.md`; the last hop is still HTTP).
+  (existing Phase 4V caveat). Use only a trusted/private LAN. The former
+  Tailscale subnet-router plan is superseded and is not a current remote-access
+  recommendation; the local web hop remains HTTP.
 - Signed downgrades are allowed (the page and result warn). Anti-rollback
   version enforcement is not implemented.
 

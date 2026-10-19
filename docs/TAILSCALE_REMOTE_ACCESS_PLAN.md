@@ -1,9 +1,29 @@
-# Remote access plan: Tailscale subnet router (readiness audit)
+# Superseded: Tailscale subnet-router remote-access plan
 
-Status: read-only audit and plan. No network, Tailscale, firewall or firmware
-changes have been made.
+**Status: SUPERSEDED / OPTIONAL EXPERIMENT ONLY.**
 
-## Decision
+This document is retained as historical engineering context. Its deployment
+recommendations and validation steps are not current product requirements or
+approved work.
+
+The Brooklyn Map product no longer requires:
+
+- a native ESP32 Tailscale client;
+- a Tailscale subnet router;
+- Tailscale remote administration or VPN-based monitoring; or
+- inbound remote access of any kind.
+
+The preferred future architecture is **user-opt-in, device-initiated outbound
+operational telemetry plus separately authenticated and signed OTA/update
+mechanisms**. It requires no inbound port and has no Tailscale dependency.
+Telemetry is monitoring-only initially; it is not a remote administration
+channel. Signed OTA remains separately authenticated and is not initiated by
+remote telemetry commands.
+
+The notes below describe the earlier Tailscale readiness audit only. Do not
+follow its setup commands or deployment checklist as current product direction.
+
+## Historical decision snapshot (superseded)
 
 No Tailscale client runs on the ESP32. The map stays an ordinary LAN device and
 an existing always-on LAN host advertises the map's subnet into the tailnet.
@@ -21,7 +41,7 @@ The tunnel is encrypted; the final subnet-router-to-map hop is ordinary,
 unencrypted HTTP on the local LAN. This is not end-to-end HTTPS and must not be
 described as such.
 
-## Current bench observations (2026-10-18, temporary hotspot)
+## Historical bench observations (2026-10-18, temporary hotspot)
 
 - XIAO: `192.168.137.191`, mask `255.255.255.0`, gateway `192.168.137.1`
   (the Windows Mobile Hotspot), so subnet `192.168.137.0/24`. The address
@@ -37,7 +57,7 @@ described as such.
   enabled by Internet Connection Sharing). The hotspot subnet is therefore not
   routed into any tailnet.
 
-## Recommended deployment
+## Former deployment recommendation (not current guidance)
 
 - Prefer an existing always-on LAN host as the subnet router (for example an
   existing Raspberry Pi, Linux server, or a Home Assistant Tailscale node)
@@ -83,7 +103,7 @@ may be added:
 - The login and session cookie cross the local hop in clear HTTP, so only use
   this on a LAN you trust, and prefer limiting the route with ACLs.
 
-## Future validation plan (needs explicit authorization)
+## Archived validation checklist (not current guidance)
 
 1. Confirm the production-home subnet and give the map a DHCP reservation.
 2. Confirm which host will be the subnet router; check its IP forwarding.
