@@ -135,7 +135,7 @@ def test_ingest_basics():
     check(collector.handle(topic(DEV_A, "status"), enc(status())) == "duplicate_or_old", "duplicate status ignored")
     check(collector.handle(topic(DEV_A, "status"), enc(status(sequence=0))) == "duplicate_or_old", "older sequence ignored")
     check(collector.handle(topic(DEV_A, "status"), enc(status(sequence=2))) == "status", "newer sequence accepted")
-    check(collector.handle(topic(DEV_A, "status"), enc(status(boot=BOOT_2, sequence=0))) == "status", "reboot (new boot_id) accepted")
+    check(collector.handle(topic(DEV_A, "status"), enc(status(boot=BOOT_2, sequence=0, device_time_utc="2027-01-15T08:05:00Z"))) == "status", "reboot (new boot_id) accepted")
     check(collector.store.get_device(DEV_A)["boot_id"] == BOOT_2, "reboot updates boot_id")
     check(collector.handle(topic(DEV_A, "event"), enc(event())) == "event", "event accepted")
     check(collector.handle(topic(DEV_A, "event"), enc(event())) == "duplicate", "duplicate event ignored (QoS1 redelivery)")
@@ -259,6 +259,37 @@ def test_retained_and_restart():
             check(True, "newer schema refused")
 
 
+def test_cross_boot_ordering():
+    T = "2027-01-15T08:%02d:00Z"
+    with tempfile.TemporaryDirectory(prefix="phase4aa-boot-") as tmp:
+        path = Path(tmp) / "b.sqlite3"
+        collector, _ = new_collector(path)
+        h = collector.handle
+        t = topic(DEV_A, "status")
+        check(h(t, enc(status(boot=BOOT_1, sequence=1, device_time_utc=T % 0))) == "status", "first boot accepted")
+        check(h(t, enc(status(boot=BOOT_1, sequence=2, device_time_utc=T % 1))) == "status", "same-boot increasing sequence accepted")
+        check(h(t, enc(status(boot=BOOT_1, sequence=2, device_time_utc=T % 1))) == "duplicate_or_old", "same-boot duplicate rejected")
+        check(h(t, enc(status(boot=BOOT_1, sequence=1, device_time_utc=T % 1))) == "duplicate_or_old", "same-boot lower sequence rejected")
+        check(h(t, enc(status(boot=BOOT_2, sequence=0, device_time_utc=T % 10))) == "status", "newer boot accepted")
+        check(h(t, enc(status(boot=BOOT_1, sequence=3, device_time_utc=T % 2))) == "stale_boot", "delayed live older boot rejected")
+        check(h(t, enc(status(boot=BOOT_1, sequence=3, device_time_utc=T % 2)), retained=True) == "stale_retained", "retained older boot rejected")
+        check(collector.store.get_device(DEV_A)["boot_id"] == BOOT_2, "older boot did not regress state")
+        collector.store.close()
+
+        restarted, _ = new_collector(path)
+        check(restarted.handle(t, enc(status(boot=BOOT_1, sequence=9, device_time_utc=T % 3))) == "stale_boot", "restart preserves state to reject older boot")
+        later = "bbbbbbbb-0000-4000-8000-000000000000"
+        check(restarted.handle(t, enc(status(boot=later, sequence=0, device_time_utc=T % 20))) == "status", "valid later reboot accepted")
+        check(restarted.handle(t, enc(status(boot=BOOT_2, sequence=50, device_time_utc=T % 10))) == "stale_boot", "previous boot now stale")
+        eq = status(boot=BOOT_1, sequence=0, device_time_utc=T % 20)
+        check(restarted.handle(t, enc(eq)) == "stale_boot", "equal timestamp across boots is stale (existing state wins)")
+        unsynced = status(boot=BOOT_1, sequence=0, time_synced=False, device_time_utc=None)
+        check(restarted.handle(t, enc(unsynced)) == "status", "live unsynced boot change accepted (no chronology invented)")
+        check(restarted.handle(t, enc(status(boot=BOOT_2, sequence=0, device_time_utc=T % 30)), retained=True) == "stale_retained",
+              "retained boot change with unusable stored time rejected")
+        restarted.store.close()
+
+
 def test_retention_and_deletion():
     collector, clock = new_collector()
     collector.handle(topic(DEV_A, "event"), enc(event(sequence=1)))
@@ -354,7 +385,7 @@ def test_security():
 
 def main():
     for test in (test_validator, test_ingest_basics, test_rejections, test_state_derivation,
-                 test_health, test_retained_and_restart, test_retention_and_deletion,
+                 test_health, test_retained_and_restart, test_cross_boot_ordering, test_retention_and_deletion,
                  test_dashboard, test_security):
         test()
     print(f"Telemetry tests: {CHECKS} checks, {FAILURES} failures")

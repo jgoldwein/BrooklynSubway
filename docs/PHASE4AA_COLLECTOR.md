@@ -27,17 +27,22 @@ python tools/run_telemetry_tests.py
 
 - Same `boot_id`: sequence must strictly increase, otherwise duplicate/old and ignored (QoS 1 redelivery).
 - New `boot_id` on a live message: accepted (reboot).
-- Retained status with a different `boot_id` than stored: accepted only if both
-  `device_time_utc` values are present and the new one is later; otherwise
-  `stale_retained`. A live heartbeat will follow within one interval.
+- Retained status with a different `boot_id` than stored: see cross-boot rule below.
+  A live heartbeat will follow within one interval.
 - Retained status never refreshes the "last live heartbeat" time, so a
   collector restart cannot make a dead device look ONLINE.
 - Events: retained events are refused; duplicates dropped by the unique key.
 - Messages whose payload `device_id` differs from the topic are dropped.
 - Rejected payloads are counted by reason only; their contents are never stored or logged.
 - Events are pruned after 30 days; `delete_device` removes a device and its events.
-- Known limitation: a delayed live message from an older boot arriving after a
-  newer boot would be accepted (indistinguishable without a trusted clock).
+- Cross-boot ordering uses the validated device clock. A message with a
+  different `boot_id` (live or retained) is accepted only if its
+  `device_time_utc` is strictly later than the stored one; earlier is stale
+  (`stale_boot`/`stale_retained`) and cannot regress state. Equal timestamps are
+  ambiguous, so the existing state wins (the next heartbeat is later). If either
+  time is unusable (`time_synced=false`), no chronology is invented: a live
+  message is accepted (a real reboot may precede SNTP), a retained one is rejected.
+  Residual risk: a delayed old-boot message carrying no usable time is accepted.
 
 ## State model
 

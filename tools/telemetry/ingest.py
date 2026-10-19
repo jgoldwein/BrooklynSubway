@@ -108,18 +108,29 @@ class Collector:
             if current["boot_id"] == document["boot_id"]:
                 if document["sequence"] <= current["sequence"]:
                     return "duplicate_or_old"
-            elif retained:
-                stored = json.loads(current["status_json"])
-                try:
-                    newer = _parse_time(document["device_time_utc"]) > _parse_time(
-                        stored["device_time_utc"] or None
-                    )
-                except TypeError:
-                    newer = False
-                if not newer:
-                    return "stale_retained"
+            elif not self._boot_change_allowed(current, document, retained):
+                return "stale_retained" if retained else "stale_boot"
         self.store.save_status(device_id, document, now, live=not retained)
         return "status_retained" if retained else "status"
+
+    @staticmethod
+    def _boot_change_allowed(current, document, retained):
+        """Cross-boot ordering uses the validated device clock.
+
+        A different boot_id is accepted only if its device time is strictly later
+        than the stored one; equal or earlier is stale (equal is ambiguous, so the
+        existing state wins). If either time is unusable no chronology is invented:
+        a live message is accepted (a real reboot may precede SNTP), a retained
+        message is rejected.
+        """
+        try:
+            stored = _parse_time(json.loads(current["status_json"])["device_time_utc"])
+            incoming = _parse_time(document["device_time_utc"])
+        except (TypeError, ValueError, KeyError):
+            stored = incoming = None
+        if stored is None or incoming is None:
+            return not retained
+        return incoming > stored
 
     def _event(self, device_id, document, now, retained):
         if document.get("kind") != "event":
