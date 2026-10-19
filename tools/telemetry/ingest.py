@@ -50,10 +50,13 @@ def _parse_time(value):
 
 
 class Collector:
-    def __init__(self, store, clock, interval_s=DEFAULT_INTERVAL_S):
+    def __init__(self, store, clock, interval_s=DEFAULT_INTERVAL_S, topic_aliases=None):
         self.store = store
         self.clock = clock
         self.interval_s = interval_s
+        # Test-only: maps a non-UUID topic segment (a temporary broker test
+        # account namespace) to the UUID expected in the payload.
+        self.topic_aliases = dict(topic_aliases or {})
         self.telemetry_schema = load_schema("brooklyn-telemetry-v1.schema.json")
         self.event_schema = load_schema("brooklyn-event-v1.schema.json")
         self.counters = {}
@@ -72,9 +75,12 @@ class Collector:
 
     def _handle(self, topic, payload, retained):
         match = TOPIC_RE.match(topic if isinstance(topic, str) else "")
-        if not match or not DEVICE_ID_RE.match(match.group(1)):
+        if not match:
             raise _Reject("bad_topic")
-        device_id, kind = match.groups()
+        segment, kind = match.groups()
+        device_id = self.topic_aliases.get(segment, segment)
+        if not DEVICE_ID_RE.match(device_id):
+            raise _Reject("bad_topic")
         if not isinstance(payload, (bytes, bytearray)):
             raise _Reject("bad_payload_type")
         if len(payload) > MAX_PAYLOAD_BYTES:

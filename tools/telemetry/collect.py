@@ -56,7 +56,7 @@ def run(args):
 
     user, password = credentials_from_env()
     store = Store(args.db)
-    collector = Collector(store, time.time, interval_s=args.interval)
+    collector = Collector(store, time.time, interval_s=args.interval, topic_aliases=args.aliases)
     last_prune = [0.0]
 
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, protocol=mqtt.MQTTv311)
@@ -95,7 +95,10 @@ def main(argv=None):
     parser.add_argument("--host", default=DEFAULT_HOST)
     parser.add_argument("--port", type=int, default=DEFAULT_PORT)
     parser.add_argument("--interval", type=int, default=30, help="expected heartbeat seconds")
+    parser.add_argument("--test-alias", action="append", default=[], metavar="SEGMENT=UUID",
+                        help="test only: map a temporary account topic segment to a device UUID")
     args = parser.parse_args(argv)
+    args.aliases = dict(item.split("=", 1) for item in args.test_alias)
     if args.port == 1883:
         raise SystemExit("Refusing plaintext port 1883")
     run(args)
