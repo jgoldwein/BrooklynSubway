@@ -53,6 +53,29 @@ that; OFFLINE = availability `offline` or age > 3i+30 s; UNKNOWN = no usable
 evidence. Health (`HEALTHY`/`WARNING`/`FAULT`/`UNKNOWN`) is separate and
 application-reported only (not hardware attestation).
 
+## Live validation record
+
+Operator-confirmed `tools/telemetry/live_e2e.py` PASS (reported by Joel as
+"PASS / ALL GOOD"). The individual output lines were not preserved, so only
+what the harness checks and Joel's overall PASS support is recorded here; no
+timings or per-check output are claimed.
+
+The harness exercises the real path: verified-TLS connection to
+`mqtt.goldwein.net:8884` (MQTT 3.1.1), real Mosquitto, the real read-only
+`bkmap-collector` account, the temporary publish-only `brooklynmap` account as
+a synthetic device, the real collector ingest code, SQLite, and the loopback
+dashboard. Its checks cover: collector TLS connect and subscription to all
+three topic classes; retained availability; status, event and availability
+ingestion (QoS 1); duplicate status/event handling; same-boot lower-sequence
+rejection; cross-boot stale rejection; new-boot acceptance; malformed,
+unsupported-schema and oversized payload rejection while ingestion continues;
+dashboard fields and ONLINE/STALE/OFFLINE transitions; collector restart with
+retained replay not refreshing heartbeat age; client-side reconnect and
+resubscribe; Last Will -> OFFLINE and reconnect -> ONLINE; 30-day pruning logic;
+and cleanup of retained test topics. Credentials were supplied only through
+process environment variables and were not persisted. Not covered live:
+multiple devices (needs extra broker users; covered by synthetic tests).
+
 ## Deployment checklist (documentation only; nothing deployed)
 
 - Record the Mosquitto version on the broker (currently unrecorded).
