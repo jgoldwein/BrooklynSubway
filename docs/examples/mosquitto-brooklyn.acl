@@ -1,0 +1,16 @@
+# Illustrative Mosquitto ACL template only.
+# Generate a dedicated exact-topic block for each provisioned device.
+# Replace the example identity below with that device's 32 lowercase hex ID.
+
+user 0123456789abcdef0123456789abcdef
+topic write brooklyn/v1/0123456789abcdef0123456789abcdef/status
+topic write brooklyn/v1/0123456789abcdef0123456789abcdef/event
+topic write brooklyn/v1/0123456789abcdef0123456789abcdef/availability
+
+# The collector is read-only and may subscribe to telemetry topics only.
+user telemetry-collector
+topic read brooklyn/v1/+/status
+topic read brooklyn/v1/+/event
+topic read brooklyn/v1/+/availability
+
+# No other permissions are granted. Mosquitto denies unlisted operations.

@@ -1,0 +1,554 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:brooklyn:telemetry:heartbeat:v1",
+  "title": "Brooklyn Map telemetry heartbeat v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol",
+    "version",
+    "kind",
+    "device_id",
+    "device_name",
+    "boot_id",
+    "sequence",
+    "uptime_ms",
+    "time_synced",
+    "device_time_utc",
+    "firmware",
+    "system",
+    "network",
+    "mta",
+    "display",
+    "integrity",
+    "configuration",
+    "safety"
+  ],
+  "properties": {
+    "protocol": {
+      "const": "brooklyn-telemetry"
+    },
+    "version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "heartbeat"
+    },
+    "device_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "device_name": {
+      "type": "string",
+      "maxLength": 48
+    },
+    "boot_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "uptime_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "time_synced": {
+      "type": "boolean"
+    },
+    "device_time_utc": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "$ref": "#/$defs/utcTimestamp"
+        }
+      ]
+    },
+    "firmware": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "target",
+        "version",
+        "build_id",
+        "build_type",
+        "image_sha256",
+        "active_partition",
+        "ota_state"
+      ],
+      "properties": {
+        "target": {
+          "enum": [
+            "brooklyn-s3",
+            "xiao-s3"
+          ]
+        },
+        "version": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "build_id": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "build_type": {
+          "enum": [
+            "production",
+            "bench"
+          ]
+        },
+        "image_sha256": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "$ref": "#/$defs/sha256"
+            }
+          ]
+        },
+        "active_partition": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "string",
+              "maxLength": 16
+            }
+          ]
+        },
+        "ota_state": {
+          "enum": [
+            "idle",
+            "pending_verification",
+            "confirmed",
+            "rollback",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "system": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reset_reason",
+        "boot_count",
+        "heap_free_bytes",
+        "heap_min_free_bytes",
+        "psram_free_bytes",
+        "psram_min_free_bytes"
+      ],
+      "properties": {
+        "reset_reason": {
+          "enum": [
+            "power_on",
+            "software",
+            "panic",
+            "watchdog",
+            "brownout",
+            "deep_sleep",
+            "other",
+            "unknown"
+          ]
+        },
+        "boot_count": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            }
+          ]
+        },
+        "heap_free_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "heap_min_free_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "psram_free_bytes": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            }
+          ]
+        },
+        "psram_min_free_bytes": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            }
+          ]
+        }
+      }
+    },
+    "network": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "wifi_connected",
+        "wifi_rssi_dbm",
+        "dns_health"
+      ],
+      "properties": {
+        "wifi_connected": {
+          "type": "boolean"
+        },
+        "wifi_rssi_dbm": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": -127,
+              "maximum": 0
+            }
+          ]
+        },
+        "dns_health": {
+          "enum": [
+            "ok",
+            "failed",
+            "not_tested",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "mta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "feed_success_count",
+        "feed_attempted_count",
+        "feed_success_mask",
+        "poll_state",
+        "last_complete_age_s",
+        "vehicles_processed",
+        "vehicles_resolved",
+        "occupied_map_led_count",
+        "collision_count"
+      ],
+      "properties": {
+        "feed_success_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "feed_attempted_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 8
+        },
+        "feed_success_mask": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 255
+            }
+          ]
+        },
+        "poll_state": {
+          "enum": [
+            "idle",
+            "polling",
+            "complete",
+            "partial",
+            "no_feeds",
+            "unknown"
+          ]
+        },
+        "last_complete_age_s": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          ]
+        },
+        "vehicles_processed": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "vehicles_resolved": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 2147483647
+        },
+        "occupied_map_led_count": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 302
+        },
+        "collision_count": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 2147483647
+            }
+          ]
+        }
+      }
+    },
+    "display": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "state",
+        "logical_brightness",
+        "route_visibility_mask"
+      ],
+      "properties": {
+        "state": {
+          "enum": [
+            "WaitingForData",
+            "Fresh",
+            "DegradedHold",
+            "DegradedPartial",
+            "StaleHold",
+            "NoData"
+          ]
+        },
+        "logical_brightness": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 255
+        },
+        "route_visibility_mask": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 4294967295
+            }
+          ]
+        }
+      }
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "application_reported_status",
+        "semantic_check",
+        "led_mapping_check"
+      ],
+      "properties": {
+        "application_reported_status": {
+          "enum": [
+            "reported_ok",
+            "reported_degraded",
+            "unknown"
+          ]
+        },
+        "semantic_check": {
+          "enum": [
+            "pass",
+            "fail",
+            "unsupported",
+            "unknown"
+          ]
+        },
+        "led_mapping_check": {
+          "enum": [
+            "pass",
+            "fail",
+            "unsupported",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "load_valid"
+      ],
+      "properties": {
+        "schema_version": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 65535
+            }
+          ]
+        },
+        "load_valid": {
+          "type": [
+            "boolean",
+            "null"
+          ]
+        }
+      }
+    },
+    "safety": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "physical_output_build_allowed",
+        "controller_state",
+        "arming_state",
+        "current_limit_state"
+      ],
+      "properties": {
+        "physical_output_build_allowed": {
+          "type": "boolean"
+        },
+        "controller_state": {
+          "enum": [
+            "not_present",
+            "disabled",
+            "safe",
+            "armed",
+            "fault",
+            "unsupported",
+            "unknown"
+          ]
+        },
+        "arming_state": {
+          "enum": [
+            "not_present",
+            "disarmed",
+            "armed",
+            "fault",
+            "unsupported",
+            "unknown"
+          ]
+        },
+        "current_limit_state": {
+          "enum": [
+            "not_present",
+            "within_limit",
+            "over_limit",
+            "unsupported",
+            "unknown"
+          ]
+        }
+      }
+    },
+    "extensions": {
+      "type": "object",
+      "maxProperties": 8,
+      "propertyNames": {
+        "pattern": "^x_[a-z0-9_]{1,30}$"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/boundedExtensionValue"
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "time_synced": {
+            "const": false
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "device_time_utc": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "time_synced": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "device_time_utc": {
+            "$ref": "#/$defs/utcTimestamp"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "utcTimestamp": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$",
+      "maxLength": 32
+    },
+    "boundedExtensionValue": {
+      "oneOf": [
+        {
+          "type": "string",
+          "maxLength": 64
+        },
+        {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

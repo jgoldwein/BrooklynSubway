@@ -31,6 +31,69 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
+## Current checkpoint — Phase 4AA telemetry design
+
+- **Checkpoint date:** 2026-10-19. Started from clean `main` at
+  `13c1cf86ccaf462c56f6afc8e39dbc1c15817c7c`
+  (`docs: update remote telemetry roadmap`), pushed to `origin`.
+- **Status:** Phase 4AA MQTT architecture/protocol/privacy design is FROZEN and
+  committed as the engineering checkpoint tag `phase-4aa-telemetry-design`.
+  Firmware telemetry, automatic updates, and hardware validation have **not**
+  been implemented or started. Host-side collector/dashboard work follows (see
+  the Phase 4AA host-side section when present).
+- **Design:** [docs/PHASE4AA_REMOTE_TELEMETRY_DESIGN.md](docs/PHASE4AA_REMOTE_TELEMETRY_DESIGN.md)
+  now supersedes the earlier HTTPS-POST proposal with MQTT over verified TLS
+  to `mqtt.goldwein.net:8884`, unique per-device credentials, strict
+  publish-only ACLs, retained status/availability, Last Will, bounded events,
+  collector/SQLite/dashboard architecture, resource estimates, and staged
+  implementation plan. No payload P-256 signatures are recommended for v1.
+  Topic/infrastructure details are in
+  [docs/PHASE4AA_MQTT_TOPIC_SCHEMA.md](docs/PHASE4AA_MQTT_TOPIC_SCHEMA.md);
+  illustrative broker files are in `docs/examples/`; payload schemas are in
+  `docs/schemas/`.
+- **Infrastructure:** `mqtt.goldwein.net:8884` verified from Windows on
+  2026-10-19: DNS, TCP, TLS 1.3 with hostname/chain verification (Let's
+  Encrypt, valid to 2027-01-08), MQTT 3.1.1, anonymous CONNECT rejected,
+  authenticated CONNECT, QoS 1, retained messages, retained Last Will, and
+  publish-only device ACL isolation (classic `acl_file`, temporary
+  `brooklynmap` test account; other-namespace/unrelated publishes not
+  delivered, device receives nothing; SUBACK is granted but delivery is
+  blocked). The read-only `bkmap-collector` ACL is also verified (live and
+  retained delivery works; nothing outside the three topic classes is delivered
+  even for `#`; its publishes are not delivered). Broker classification:
+  **VERIFIED READY FOR PHASE 4AA TELEMETRY**. Still pending: Mosquitto version
+  and per-device production provisioning. Port 1883 was never used and must never
+  be a firmware fallback. Before valid SNTP, no MQTT/TLS connection is
+  attempted and telemetry remains pending. Temporary paho venv/test scripts
+  live outside the repo in `AppData\Local\Temp`; no credentials were stored.
+- **Open approvals:** review credential enrollment over the current local HTTP
+  UI versus a separately secured issuance service; approve Mosquitto
+  configuration/auth/ACL approach; choose the MQTT library and validate
+  persistent TLS RAM/scheduling; approve cadence, retention, consent wording,
+  and optional display-preference telemetry. No live broker/Apache/DNS/
+  firewall changes were made.
+- **Product status:** [ROADMAP.md](ROADMAP.md) records Phase 4AA as
+  DESIGN COMPLETE / IMPLEMENTATION NOT STARTED. Monitoring remains opt-in,
+  disabled by default, outbound-only, and monitoring-only. Tailscale is not
+  required; automatic updates remain separate future work.
+- **Validation and scope:** Proposed JSON schemas parse; MQTT design/schema
+  and Mosquitto examples still require review and version-specific validation.
+  No live broker diagnostic or configuration check was run; no local JSON
+  Schema meta-validator is installed. Firmware tests/builds were not run
+  because no firmware changed. No files under `src/`, `include/`, embedded
+  libraries, firmware configuration, LAN UI, NVS implementation,
+  `network_service`, or OTA code were changed. No dependencies were added.
+- **Hardware/safety:** no firmware was uploaded; XIAO and production PCB remain
+  untouched. No physical LED output was enabled.
+- **Git policy:** the design is committed with tag `phase-4aa-telemetry-design`
+  (engineering checkpoint only; no semantic firmware release tag). Later
+  host-side commits must not move that tag. Phase 4Z
+  `dea08f2ecfadb4fe06f66051b09f7391ecb4d459` and
+  `phase-4z-unknown-stop-audit` remain unchanged.
+- **Next action:** review the MQTT protocol and schemas; separately verify
+  broker infrastructure under authorization; resolve enrollment, library,
+  resource, and retention decisions before authorizing any implementation.
+
 ## Current checkpoint — Phase 4Z UnknownStop evidence audit
 
 - **Checkpoint date:** 2026-10-19. Work started from clean `main` at
@@ -109,10 +172,11 @@ clarification only if the requested next action remains ambiguous.
   derived audit outputs, and this checkpoint. The later changes are
   documentation-only; the live capture and static GTFS remain ignored and
   untracked.
-- **Next action:** Phase 4Z is complete. Phase 4AA is the next planned phase,
-  but requires its own explicit implementation authorization and design review.
-  The unresolved D-route discrepancy remains a separate evidence-review item,
-  not an approved mapping change.
+- **At the time of this Phase 4Z checkpoint:** the audit was complete and Phase
+  4AA remained a future planned phase requiring separate authorization. The
+  current Phase 4AA design status and approval blockers are recorded in the
+  checkpoint above. The unresolved D-route discrepancy remains a separate
+  evidence-review item, not an approved mapping change.
 
 ## Phase 4Y checkpoint — GTFS-RT capture and replay
 

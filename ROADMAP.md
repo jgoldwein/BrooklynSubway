@@ -7,31 +7,39 @@ review against the manufactured board and its safety constraints.
 
 ## Current Product Direction — Phase 4AA
 
-The next planned product phase is **Phase 4AA — Opt-In Remote Operational
-Telemetry**. This section supersedes the legacy numbered phase sequence below
-where it conflicts with the current phase status. It records direction only;
-it does not authorize implementation.
+**Phase 4AA — Opt-In Remote Operational Telemetry** is in design-complete
+review; implementation has not started. The proposed protocol, privacy
+disclosure, schemas, operational policies, and unresolved owner decisions are
+recorded in [docs/PHASE4AA_REMOTE_TELEMETRY_DESIGN.md](docs/PHASE4AA_REMOTE_TELEMETRY_DESIGN.md)
+and `docs/schemas/`; MQTT deployment guidance is in
+[docs/PHASE4AA_MQTT_TOPIC_SCHEMA.md](docs/PHASE4AA_MQTT_TOPIC_SCHEMA.md).
+This section supersedes the legacy numbered phase sequence below where it
+conflicts with current phase status. It records direction only; it does not
+authorize implementation.
 
 An owner may explicitly enable a Brooklyn Map to send operational health and
 status data outward to a monitoring service. Telemetry is **OFF by default**,
 can be disabled by the user at any time, and is not remote administration.
 The initial feature is monitoring-only:
 
-- Device-initiated outbound connections only, using encrypted transport.
+- Device-initiated outbound MQTT over TLS only to the planned Mosquitto broker
+  `mqtt.goldwein.net:8884`; infrastructure status is unverified.
 - No inbound port, port forwarding, VPN, Tailscale, or remote-access dependency;
   ordinary NAT/home-router connections should work.
+- Device is publish-only, with per-device broker credentials and topic ACLs;
+  no subscription or command channel.
 - No remote reboot, configuration mutation, LED commands, or remote OTA command
   channel. OTA remains separately authenticated and signed.
-- Regular heartbeat, likely every 30–60 seconds, plus immediate reports for
-  significant transitions.
-- Exponential/backoff retry, bounded memory and storage, no unlimited offline
-  event queue, and latest-state-first recovery after an outage.
+- Retained current status and availability, non-retained significant events;
+  heartbeat choices 15/30/60/300 seconds, recommended default 30 seconds.
+- Exponential/backoff reconnect, bounded memory and storage, no unlimited
+  offline event queue, and latest-state-first recovery after an outage.
 
 The initial telemetry schema should evaluate safe operational fields such as:
 user-configurable device name; stable non-secret device identifier; firmware
 version and Git/build identifier; active OTA partition/state; firmware
 integrity/health; uptime, boot count, and reset reason; free/minimum internal
-heap and PSRAM; Wi-Fi connected state, RSSI, and appropriate IP/network state;
+heap and PSRAM; Wi-Fi connected state and RSSI without SSID/IP disclosure;
 DNS and SNTP health; successful MTA feeds out of eight and last-success time;
 display state (`Fresh`, `DegradedHold`, `DegradedPartial`, `StaleHold`, or
 `NoData`); vehicles processed/resolved and occupied LED count; configuration
@@ -49,12 +57,12 @@ pending/validated/rollback, unexpected restart, detectable brownout/watchdog,
 low-memory threshold, configuration corruption/failure, and future production
 power/safety faults.
 
-Phase 4AA should evaluate unique per-device cryptographic identity: generate
-or provision a unique identity, keep private identity material on-device, make
-the corresponding public identity known to the monitoring service, protect
-transport with TLS, and consider device-authenticated telemetry. This is
-architecture exploration only: do not implement PKI, burn eFuses, enable Secure
-Boot, or provision production credentials as part of the roadmap checkpoint.
+The design recommends a stable per-device identity, unique Mosquitto
+credentials, verified broker TLS, and strict publish-only ACLs. Trustworthy
+SNTP time is required before connecting; do not weaken certificate
+verification. The referenced broker is unverified. Do not configure the ESP32
+to fall back to plaintext port 1883. See the design and topic documents for
+the mandatory preflight and remaining owner decisions.
 
 Automatic update checking is a separate future feature that complements
 telemetry. A device may check a trusted source such as GitHub Releases, detect

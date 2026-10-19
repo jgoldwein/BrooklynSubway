@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:brooklyn:telemetry:availability:v1",
+  "title": "Brooklyn Map MQTT availability payload v1",
+  "description": "The MQTT payload is a JSON string literal, not an object.",
+  "type": "string",
+  "enum": [
+    "online",
+    "offline"
+  ]
+}

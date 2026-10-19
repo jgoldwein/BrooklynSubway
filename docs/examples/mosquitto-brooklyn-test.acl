@@ -1,0 +1,36 @@
+# Illustrative ACL for the TEMPORARY Phase 4AA ACL-isolation test only.
+# Applies to classic password_file + acl_file brokers. Confirm the broker's
+# actual mechanism first; Dynamic Security needs an equivalent role instead.
+#
+# WARNING: once acl_file is enabled, every authenticated user without a block
+# here is denied everything. Add explicit blocks for existing accounts (for
+# example Joel's administrative account) BEFORE reloading, or they lose access.
+# Do not put general "topic" lines above the first "user" line: they apply to
+# all users, including anonymous ones if anonymous access were ever enabled.
+
+# Temporary test device account "brooklynmap" (not the production naming scheme).
+# Publish-only: no read and no readwrite lines.
+user brooklynmap
+topic write brooklyn/v1/brooklynmap/status
+topic write brooklyn/v1/brooklynmap/event
+topic write brooklyn/v1/brooklynmap/availability
+
+# Existing administrative/observer account must be listed explicitly, otherwise
+# it is denied everything once acl_file is enabled.
+user goldwein
+topic readwrite #
+
+# Read-only collector. No write permission, so it cannot impersonate devices.
+user bkmap-collector
+topic read brooklyn/v1/+/status
+topic read brooklyn/v1/+/event
+topic read brooklyn/v1/+/availability
+
+# Production devices (32 lowercase hex username == topic segment) may later use
+# a pattern rule instead of one block per device, only after the provisioning
+# tool enforces ^[0-9a-f]{32}$ and use_username_as_clientid is verified:
+#   pattern write brooklyn/v1/%u/status
+#   pattern write brooklyn/v1/%u/event
+#   pattern write brooklyn/v1/%u/availability
+# A pattern rule applies to EVERY authenticated user, including the collector
+# and administrators, so keep it out of the test file.
