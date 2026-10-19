@@ -55,6 +55,8 @@ if physical credential theft becomes in scope.
 
 ## 3. XIAO ESP32-S3 `esp-mqtt` bench experiment (not implemented, not flashed)
 
+> Superseded in detail by [PHASE4AA_BENCH_PLAN.md](PHASE4AA_BENCH_PLAN.md) (stages 0-10). Provisioning/device-ID refinements: [PHASE4AA_PROVISIONING_AND_IDENTITY.md](PHASE4AA_PROVISIONING_AND_IDENTITY.md).
+
 Target: XIAO ESP32-S3 bench environment only (never inferred as production
 wiring). No physical LED output (`LED_ENABLE` stays LOW / output build off). No `setInsecure()`.
 Separate throwaway PlatformIO env/branch, not `platformio.ini` production.

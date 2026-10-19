@@ -116,9 +116,24 @@ clarification only if the requested next action remains ambiguous.
   `phase-4aa-telemetry-design`), `1730533` host collector, `4316896` cross-boot
   fix, `5c2bc36` live E2E harness + memos; later work is listed in the
   "Unattended hardening" entry below if present.
-- **Next action:** review the MQTT protocol and schemas; separately verify
-  broker infrastructure under authorization; resolve enrollment, library,
-  resource, and retention decisions before authorizing any implementation.
+- **Completion of safe host/design work:** telemetry tests now 297 checks
+  (125 + 122 hardening + 50 deploy), 0 failures; all 20 runners pass.
+  Deployment templates (`tools/telemetry/deploy/`, `62367f5`) and
+  [docs/PHASE4AA_DEPLOYMENT.md](docs/PHASE4AA_DEPLOYMENT.md) cover systemd,
+  Apache, env file, backup/restore. Read-only firmware review:
+  [docs/PHASE4AA_FIRMWARE_INTEGRATION.md](docs/PHASE4AA_FIRMWARE_INTEGRATION.md)
+  (separate `TelemetryService`; esp-mqtt present in the toolchain, no
+  `platformio.ini` change expected, compile unverified). Bench plan:
+  [docs/PHASE4AA_BENCH_PLAN.md](docs/PHASE4AA_BENCH_PLAN.md). Provisioning and
+  device-ID recommendation: [docs/PHASE4AA_PROVISIONING_AND_IDENTITY.md](docs/PHASE4AA_PROVISIONING_AND_IDENTITY.md).
+  Firmware, `platformio.ini`, XIAO, PCB, broker, ACLs, Apache and credentials
+  were NOT touched.
+- **Decisions needed from Joel:** `bkmap-<12hex>` vs frozen UUID device ID
+  (schema amendment); Mosquitto version and `%u` pattern support; whether
+  read-only dashboard WAL access works on the real host; dashboard auth;
+  provisioning approach.
+- **Next action:** "PHASE 4AA XIAO ESP-MQTT RESOURCE GATE" per the bench plan,
+  with Joel present. No firmware implementation before its result.
 
 ## Current checkpoint — Phase 4Z UnknownStop evidence audit
 
