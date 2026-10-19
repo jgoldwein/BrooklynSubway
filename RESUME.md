@@ -100,6 +100,14 @@ clarification only if the requested next action remains ambiguous.
   have not been run against the real broker (no credentials requested).
   Firmware, `platformio.ini`, broker, Apache/DNS/firewall, XIAO and production
   PCB were not touched. Secrets: none written to Git or disk.
+- **Cross-boot fix (`4316896`):** a different `boot_id` is accepted only with a
+  strictly later `device_time_utc`; see docs/PHASE4AA_COLLECTOR.md. Telemetry
+  tests now 125 checks, 0 failures; all 20 existing runners pass.
+- **Live validation:** NOT yet run: the agent environment has no MQTT credentials
+  (none were requested). Operator step: set `BROOKLYN_MQTT_COLLECTOR_*` and
+  `BROOKLYN_MQTT_DEVICE_*` in a local PowerShell using Read-Host, then run
+  `tools\telemetry\live_e2e.py` with the temp paho venv. Decision memos (dashboard
+  auth, provisioning, esp-mqtt bench plan) are in docs/PHASE4AA_DECISION_MEMOS.md.
 - **Next action:** review the MQTT protocol and schemas; separately verify
   broker infrastructure under authorization; resolve enrollment, library,
   resource, and retention decisions before authorizing any implementation.

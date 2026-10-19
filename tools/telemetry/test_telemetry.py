@@ -290,6 +290,15 @@ def test_cross_boot_ordering():
         restarted.store.close()
 
 
+def test_alias():
+    collector, _ = new_collector()
+    collector.topic_aliases = {"brooklynmap": DEV_A}
+    check(collector.handle("brooklyn/v1/brooklynmap/status", enc(status())) == "status", "test alias maps segment to UUID")
+    check(collector.store.get_device(DEV_A) is not None, "alias stores under UUID")
+    check(collector.handle("brooklyn/v1/brooklynmap/status", enc(status(device=DEV_B))) == "rejected:device_id_mismatch", "alias still enforces payload id")
+    check(collector.handle("brooklyn/v1/other/status", enc(status())) == "rejected:bad_topic", "unaliased non-UUID still rejected")
+
+
 def test_retention_and_deletion():
     collector, clock = new_collector()
     collector.handle(topic(DEV_A, "event"), enc(event(sequence=1)))
@@ -385,7 +394,7 @@ def test_security():
 
 def main():
     for test in (test_validator, test_ingest_basics, test_rejections, test_state_derivation,
-                 test_health, test_retained_and_restart, test_cross_boot_ordering, test_retention_and_deletion,
+                 test_health, test_retained_and_restart, test_cross_boot_ordering, test_alias, test_retention_and_deletion,
                  test_dashboard, test_security):
         test()
     print(f"Telemetry tests: {CHECKS} checks, {FAILURES} failures")
