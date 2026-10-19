@@ -37,6 +37,10 @@ clarification only if the requested next action remains ambiguous.
   `cd4ee44b53eeb778bdbefeaa458d276ad9f83385`
   (`docs: record Phase 4X simulator checkpoint`). The Phase 4X implementation
   commit/tag remain unchanged.
+- **Implementation commit/tag:** `b6a61dedc925044b6e62b72047e64b80552bd2bf`
+  (`Phase 4Y: add GTFS record and replay tools`) is pushed to `origin/main`
+  and tagged `phase-4y-gtfs-record-replay`. The engineering tag points to this
+  implementation commit; no firmware release tag was created.
 - **Implementation:** host-only tools record raw response bodies from the
   eight firmware-defined MTA GTFS-RT feeds, verify manifest/payload hashes,
   and replay those bytes through the compiled firmware decoder, pipeline,
@@ -54,6 +58,9 @@ clarification only if the requested next action remains ambiguous.
   observations for H19N. These categories are diagnostic evidence only; no
   route, station, or segment assignment was changed. The capture and replay
   remain Git-ignored third-party data and must not be committed or published.
+  The capture directory was confirmed ignored and untracked at checkpoint;
+  only the record/replay framework and derived counts in
+  `docs/PHASE4Y_UNKNOWN_STOP_COUNTS.csv` are in Git.
   Two independent replay runs produced identical canonical output
   (SHA-256 `b39513529049e353c67d8b6fc9d758231afbc6c0de11a34d2c1f09cc7e75c649`).
   Non-payload aggregate counts for every unknown route/stop pair are retained
@@ -75,19 +82,22 @@ clarification only if the requested next action remains ambiguous.
   `brooklyn-s3-network` 93,308 B / 1,116,665 B;
   `xiao-s3-network` 92,420 B / 1,100,089 B.
   `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0` remains configured.
-- **Changed files (local, uncommitted):** `.gitignore`, this checkpoint,
-  `docs/PHASE4Y_GTFS_RECORD_REPLAY.md`, `tools/replay/` (host bridge,
+- **Committed files:** `.gitignore`, this checkpoint,
+  `docs/PHASE4Y_GTFS_RECORD_REPLAY.md`,
+  `docs/PHASE4Y_UNKNOWN_STOP_COUNTS.csv`, `tools/replay/` (host bridge,
   recorder, replay CLI, validation and tests), `tools/run_replay_tests.py`,
-  and `tools/virtual_map/index.html` / `run.py`. No firmware source, PlatformIO
-  configuration, semantic assignments, physical-output code, OTA code, or
-  authentication code changed.
+  and `tools/virtual_map/index.html` / `run.py`. No firmware source,
+  PlatformIO configuration, semantic assignments, physical-output code,
+  OTA code, or authentication code changed.
 - **Hardware/release state:** no firmware image was uploaded; no XIAO or
-  production PCB was accessed. Physical LED output remains disabled. No
-  Phase 4Y commit, push, or tag was created, and no later phase was started.
-- **Current Git state:** branch `main`, baseline commit
-  `cd4ee44b53eeb778bdbefeaa458d276ad9f83385`, tracking `origin/main`.
-  Preserve the uncommitted Phase 4Y changes. Do not commit, push, tag, or
-  publish the local MTA capture without Joel's explicit direction.
+  production PCB was accessed; the production PCB remains untouched.
+  `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0` remains configured. No firmware
+  release or subsequent phase was started.
+- **Current Git state at implementation checkpoint:** branch `main` at
+  `b6a61dedc925044b6e62b72047e64b80552bd2bf`, synchronized with `origin/main`.
+  The `phase-4y-gtfs-record-replay` tag is pushed and remains on the
+  implementation commit. The local MTA capture must remain ignored and must
+  not be committed or published.
 - **Resume command:** from the repository root, open the complete capture in
   the simulator initially paused with
   `python tools\replay\replay.py captures\20261019T062411Z-464a7da9 --all --serve --step`.
