@@ -90,6 +90,16 @@ clarification only if the requested next action remains ambiguous.
   host-side commits must not move that tag. Phase 4Z
   `dea08f2ecfadb4fe06f66051b09f7391ecb4d459` and
   `phase-4z-unknown-stop-audit` remain unchanged.
+- **Host-side implementation (added after the design checkpoint):** see
+  [docs/PHASE4AA_COLLECTOR.md](docs/PHASE4AA_COLLECTOR.md). `tools/telemetry/`
+  holds a stdlib schema validator, SQLite store, ingest/state logic, optional
+  paho-mqtt live subscriber (`collect.py`, never publishes, env-only credentials)
+  and a loopback-only read-only dashboard. Tests: `python tools/run_telemetry_tests.py`
+  (107 checks, 0 failures; synthetic, no broker or credentials needed). All 20
+  existing host runners were re-run and pass. The live subscriber and dashboard
+  have not been run against the real broker (no credentials requested).
+  Firmware, `platformio.ini`, broker, Apache/DNS/firewall, XIAO and production
+  PCB were not touched. Secrets: none written to Git or disk.
 - **Next action:** review the MQTT protocol and schemas; separately verify
   broker infrastructure under authorization; resolve enrollment, library,
   resource, and retention decisions before authorizing any implementation.
