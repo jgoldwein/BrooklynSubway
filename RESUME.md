@@ -103,11 +103,16 @@ clarification only if the requested next action remains ambiguous.
 - **Cross-boot fix (`4316896`):** a different `boot_id` is accepted only with a
   strictly later `device_time_utc`; see docs/PHASE4AA_COLLECTOR.md. Telemetry
   tests now 125 checks, 0 failures; all 20 existing runners pass.
-- **Live validation:** NOT yet run: the agent environment has no MQTT credentials
-  (none were requested). Operator step: set `BROOKLYN_MQTT_COLLECTOR_*` and
-  `BROOKLYN_MQTT_DEVICE_*` in a local PowerShell using Read-Host, then run
-  `tools\telemetry\live_e2e.py` with the temp paho venv. Decision memos (dashboard
-  auth, provisioning, esp-mqtt bench plan) are in docs/PHASE4AA_DECISION_MEMOS.md.
+- **Live validation:** operator-confirmed `live_e2e.py` PASS ("PASS / ALL GOOD")
+  against the real broker (`mqtt.goldwein.net:8884`, verified TLS, MQTT 3.1.1,
+  `bkmap-collector` + synthetic `brooklynmap` device). Per-check output was not
+  preserved, so no individual timings are claimed; see "Live validation record"
+  in docs/PHASE4AA_COLLECTOR.md. Credentials were env-only and not persisted.
+  Decision memos are in docs/PHASE4AA_DECISION_MEMOS.md.
+- **Commits (all pushed to `main`):** `c657dc8` design (tag
+  `phase-4aa-telemetry-design`), `1730533` host collector, `4316896` cross-boot
+  fix, `5c2bc36` live E2E harness + memos; later work is listed in the
+  "Unattended hardening" entry below if present.
 - **Next action:** review the MQTT protocol and schemas; separately verify
   broker infrastructure under authorization; resolve enrollment, library,
   resource, and retention decisions before authorizing any implementation.
