@@ -1,0 +1,468 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:brooklyn:telemetry:event:v1",
+  "title": "Brooklyn Map telemetry event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol",
+    "version",
+    "kind",
+    "device_id",
+    "boot_id",
+    "sequence",
+    "uptime_ms",
+    "time_synced",
+    "device_time_utc",
+    "event_type",
+    "severity",
+    "attributes"
+  ],
+  "properties": {
+    "protocol": {
+      "const": "brooklyn-telemetry"
+    },
+    "version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "event"
+    },
+    "device_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "boot_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "uptime_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "time_synced": {
+      "type": "boolean"
+    },
+    "device_time_utc": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$",
+          "maxLength": 32
+        }
+      ]
+    },
+    "event_type": {
+      "enum": [
+        "boot",
+        "monitoring_enabled",
+        "enrollment_completed",
+        "wifi_reconnected",
+        "display_degraded",
+        "display_recovered",
+        "display_stale",
+        "display_no_data",
+        "ota_pending_verification",
+        "ota_confirmed",
+        "ota_rollback",
+        "unexpected_reset",
+        "brownout",
+        "watchdog_reset",
+        "configuration_invalid",
+        "heap_critical",
+        "physical_safety_fault"
+      ]
+    },
+    "severity": {
+      "enum": [
+        "info",
+        "warning",
+        "critical"
+      ]
+    },
+    "attributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "previous_display_state": {
+          "enum": [
+            "WaitingForData",
+            "Fresh",
+            "DegradedHold",
+            "DegradedPartial",
+            "StaleHold",
+            "NoData"
+          ]
+        },
+        "current_display_state": {
+          "enum": [
+            "WaitingForData",
+            "Fresh",
+            "DegradedHold",
+            "DegradedPartial",
+            "StaleHold",
+            "NoData"
+          ]
+        },
+        "reset_reason": {
+          "enum": [
+            "power_on",
+            "software",
+            "panic",
+            "watchdog",
+            "brownout",
+            "deep_sleep",
+            "other",
+            "unknown"
+          ]
+        },
+        "coalesced_transition_count": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 255
+        },
+        "heap_free_bytes": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 4294967295
+        },
+        "ota_state": {
+          "enum": [
+            "pending_verification",
+            "confirmed",
+            "rollback",
+            "unknown"
+          ]
+        },
+        "configuration_valid": {
+          "type": "boolean"
+        },
+        "safety_state": {
+          "enum": [
+            "fault",
+            "unsupported",
+            "unknown"
+          ]
+        },
+        "extensions": {
+          "type": "object",
+          "maxProperties": 4,
+          "propertyNames": {
+            "pattern": "^x_[a-z0-9_]{1,30}$"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/boundedExtensionValue"
+          }
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "enum": [
+              "boot",
+              "unexpected_reset"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attributes": {
+            "required": [
+              "reset_reason"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "brownout"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attributes": {
+            "required": [
+              "reset_reason"
+            ],
+            "properties": {
+              "reset_reason": {
+                "const": "brownout"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "watchdog_reset"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attributes": {
+            "required": [
+              "reset_reason"
+            ],
+            "properties": {
+              "reset_reason": {
+                "const": "watchdog"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "enum": [
+              "display_degraded",
+              "display_recovered"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attributes": {
+            "required": [
+              "previous_display_state",
+              "current_display_state"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "display_recovered"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attributes": {
+            "properties": {
+              "current_display_state": {
+                "const": "Fresh"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "display_stale"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attributes": {
+            "required": [
+              "current_display_state"
+            ],
+            "properties": {
+              "current_display_state": {
+                "const": "StaleHold"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "display_no_data"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attributes": {
+            "required": [
+              "current_display_state"
+            ],
+            "properties": {
+              "current_display_state": {
+                "const": "NoData"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "enum": [
+              "ota_pending_verification",
+              "ota_confirmed",
+              "ota_rollback"
+            ]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attributes": {
+            "required": [
+              "ota_state"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "configuration_invalid"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attributes": {
+            "required": [
+              "configuration_valid"
+            ],
+            "properties": {
+              "configuration_valid": {
+                "const": false
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "heap_critical"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attributes": {
+            "required": [
+              "heap_free_bytes"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "event_type": {
+            "const": "physical_safety_fault"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "attributes": {
+            "required": [
+              "safety_state"
+            ],
+            "properties": {
+              "safety_state": {
+                "const": "fault"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "time_synced": {
+            "const": false
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "device_time_utc": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "time_synced": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "device_time_utc": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "boundedExtensionValue": {
+      "oneOf": [
+        {
+          "type": "string",
+          "maxLength": 64
+        },
+        {
+          "type": "integer",
+          "minimum": -2147483648,
+          "maximum": 2147483647
+        },
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}
