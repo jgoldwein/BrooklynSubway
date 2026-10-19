@@ -1,9 +1,67 @@
 # Brooklyn Active Subway Map — Product Roadmap
 
-This document describes a planned path from the current Phase 2A software LED
-engine to a maintainable finished product. It is planning documentation only:
-it does not authorize implementation of any future phase. Each hardware-affecting
-step requires review against the manufactured board and its safety constraints.
+This document includes a legacy phased outline and the current product
+direction. It is planning documentation only: it does not authorize
+implementation of any future phase. Each hardware-affecting step requires
+review against the manufactured board and its safety constraints.
+
+## Current Product Direction — Phase 4AA
+
+The next planned product phase is **Phase 4AA — Opt-In Remote Operational
+Telemetry**. This section supersedes the legacy numbered phase sequence below
+where it conflicts with the current phase status. It records direction only;
+it does not authorize implementation.
+
+An owner may explicitly enable a Brooklyn Map to send operational health and
+status data outward to a monitoring service. Telemetry is **OFF by default**,
+can be disabled by the user at any time, and is not remote administration.
+The initial feature is monitoring-only:
+
+- Device-initiated outbound connections only, using encrypted transport.
+- No inbound port, port forwarding, VPN, Tailscale, or remote-access dependency;
+  ordinary NAT/home-router connections should work.
+- No remote reboot, configuration mutation, LED commands, or remote OTA command
+  channel. OTA remains separately authenticated and signed.
+- Regular heartbeat, likely every 30–60 seconds, plus immediate reports for
+  significant transitions.
+- Exponential/backoff retry, bounded memory and storage, no unlimited offline
+  event queue, and latest-state-first recovery after an outage.
+
+The initial telemetry schema should evaluate safe operational fields such as:
+user-configurable device name; stable non-secret device identifier; firmware
+version and Git/build identifier; active OTA partition/state; firmware
+integrity/health; uptime, boot count, and reset reason; free/minimum internal
+heap and PSRAM; Wi-Fi connected state, RSSI, and appropriate IP/network state;
+DNS and SNTP health; successful MTA feeds out of eight and last-success time;
+display state (`Fresh`, `DegradedHold`, `DegradedPartial`, `StaleHold`, or
+`NoData`); vehicles processed/resolved and occupied LED count; configuration
+validity/schema; brightness and route visibility mask or summarized route
+selection; `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT` state; and physical-output
+arming/safety state once supported on production hardware.
+
+Never transmit Wi-Fi or administrator passwords, password verifiers, session
+cookies, CSRF tokens, OTA private signing keys, raw GTFS feed payloads,
+unnecessary trip/vehicle identifiers, or user browsing information.
+
+Important state transitions to consider reporting immediately include boot,
+reconnect, MTA Fresh-to-Degraded and Degraded-to-Fresh, Stale/NoData, OTA
+pending/validated/rollback, unexpected restart, detectable brownout/watchdog,
+low-memory threshold, configuration corruption/failure, and future production
+power/safety faults.
+
+Phase 4AA should evaluate unique per-device cryptographic identity: generate
+or provision a unique identity, keep private identity material on-device, make
+the corresponding public identity known to the monitoring service, protect
+transport with TLS, and consider device-authenticated telemetry. This is
+architecture exploration only: do not implement PKI, burn eFuses, enable Secure
+Boot, or provision production credentials as part of the roadmap checkpoint.
+
+Automatic update checking is a separate future feature that complements
+telemetry. A device may check a trusted source such as GitHub Releases, detect
+a newer compatible signed package, verify package metadata/signature, and
+follow a user-configured update policy. Automatic installation is not planned
+in Phase 4AA. Phase 4W signed OTA remains the trust foundation; no Tailscale
+dependency is required.
 
 ## 1. Current Baseline
 

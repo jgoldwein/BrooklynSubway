@@ -36,9 +36,12 @@ clarification only if the requested next action remains ambiguous.
 - **Checkpoint date:** 2026-10-19. Work started from clean `main` at
   `8548257e2ec7ef65d0ed641d160399679ad982ad`
   (`docs: record Phase 4Y checkpoint push`).
-- **Status:** Phase 4Z first-pass host analysis is implemented locally but
-  uncommitted, unpushed, and untagged. No firmware phase, firmware release,
-  or hardware validation was started.
+- **Implementation commit/tag:** `dea08f2ecfadb4fe06f66051b09f7391ecb4d459`
+  (`Phase 4Z: audit GTFS unknown-stop coverage`), tagged
+  `phase-4z-unknown-stop-audit` (`Phase 4Z GTFS UnknownStop coverage audit`).
+  The commit and annotated tag were pushed to `origin`. The tag points to the
+  Phase 4Z implementation; later roadmap/checkpoint documentation is a
+  documentation-only follow-up and must not move the tag.
 - **Audit results:** all 152 route/platform pairs (429 observations) have
   static GTFS stop records. 149 pairs / 423 observations are static-served
   route positions outside route-specific map scope; two D/A21S and D/A22S
@@ -83,17 +86,33 @@ clarification only if the requested next action remains ambiguous.
   `tools/phase4z/test_unknown_stop_audit.py`, and
   `tools/run_phase4z_tests.py`. No firmware source, PlatformIO configuration,
   semantic mapping, topology, LED assignment, or physical-output code changed.
+- **Product roadmap:** Tailscale is superseded and optional-experiment-only;
+  it is not an active product requirement. [ROADMAP.md](ROADMAP.md) now names
+  Phase 4AA — Opt-In Remote Operational Telemetry as the next planned product
+  phase and records default-off/outbound-only/monitoring-only behavior plus
+  privacy, identity, reliability, and separate signed-update direction. No
+  Phase 4AA implementation has started.
+- **Documentation follow-up:** [docs/TAILSCALE_REMOTE_ACCESS_PLAN.md](docs/TAILSCALE_REMOTE_ACCESS_PLAN.md)
+  is marked SUPERSEDED / OPTIONAL EXPERIMENT ONLY. Its historical audit notes
+  remain, but former setup/deployment guidance is explicitly not current.
+  [docs/PHASE4W_SECURE_WEB_OTA.md](docs/PHASE4W_SECURE_WEB_OTA.md) now advises a
+  trusted/private LAN rather than referring to the superseded remote-access
+  deployment. These documentation-only changes are in `ROADMAP.md`,
+  `docs/TAILSCALE_REMOTE_ACCESS_PLAN.md`,
+  `docs/PHASE4W_SECURE_WEB_OTA.md`, and `RESUME.md`.
 - **Safety:** no firmware source or build configuration changed. No device was
   accessed or flashed; XIAO and production PCB remain untouched.
   `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0` remains unchanged. The Phase 4Y tag
   remains unchanged.
-- **Final review:** `git diff --check` passed. The worktree contains only the
-  Phase 4Z host tooling, derived audit outputs, and this checkpoint update; the
-  live capture and static GTFS remain ignored and untracked.
-- **Next action:** if continuing, separately investigate the unresolved
-  D/A21S–A22S live/static route discrepancy without changing mappings absent
-  authoritative evidence. Leave this Phase 4Z checkpoint uncommitted,
-  unpushed, and untagged as requested.
+- **Final review:** `git diff --check` passed before the Phase 4Z
+  implementation commit. Its worktree contained only the Phase 4Z host tooling,
+  derived audit outputs, and this checkpoint. The later changes are
+  documentation-only; the live capture and static GTFS remain ignored and
+  untracked.
+- **Next action:** Phase 4Z is complete. Phase 4AA is the next planned phase,
+  but requires its own explicit implementation authorization and design review.
+  The unresolved D-route discrepancy remains a separate evidence-review item,
+  not an approved mapping change.
 
 ## Phase 4Y checkpoint — GTFS-RT capture and replay
 
@@ -320,10 +339,11 @@ clarification only if the requested next action remains ambiguous.
   reverted. Details in
   `docs/PHASE4L_WIFI_PROVISIONING.md`. The XIAO runs the released Phase 4V
   image.
-- **Remote-access audit (read-only):** `docs/TAILSCALE_REMOTE_ACCESS_PLAN.md`
-  recommends an existing LAN subnet router plus a DHCP reservation; no
-  firmware change. Windows Tailscale is stopped; no network changes made. XIAO
-  currently at `192.168.137.191` on the temporary hotspot.
+- **Historical remote-access audit (superseded):**
+  `docs/TAILSCALE_REMOTE_ACCESS_PLAN.md` recorded an earlier optional Tailscale
+  subnet-router experiment. Tailscale remote access is no longer an active
+  product requirement; no network changes were made during that audit.
+  Tailscale is optional experiment only.
 - **Historical next action:** Phase 4V was released (tag
   `phase-4v-lan-access-protection`); Phase 4W was subsequently authorized and
   released. The current work is the Phase 4X host-only simulator above.
@@ -549,12 +569,10 @@ clarification only if the requested next action remains ambiguous.
 - **Credential audit:** local ignored `include/secrets.h` is present. Its
   SSID/password values had zero matches in tracked and untracked project files
   outside that header; the scan did not print credential values.
-- **Future idea (low priority, outside Phase 4R):** Joel noted laptop
-  Tailscale may interfere with local-device validation and suggested
-  investigating whether the map could join his Tailscale network. Do not add
-  Tailscale support or dependency in this phase; assess ESP32-S3 feasibility,
-  security, resource usage, and operational requirements separately if
-  requested.
+- **Superseded product idea (historical, optional experiment only):** an earlier
+  note considered connecting the map to a Tailscale network. That is no longer
+  an active product requirement or planned monitoring architecture. Do not
+  infer a Tailscale implementation task from this historical note.
 - **Final verification:** all 13 host runners passed again after hardware
   validation: 1,539,134 checks, 0 failures. Four clean builds passed at the
   sizes above. Effective flags retain `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0`;
@@ -564,7 +582,8 @@ clarification only if the requested next action remains ambiguous.
   image. Keep the manufactured PCB untouched.
 - **Phase 4R closeout:** the final review, release commit/tag, remote push,
   resume checkpoint update, and clean-worktree check were completed. The
-  low-priority Tailscale idea remains separate and unimplemented.
+  historical Tailscale idea remains unimplemented and is superseded as a
+  product requirement; it is optional experiment only.
 
 ## Recovery when the manufactured PCB is available
 
