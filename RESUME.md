@@ -31,7 +31,42 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Phase 4W status — secure web OTA validated; release wrap-up
+## Current checkpoint — Phase 4X host-only virtual map simulator
+
+- **Checkpoint date:** 2026-10-19. Work started on clean `main` at
+  `3ea25cc4e1256d8a74ad8b8fba7c9358289b66e7`
+  (`docs: record prerelease asset upload instructions`). Phase 4W's released
+  firmware and release assets were not changed.
+- **Implementation:** the host-only simulator compiles the authoritative
+  firmware semantic tables, `TrainFrame`, RGB renderer, and Phase 4M
+  operational status overlay, then joins their output to all 306 exact V1.1
+  PCB addressable-LED placements. The browser can inspect route/station/
+  segment/status pixels, synthetic scenarios, status states, and JSON frames.
+  It binds to loopback only and never links or calls the physical display
+  bridge, LED backend, GPIO, or strip transmitter. Details, launch instructions,
+  source/geometry provenance, and limitations are in
+  [docs/PHASE4X_VIRTUAL_MAP_SIMULATOR.md](docs/PHASE4X_VIRTUAL_MAP_SIMULATOR.md).
+- **Validation:** Phase 4X passed **80 checks**; all **18 host runners passed
+  1,554,682 checks, 0 failures**. Browser smoke checks saw 306 SVG points,
+  302 map-audit rows, and four status indicators. Metadata export is current.
+  All four clean PlatformIO builds passed and exactly match the Phase 4W RAM/
+  flash baseline. Both network ELF audits found no simulator, NeoPixel
+  transmit, LED-backend arm/write, or physical safety-controller symbols.
+  `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0` remains set in all environments.
+- **Safety/state:** no firmware sources or build configuration changed; no
+  device, XIAO, or production PCB was accessed or flashed. No commits, tags,
+  pushes, or Phase 4Y work. The private OTA signing key remains outside Git.
+- **Changed files:** this checkpoint, the Phase 4X implementation and
+  generated metadata under `tools/virtual_map/`, its runner
+  `tools/run_virtual_map_tests.py`, and
+  `docs/PHASE4X_VIRTUAL_MAP_SIMULATOR.md`. The host-only simulator milestone
+  uses the annotated tag `phase-4x-virtual-map-simulator`; it is not a
+  semantic firmware release.
+- **Next action:** review the uncommitted files; start the simulator from the
+  repository root with `python tools\virtual_map\run.py`. Do not start Phase
+  4Y or access hardware without Joel's direction.
+
+## Phase 4W status — secure web OTA validated; release wrap-up (historical)
 
 - **Checkpoint date:** 2026-10-18. Starting baseline was clean `main` at
   `10095a40ad23aa4e1b15dbb728b6f3a2bf127d17`, tagged
@@ -82,7 +117,7 @@ clarification only if the requested next action remains ambiguous.
   `.bkota` packages and `SHA256SUMS.txt`. Paste `RELEASE_NOTES.md` as the
   description. The notes explicitly state production-PCB OTA is unvalidated.
 
-## Current checkpoint — Phase 4V LAN access protection validated on XIAO
+## Phase 4V history — LAN access protection validated on XIAO
 
 - **Checkpoint date:** 2026-10-18. Starting baseline was clean `main` at
   `10095a40ad23aa4e1b15dbb728b6f3a2bf127d17`, tagged
@@ -148,8 +183,9 @@ clarification only if the requested next action remains ambiguous.
   recommends an existing LAN subnet router plus a DHCP reservation; no
   firmware change. Windows Tailscale is stopped; no network changes made. XIAO
   currently at `192.168.137.191` on the temporary hotspot.
-- **Next actions:** Phase 4V is released (tag
-  `phase-4v-lan-access-protection`). Do not start Phase 4W without direction.
+- **Historical next action:** Phase 4V was released (tag
+  `phase-4v-lan-access-protection`); Phase 4W was subsequently authorized and
+  released. The current work is the Phase 4X host-only simulator above.
 
 ## Phase 4U checkpoint — DNS resilience validated (historical)
 

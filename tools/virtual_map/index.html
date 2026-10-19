@@ -1,0 +1,373 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Brooklyn Map Virtual LED Simulator</title>
+  <style>
+    :root { color-scheme: dark; font: 14px/1.45 system-ui, "Segoe UI", sans-serif; background:#111821; color:#edf3f8; }
+    * { box-sizing:border-box; }
+    body { margin:0; }
+    header { padding:16px 22px; background:#1c2935; border-bottom:1px solid #3a4a58; }
+    h1 { margin:0; font-size:1.35rem; }
+    header p { margin:4px 0 0; color:#bdcbd6; }
+    main { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:14px; padding:14px; }
+    section, aside { background:#19232d; border:1px solid #344452; border-radius:8px; padding:14px; }
+    .toolbar { display:flex; flex-wrap:wrap; align-items:end; gap:10px 14px; margin-bottom:12px; }
+    label { display:grid; gap:4px; color:#d7e1e9; }
+    input, select, button { font:inherit; color:inherit; background:#101820; border:1px solid #546573; border-radius:4px; padding:6px 8px; }
+    input[type=checkbox] { accent-color:#58b4e5; }
+    input[type=range] { padding:0; }
+    button { cursor:pointer; background:#263746; }
+    button:hover { background:#334b60; }
+    .check { display:flex; align-items:center; gap:6px; }
+    .routes { display:flex; flex-wrap:wrap; gap:5px 12px; padding:8px 0; }
+    .route-control { display:inline-flex; align-items:center; gap:3px; }
+    .map-wrap { height:min(70vh,760px); min-height:420px; overflow:hidden; background:#101820; border:1px solid #3c4c58; border-radius:6px; }
+    svg { display:block; width:100%; height:100%; }
+    .led { cursor:pointer; vector-effect:non-scaling-stroke; stroke-width:1.6; }
+    .led:hover, .led:focus, .led.selected { stroke:#fff !important; stroke-width:3.2; outline:none; }
+    .led.dimmed { opacity:.17; }
+    .legend { display:flex; flex-wrap:wrap; gap:8px 14px; color:#b9c8d3; font-size:.86rem; margin:8px 0; }
+    .legend i { display:inline-block; width:12px; height:12px; border-radius:50%; vertical-align:-2px; border:2px solid; }
+    aside h2, section h2 { font-size:1.05rem; margin:0 0 8px; }
+    #inspector { min-height:155px; overflow-wrap:anywhere; }
+    dl { display:grid; grid-template-columns:125px minmax(0,1fr); gap:4px 8px; margin:8px 0; }
+    dt { color:#aebdca; } dd { margin:0; }
+    .rgb { font-family:ui-monospace,monospace; }
+    .status { padding:9px; margin:8px 0; border-left:3px solid #58b4e5; background:#111a22; }
+    .notice { color:#f0cf7b; min-height:1.5em; }
+    .subtle { color:#aebdca; font-size:.9rem; }
+    .audit { margin-top:14px; }
+    .table-wrap { max-height:430px; overflow:auto; border:1px solid #3c4c58; }
+    table { border-collapse:collapse; width:100%; font-size:.83rem; white-space:nowrap; }
+    th, td { text-align:left; padding:4px 7px; border-bottom:1px solid #344452; }
+    th { position:sticky; top:0; background:#263746; z-index:1; }
+    tr { cursor:pointer; } tr:hover { background:#293b4a; }
+    .channel-outline { display:flex; flex-wrap:wrap; gap:5px 9px; }
+    @media(max-width:1050px) { main { grid-template-columns:1fr; } aside { order:-1; } .map-wrap { min-height:360px; } }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Brooklyn Active Subway Map — Virtual LED Simulator</h1>
+  <p>Host-only diagnostic view of firmware semantic LEDs and rendered logical RGB. Does not drive hardware.</p>
+</header>
+<main>
+  <section>
+    <div class="toolbar">
+      <label>Scenario
+        <select id="scenario">
+          <option value="off">A — all map LEDs off</option>
+          <option value="station">B — one station occupied</option>
+          <option value="segment">C — one segment occupied</option>
+          <option value="routes">D — multiple routes active</option>
+          <option value="collision">E — two trains on one LED</option>
+          <option value="hidden">F — occupied route hidden</option>
+          <option value="allHidden">G — all routes hidden</option>
+          <option value="brightness">H — reduced firmware brightness</option>
+          <option value="WaitingForData">I — WaitingForData</option>
+          <option value="Fresh">J — Fresh</option>
+          <option value="DegradedHold">K — DegradedHold</option>
+          <option value="DegradedPartial">L — DegradedPartial</option>
+          <option value="StaleHold">M — StaleHold</option>
+          <option value="NoData">N — NoData</option>
+          <option value="status">O — representative status LEDs</option>
+        </select>
+      </label>
+      <label>Brightness <span id="brightnessValue">64 / 255</span>
+        <input id="brightness" type="range" min="0" max="255" value="64">
+      </label>
+      <label>Display state
+        <select id="displayState">
+          <option>WaitingForData</option><option>Fresh</option><option>DegradedHold</option>
+          <option>DegradedPartial</option><option>StaleHold</option><option>NoData</option>
+        </select>
+      </label>
+      <label>Network indicator
+        <select id="wifiState">
+          <option>Disabled</option><option>Unavailable</option><option>Connecting</option>
+          <option>Associated</option><option>TimeSyncing</option>
+        </select>
+      </label>
+      <label class="check"><input id="systemHealthy" type="checkbox" checked> System healthy</label>
+      <label class="check"><input id="provisioning" type="checkbox"> Provisioning mode</label>
+      <button id="saveFrame">Save frame JSON</button>
+      <label>Load frame JSON <input id="loadFrame" type="file" accept=".json,application/json"></label>
+    </div>
+    <div class="routes" id="routes"></div>
+    <div class="toolbar">
+      <label>Search LED/station <input id="search" type="search" placeholder="LED299 or Atlantic"></label>
+      <label>Route filter <select id="routeFilter"><option value="">All routes</option></select></label>
+      <label class="check"><input id="occupiedOnly" type="checkbox"> Highlight occupied only</label>
+      <label>Type <select id="typeFilter"><option value="">All map types</option><option>STATION</option><option>SEGMENT</option></select></label>
+      <label>Channel <select id="channelFilter"><option value="">All channels</option></select></label>
+      <label class="check"><input id="identifyChannel" type="checkbox" checked> Identify channels</label>
+      <button id="resetFilters">Reset filters</button>
+    </div>
+    <div class="map-wrap"><svg id="map" role="img" aria-label="All 306 addressable LEDs at their exact PCB placement coordinates"></svg></div>
+    <div class="legend" id="channelLegend"></div>
+    <p class="subtle">Circle fill is the current firmware-rendered RGB. Select Identify channels to color the outlines by physical channel; black/off pixels remain selectable. GPIO14 U23 is discrete and is not an addressable pixel.</p>
+    <p class="notice" id="message" aria-live="polite"></p>
+    <div class="audit">
+      <h2>Firmware semantic audit — all 302 map LEDs</h2>
+      <div class="table-wrap"><table><thead><tr><th>LED</th><th>Global</th><th>Channel/index</th><th>Type</th><th>Route</th><th>Station / segment</th><th>X</th><th>Y</th></tr></thead><tbody id="auditRows"></tbody></table></div>
+    </div>
+  </section>
+  <aside>
+    <h2>LED inspector</h2>
+    <div id="inspector" class="subtle">Select or hover any LED. Dark/off points and rows remain inspectable.</div>
+    <h2>Status LEDs</h2>
+    <div id="statusDetails"></div>
+    <div class="status subtle" id="frameSummary">Waiting for the host renderer…</div>
+    <h2>Channel layout</h2>
+    <div id="channelDetails" class="subtle"></div>
+    <div class="status subtle">Frame colors are logical RGB only. This tool never calls the physical display bridge, LED backend, GPIO, or strip transmission API.</div>
+  </aside>
+</main>
+<script>
+"use strict";
+const channelStroke = ["#4dc9f6","#f67019","#f53794","#537bc4","#acc236","#166a8f","#00a950","#58595b"];
+let metadata, frame, savedInput, selectedIndex = 0;
+const $ = id => document.getElementById(id);
+const svgNS = "http://www.w3.org/2000/svg";
+const routeBits = () => Object.fromEntries(metadata.routes.map(r => [r.name, r.maskBit]));
+const mapPixels = () => metadata.pixels.filter(p => p.semanticType !== "STATUS");
+function rgbHex(p) { return "#" + [p.r,p.g,p.b].map(v => Number(v).toString(16).padStart(2,"0")).join(""); }
+function stationDescription(p) { return p.semanticType === "STATION" ? p.stationName : p.endpointAName + " -> " + p.endpointBName; }
+function htmlText(parent, tag, text) { const e=document.createElement(tag); e.textContent=text; parent.appendChild(e); return e; }
+function setMessage(text) { $("message").textContent=text; }
+function currentMask() {
+  let mask=0;
+  document.querySelectorAll("#routes input").forEach(box => { if(box.checked) mask |= (1 << Number(box.dataset.bit)); });
+  return mask;
+}
+function setMask(mask) {
+  document.querySelectorAll("#routes input").forEach(box => { box.checked = (mask & (1 << Number(box.dataset.bit))) !== 0; });
+}
+function initControls() {
+  for(const r of metadata.routes) {
+    const label=document.createElement("label"); label.className="route-control";
+    const box=document.createElement("input"); box.type="checkbox"; box.checked=true; box.dataset.bit=r.maskBit;
+    box.addEventListener("change", () => renderFirmware());
+    label.append(box, document.createTextNode(r.name)); $("routes").appendChild(label);
+    htmlText($("routeFilter"), "option", r.name).value=r.name;
+  }
+  for(const c of metadata.channels) {
+    const option=htmlText($("channelFilter"),"option","CH"+c.channel+" / GPIO"+c.gpio); option.value=String(c.channel);
+    const legend=htmlText($("channelLegend"),"span","");
+    const dot=document.createElement("i"); dot.style.borderColor=channelStroke[c.channel-1];
+    legend.append(dot,document.createTextNode(" CH"+c.channel+" · GPIO"+c.gpio+" · "+c.pixelCount));
+    const row=htmlText($("channelDetails"),"div","CH"+c.channel+" — GPIO"+c.gpio+": "+c.pixelCount+" addressable pixels");
+  }
+  $("brightness").addEventListener("input",()=>$("brightnessValue").textContent=$("brightness").value+" / 255");
+  $("brightness").addEventListener("change",()=>renderFirmware());
+  $("displayState").addEventListener("change",()=>renderFirmware());
+  $("wifiState").addEventListener("change",()=>renderFirmware());
+  $("systemHealthy").addEventListener("change",()=>renderFirmware());
+  $("provisioning").addEventListener("change",()=>renderFirmware());
+  for(const id of ["search","routeFilter","occupiedOnly","typeFilter","channelFilter","identifyChannel"]) {
+    $(id).addEventListener(id==="search"?"input":"change",applyFilters);
+  }
+  $("resetFilters").addEventListener("click",()=>{
+    $("search").value=""; $("routeFilter").value=""; $("occupiedOnly").checked=false;
+    $("typeFilter").value=""; $("channelFilter").value=""; $("identifyChannel").checked=false; applyFilters();
+  });
+  $("scenario").addEventListener("change",()=>loadScenario($("scenario").value));
+  $("saveFrame").addEventListener("click",saveFrame);
+  $("loadFrame").addEventListener("change",loadFrameFile);
+}
+function drawMetadata() {
+  const points=metadata.pixels;
+  const xs=points.map(p=>p.x), ys=points.map(p=>-p.y);
+  const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),pad=180;
+  const svg=$("map"); svg.setAttribute("viewBox",`${minX-pad} ${minY-pad} ${maxX-minX+2*pad} ${maxY-minY+2*pad}`);
+  for(const p of points) {
+    const circle=document.createElementNS(svgNS,"circle");
+    circle.classList.add("led"); circle.dataset.index=String(p.globalIndex);
+    circle.setAttribute("cx",p.x); circle.setAttribute("cy",-p.y); circle.setAttribute("r",p.semanticType==="STATUS"?"72":"52");
+    circle.setAttribute("stroke","#657583"); circle.setAttribute("fill","#000");
+    circle.setAttribute("tabindex","0"); circle.setAttribute("role","button");
+    circle.setAttribute("aria-label",p.designator+" global "+p.globalIndex+" "+(p.route||p.statusRole||""));
+    circle.addEventListener("mouseenter",()=>inspect(p.globalIndex,false));
+    circle.addEventListener("focus",()=>inspect(p.globalIndex,false));
+    circle.addEventListener("click",()=>inspect(p.globalIndex,true));
+    svg.appendChild(circle);
+  }
+  const body=$("auditRows");
+  for(const p of mapPixels()) {
+    const tr=document.createElement("tr"); tr.dataset.index=String(p.globalIndex);
+    const desc=p.semanticType==="STATION"?p.stationName:p.endpointAName+" -> "+p.endpointBName;
+    [p.designator,p.globalIndex,`CH${p.channel}/${p.channelIndex}`,p.semanticType,p.route,desc,p.x,p.y]
+      .forEach(v=>htmlText(tr,"td",String(v)));
+    tr.addEventListener("click",()=>{inspect(p.globalIndex,true);selectPoint(p.globalIndex);});
+    body.appendChild(tr);
+  }
+}
+function selectPoint(index) {
+  document.querySelectorAll(".led.selected").forEach(e=>e.classList.remove("selected"));
+  const node=document.querySelector(`.led[data-index="${index}"]`); if(node) node.classList.add("selected");
+  selectedIndex=index;
+}
+function trainInfo(index) {
+  const trains=(frame&&frame.trains)||[];
+  return trains.filter(t=>t.globalIndex===index).map(t=>`${t.trainId||"train"}${t.route?" ("+t.route+")":""}`).join(", ")||"not supplied";
+}
+function inspect(index,select) {
+  if(!metadata||!frame)return;
+  const p=metadata.pixels[index], color=frame.pixels[index], box=$("inspector"); box.replaceChildren();
+  htmlText(box,"strong",p.designator+(p.semanticType==="STATUS"?" — "+p.statusRole:""));
+  const pairs=[["Global index",p.globalIndex],["Channel/index",`CH${p.channel} / ${p.channelIndex} (GPIO${metadata.channels[p.channel-1].gpio})`]];
+  if(p.semanticType==="STATUS") {
+    pairs.push(["Role",p.statusRole],["Logical state",statusState(p.statusRole)],["Reason/state",statusReason(p.statusRole)]);
+  } else {
+    pairs.push(["Type / route",p.semanticType+" / "+p.route],["Station / segment",stationDescription(p)],
+      ["Station ID",p.semanticType==="STATION"?p.stationId:"—"],
+      ["Endpoint IDs",p.semanticType==="SEGMENT"?p.endpointAId+" -> "+p.endpointBId:"—"],
+      ["PCB X/Y",p.x+" / "+p.y],["Occupancy",frame.occupancy[index]||0],
+      ["Train IDs/routes",trainInfo(index)],["Route visible",frame.routeVisible[index]?"yes":"no"],
+      ["Filtered by route",frame.filteredByRoute[index]?"yes":"no"]);
+  }
+  pairs.push(["Rendered RGB",`${rgbHex(color)} (${color.r}, ${color.g}, ${color.b})`]);
+  for(const [k,v] of pairs){htmlText(box,"dt",k);htmlText(box,"dd",String(v));}
+  if(select)selectPoint(index);
+}
+function statusState(role) {
+  if(role==="SYSTEM") return frame.systemHealthy?"Healthy":"Unhealthy";
+  if(role==="NETWORK") return frame.wifiState+(frame.provisioning?" / provisioning":"");
+  if(role==="MTA") return frame.displayState;
+  return frame.provisioning?"Provisioning":"Normal";
+}
+function statusReason(role) {
+  if(role==="SYSTEM") return frame.systemHealthy?"firmware reports healthy":"firmware reports unhealthy";
+  if(role==="NETWORK") return frame.provisioning?"provisioning portal active":"Wi-Fi indicator state";
+  if(role==="MTA") return frame.feedAttempted?"feed attempted; Phase 4M state controls status":"no feed attempted";
+  return frame.provisioning?"provisioning mode indicator":"normal mode indicator";
+}
+function renderStatus() {
+  const box=$("statusDetails"); box.replaceChildren();
+  for(const p of metadata.pixels.filter(p=>p.semanticType==="STATUS")) {
+    const color=frame.pixels[p.globalIndex], line=document.createElement("div"); line.className="status";
+    htmlText(line,"strong",p.statusRole+" · "+p.designator);
+    htmlText(line,"div",statusState(p.statusRole)+" — "+statusReason(p.statusRole));
+    htmlText(line,"div",`RGB ${rgbHex(color)} (${color.r}, ${color.g}, ${color.b}) · CH${p.channel}/${p.channelIndex}`);
+    box.appendChild(line);
+  }
+}
+function renderFrame(frameData) {
+  frame=frameData;
+  for(const node of document.querySelectorAll(".led")) {
+    const i=Number(node.dataset.index),p=frame.pixels[i],meta=metadata.pixels[i];
+    node.setAttribute("fill",rgbHex(p));
+    node.classList.toggle("dimmed",!matches(meta,i));
+    node.setAttribute("aria-label",`${meta.designator}, RGB ${rgbHex(p)}, occupancy ${frame.occupancy[i]||0}`);
+  }
+  for(const row of document.querySelectorAll("#auditRows tr")) {
+    row.style.opacity=matches(metadata.pixels[Number(row.dataset.index)],Number(row.dataset.index))?"1":".35";
+  }
+  renderStatus();
+  $("frameSummary").textContent=`${frame.displayState} · ${frame.renderedLeds} rendered map LEDs · ${frame.resolvedTrains} trains · ${frame.collisionLeds} collision LEDs · brightness ${frame.brightness} · route mask 0x${Number(frame.routeVisibilityMask).toString(16).padStart(5,"0")}`;
+  inspect(selectedIndex,false);
+  applyFilters();
+}
+function matches(p,index) {
+  const query=$("search").value.trim().toLowerCase();
+  const searchText=[p.designator,p.stationName,p.endpointAName,p.endpointBName,p.route,p.statusRole].filter(Boolean).join(" ").toLowerCase();
+  if(query&&!searchText.includes(query))return false;
+  if($("routeFilter").value&&p.route!==$("routeFilter").value)return false;
+  if($("occupiedOnly").checked&&!(frame.occupancy[index]>0))return false;
+  if($("typeFilter").value&&p.semanticType!==$("typeFilter").value)return false;
+  if($("channelFilter").value&&p.channel!==Number($("channelFilter").value))return false;
+  return true;
+}
+function applyFilters() {
+  if(!metadata||!frame)return;
+  for(const node of document.querySelectorAll(".led")) {
+    const i=Number(node.dataset.index),p=metadata.pixels[i];
+    node.classList.toggle("dimmed",!matches(p,i));
+    node.style.stroke= $("identifyChannel").checked?channelStroke[p.channel-1]:"#657583";
+  }
+}
+function makeRequest(input) {
+  return {schemaVersion:1,frameTimestamp:new Date().toISOString(),
+    trainFrame:{occupancy:input.occupancy,trains:input.trains||[]},
+    brightness:Number($("brightness").value),routeVisibilityMask:currentMask(),
+    displayState:$("displayState").value,
+    status:{systemHealthy:$("systemHealthy").checked,wifiState:$("wifiState").value,provisioning:$("provisioning").checked}};
+}
+async function renderFirmware() {
+  if(!savedInput||!savedInput.trainFrame||!Array.isArray(savedInput.trainFrame.occupancy)) {
+    setMessage("This saved snapshot has no TrainFrame occupancy; showing its stored RgbFrame without re-rendering.");
+    return;
+  }
+  setMessage("Rendering with the compiled firmware pipeline…");
+  try {
+    const response=await fetch("/api/render",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(makeRequest(savedInput.trainFrame))});
+    const result=await response.json(); if(!response.ok)throw new Error(result.error||"renderer failed");
+    renderFrame(result); setMessage("");
+  } catch(e) { setMessage("Render error: "+e.message); }
+}
+function findMap(type) { return metadata.pixels.find(p=>p.semanticType===type); }
+function findRoutes(count) {
+  const chosen=[],seen=new Set();
+  for(const p of mapPixels()) if(!seen.has(p.route)){chosen.push(p);seen.add(p.route);if(chosen.length>=count)break;}
+  return chosen;
+}
+async function loadScenario(name) {
+  const occupancy=Array(306).fill(0),trains=[];
+  const allMask=0x3ffff;
+  $("brightness").value="64"; $("brightnessValue").textContent="64 / 255";
+  $("displayState").value="Fresh"; $("wifiState").value="Associated";
+  $("systemHealthy").checked=true; $("provisioning").checked=false; setMask(allMask);
+  function add(p,id,route=p.route){if(!p)return;occupancy[p.globalIndex]=(occupancy[p.globalIndex]||0)+1;trains.push({trainId:id,route,globalIndex:p.globalIndex});}
+  if(name==="station")add(findMap("STATION"),"DEMO-STATION-1");
+  else if(name==="segment")add(findMap("SEGMENT"),"DEMO-SEGMENT-1");
+  else if(name==="routes")findRoutes(5).forEach((p,i)=>add(p,"DEMO-ROUTE-"+i));
+  else if(name==="collision"){const p=findMap("STATION");add(p,"DEMO-COLLISION-A");add(p,"DEMO-COLLISION-B");}
+  else if(name==="hidden"){const p=findMap("STATION");add(p,"DEMO-HIDDEN");setMask(allMask&~(1<<routeBits()[p.route]));}
+  else if(name==="allHidden"){mapPixels().forEach((p,i)=>add(p,"DEMO-ALL-"+i));setMask(0);}
+  else if(name==="brightness"){add(findMap("SEGMENT"),"DEMO-DIM");$("brightness").value="18";$("brightnessValue").textContent="18 / 255";}
+  else if(name==="status"){add(findMap("STATION"),"DEMO-STATUS");$("displayState").value="Fresh";$("wifiState").value="TimeSyncing";$("systemHealthy").checked=false;$("provisioning").checked=true;}
+  else if(["WaitingForData","Fresh","DegradedHold","DegradedPartial","StaleHold","NoData"].includes(name)){
+    $("displayState").value=name;if(name!=="WaitingForData")add(findMap("STATION"),"DEMO-"+name);
+  }
+  savedInput={trainFrame:{occupancy,trains}};
+  await renderFirmware();
+}
+function saveFrame() {
+  if(!frame)return;
+  const out={schemaVersion:1,frameTimestamp:frame.frameTimestamp,source:"Brooklyn Virtual Map host firmware renderer",
+    pixels:frame.pixels,trainFrame:{occupancy:frame.occupancy,trains:frame.trains,
+      resolvedTrains:frame.resolvedTrains,occupiedLeds:frame.occupiedLeds,collisionLeds:frame.collisionLeds},
+    operational:{displayState:frame.displayState,systemHealthy:frame.systemHealthy,wifiState:frame.wifiState,provisioning:frame.provisioning,feedAttempted:frame.feedAttempted},
+    brightness:frame.brightness,routeVisibilityMask:frame.routeVisibilityMask};
+  const a=document.createElement("a");a.href=URL.createObjectURL(new Blob([JSON.stringify(out,null,2)],{type:"application/json"}));a.download="brooklyn-rgb-frame.json";a.click();URL.revokeObjectURL(a.href);
+}
+function loadFrameFile(event) {
+  const file=event.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    try {
+      const data=JSON.parse(String(reader.result));
+      if(data.schemaVersion!==1||!Array.isArray(data.pixels)||data.pixels.length!==306)throw new Error("expected schemaVersion 1 with exactly 306 pixels");
+      for(const [i,p] of data.pixels.entries())for(const c of ["r","g","b"])if(!Number.isInteger(p[c])||p[c]<0||p[c]>255)throw new Error(`invalid RGB component at pixel ${i}`);
+      if(data.trainFrame&&Array.isArray(data.trainFrame.occupancy)&&data.trainFrame.occupancy.length===306) {
+        savedInput={trainFrame:data.trainFrame}; $("brightness").value=String(data.brightness??64);$("brightnessValue").textContent=$("brightness").value+" / 255";
+        setMask(data.routeVisibilityMask??0x3ffff); if(data.operational){$("displayState").value=data.operational.displayState;$("wifiState").value=data.operational.wifiState;$("systemHealthy").checked=data.operational.systemHealthy;$("provisioning").checked=data.operational.provisioning;}
+        await renderFirmware();
+      } else {
+        savedInput={};frame={pixels:data.pixels,occupancy:Array(306).fill(0),routeVisible:Array(306).fill(true),filteredByRoute:Array(306).fill(false),trains:[],displayState:data.operational?.displayState||"snapshot",brightness:data.brightness??64,routeVisibilityMask:data.routeVisibilityMask??0,renderedLeds:0,resolvedTrains:0,collisionLeds:0,systemHealthy:false,wifiState:"Unavailable",provisioning:false,feedAttempted:false,frameTimestamp:data.frameTimestamp};
+        renderFrame(frame);setMessage("Loaded offline RgbFrame snapshot. Firmware rerender needs optional TrainFrame occupancy metadata.");
+      }
+    } catch(e){setMessage("Frame load error: "+e.message);}
+  };reader.readAsText(file);
+}
+async function start() {
+  const response=await fetch("/metadata.json");metadata=await response.json();
+  initControls();drawMetadata();
+  await loadScenario("off");
+}
+start().catch(e=>setMessage("Startup error: "+e.message));
+</script>
+</body>
+</html>
