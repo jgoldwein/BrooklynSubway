@@ -31,7 +31,71 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Current checkpoint — Phase 4Y GTFS-RT capture and replay
+## Current checkpoint — Phase 4Z UnknownStop evidence audit
+
+- **Checkpoint date:** 2026-10-19. Work started from clean `main` at
+  `8548257e2ec7ef65d0ed641d160399679ad982ad`
+  (`docs: record Phase 4Y checkpoint push`).
+- **Status:** Phase 4Z first-pass host analysis is implemented locally but
+  uncommitted, unpushed, and untagged. No firmware phase, firmware release,
+  or hardware validation was started.
+- **Audit results:** all 152 route/platform pairs (429 observations) have
+  static GTFS stop records. 149 pairs / 423 observations are static-served
+  route positions outside route-specific map scope; two D/A21S and D/A22S
+  pairs / four observations disagree with static route service (static lists
+  A/B/C, not D); one route-2 Clark St pair / two observations has a mapped
+  current station but previous stop 230 outside the project map. Forty
+  observations across 35 pairs also reported topology `UnknownDestination`,
+  consistent with the intentionally on-map-only destination table. The live
+  D sequence is consistent with a route-path divergence, but its cause is
+  unresolved. No mapping change is authorized by this evidence.
+- **Preserved behavior:** route H at H19/H19N/H19S remains the separately
+  documented `OperationalStop` with no LED. No alias, stop map, topology,
+  station/segment semantic, color, or LED assignment was changed.
+  The Phase 4Y capture's 100 H19N operational-stop observations remain outside
+  the 429 UnknownStop observations.
+- **Outputs:** [docs/PHASE4Z_UNKNOWN_STOP_AUDIT.md](docs/PHASE4Z_UNKNOWN_STOP_AUDIT.md)
+  and [docs/PHASE4Z_UNKNOWN_STOP_AUDIT.csv](docs/PHASE4Z_UNKNOWN_STOP_AUDIT.csv)
+  contain the evidence, route and parent/direction aggregates, nearest
+  route-specific map candidates, and per-pair classifications. The deterministic
+  host audit is [tools/phase4z/unknown_stop_audit.py](tools/phase4z/unknown_stop_audit.py);
+  focused tests are run by `python tools\run_phase4z_tests.py`.
+- **Inputs:** official MTA static GTFS ZIP and the Phase 4Y raw capture/replay
+  remain local under Git-ignored `captures/`. The derived audit outputs contain
+  no raw payloads, trip IDs, or credentials. All three normalized static GTFS
+  member hashes match `data/gtfs_topology.csv`.
+- **Validation:** Phase 4Z focused suite passed **7 tests, 0 failures**; all
+  **20 host runners passed 1,554,763 checks, 0 failures**. Two full offline
+  replay runs were byte-identical
+  (SHA-256 `b39513529049e353c67d8b6fc9d758231afbc6c0de11a34d2c1f09cc7e75c649`).
+  The audit CSV and report regenerated twice byte-identically and match the
+  generated local outputs. All four clean PlatformIO builds match the Phase
+  4Y baseline exactly: `brooklyn-s3` 36,268 B RAM / 305,097 B flash;
+  `xiao-s3` 35,380 B / 290,413 B; `brooklyn-s3-network` 93,308 B /
+  1,116,665 B; `xiao-s3-network` 92,420 B / 1,100,089 B. Both network ELF
+  audits found no simulator/replay bridge or physical backend initialization,
+  arming, transmission, NeoPixel `show()`, or safety-controller symbols. The
+  XIAO network ELF retains its expected logical `led::render()` demo symbol;
+  the Brooklyn production ELF does not. `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0`
+  remains set in both base environments and inherited network builds.
+- **Changed files:** `RESUME.md`, the Phase 4Z Markdown report and aggregate
+  CSV, `tools/phase4z/unknown_stop_audit.py`,
+  `tools/phase4z/test_unknown_stop_audit.py`, and
+  `tools/run_phase4z_tests.py`. No firmware source, PlatformIO configuration,
+  semantic mapping, topology, LED assignment, or physical-output code changed.
+- **Safety:** no firmware source or build configuration changed. No device was
+  accessed or flashed; XIAO and production PCB remain untouched.
+  `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0` remains unchanged. The Phase 4Y tag
+  remains unchanged.
+- **Final review:** `git diff --check` passed. The worktree contains only the
+  Phase 4Z host tooling, derived audit outputs, and this checkpoint update; the
+  live capture and static GTFS remain ignored and untracked.
+- **Next action:** if continuing, separately investigate the unresolved
+  D/A21S–A22S live/static route discrepancy without changing mappings absent
+  authoritative evidence. Leave this Phase 4Z checkpoint uncommitted,
+  unpushed, and untagged as requested.
+
+## Phase 4Y checkpoint — GTFS-RT capture and replay
 
 - **Checkpoint date:** 2026-10-19. Phase 4Y work began on clean `main` at
   `cd4ee44b53eeb778bdbefeaa458d276ad9f83385`
