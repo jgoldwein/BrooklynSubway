@@ -28,6 +28,7 @@ FAILURES = 0
 
 DEV_A = "11111111-1111-4111-8111-111111111111"
 DEV_B = "22222222-2222-4222-9222-222222222222"
+DEV_C = "abcdefab-cdef-4abc-8def-abcdefabcdef"
 BOOT_1 = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa"
 BOOT_2 = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"
 T0 = 1_800_000_000
@@ -95,7 +96,7 @@ def enc(document):
 
 
 def topic(device, kind):
-    return f"brooklyn/v1/{device}/{kind}"
+    return f"brooklyn/v1/bkmap-{device}/{kind}"
 
 
 def new_collector(path=":memory:", clock=None):
@@ -299,6 +300,61 @@ def test_alias():
     check(collector.handle("brooklyn/v1/other/status", enc(status())) == "rejected:bad_topic", "unaliased non-UUID still rejected")
 
 
+def test_production_identity():
+    h = lambda t, p, **k: new_collector()[0].handle(t, p, **k)
+    seg = f"bkmap-{DEV_A}"
+    check(h(f"brooklyn/v1/{seg}/status", enc(status())) == "status", "valid bkmap-<UUID> status accepted")
+    check(h(f"brooklyn/v1/{seg}/event", enc(event())) == "event", "valid bkmap-<UUID> event accepted")
+    check(h(f"brooklyn/v1/{seg}/availability", b"online", retained=True) == "availability", "valid availability accepted")
+    check(h(f"brooklyn/v1/{seg}/status", enc(status(device=DEV_B))) == "rejected:device_id_mismatch", "payload UUID differing from topic rejected")
+    check(h(f"brooklyn/v1/{seg}/event", enc(event(device=DEV_B))) == "rejected:device_id_mismatch", "event UUID differing from topic rejected")
+    check(h(f"brooklyn/v1/bkmap-{DEV_B}/status", enc(status(device=DEV_A))) == "rejected:device_id_mismatch", "device cannot masquerade as another UUID via payload")
+    for label, bad in (
+        ("malformed UUID", "bkmap-not-a-uuid"),
+        ("short UUID", "bkmap-1111111111114111811111111111"),
+        ("missing prefix (bare UUID)", DEV_A),
+        ("wrong prefix", f"bkmapx-{DEV_A}"),
+        ("uppercase prefix", f"BKMAP-{DEV_A}"),
+        ("uppercase UUID is not normalized", f"bkmap-{DEV_C.upper()}"),
+        ("version nibble not 4", f"bkmap-{DEV_A.replace('-4111', '-1111')}"),
+        ("empty UUID", "bkmap-"),
+        ("trailing text", f"bkmap-{DEV_A}x"),
+        ("friendly name", "bkmap-Kitchen-Map"),
+    ):
+        check(h(f"brooklyn/v1/{bad}/status", enc(status())) == "rejected:bad_topic", f"{label} rejected")
+    check(h(f"brooklyn/v1/{seg}/status/extra", enc(status())) == "rejected:bad_topic", "extra path component rejected")
+    check(h(f"brooklyn/v1/{seg}/", enc(status())) == "rejected:bad_topic", "empty topic class rejected")
+    check(h(f"brooklyn/v1/{seg}/command", enc(status())) == "rejected:bad_topic", "unsupported topic class rejected")
+    check(h(f"brooklyn/v2/{seg}/status", enc(status())) == "rejected:bad_topic", "wrong topic version rejected")
+    check(h(f"other/v1/{seg}/status", enc(status())) == "rejected:bad_topic", "wrong topic prefix rejected")
+    check(h(f"brooklyn/v1/+/status", enc(status())) == "rejected:bad_topic", "wildcard segment rejected")
+
+    plain, _ = new_collector()
+    check(plain.topic_aliases == {}, "no alias table by default")
+    check(plain.handle("brooklyn/v1/brooklynmap/status", enc(status())) == "rejected:bad_topic",
+          "brooklynmap without explicit test alias rejected")
+    check(plain.handle(topic(DEV_B, "status"), enc(status(device=DEV_B))) == "status",
+          "production identity needs no hand-maintained alias table")
+    check(plain.store.get_device(DEV_B) is not None, "device stored under its canonical UUID, not the topic segment")
+
+
+def test_alias_is_explicit_and_contained():
+    for segment, uuid in (("bkmap-" + DEV_A, DEV_B), ("bkmap-anything", DEV_A), ("brooklynmap", "not-a-uuid"),
+                          ("brooklynmap", DEV_C.upper()), ("a/b", DEV_A), ("a+b", DEV_A)):
+        try:
+            Collector(Store(":memory:"), Clock(), topic_aliases={segment: uuid})
+            check(False, f"invalid alias {segment!r} refused")
+        except ValueError:
+            check(True, f"invalid alias {segment!r} refused")
+    collector = Collector(Store(":memory:"), Clock(), topic_aliases={"brooklynmap": DEV_A})
+    check(collector.handle("brooklyn/v1/brooklynmap/status", enc(status())) == "status", "configured test alias works")
+    check(collector.handle("brooklyn/v1/otheraccount/status", enc(status())) == "rejected:bad_topic", "unconfigured alias rejected")
+    check(collector.handle(topic(DEV_B, "status"), enc(status(device=DEV_B))) == "status",
+          "production identity still works alongside a test alias")
+    check(collector.handle("brooklyn/v1/brooklynmap/status", enc(status(device=DEV_B))) == "rejected:device_id_mismatch",
+          "alias topic cannot carry another device payload")
+
+
 def test_retention_and_deletion():
     collector, clock = new_collector()
     collector.handle(topic(DEV_A, "event"), enc(event(sequence=1)))
@@ -394,7 +450,7 @@ def test_security():
 
 def main():
     for test in (test_validator, test_ingest_basics, test_rejections, test_state_derivation,
-                 test_health, test_retained_and_restart, test_cross_boot_ordering, test_alias, test_retention_and_deletion,
+                 test_health, test_retained_and_restart, test_cross_boot_ordering, test_alias, test_production_identity, test_alias_is_explicit_and_contained, test_retention_and_deletion,
                  test_dashboard, test_security):
         test()
     print(f"Telemetry tests: {CHECKS} checks, {FAILURES} failures")

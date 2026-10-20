@@ -14,10 +14,12 @@ from datetime import datetime
 
 from .schema_validate import load_schema, validate
 
+TOPIC_SEGMENT_RE = re.compile(r"^[^/+#]+$")
 TOPIC_RE = re.compile(r"^brooklyn/v1/([^/+#]+)/(status|event|availability)$")
 DEVICE_ID_RE = re.compile(
     r"^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
 )
+PRODUCTION_SEGMENT_PREFIX = "bkmap-"
 MAX_PAYLOAD_BYTES = 4096
 DEFAULT_INTERVAL_S = 30
 EVENT_RETENTION_DAYS = 30
@@ -56,11 +58,33 @@ class Collector:
         self.clock = clock
         self.interval_s = interval_s
         # Test-only: maps a non-UUID topic segment (a temporary broker test
-        # account namespace) to the UUID expected in the payload.
-        self.topic_aliases = dict(topic_aliases or {})
+        # account namespace) to the UUID expected in the payload. Production
+        # identity never uses this table (see resolve_topic_identity).
+        self.topic_aliases = {}
+        for segment, uuid in dict(topic_aliases or {}).items():
+            self.add_test_alias(segment, uuid)
         self.telemetry_schema = load_schema("brooklyn-telemetry-v1.schema.json")
         self.event_schema = load_schema("brooklyn-event-v1.schema.json")
         self.counters = {}
+
+    def add_test_alias(self, segment, uuid):
+        if segment.startswith(PRODUCTION_SEGMENT_PREFIX) or not TOPIC_SEGMENT_RE.match(segment):
+            raise ValueError("test alias must not use the production bkmap- namespace")
+        if not DEVICE_ID_RE.match(uuid):
+            raise ValueError("test alias target must be a canonical lowercase UUIDv4")
+        self.topic_aliases[segment] = uuid
+
+    def resolve_topic_identity(self, segment):
+        """Return the device UUID a topic segment stands for, or None.
+
+        Production rule: the segment is exactly "bkmap-<canonical UUID>" and
+        the UUID is taken from it directly. Only explicitly configured test
+        aliases are consulted otherwise; nothing is normalized or guessed.
+        """
+        if segment.startswith(PRODUCTION_SEGMENT_PREFIX):
+            device_id = segment[len(PRODUCTION_SEGMENT_PREFIX):]
+            return device_id if DEVICE_ID_RE.match(device_id) else None
+        return self.topic_aliases.get(segment)
 
     def _count(self, key):
         self.counters[key] = self.counters.get(key, 0) + 1
@@ -91,8 +115,8 @@ class Collector:
         if not match:
             raise _Reject("bad_topic")
         segment, kind = match.groups()
-        device_id = self.topic_aliases.get(segment, segment)
-        if not DEVICE_ID_RE.match(device_id):
+        device_id = self.resolve_topic_identity(segment)
+        if device_id is None:
             raise _Reject("bad_topic")
         if not isinstance(payload, (bytes, bytearray)):
             raise _Reject("bad_payload_type")
