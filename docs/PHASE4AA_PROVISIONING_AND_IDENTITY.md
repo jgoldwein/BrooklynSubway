@@ -18,15 +18,9 @@ Unique strong per-device credential; per-device publish-only ACL on its own thre
 
 **Physical-security caveat:** credentials in NVS (`bkmap_mon`) are not protected against someone with physical access, because flash encryption is not enabled. The blast radius is bounded: a stolen credential can only publish spoofed telemetry on that device's own three topics; it cannot read other devices' data or subscribe. Rotation/revocation restores trust.
 
-## 3. Device ID recommendation (decision for Joel)
+## 3. Device ID decision (resolved)
 
-Frozen schema today: `device_id` and `boot_id` are UUIDv4 in payloads, and the topic segment is the compact 32-hex form. Joel's preference is `bkmap-<12 hex>` used consistently as MQTT username, client ID, topic segment and device ID.
-
-Recommended: adopt **`bkmap-<12 lowercase hex>`** (48 random bits) as the single canonical string, **server-assigned at enrollment** (guaranteed unique) or device-generated with `esp_fill_random()` for manual units, persisted in NVS `bkmap_mon`. **Not derived from the MAC**: a MAC leaks the manufacturer OUI/hardware identity, is enumerable, and ties identity to hardware across a factory reset. Without a server uniqueness check the birthday collision probability at 10,000 devices is about 1.8e-7.
-
-Username == client ID == device ID == topic segment lets one ACL pattern cover every device and prevents a device from impersonating another's topics by construction.
-
-**Schema impact if adopted (needs Joel's approval; not done):** `device_id` pattern changes; topic-segment pattern changes from 32-hex; `boot_id` stays a UUIDv4; collector topic/payload matching, tests and examples change; a schema version decision (amend v1 before any device ships vs bump). **Alternative:** keep the UUID (lowest effort, already implemented and tested). Either is workable; choose before firmware is written.
+**Decided:** the canonical device identity stays the frozen payload UUIDv4. The MQTT username, client ID and topic segment are `bkmap-<UUID>`. The earlier `bkmap-<12 hex>` proposal is **not** adopted and no schema change is made. Details, ACLs and the collector rule are in [PHASE4AA_PRODUCTION_PROVISIONING.md](PHASE4AA_PRODUCTION_PROVISIONING.md). The UUID is random, not derived from the MAC (a MAC leaks the manufacturer OUI and is enumerable).
 
 ## 4. ACL pattern note
 
