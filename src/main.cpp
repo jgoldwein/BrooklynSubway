@@ -11,6 +11,7 @@
 #include "operational_display.h"
 #include "ota_esp.h"
 #include "semantic_api.h"
+#include "telemetry_bench.h"
 #include "train_pipeline.h"
 
 #include <Arduino.h>
@@ -197,6 +198,7 @@ void setup() {
   systemHealthy = hardwareReady && pipelineReady;
   Serial.printf("Train pipeline self-check (no feeds, no LED output): %s\n",
                 pipelineReady ? "PASS" : "FAIL");
+  brooklyn::telemetry_bench::begin();
   networkService.begin();
 #if BROOKLYN_NETWORK_ENABLED
   brooklyn::ota::healthSetupComplete(systemHealthy);
@@ -221,10 +223,17 @@ void loop() {
     networkService.requestProvisioning();
   }
   brooklyn::diagnostics::update();
+  brooklyn::telemetry_bench::beforeNetworkUpdate();
   networkService.update(millis());
+  brooklyn::telemetry_bench::afterNetworkUpdate(
+      millis(), networkService.state() == brooklyn::network::State::Ready,
+      static_cast<uint8_t>(networkService.state()));
   brooklyn::transport::CycleResult completedCycle{};
   uint32_t completedAtMs = 0;
   if (networkService.consumeCompletedCycle(completedCycle, completedAtMs)) {
+    brooklyn::telemetry_bench::noteCompletedCycle(static_cast<uint8_t>(completedCycle.outcome),
+                                                  completedCycle.attempted,
+                                                  completedCycle.processed);
     using brooklyn::display::CycleQuality;
     using brooklyn::transport::CycleOutcome;
     if (completedCycle.outcome == CycleOutcome::Complete ||
@@ -279,6 +288,9 @@ void loop() {
   static uint32_t forgetArmedAtMs = 0;
   while (Serial.available() > 0) {
     const int command = Serial.read();
+    if (brooklyn::telemetry_bench::handleCommand(command)) {
+      continue;
+    }
     if (command == 't' || command == 'T') {
       runXiaoLedTest();
     } else if (command == 'm' || command == 'M') {
