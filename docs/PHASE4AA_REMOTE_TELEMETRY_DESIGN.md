@@ -128,17 +128,18 @@ Do not select a QoS-0-only publisher merely to avoid a dependency.
 
 ## 4. Topic and message design
 
-The topic namespace is versioned and uses the compact lowercase 32-hex
-character device identity (UUID without hyphens) as the topic segment:
+The topic namespace is versioned and uses `bkmap-<UUID>` (the canonical
+lowercase hyphenated device UUID with a fixed `bkmap-` prefix) as the topic
+segment:
 
 ```text
-brooklyn/v1/<device-id>/status
-brooklyn/v1/<device-id>/event
-brooklyn/v1/<device-id>/availability
+brooklyn/v1/bkmap-<UUID>/status
+brooklyn/v1/bkmap-<UUID>/event
+brooklyn/v1/bkmap-<UUID>/availability
 ```
 
 Example topic shape only:
-`brooklyn/v1/0123456789abcdef0123456789abcdef/status`.
+`brooklyn/v1/bkmap-123e4567-e89b-42d3-a456-426614174000/status`.
 This is not a real device identity. No `command`, `control`, `reboot`, `ota`,
 `firmware`, or `configuration` topic exists. There is no device subscription
 namespace.

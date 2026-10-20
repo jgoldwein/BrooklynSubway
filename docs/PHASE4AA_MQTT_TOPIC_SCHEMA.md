@@ -104,17 +104,19 @@ been applied or tested.
 ## 3. Topic hierarchy and ACL identity
 
 The stable device UUID is stored in the payload in canonical lowercase
-hyphenated form. For topic and broker username, remove UUID hyphens to obtain
-exactly 32 lowercase hexadecimal characters:
+hyphenated form. The MQTT username, client ID and topic segment are
+`bkmap-<UUID>` (decided in Phase 4AA finalization; the earlier 32-hex form is
+superseded). The collector extracts the UUID from the segment and requires the
+payload `device_id` to match exactly:
 
 ```text
-brooklyn/v1/<32-lowercase-hex-device-id>/status
-brooklyn/v1/<32-lowercase-hex-device-id>/event
-brooklyn/v1/<32-lowercase-hex-device-id>/availability
+brooklyn/v1/bkmap-<UUID>/status
+brooklyn/v1/bkmap-<UUID>/event
+brooklyn/v1/bkmap-<UUID>/availability
 ```
 
-Example only:
-`brooklyn/v1/0123456789abcdef0123456789abcdef/status`.
+Example only (not a real device):
+`brooklyn/v1/bkmap-123e4567-e89b-42d3-a456-426614174000/status`.
 
 | Topic | Payload | QoS | Retain | Delivery rule |
 |---|---|---:|---:|---|
