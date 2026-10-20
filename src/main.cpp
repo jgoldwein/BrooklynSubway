@@ -11,7 +11,7 @@
 #include "operational_display.h"
 #include "ota_esp.h"
 #include "semantic_api.h"
-#include "telemetry_bench.h"
+#include "telemetry_service.h"
 #include "train_pipeline.h"
 
 #include <Arduino.h>
@@ -28,6 +28,17 @@ bool systemHealthy = true;
 uint32_t renderedFrameRevision = UINT32_MAX;
 uint8_t renderedBrightness = UINT8_MAX;
 uint32_t renderedRouteVisibilityMask = UINT32_MAX;
+brooklyn::transport::CycleResult lastCycle{};
+bool hasLastCycle = false;
+
+static_assert(static_cast<uint8_t>(brooklyn::display::State::NoData) ==
+                  static_cast<uint8_t>(brooklyn::telemetry::DisplayState::NoData) &&
+              static_cast<uint8_t>(brooklyn::display::State::StaleHold) ==
+                  static_cast<uint8_t>(brooklyn::telemetry::DisplayState::StaleHold) &&
+              static_cast<uint8_t>(brooklyn::display::State::DegradedPartial) ==
+                  static_cast<uint8_t>(brooklyn::telemetry::DisplayState::DegradedPartial),
+              "telemetry display state order must match display::State");
+
 
 // Network service is disabled unless explicitly enabled; it never drives LEDs.
 brooklyn::network::NetworkService networkService(trainPipeline);
@@ -52,6 +63,9 @@ void reportDisplayTransition(brooklyn::display::State previous,
   using brooklyn::display::Event;
   const brooklyn::display::State current = operationalDisplay.state();
   if (previous == current) return;
+  brooklyn::telemetry::noteDisplayTransition(
+      static_cast<brooklyn::telemetry::DisplayState>(previous),
+      static_cast<brooklyn::telemetry::DisplayState>(current));
 
   const char *reason = "display policy";
   if (event == Event::PartialHeld) reason = "partial cycle, holding prior frame";
@@ -76,6 +90,36 @@ void reportDisplayTransition(brooklyn::display::State previous,
                 brooklyn::display::stateName(previous),
                 brooklyn::display::stateName(current), reason,
                 static_cast<unsigned long>(operationalDisplay.dataAgeMs(nowMs)));
+}
+
+// Hands the telemetry task a compact copy of application state; never blocks on the network.
+void publishTelemetrySnapshot(uint32_t nowMs) {
+  using brooklyn::transport::CycleOutcome;
+  brooklyn::telemetry::Snapshot snap;
+  snap.networkReady = networkService.state() == brooklyn::network::State::Ready;
+  snap.systemHealthy = systemHealthy;
+  snap.display = static_cast<brooklyn::telemetry::DisplayState>(operationalDisplay.state());
+  snap.brightness = networkService.brightness();
+  snap.hasRouteMask = true;
+  snap.routeVisibilityMask = networkService.routeVisibilityMask();
+  if (hasLastCycle) {
+    snap.poll = lastCycle.outcome == CycleOutcome::Complete  ? brooklyn::telemetry::PollState::Complete
+                : lastCycle.outcome == CycleOutcome::Partial ? brooklyn::telemetry::PollState::Partial
+                : lastCycle.outcome == CycleOutcome::NoFeeds ? brooklyn::telemetry::PollState::NoFeeds
+                                                              : brooklyn::telemetry::PollState::Unknown;
+    snap.feedAttempted = lastCycle.attempted;
+    snap.feedSuccess = lastCycle.processed;
+    snap.hasFeedMask = true;
+    snap.feedMask = static_cast<uint8_t>(lastCycle.processedMask & 0xff);
+  }
+  snap.hasCompleteAge = operationalDisplay.hasCompleteCycle();
+  if (snap.hasCompleteAge) snap.completeAgeSeconds = operationalDisplay.completeAgeMs(nowMs) / 1000;
+  snap.vehiclesProcessed = trainPipeline.counters().vehiclesSeen;
+  snap.vehiclesResolved = operationalDisplay.frame().resolvedTrains;
+  snap.occupiedMapLeds = operationalDisplay.frame().occupiedLeds;
+  snap.hasCollisions = true;
+  snap.collisionCount = operationalDisplay.frame().collisionLeds;
+  brooklyn::telemetry::update(snap);
 }
 
 void updateLogicalDisplay(uint32_t nowMs) {
@@ -198,7 +242,7 @@ void setup() {
   systemHealthy = hardwareReady && pipelineReady;
   Serial.printf("Train pipeline self-check (no feeds, no LED output): %s\n",
                 pipelineReady ? "PASS" : "FAIL");
-  brooklyn::telemetry_bench::begin();
+  brooklyn::telemetry::begin();
   networkService.begin();
 #if BROOKLYN_NETWORK_ENABLED
   brooklyn::ota::healthSetupComplete(systemHealthy);
@@ -223,17 +267,12 @@ void loop() {
     networkService.requestProvisioning();
   }
   brooklyn::diagnostics::update();
-  brooklyn::telemetry_bench::beforeNetworkUpdate();
   networkService.update(millis());
-  brooklyn::telemetry_bench::afterNetworkUpdate(
-      millis(), networkService.state() == brooklyn::network::State::Ready,
-      static_cast<uint8_t>(networkService.state()));
   brooklyn::transport::CycleResult completedCycle{};
   uint32_t completedAtMs = 0;
   if (networkService.consumeCompletedCycle(completedCycle, completedAtMs)) {
-    brooklyn::telemetry_bench::noteCompletedCycle(static_cast<uint8_t>(completedCycle.outcome),
-                                                  completedCycle.attempted,
-                                                  completedCycle.processed);
+    lastCycle = completedCycle;
+    hasLastCycle = true;
     using brooklyn::display::CycleQuality;
     using brooklyn::transport::CycleOutcome;
     if (completedCycle.outcome == CycleOutcome::Complete ||
@@ -265,6 +304,7 @@ void loop() {
   const brooklyn::display::Event agingEvent = operationalDisplay.update(displayNowMs);
   reportDisplayTransition(beforeAging, agingEvent, displayNowMs);
   updateLogicalDisplay(displayNowMs);
+  publishTelemetrySnapshot(displayNowMs);
 #if BROOKLYN_NETWORK_ENABLED
   brooklyn::web::StatusSnapshot webStatus{};
   strncpy(webStatus.deviceName, brooklyn::web::kDefaultDeviceName,
@@ -288,7 +328,7 @@ void loop() {
   static uint32_t forgetArmedAtMs = 0;
   while (Serial.available() > 0) {
     const int command = Serial.read();
-    if (brooklyn::telemetry_bench::handleCommand(command)) {
+    if (brooklyn::telemetry::handleCommand(command)) {
       continue;
     }
     if (command == 't' || command == 'T') {

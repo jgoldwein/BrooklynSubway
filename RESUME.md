@@ -31,7 +31,46 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Latest — Phase 4AA XIAO esp-mqtt resource gate (2026-10-20)
+## Latest — Phase 4AA production TelemetryService on XIAO (2026-10-20)
+
+- **Start:** `cffbc92` (resource gate). Validated on the XIAO `xiao-s3-network`
+  (COM4) only; `platformio.ini` unchanged; no new dependency; LED output off.
+- **Boot-event root cause:** the bench boot event sent `time_synced:true` with
+  `device_time_utc:null`, which the frozen schema rejects. Builders now keep
+  `time_synced` <=> UTC string present (regression-tested).
+- **Architecture:** `src/telemetry_core.cpp` (host-testable policy: gating,
+  backoff, heartbeat, 16-slot event queue, JSON builders) and
+  `src/telemetry_service.cpp` (FreeRTOS task "telemetry", 6144 B stack,
+  priority 1, esp-mqtt, `disable_auto_reconnect`, mutex-copied snapshot from
+  `loop()`). Bench harness files deleted. Live only when
+  `BROOKLYN_TARGET_XIAO` + network + `BROOKLYN_MQTT_BENCH_PASSWORD` in the
+  git-ignored `include/secrets.h`; production builds contain no broker host or
+  credential (binary string scan clean). Serial: `d` drops Wi-Fi, `p` stats.
+- **Heartbeat independence (primary acceptance): PASS.** Over ~18 min / 14 MTA
+  cycles (each blocks `loop()` ~60 s) broker-observed status gaps were
+  ~29-32 s (one 39.6 s gap around a reconnect), versus 56/97/85 s for the bench.
+- **Collector/Last Will:** boot event accepted; retained online/status
+  delivered; Last Will `offline` then `online` + `wifi_reconnected` after the
+  controlled Wi-Fi drop (~14 s outage); collector ingested 31+ status and 12
+  events with 0 rejections. Serial-port open/close resets the board
+  (USB-UART reset), which shows up as an extra offline/online pair.
+- **Resources:** internal free min 112,388 B (below the gate's 119,876 B, but
+  no instability), largest block 110,580 B, PSRAM free ~7.84 MB, telemetry
+  stack high-water 3,364 B of 6,144 B, MQTT task 2,900 B; PUBACK latency
+  ~0.7-2 s typical, 0 missed ACKs, 0 publish failures; no panics/resets.
+  MTA cycles still mostly PARTIAL (6/8 feeds), as in the no-MQTT baseline.
+- **Tests:** 22 host runners pass (new `run_telemetry_core_tests.py`: 260
+  checks + 28 schema checks). Builds: xiao-s3 290,869 B flash; xiao-s3-network
+  1,153,781 B flash / 94,672 B RAM; brooklyn-s3 305,545 B; brooklyn-s3-network
+  1,117,117 B.
+- **Limitations:** `dns_health` always `unknown`; `load_valid`/`schema_version`
+  unset; credential is the temporary bench `brooklynmap` user; production PCB
+  not tested and no production credential provisioning done.
+- **Not done:** Phase 4AA is NOT tagged complete and no release was made.
+- **Next action:** Joel reviews; then production-PCB bring-up and per-device
+  credential provisioning, only on explicit approval.
+
+## Previous — Phase 4AA XIAO esp-mqtt resource gate (2026-10-20)
 
 - **Start:** clean `main` at `76fbad0`. XIAO `xiao-s3-network` only (COM4);
   LED output disabled; `platformio.ini` unchanged; no new dependency.
