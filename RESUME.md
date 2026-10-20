@@ -31,7 +31,40 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Current checkpoint — Phase 4AA telemetry design
+## Latest — Phase 4AA XIAO esp-mqtt resource gate (2026-10-20)
+
+- **Start:** clean `main` at `76fbad0`. XIAO `xiao-s3-network` only (COM4);
+  LED output disabled; `platformio.ini` unchanged; no new dependency.
+- **Harness:** `src/telemetry_bench.cpp`, `include/telemetry_bench.h`, small hooks
+  in `src/main.cpp`. Active only on XIAO with `BROOKLYN_MQTT_BENCH_PASSWORD` in
+  git-ignored `include/secrets.h` (otherwise no-op; `-DBROOKLYN_MQTT_BENCH_DISABLE=1`
+  forces off). Broker `mqtts://mqtt.goldwein.net:8884`, account `brooklynmap`.
+- **Result: PASS WITH CONCERNS.** Verified TLS, MQTT 3.1.1, QoS 1 PUBACKs,
+  retained online/status, ~2 KiB and ~4 KiB payloads, SNTP gating (client not
+  created until Wi-Fi + valid time), negative TLS (IP-literal host mismatch refused,
+  endpoint restored), reconnect after Wi-Fi drop (~21 s), no resets/panics,
+  7 MTA cycles over ~680 s with MQTT connected.
+- **Memory (internal free / largest block):** boot 286,420/245,748; Wi-Fi
+  238,532; client created 231,952/221,172; pre-cycle ~172-174 KB; worst during
+  MTA cycle ~120 KB free, largest block 106-110 KB; after cycle ~170 KB, largest
+  114-122 KB; minimum 119,876 B. No downward trend over 7 cycles. PSRAM free
+  ~7.82-7.84 MB. MQTT task stack high-water   ~11.6-11.9 KB (FreeRTOS minimum-free reading; stack size left at library default, so size it explicitly in production).
+- **Concerns:** (1) MQTT TLS costs ~10 KB steady internal RAM and heap dips to
+  ~120 KB during MTA TLS; acceptable but leaves less margin on production.
+  (2) `loop()` is blocked ~62 s per MTA cycle, delaying logging/publishing; PUBACK
+  latency up to 11 s and two heartbeat PUBACKs missing 15 s around disconnects.
+  Production telemetry must not rely on loop() cadence. (3) Native auto-reconnect
+  took ~10-20 s; wrapper with backoff + SNTP gating recommended. (4) MTA cycles
+  were PARTIAL (2-4 of 6-8 feeds, timeouts) with MQTT on; a no-MQTT baseline on
+  the same hotspot was also PARTIAL (3-6 feeds), so this is largely the
+  hotspot/network, not MQTT; baseline heap minimum was not instrumented.
+- **Builds:** xiao-s3-network 93,528 B RAM / 1,151,533 B flash with bench
+  (baseline 92,420 / 1,100,089). Telemetry tests 297 checks pass; 21 host runners pass.
+- **Hardware state:** XIAO currently runs baseline (bench disabled) firmware.
+- **Next:** Joel reviews. Then design production TelemetryService (own task,
+  explicit esp-mqtt config, backoff, SNTP gate, bounded queue). Do not begin until approved.
+
+## Phase 4AA telemetry design (earlier checkpoint)
 
 - **Checkpoint date:** 2026-10-19. Started from clean `main` at
   `13c1cf86ccaf462c56f6afc8e39dbc1c15817c7c`
