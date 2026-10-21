@@ -31,7 +31,18 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Latest — Phase 4AA production TelemetryService on XIAO (2026-10-20)
+## Latest — Phase 4AA finalization (2026-10-21)
+
+- **Start:** `f40acd2`. Production board NOT available (about 2 weeks); Phase 4AB not started; no production PCB, broker, credential or LED-power work.
+- **Production identity mapping (implemented, `5fd8d51`):** collector accepts only `brooklyn/v1/bkmap-<canonical UUIDv4>/{status,event,availability}` and requires payload `device_id` == topic UUID. The `brooklynmap` bench account works only via explicit `--test-alias`; aliases are empty by default and cannot use the `bkmap-` namespace. Collector tests: 161 checks (new identity and alias-containment tests), 0 failures.
+- **Docs (`0c04752`):** [PHASE4AA_PRODUCTION_PROVISIONING.md](docs/PHASE4AA_PRODUCTION_PROVISIONING.md) has the naming convention, draft publish-only ACL, optional `%u` pattern ACL (verify Mosquitto version in 4AB), NVS design (`bkmap_mon`), manual provisioning workflow, future HTTPS claim, and the flash-encryption/Secure Boot memo. Nothing installed or implemented.
+- **DNS health: deferred.** The only DNS state is the user-triggered diagnostics snapshot, private to `NetworkService`; no continuous health source exists. `dns_health` stays `unknown`. No firmware change.
+- **2-hour XIAO soak (`xiao-s3-network`, phone hotspot): NOT CLEAN.** About 7,200 s, 76 MTA cycles (65 partial, 0 complete, 11 other), 0 resets/panics/watchdogs (one USB-UART reset when the port opened). Telemetry: 272 publishes, 258 PUBACKs, 3 missed ACKs, 0 publish failures, 10 MQTT reconnects (all after about 55 min), 0 dropped events counted. ACK latency median 1.6 s, p95 7.3 s, max 20.5 s. Internal RAM low 109,624 B (resource gate 119,876 B, earlier service run 112,388 B), largest block 106,484 B at the end but dipped to 57,332 B during reconnects and recovered, PSRAM about 7.84 MB, telemetry stack high-water 3,524 B of 6,144 B. Broker-side (deduplicated): 235 unique live statuses, median gap 30.1 s, 167 of 234 gaps within 28.4-31.6 s, 15 gaps above 33 s (max 92.9 s) during the reconnect period. QoS 1 produced many duplicate deliveries during that period. Cause not proven (hotspot instability suspected; MTA TLS and DNS errors appeared in the same window).
+- **Verification:** 22 host runners pass; all four environments build (xiao-s3 290,869 B, xiao-s3-network 1,153,781 B, brooklyn-s3 305,545 B, brooklyn-s3-network 1,117,117 B flash); `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0`; `git diff --check` clean; `secrets.h` untracked and ignored; password absent from Git and history.
+- **Tag:** `phase-4aa-telemetry-complete` NOT created because the soak was not clean.
+- **Next action:** Joel decides whether to re-run the soak on a steadier network (and whether to investigate the late reconnect cluster) before tagging; Phase 4AB waits for the production board.
+
+## Previous — Phase 4AA production TelemetryService on XIAO (2026-10-20)
 
 - **Start:** `cffbc92` (resource gate). Validated on the XIAO `xiao-s3-network`
   (COM4) only; `platformio.ini` unchanged; no new dependency; LED output off.
