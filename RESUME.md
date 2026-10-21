@@ -31,7 +31,36 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Latest — Phase 4AA finalization (2026-10-21)
+## Latest — Phase 4AA stable-network soak (2026-10-21)
+
+- **Stable-network XIAO soak: PASS.** `xiao-s3-network`, stable Wi-Fi (not the
+  phone hotspot), about 7,200 s. No intentional network disruption. 102 MTA
+  cycles: 91 complete, 11 partial. One USB-UART reset at serial-port opening;
+  no subsequent resets, panics, watchdogs, Wi-Fi drops, or MQTT reconnects.
+- **MQTT:** one connection, zero reconnects, zero missed/unresolved PUBACKs,
+  zero publish failures, and zero dropped events. 273 publishes and 274
+  PUBACKs were in the serial capture boundary. PUBACK median 1,018 ms, p95
+  1,620 ms, max 2,210 ms. Broker observed 243 live status deliveries and 241
+  unique sequence identities (two duplicate QoS 1 deliveries). Deduplicated
+  heartbeat gap min/median/max 28.41/30.43/32.26 s; none exceeded 33 s.
+- **Collector:** retained online/status observed; final device sequence 276;
+  34 event rows and zero duplicate event keys; no schema rejections. Two
+  `duplicate_or_old` outcomes were safely suppressed.
+- **Memory:** internal low-water 109,344 B. Sampled largest internal block
+  reached 77,812 B and recovered to 94,196 B in final telemetry stats (MTA
+  cycle diagnostics reported 110,580 B); PSRAM minimum 7,817,083 B and about
+  7.84 MB at end. Reported telemetry `stack_hw` stayed 3,540–3,732 B.
+- **MTA:** 91 complete, 11 partial of 102 cycles. No coincident DNS/TLS error
+  or reconnect cluster during this stable-network run.
+- **Conclusion:** The previous phone-hotspot reconnect cluster did not recur.
+  The stable soak meets the Phase 4AA completion criteria.
+- **Final checks/tag:** rerun all 22 host runners, all four builds,
+  `git diff --check`, and secret scan. Commit this result, push `main`, and
+  create/push the project milestone tag `phase-4aa-telemetry-complete` (not a
+  semantic firmware release). Then STOP; wait for the production board before
+  Phase 4AB.
+
+## Earlier checkpoint — Phase 4AA finalization (2026-10-21)
 
 - **Start:** `f40acd2`. Production board NOT available (about 2 weeks); Phase 4AB not started; no production PCB, broker, credential or LED-power work.
 - **Production identity mapping (implemented, `5fd8d51`):** collector accepts only `brooklyn/v1/bkmap-<canonical UUIDv4>/{status,event,availability}` and requires payload `device_id` == topic UUID. The `brooklynmap` bench account works only via explicit `--test-alias`; aliases are empty by default and cannot use the `bkmap-` namespace. Collector tests: 161 checks (new identity and alias-containment tests), 0 failures.
