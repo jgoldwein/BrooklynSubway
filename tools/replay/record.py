@@ -17,18 +17,32 @@ import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
-from core import (
-    FEED_STATUSES,
-    HERE,
-    MANIFEST_NAME,
-    MANIFEST_SCHEMA,
-    MANIFEST_VERSION,
-    MAX_PAYLOAD_BYTES,
-    atomic_write,
-    bridge_feeds,
-    build_bridge,
-    temporary_bridge,
-)
+if __package__:
+    from .core import (
+        FEED_STATUSES,
+        HERE,
+        MANIFEST_NAME,
+        MANIFEST_SCHEMA,
+        MANIFEST_VERSION,
+        MAX_PAYLOAD_BYTES,
+        atomic_write,
+        bridge_feeds,
+        build_bridge,
+        temporary_bridge,
+    )
+else:
+    from core import (
+        FEED_STATUSES,
+        HERE,
+        MANIFEST_NAME,
+        MANIFEST_SCHEMA,
+        MANIFEST_VERSION,
+        MAX_PAYLOAD_BYTES,
+        atomic_write,
+        bridge_feeds,
+        build_bridge,
+        temporary_bridge,
+    )
 
 
 def utc_now():
