@@ -77,6 +77,28 @@ port. `--export` regenerates the static metadata JSON, and `--check` checks it
 without starting the server. The host C++ binary is built in a temporary
 directory and removed when the server exits.
 
+For a continuously updating view using the public MTA GTFS-Realtime feeds:
+
+```powershell
+python tools\virtual_map\run.py --live-mta
+```
+
+Live mode polls the eight compiled feed endpoints over HTTPS every 30 seconds
+by default, using certificate verification and a 12-second per-feed timeout.
+Requests run concurrently; each completed cycle is passed through one
+persistent instance of the firmware host replay pipeline so operational display
+state is retained between cycles. The browser shows per-feed results, update
+time, current trains, and the rendered map. `--live-interval N` changes the
+interval (15–3600 seconds); `--live-timeout N` changes the per-feed timeout
+(greater than zero and at most 120 seconds). The browser/server remain
+loopback-only. Live mode needs an internet connection, but not an ESP32-S3 or
+MTA API key. Press Ctrl+C to stop polling and the local server.
+
+This remains a host simulation: it displays trains resolved by the firmware
+pipeline, not a camera view or a physical-device connection. All 306 addressable
+LEDs use the exact manufactured PCB coordinates; the separate discrete U23
+indicator is not drawn as an addressable point.
+
 The map shows all 306 addressable points at their PCB X/Y positions, with RGB
 as fill and channel-colored outlines as an optional diagnostic overlay. Off
 points remain visible, focusable, and selectable. The inspector reports
@@ -99,6 +121,12 @@ Controls include:
 Inspection filters only dim points/table rows; they do not modify frames. The
 route-mask control is the sole visibility control that changes renderer input.
 Status LEDs are separate from route filtering and map RGB.
+
+## Map artwork underlay/overlay
+
+The toolbar's **Map artwork** loader places a user-supplied PNG/JPEG/SVG/WebP in the same PCB coordinate space as the LEDs, under or over them. Opacity, scale, X/Y offset, and rotation sliders align it to the LED positions. The image is read in the browser only (stored in `localStorage`, never uploaded), and no artwork is bundled in the repo. LED fades, glow breathing, and an arrival flash are client-side visual effects between firmware-rendered frames; they do not alter the rendered colors.
+
+The default underlay is the MTA Brooklyn subway diagram (`tools/virtual_map/artwork/brooklyn_subway_diagram.jpeg`, served as `/map-image.jpg`). It is registered to the LED coordinates with a least-squares affine transform fitted to nine landmark stations (constants `MAP_JPG` in `index.html`); the residual is about one LED diameter at worst. The four status LEDs have no place on the diagram and appear below it. The map also serves `/board-art.svg`, the top silkscreen and board outline rendered from the fabrication Gerber ZIP by `python tools/virtual_map/extract_gerber_art.py` (needs `pip install gerbonara`, host tooling only), toggled with **PCB silkscreen**. The Gerber's offset is fitted by matching all 306 LEDs to top paste pads. The Gerber is read-only input, and its proprietary "Colorful" layers are encrypted and not used.
 
 ## Frame interchange
 

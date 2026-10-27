@@ -16,16 +16,23 @@
     .toolbar { display:flex; flex-wrap:wrap; align-items:end; gap:10px 14px; margin-bottom:12px; }
     label { display:grid; gap:4px; color:#d7e1e9; }
     input, select, button { font:inherit; color:inherit; background:#101820; border:1px solid #546573; border-radius:4px; padding:6px 8px; }
+    input:disabled, select:disabled { opacity:.72; cursor:default; }
     input[type=checkbox] { accent-color:#58b4e5; }
     input[type=range] { padding:0; }
     button { cursor:pointer; background:#263746; }
     button:hover { background:#334b60; }
+    [hidden] { display:none !important; }
     .check { display:flex; align-items:center; gap:6px; }
     .routes { display:flex; flex-wrap:wrap; gap:5px 12px; padding:8px 0; }
     .route-control { display:inline-flex; align-items:center; gap:3px; }
     .map-wrap { height:min(70vh,760px); min-height:420px; overflow:hidden; background:#101820; border:1px solid #3c4c58; border-radius:6px; }
     svg { display:block; width:100%; height:100%; }
-    .led { cursor:pointer; vector-effect:non-scaling-stroke; stroke-width:1.6; }
+    .led { cursor:pointer; vector-effect:non-scaling-stroke; stroke-width:1.6; transition:fill 1400ms ease, opacity 200ms ease; }
+    .led.lit { filter:brightness(2.2) drop-shadow(0 0 6px var(--led-glow-color)); animation:ledBreathe 3.2s ease-in-out infinite; animation-delay:var(--led-delay,0s); }
+    .led.arrived { animation:ledArrive 1.6s ease-out 1, ledBreathe 3.2s ease-in-out 1.6s infinite; }
+    @keyframes ledBreathe { 0%,100%{filter:brightness(2.0) drop-shadow(0 0 4px var(--led-glow-color));} 50%{filter:brightness(2.6) drop-shadow(0 0 11px var(--led-glow-color));} }
+    @keyframes ledArrive { 0%{filter:brightness(5) drop-shadow(0 0 22px var(--led-glow-color));} 100%{filter:brightness(2.2) drop-shadow(0 0 6px var(--led-glow-color));} }
+    @media (prefers-reduced-motion:reduce){ .led.lit,.led.arrived{animation:none;} }
     .led:hover, .led:focus, .led.selected { stroke:#fff !important; stroke-width:3.2; outline:none; }
     .led.dimmed { opacity:.17; }
     .legend { display:flex; flex-wrap:wrap; gap:8px 14px; color:#b9c8d3; font-size:.86rem; margin:8px 0; }
@@ -37,6 +44,14 @@
     .rgb { font-family:ui-monospace,monospace; }
     .status { padding:9px; margin:8px 0; border-left:3px solid #58b4e5; background:#111a22; }
     .replay-panel { margin-bottom:12px; border:1px solid #546573; border-radius:6px; padding:10px; background:#15202a; }
+    .live-panel { margin-bottom:12px; border:1px solid #2c7857; border-radius:6px; padding:10px; background:#12251f; }
+    .live-title { display:flex; align-items:center; gap:8px; color:#aaf2c9; }
+    .live-pulse { width:9px; height:9px; border-radius:50%; background:#31d184; box-shadow:0 0 12px #31d184; }
+    .live-summary { margin-top:6px; color:#d5e6dc; }
+    .live-feeds { display:flex; flex-wrap:wrap; gap:5px 12px; margin-top:6px; color:#b9c8d3; font-size:.85rem; }
+    .live-feed { white-space:nowrap; }
+    .feed-success { color:#82e2aa; }
+    .feed-failed { color:#ff9c86; }
     .replay-controls { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
     .replay-summary { margin-top:8px; color:#d7e1e9; overflow-wrap:anywhere; }
     .observation-table { max-height:240px; margin-top:6px; }
@@ -51,7 +66,7 @@
     th { position:sticky; top:0; background:#263746; z-index:1; }
     tr { cursor:pointer; } tr:hover { background:#293b4a; }
     .channel-outline { display:flex; flex-wrap:wrap; gap:5px 9px; }
-    @media(max-width:1050px) { main { grid-template-columns:1fr; } aside { order:-1; } .map-wrap { min-height:360px; } }
+    @media(max-width:1050px) { main { grid-template-columns:1fr; } aside { order:1; } .map-wrap { min-height:360px; } }
   </style>
 </head>
 <body>
@@ -61,6 +76,11 @@
 </header>
 <main>
   <section>
+    <div id="livePanel" class="live-panel" hidden>
+      <div class="live-title"><span class="live-pulse"></span><strong>LIVE MTA FEEDS</strong><span class="subtle">Host-rendered · public feeds · refreshes automatically</span></div>
+      <div id="liveSummary" class="live-summary">Connecting to the live feed poller…</div>
+      <div id="liveFeeds" class="live-feeds"></div>
+    </div>
     <div id="replayPanel" class="replay-panel" hidden>
       <h2>Recorded GTFS-Realtime replay</h2>
       <div class="replay-controls">
@@ -131,6 +151,17 @@
       <label class="check"><input id="identifyChannel" type="checkbox" checked> Identify channels</label>
       <button id="resetFilters">Reset filters</button>
     </div>
+    <div class="toolbar" id="artControls">
+      <label>Map artwork <input id="artFile" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp"></label>
+      <label>Layer <select id="artMode"><option value="under">Under LEDs</option><option value="over">Over LEDs</option></select></label>
+      <label>Opacity <input id="artOpacity" type="range" min="0" max="100" value="60"></label>
+      <label>Scale <input id="artScale" type="range" min="20" max="300" value="100"></label>
+      <label>X <input id="artX" type="range" min="-2000" max="2000" value="0"></label>
+      <label>Y <input id="artY" type="range" min="-2000" max="2000" value="0"></label>
+      <label>Rotate <input id="artRot" type="range" min="-180" max="180" step="0.5" value="0"></label>
+      <button id="artClear">Remove artwork</button>
+      <label class="check" id="artSilkRow" hidden><input id="artSilkShow" type="checkbox"> PCB silkscreen</label>
+    </div>
     <div class="map-wrap"><svg id="map" role="img" aria-label="All 306 addressable LEDs at their exact PCB placement coordinates"></svg></div>
     <div class="legend" id="channelLegend"></div>
     <p class="subtle">Circle fill is the current firmware-rendered RGB. Select Identify channels to color the outlines by physical channel; black/off pixels remain selectable. GPIO14 U23 is discrete and is not an addressable pixel.</p>
@@ -156,6 +187,7 @@
 const channelStroke = ["#4dc9f6","#f67019","#f53794","#537bc4","#acc236","#166a8f","#00a950","#58595b"];
 let metadata, frame, savedInput, selectedIndex = 0;
 let replayData = null, replayIndex = 0, replayTimer = null, activeReplayFrame = null;
+let liveMode = false, liveTimer = null, liveSequence = 0;
 const $ = id => document.getElementById(id);
 const svgNS = "http://www.w3.org/2000/svg";
 const observationTargets = {
@@ -218,11 +250,78 @@ function initControls() {
   $("replayPlay").addEventListener("click",playReplay);
   $("replayPause").addEventListener("click",pauseReplay);
 }
+let artBox=null,artGroup=null,artImage=null,artSilk=null;
+const ART_KEY="brooklynMapArtwork",ART_IDS=["artMode","artOpacity","artScale","artX","artY","artRot"];
+function initArt() {
+  const svg=$("map");
+  artGroup=document.createElementNS(svgNS,"g"); artGroup.setAttribute("pointer-events","none");
+  artImage=document.createElementNS(svgNS,"image");
+  artImage.setAttribute("x",artBox.x); artImage.setAttribute("y",artBox.y);
+  artImage.setAttribute("width",artBox.w); artImage.setAttribute("height",artBox.h);
+  artImage.setAttribute("preserveAspectRatio","xMidYMid meet");
+  artGroup.appendChild(artImage);
+  artSilk=document.createElementNS(svgNS,"image"); artSilk.setAttribute("display","none"); artGroup.appendChild(artSilk);
+  svg.appendChild(artGroup);
+  $("artSilkShow").addEventListener("change",()=>artSilk.setAttribute("display",$("artSilkShow").checked?"inline":"none"));
+  let saved={};
+  try{saved=JSON.parse(localStorage.getItem(ART_KEY)||"{}");}catch(e){}
+  for(const id of ART_IDS) if(saved[id]!==undefined) $(id).value=saved[id];
+  if(saved.src) artImage.setAttribute("href",saved.src);
+  else loadBoardArt();
+  for(const id of ART_IDS) $(id).addEventListener("input",()=>{layoutArt();saveArt();});
+  $("artFile").addEventListener("change",e=>{
+    const f=e.target.files[0]; if(!f)return;
+    const reader=new FileReader();
+    reader.onload=()=>{artImage.removeAttribute("transform");for(const [k,v] of Object.entries({x:artBox.x,y:artBox.y,width:artBox.w,height:artBox.h}))artImage.setAttribute(k,v);artImage.setAttribute("preserveAspectRatio","xMidYMid meet");artImage.setAttribute("href",reader.result);layoutArt();saveArt();};
+    reader.readAsDataURL(f);
+  });
+  $("artClear").addEventListener("click",()=>{artImage.removeAttribute("href");$("artFile").value="";saveArt();layoutArt();});
+  layoutArt();
+}
+const MAP_JPG={w:2852,h:2665,m:[4.8355,-0.02685,0.0781,4.3672,345.17,-3680.5]};
+async function loadBoardArt() {
+  artImage.setAttribute("x",0);artImage.setAttribute("y",0);
+  artImage.setAttribute("width",MAP_JPG.w);artImage.setAttribute("height",MAP_JPG.h);
+  artImage.setAttribute("preserveAspectRatio","none");
+  artImage.setAttribute("transform",`matrix(${MAP_JPG.m.join(" ")})`);
+  artImage.setAttribute("href","/map-image.jpg");
+  const [a,b,c,d,e,f]=MAP_JPG.m;
+  const xs=[e,a*MAP_JPG.w+e],ys=[f,d*MAP_JPG.h+f];
+  artBox={x:Math.min(...xs),y:Math.min(...ys),w:Math.abs(xs[1]-xs[0]),h:Math.abs(ys[1]-ys[0])};
+  $("map").setAttribute("viewBox",`${artBox.x} ${artBox.y} ${artBox.w} ${artBox.h}`);
+  $("artOpacity").value=100;layoutArt();
+  try {
+    const res=await fetch("/board-art.svg"); if(!res.ok)return;
+    const text=await res.text();
+    const vb=(text.match(/viewBox="([^"]+)"/)||[])[1];
+    if(!vb)return;
+    const [x,y,w,h]=vb.split(/\s+/).map(Number);
+    for(const [k,v] of Object.entries({x,y,width:w,height:h})) artSilk.setAttribute(k,v);
+    artSilk.setAttribute("preserveAspectRatio","none");
+    artSilk.setAttribute("href","data:image/svg+xml;charset=utf-8,"+encodeURIComponent(text));
+    $("artSilkRow").hidden=false;
+  } catch(e) {}
+}
+function saveArt() {
+  const out={src:artImage.getAttribute("href")||""};
+  for(const id of ART_IDS) out[id]=$(id).value;
+  try{localStorage.setItem(ART_KEY,JSON.stringify(out));}catch(e){$("message").textContent="Artwork too large to remember between reloads; it stays loaded for this session.";}
+}
+function layoutArt() {
+  const cx=artBox.x+artBox.w/2,cy=artBox.y+artBox.h/2;
+  const s=Number($("artScale").value)/100,dx=Number($("artX").value),dy=Number($("artY").value),r=Number($("artRot").value);
+  artGroup.setAttribute("transform",`translate(${cx+dx} ${cy+dy}) rotate(${r}) scale(${s}) translate(${-cx} ${-cy})`);
+  artGroup.setAttribute("opacity",Number($("artOpacity").value)/100);
+  const svg=$("map");
+  if($("artMode").value==="over") svg.appendChild(artGroup); else svg.insertBefore(artGroup,svg.firstChild);
+}
 function drawMetadata() {
   const points=metadata.pixels;
   const xs=points.map(p=>p.x), ys=points.map(p=>-p.y);
   const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),pad=180;
   const svg=$("map"); svg.setAttribute("viewBox",`${minX-pad} ${minY-pad} ${maxX-minX+2*pad} ${maxY-minY+2*pad}`);
+  artBox={x:minX-pad,y:minY-pad,w:maxX-minX+2*pad,h:maxY-minY+2*pad};
+  initArt();
   for(const p of points) {
     const circle=document.createElementNS(svgNS,"circle");
     circle.classList.add("led"); circle.dataset.index=String(p.globalIndex);
@@ -235,6 +334,7 @@ function drawMetadata() {
     circle.addEventListener("click",()=>inspect(p.globalIndex,true));
     svg.appendChild(circle);
   }
+  layoutArt();
   const body=$("auditRows");
   for(const p of mapPixels()) {
     const tr=document.createElement("tr"); tr.dataset.index=String(p.globalIndex);
@@ -343,11 +443,54 @@ function renderReplayDetails() {
     observationRows.appendChild(row);
   }
 }
+async function pollLive() {
+  try {
+    const response=await fetch("/api/live-state",{cache:"no-store"});
+    const data=await response.json();
+    if(!response.ok)throw new Error(data.error||"live status unavailable");
+    const state=data.feeds||[];
+    const complete=state.filter(feed=>feed.status==="SUCCESS").length;
+    const updated=data.updatedUtc?new Date(data.updatedUtc).toLocaleTimeString():"waiting for first feed cycle";
+    $("liveSummary").textContent=data.lastError
+      ? `${data.lastError} · last successful update ${updated}`
+      : `Cycle ${data.cycle||0} · ${complete}/${state.length} feeds available · last update ${updated} · polling every ${data.intervalSeconds}s`;
+    const feedList=$("liveFeeds");feedList.replaceChildren();
+    for(const feed of state) {
+      const item=htmlText(feedList,"span",`${feed.feedId}: ${feed.status}`);
+      item.className=`live-feed ${feed.status==="SUCCESS"?"feed-success":feed.status==="PENDING"?"":"feed-failed"}`;
+      item.title=feed.result||"";
+    }
+    if(data.frame&&data.cycle!==liveSequence) {
+      liveSequence=data.cycle;
+      activeReplayFrame=null;
+      savedInput={trainFrame:{occupancy:data.frame.occupancy,trains:data.frame.trains||[]}};
+      $("brightness").value=String(data.frame.brightness);
+      $("brightnessValue").textContent=data.frame.brightness+" / 255";
+      $("displayState").value=data.frame.displayState;
+      $("wifiState").value=data.frame.wifiState;
+      $("systemHealthy").checked=data.frame.systemHealthy;
+      $("provisioning").checked=data.frame.provisioning;
+      setMask(data.frame.routeVisibilityMask);
+      renderFrame(data.frame);
+      setMessage("");
+    } else if(data.lastError&&!data.frame) {
+      setMessage(data.lastError);
+    }
+  } catch(error) {
+    setMessage("Live feed connection error: "+error.message);
+  }
+  if(liveMode)liveTimer=setTimeout(pollLive,2000);
+}
 function renderFrame(frameData) {
   frame=frameData;
   for(const node of document.querySelectorAll(".led")) {
     const i=Number(node.dataset.index),p=frame.pixels[i],meta=metadata.pixels[i];
-    node.setAttribute("fill",rgbHex(p));
+    const hex=rgbHex(p),was=node.getAttribute("fill"),isLit=Boolean(p.r||p.g||p.b);
+    if(was&&was!==hex&&isLit){node.classList.remove("arrived");void node.getBoundingClientRect();node.classList.add("arrived");}
+    node.setAttribute("fill",hex);
+    node.style.setProperty("--led-glow-color",hex);
+    node.style.setProperty("--led-delay",(i%12)*0.27+"s");
+    node.classList.toggle("lit",isLit);
     node.classList.toggle("dimmed",!matches(meta,i));
     node.setAttribute("aria-label",`${meta.designator}, RGB ${rgbHex(p)}, occupancy ${frame.occupancy[i]||0}`);
   }
@@ -356,7 +499,8 @@ function renderFrame(frameData) {
   }
   renderStatus();
   if(activeReplayFrame) renderReplayDetails();
-  $("frameSummary").textContent=`${frame.displayState} · ${frame.renderedLeds} rendered map LEDs · ${frame.resolvedTrains} trains · ${frame.collisionLeds} collision LEDs · brightness ${frame.brightness} · route mask 0x${Number(frame.routeVisibilityMask).toString(16).padStart(5,"0")}`;
+  const pipeline=frame.pipeline||frame;
+  $("frameSummary").textContent=`${frame.displayState} · ${pipeline.renderedLeds} rendered map LEDs · ${pipeline.resolvedTrains} trains · ${pipeline.collisionLeds} collision LEDs · brightness ${frame.brightness} · route mask 0x${Number(frame.routeVisibilityMask).toString(16).padStart(5,"0")}`;
   inspect(selectedIndex,false);
   applyFilters();
 }
@@ -375,7 +519,10 @@ function applyFilters() {
   for(const node of document.querySelectorAll(".led")) {
     const i=Number(node.dataset.index),p=metadata.pixels[i];
     node.classList.toggle("dimmed",!matches(p,i));
-    node.style.stroke= $("identifyChannel").checked?channelStroke[p.channel-1]:"#657583";
+    const color=frame.pixels[i];
+    node.style.stroke=$("identifyChannel").checked
+      ?channelStroke[p.channel-1]
+      :(color.r||color.g||color.b)?rgbHex(color):"#657583";
   }
 }
 function makeRequest(input) {
@@ -486,7 +633,17 @@ function loadFrameFile(event) {
 async function start() {
   const response=await fetch("/metadata.json");metadata=await response.json();
   initControls();drawMetadata();
-  if(replayData) {
+  liveMode=new URLSearchParams(location.search).has("live");
+  if(liveMode) {
+    $("livePanel").hidden=false;
+    $("scenario").closest("label").hidden=true;
+    $("identifyChannel").checked=false;
+    $("identifyChannel").disabled=true;
+    for(const id of ["brightness","displayState","wifiState","systemHealthy","provisioning"])
+      $(id).disabled=true;
+    document.querySelectorAll("#routes input").forEach(input=>input.disabled=true);
+    pollLive();
+  } else if(replayData) {
     $("replayPanel").hidden=false;
     await loadReplayFrame(0);
     if(new URLSearchParams(location.search).has("autoplay")) playReplay();

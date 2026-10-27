@@ -2,13 +2,18 @@
 # Copyright 2026 Joel W. Goldwein
 # SPDX-License-Identifier: Apache-2.0
 
-"""Run the offline, loopback-only Brooklyn virtual map simulator."""
+"""Run the loopback-only Brooklyn virtual map simulator."""
 
 import argparse
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 import json
+import ssl
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -28,7 +33,194 @@ if __package__:
 else:
     from core import GENERATED, HERE, build, check_generated, generated_metadata, run_renderer, write_generated
 
-from replay.core import parse_utc, validate_replay_schema
+from replay.core import (
+    FEED_STATUSES,
+    bridge_feeds,
+    build_bridge,
+    parse_utc,
+    validate_replay_schema,
+)
+from replay.record import fetch
+
+
+def utc_now():
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
+
+
+class LiveReplayBridge:
+    def __init__(self, executable, brightness, route_mask):
+        self.process = subprocess.Popen(
+            [str(executable), "replay"],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=None,
+            bufsize=0,
+        )
+        self._send(f"REPLAY 1 {brightness} {route_mask} 1 3 0\n".encode("ascii"))
+
+    def _send(self, data):
+        view = memoryview(data)
+        while view:
+            written = self.process.stdin.write(view)
+            if written is None or written == 0:
+                raise RuntimeError("live firmware renderer input closed unexpectedly")
+            view = view[written:]
+
+    def render(self, cycle_index, unix_time, elapsed_ms, slots):
+        if self.process.poll() is not None:
+            raise RuntimeError("live firmware renderer process exited unexpectedly")
+        self._send(
+            f"C {cycle_index} {unix_time} {elapsed_ms} {len(slots)}\n".encode("ascii")
+        )
+        for slot in slots:
+            status, payload = slot
+            self._send(
+                f"F {FEED_STATUSES[status]} {len(payload)} {payload.hex()}\n".encode("ascii")
+            )
+        line = self.process.stdout.readline()
+        if not line:
+            return_code = self.process.wait(timeout=5)
+            raise RuntimeError(
+                f"live firmware renderer exited without a frame (status {return_code})"
+            )
+        try:
+            return json.loads(line)
+        except json.JSONDecodeError as error:
+            raise RuntimeError("live firmware renderer returned invalid JSON") from error
+
+    def close(self):
+        if self.process.poll() is None:
+            self._send(b"END\n")
+            self.process.stdin.close()
+            return_code = self.process.wait(timeout=5)
+            if return_code:
+                raise RuntimeError(
+                    f"live firmware renderer exited with status {return_code}"
+                )
+
+
+class LiveMtaPoller:
+    def __init__(self, executable, feeds, interval, timeout):
+        self.feeds = feeds
+        self.interval = interval
+        self.timeout = timeout
+        self.context = ssl.create_default_context()
+        self.started = time.monotonic()
+        self.stop_event = threading.Event()
+        self.lock = threading.Lock()
+        self.state = {
+            "enabled": True,
+            "intervalSeconds": interval,
+            "cycle": 0,
+            "updatedUtc": None,
+            "lastError": None,
+            "feeds": [
+                {"feedId": feed["id"], "status": "PENDING", "bytes": 0}
+                for feed in feeds
+            ],
+            "frame": None,
+        }
+        self.bridge = LiveReplayBridge(executable, 64, 0x3FFFF)
+        self.thread = threading.Thread(target=self._run, name="brooklyn-live-mta", daemon=True)
+
+    def start(self):
+        self.thread.start()
+
+    def snapshot(self):
+        with self.lock:
+            return dict(self.state)
+
+    def _poll_cycle(self, cycle_index):
+        with ThreadPoolExecutor(max_workers=len(self.feeds)) as workers:
+            futures = [
+                workers.submit(fetch, feed["url"], self.timeout, self.context)
+                for feed in self.feeds
+            ]
+            results = [future.result() for future in futures]
+
+        captured_utc = utc_now()
+        elapsed_ms = int((time.monotonic() - self.started) * 1000)
+        slots = []
+        feed_state = []
+        for feed, (result, payload) in zip(self.feeds, results):
+            status = result["status"]
+            payload_bytes = payload or b""
+            slots.append((status, payload_bytes))
+            entry = {
+                "feedId": feed["id"],
+                "status": status,
+                "result": result["result"],
+                "bytes": len(payload_bytes),
+                "durationMs": result["durationMs"],
+            }
+            if "httpStatus" in result:
+                entry["httpStatus"] = result["httpStatus"]
+            feed_state.append(entry)
+        frame = self.bridge.render(
+            cycle_index,
+            int(time.time()) & 0xFFFFFFFF,
+            elapsed_ms,
+            slots,
+        )
+        frame["recordedUtc"] = captured_utc
+        frame["captureElapsedMs"] = elapsed_ms
+        frame["simulatedElapsedMs"] = elapsed_ms
+        frame["frameTimestamp"] = captured_utc
+        frame["feeds"]["statuses"] = [
+            {"feedId": feed["feedId"], "status": feed["status"]}
+            for feed in feed_state
+        ]
+        frame["feeds"]["available"] = sum(
+            item["status"] == "SUCCESS" for item in feed_state
+        )
+        frame["feeds"]["expected"] = len(self.feeds)
+        frame["feeds"]["missing"] = [
+            item["feedId"] for item in feed_state if item["status"] != "SUCCESS"
+        ]
+        frame["feeds"]["completeness"] = (
+            "COMPLETE" if frame["feeds"]["available"] == len(self.feeds)
+            else "NO_FEEDS" if frame["feeds"]["available"] == 0
+            else "PARTIAL"
+        )
+        frame["feeds"]["parseFailures"] = frame["pipeline"]["feedDecodeFailures"]
+        with self.lock:
+            self.state.update(
+                {
+                    "cycle": cycle_index + 1,
+                    "updatedUtc": captured_utc,
+                    "lastError": None,
+                    "feeds": feed_state,
+                    "frame": frame,
+                }
+            )
+        print(
+            f"Live MTA cycle {cycle_index + 1}: "
+            f'{frame["feeds"]["available"]}/{len(self.feeds)} feeds, '
+            f'{frame["pipeline"]["resolvedTrains"]} trains resolved.',
+            flush=True,
+        )
+
+    def _run(self):
+        cycle_index = 0
+        while not self.stop_event.is_set():
+            try:
+                self._poll_cycle(cycle_index)
+                cycle_index += 1
+            except (OSError, RuntimeError, ValueError, json.JSONDecodeError) as error:
+                message = f"Live MTA polling failed: {error}"
+                with self.lock:
+                    self.state["lastError"] = message
+                print(message, file=sys.stderr, flush=True)
+                if self.bridge.process.poll() is not None:
+                    break
+            self.stop_event.wait(self.interval)
+
+    def close(self):
+        self.stop_event.set()
+        self.thread.join(timeout=self.timeout + 10)
+        if self.thread.is_alive():
+            raise RuntimeError("live MTA poller did not stop before its timeout")
+        self.bridge.close()
 
 
 def validate_render_request(request, metadata):
@@ -264,8 +456,28 @@ class Handler(BaseHTTPRequestHandler):
         if request_path in ("/", "/index.html"):
             path = HERE / "index.html"
             content_type = "text/html; charset=utf-8"
+        elif request_path == "/map-image.jpg":
+            art = HERE / "artwork" / "brooklyn_subway_diagram.jpeg"
+            if not art.is_file():
+                self.respond(404, b"Not found\n", "text/plain; charset=utf-8")
+                return
+            self.respond(200, art.read_bytes(), "image/jpeg")
+            return
+        elif request_path == "/board-art.svg":
+            art = HERE / "artwork" / "board_top_silkscreen.svg"
+            if not art.is_file():
+                self.respond(404, b"Not found\n", "text/plain; charset=utf-8")
+                return
+            self.respond(200, art.read_bytes(), "image/svg+xml")
+            return
         elif request_path == "/metadata.json":
             self.respond(200, self.server.metadata_blob, "application/json; charset=utf-8")
+            return
+        elif request_path == "/api/live-state" and self.server.live_poller is not None:
+            data = json.dumps(
+                self.server.live_poller.snapshot(), separators=(",", ":")
+            ).encode("utf-8")
+            self.respond(200, data, "application/json; charset=utf-8")
             return
         elif request_path == "/replay.json" and self.server.replay_blob:
             self.respond(200, self.server.replay_blob, "application/json; charset=utf-8")
@@ -313,9 +525,18 @@ def main():
     parser.add_argument("--check", action="store_true", help="check generated metadata and exit")
     parser.add_argument("--replay-json", type=Path, help="load a validated Phase 4Y replay export")
     parser.add_argument("--replay-paused", action="store_true", help="start an imported replay paused")
+    parser.add_argument("--live-mta", action="store_true", help="poll public MTA feeds continuously")
+    parser.add_argument("--live-interval", type=float, default=30, help="seconds between live feed cycles (minimum 15)")
+    parser.add_argument("--live-timeout", type=float, default=12, help="per-feed request timeout in seconds")
     args = parser.parse_args()
     if not 0 <= args.port <= 65535:
         parser.error("port must be in 0..65535")
+    if args.live_mta and args.replay_json is not None:
+        parser.error("--live-mta and --replay-json cannot be used together")
+    if not 15 <= args.live_interval <= 3600:
+        parser.error("--live-interval must be from 15 to 3600 seconds")
+    if not 0 < args.live_timeout <= 120:
+        parser.error("--live-timeout must be greater than zero and at most 120 seconds")
 
     with tempfile.TemporaryDirectory(prefix="brooklyn-virtual-map-") as temporary:
         executable = Path(temporary) / "virtual_map_host.exe"
@@ -340,11 +561,29 @@ def main():
         server.metadata = metadata
         server.metadata_blob = metadata_blob
         server.replay_blob = replay_blob
+        server.live_poller = None
+        if args.live_mta:
+            feed_executable = Path(temporary) / "brooklyn_feed_table.exe"
+            build_bridge(feed_executable)
+            server.live_poller = LiveMtaPoller(
+                feed_executable,
+                bridge_feeds(feed_executable),
+                args.live_interval,
+                args.live_timeout,
+            )
         url = "http://127.0.0.1:%d/" % server.server_address[1]
-        if replay is not None and not args.replay_paused:
+        if args.live_mta:
+            url += "?live=1"
+        elif replay is not None and not args.replay_paused:
             url += "?autoplay=1"
         print("Virtual Brooklyn Map: " + url, flush=True)
         print("Localhost only. Press Ctrl+C to stop.", flush=True)
+        if args.live_mta:
+            print(
+                f"Live MTA polling enabled ({args.live_interval}s interval, "
+                f"{args.live_timeout}s per-feed timeout).",
+                flush=True,
+            )
         if replay is not None:
             print(
                 f"Loaded replay session {replay.get('captureSessionId', 'unknown')} "
@@ -354,10 +593,14 @@ def main():
         if not args.no_browser:
             webbrowser.open(url)
         try:
+            if server.live_poller is not None:
+                server.live_poller.start()
             server.serve_forever()
         except KeyboardInterrupt:
             print("\nStopping virtual map server.")
         finally:
+            if server.live_poller is not None:
+                server.live_poller.close()
             server.server_close()
     return 0
 
