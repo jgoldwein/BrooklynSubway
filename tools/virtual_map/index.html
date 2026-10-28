@@ -59,6 +59,12 @@
     .collision { border-left-color:#f67019; }
     .notice { color:#f0cf7b; min-height:1.5em; }
     .subtle { color:#aebdca; font-size:.9rem; }
+    .align-panel { padding:8px; border:1px solid #546573; border-radius:6px; background:#15202a; }
+    .nudge { display:inline-flex; gap:3px; }
+    .nudge button { min-width:34px; }
+    .align-approved { color:#82e2aa; }
+    .align-dirty { color:#f0cf7b; }
+    .map-wrap.dragging, .map-wrap.dragging .led { cursor:grabbing; }
     .audit { margin-top:14px; }
     .table-wrap { max-height:430px; overflow:auto; border:1px solid #3c4c58; }
     table { border-collapse:collapse; width:100%; font-size:.83rem; white-space:nowrap; }
@@ -155,12 +161,43 @@
       <label>Map artwork <input id="artFile" type="file" accept="image/png,image/jpeg,image/svg+xml,image/webp"></label>
       <label>Layer <select id="artMode"><option value="under">Under LEDs</option><option value="over">Over LEDs</option></select></label>
       <label>Opacity <input id="artOpacity" type="range" min="0" max="100" value="60"></label>
-      <label>Scale <input id="artScale" type="range" min="20" max="300" value="100"></label>
-      <label>X <input id="artX" type="range" min="-2000" max="2000" value="0"></label>
-      <label>Y <input id="artY" type="range" min="-2000" max="2000" value="0"></label>
-      <label>Rotate <input id="artRot" type="range" min="-180" max="180" step="0.5" value="0"></label>
+      <label>Scale % <input id="artScale" type="range" min="20" max="300" step="0.05" value="100"></label>
+      <label>X <input id="artX" type="range" min="-2000" max="2000" step="0.5" value="0"></label>
+      <label>Y <input id="artY" type="range" min="-2000" max="2000" step="0.5" value="0"></label>
+      <label>Rotate <input id="artRot" type="range" min="-180" max="180" step="0.05" value="0"></label>
       <button id="artClear">Remove artwork</button>
       <label class="check" id="artSilkRow" hidden><input id="artSilkShow" type="checkbox"> PCB silkscreen</label>
+    </div>
+    <div class="toolbar align-panel" id="alignPanel">
+      <strong>Fine alignment</strong>
+      <label>Step <select id="artStep"><option value="5">fine</option><option value="20" selected>medium</option><option value="80">coarse</option></select></label>
+      <span class="nudge">
+        <button id="nudgeLeft" title="Move artwork left (←)">◀</button>
+        <button id="nudgeUp" title="Move artwork up (↑)">▲</button>
+        <button id="nudgeDown" title="Move artwork down (↓)">▼</button>
+        <button id="nudgeRight" title="Move artwork right (→)">▶</button>
+      </span>
+      <span class="nudge">
+        <button id="nudgeShrink" title="Smaller (-)">Scale −</button>
+        <button id="nudgeGrow" title="Larger (+)">Scale +</button>
+        <button id="nudgeCcw" title="Rotate counter-clockwise ([)">↺</button>
+        <button id="nudgeCw" title="Rotate clockwise (])">↻</button>
+      </span>
+      <label class="check"><input id="artAllOn" type="checkbox"> All LEDs on</label>
+      <label class="check"><input id="artDrag" type="checkbox"> Drag map to move</label>
+      <label class="check"><input id="artCornersEdit" type="checkbox" checked> Edit 4 corners (drag the yellow handles)</label>
+      <button id="artCornersReset" title="Restore the corners to the original registration">Reset corners</button>
+      <button id="artApprove">Approve alignment</button>
+      <button id="artRevert">Revert to approved</button>
+      <span id="artStatus" class="subtle" aria-live="polite"></span>
+    </div>
+    <div class="toolbar align-panel" id="pinPanel">
+      <strong>Pin landmarks</strong>
+      <label class="check"><input id="pinMode" type="checkbox"> Pin mode</label>
+      <button id="pinChoose" title="Pick a different LED to pin (then click that LED, or a row in the audit table)">Choose LED</button>
+      <button id="pinUndo">Undo pin</button>
+      <button id="pinClear">Clear pins</button>
+      <span id="pinStatus" class="subtle" aria-live="polite">Turn on Pin mode: click each highlighted LED's station on the map. After 4 pins the artwork corners are solved automatically; extra pins refine the fit.</span>
     </div>
     <div class="map-wrap"><svg id="map" role="img" aria-label="All 306 addressable LEDs at their exact PCB placement coordinates"></svg></div>
     <div class="legend" id="channelLegend"></div>
@@ -250,46 +287,225 @@ function initControls() {
   $("replayPlay").addEventListener("click",playReplay);
   $("replayPause").addEventListener("click",pauseReplay);
 }
-let artBox=null,artGroup=null,artImage=null,artSilk=null;
+let artBox=null,artGroup=null,artSilk=null,pinGroup=null;
+let artFO=null,artCanvas=null,handleGroup=null,handleOutline=null,artHandles=[];
+let artSrc=null,artSmall=null,artSrcKind="none",artSrcUrl="",artCorners=null,defaultCorners=null;
+let dragCorner=null,warpFrame=0;
+const CORNER_NAMES=["top-left","top-right","bottom-right","bottom-left"];
 const ART_KEY="brooklynMapArtwork",ART_IDS=["artMode","artOpacity","artScale","artX","artY","artRot"];
+const VIEW_MARGIN=700; // keeps shifted artwork corners reachable for dragging
+const MAP_JPG={w:2852,h:2665,m:[4.8355,-0.02685,0.0781,4.3672,345.17,-3680.5]};
+const validCorners=c=>Array.isArray(c)&&c.length===4&&c.every(p=>Array.isArray(p)&&p.length===2&&p.every(Number.isFinite));
+const validBend=b=>Array.isArray(b)&&b.length<=64&&b.every(i=>i&&Array.isArray(i.uv)&&Array.isArray(i.d)&&i.uv.length===2&&i.d.length===2&&[...i.uv,...i.d].every(Number.isFinite));
+// Multi-point bend: a thin-plate spline of per-pin residuals (image uv -> LED-space offset) added on top of the 4-corner warp.
+let artBend=[],artBendFn=null;
+const BEND_MIN_PINS=6;
+function buildBend(list) {
+  const n=list.length; if(n<BEND_MIN_PINS)return null;
+  const kernel=(a,b)=>{const r2=(a[0]-b[0])**2+(a[1]-b[1])**2;return r2>0?0.5*r2*Math.log(r2):0;};
+  const A=Array.from({length:n+3},()=>Array(n+3).fill(0));
+  for(let i=0;i<n;i++) {
+    for(let j=0;j<n;j++) A[i][j]=kernel(list[i].uv,list[j].uv)+(i===j?1e-4:0);
+    A[i][n]=A[n][i]=1; A[i][n+1]=A[n+1][i]=list[i].uv[0]; A[i][n+2]=A[n+2][i]=list[i].uv[1];
+  }
+  const wx=solveLinear(A,[...list.map(p=>p.d[0]),0,0,0]), wy=solveLinear(A,[...list.map(p=>p.d[1]),0,0,0]);
+  if(!wx||!wy||![...wx,...wy].every(Number.isFinite))return null;
+  return (u,v)=>{
+    let dx=wx[n]+wx[n+1]*u+wx[n+2]*v, dy=wy[n]+wy[n+1]*u+wy[n+2]*v;
+    for(let i=0;i<n;i++){const k=kernel([u,v],list[i].uv);dx+=wx[i]*k;dy+=wy[i]*k;}
+    return [dx,dy];
+  };
+}
+function setBend(list) {
+  artBend=validBend(list)?list.map(i=>({uv:i.uv.slice(),d:i.d.slice()})):[];
+  artBendFn=buildBend(artBend);
+  if(!artBendFn)artBend=[];
+}
+function warpMap() {
+  const base=squareToQuad(artCorners);
+  return (u,v)=>{const p=base(u,v);if(!artBendFn)return p;const d=artBendFn(u,v);return [p[0]+d[0],p[1]+d[1]];};
+}
+function isConvex(c) {
+  let sign=0;
+  for(let i=0;i<4;i++) {
+    const [ax,ay]=c[i],[bx,by]=c[(i+1)%4],[cx,cy]=c[(i+2)%4];
+    const cross=(bx-ax)*(cy-by)-(by-ay)*(cx-bx);
+    if(Math.abs(cross)<1e-6)return false;
+    if(sign&&Math.sign(cross)!==sign)return false;
+    sign=Math.sign(cross);
+  }
+  return true;
+}
+function squareToQuad(c) {
+  const [[x0,y0],[x1,y1],[x2,y2],[x3,y3]]=c;
+  const dx1=x1-x2,dx2=x3-x2,dx3=x0-x1+x2-x3,dy1=y1-y2,dy2=y3-y2,dy3=y0-y1+y2-y3;
+  let g=0,h=0;
+  if(Math.abs(dx3)>1e-9||Math.abs(dy3)>1e-9) {
+    const den=dx1*dy2-dx2*dy1;
+    g=(dx3*dy2-dx2*dy3)/den; h=(dx1*dy3-dx3*dy1)/den;
+  }
+  const a=x1-x0+g*x1,b=x3-x0+h*x3,d=y1-y0+g*y1,e=y3-y0+h*y3;
+  return (u,v)=>{const w=g*u+h*v+1;return [(a*u+b*v+x0)/w,(d*u+e*v+y0)/w];};
+}
+function drawTriangle(ctx,img,s,d) {
+  const sx1=s[1][0]-s[0][0],sy1=s[1][1]-s[0][1],sx2=s[2][0]-s[0][0],sy2=s[2][1]-s[0][1];
+  const det=sx1*sy2-sx2*sy1; if(!det)return;
+  const dx1=d[1][0]-d[0][0],dy1=d[1][1]-d[0][1],dx2=d[2][0]-d[0][0],dy2=d[2][1]-d[0][1];
+  const a=(dx1*sy2-dx2*sy1)/det,c=(dx2*sx1-dx1*sx2)/det;
+  const b=(dy1*sy2-dy2*sy1)/det,dd=(dy2*sx1-dy1*sx2)/det;
+  const cx=(d[0][0]+d[1][0]+d[2][0])/3,cy=(d[0][1]+d[1][1]+d[2][1])/3;
+  ctx.save(); ctx.beginPath();
+  d.forEach(([x,y],i)=>{ // grow the clip slightly so neighbouring triangles leave no seams
+    const len=Math.hypot(x-cx,y-cy)||1, px=x+(x-cx)/len*0.75, py=y+(y-cy)/len*0.75;
+    if(i)ctx.lineTo(px,py); else ctx.moveTo(px,py);
+  });
+  ctx.closePath(); ctx.clip();
+  ctx.setTransform(a,b,c,dd,d[0][0]-a*s[0][0]-c*s[0][1],d[0][1]-b*s[0][0]-dd*s[0][1]);
+  ctx.drawImage(img,0,0); ctx.restore();
+}
+function drawWarp(final) {
+  if(!artSrc||!validCorners(artCorners))return;
+  const map=warpMap(), img=final?artSrc:artSmall;
+  const n=(final?24:10)*(artBendFn?2:1), pts=[];
+  for(let j=0;j<=n;j++){const row=[];for(let i=0;i<=n;i++)row.push(map(i/n,j/n));pts.push(row);}
+  const flat=pts.flat(), xs=flat.map(p=>p[0]), ys=flat.map(p=>p[1]);
+  const bx=Math.min(...xs),by=Math.min(...ys),bw=Math.max(...xs)-bx,bh=Math.max(...ys)-by;
+  if(!(bw>0&&bh>0)||!Number.isFinite(bw+bh))return;
+  const res=(final?2200:900)/Math.max(bw,bh), cw=Math.max(1,Math.round(bw*res)), ch=Math.max(1,Math.round(bh*res));
+  for(const [k,v] of Object.entries({x:bx,y:by,width:bw,height:bh})) artFO.setAttribute(k,v);
+  if(artCanvas.width!==cw||artCanvas.height!==ch){artCanvas.width=cw;artCanvas.height=ch;}
+  const ctx=artCanvas.getContext("2d"); ctx.setTransform(1,0,0,1,0,0); ctx.clearRect(0,0,cw,ch);
+  const iw=img.naturalWidth||img.width, ih=img.naturalHeight||img.height;
+  const grid=pts.map(row=>row.map(([x,y])=>[(x-bx)*res,(y-by)*res]));
+  for(let j=0;j<n;j++)for(let i=0;i<n;i++) {
+    const s=(a,b)=>[a*iw/n,b*ih/n];
+    const A=[s(i,j),grid[j][i]],B=[s(i+1,j),grid[j][i+1]],C=[s(i+1,j+1),grid[j+1][i+1]],D=[s(i,j+1),grid[j+1][i]];
+    drawTriangle(ctx,img,[A[0],B[0],C[0]],[A[1],B[1],C[1]]);
+    drawTriangle(ctx,img,[A[0],C[0],D[0]],[A[1],C[1],D[1]]);
+  }
+}
+function scheduleWarp() {
+  if(warpFrame)return;
+  warpFrame=requestAnimationFrame(()=>{warpFrame=0;drawWarp(false);});
+}
+function defaultCornersFor(kind,img) {
+  if(kind==="board") {
+    const [a,b,c,d,e,f]=MAP_JPG.m;
+    return [[0,0],[MAP_JPG.w,0],[MAP_JPG.w,MAP_JPG.h],[0,MAP_JPG.h]].map(([x,y])=>[a*x+c*y+e,b*x+d*y+f]);
+  }
+  const s=Math.min(artBox.w/img.naturalWidth,artBox.h/img.naturalHeight), w=img.naturalWidth*s, h=img.naturalHeight*s;
+  const x=artBox.x+(artBox.w-w)/2, y=artBox.y+(artBox.h-h)/2;
+  return [[x,y],[x+w,y],[x+w,y+h],[x,y+h]];
+}
+function updateHandles() {
+  if(!validCorners(artCorners))return;
+  artHandles.forEach((h,i)=>{h.setAttribute("cx",artCorners[i][0]);h.setAttribute("cy",artCorners[i][1]);});
+  handleOutline.setAttribute("points",artCorners.map(p=>p.join(",")).join(" "));
+  if(pinGroup) renderPins();
+}
+function loadArtSource(src,kind,keepCorners) {
+  return new Promise(resolve=>{
+    const img=new Image();
+    img.onload=()=>{
+      if(!img.naturalWidth||!img.naturalHeight){setMessage("Artwork image has no usable size.");resolve();return;}
+      artSrc=img; artSrcKind=kind; artSrcUrl=src;
+      const scale=Math.min(1,1000/Math.max(img.naturalWidth,img.naturalHeight));
+      artSmall=document.createElement("canvas");
+      artSmall.width=Math.max(1,Math.round(img.naturalWidth*scale)); artSmall.height=Math.max(1,Math.round(img.naturalHeight*scale));
+      artSmall.getContext("2d").drawImage(img,0,0,artSmall.width,artSmall.height);
+      defaultCorners=defaultCornersFor(kind,img);
+      if(!keepCorners||!validCorners(artCorners)) artCorners=defaultCorners.map(p=>p.slice());
+      updateHandles(); drawWarp(true); updateAlignStatus(); resolve();
+    };
+    img.onerror=()=>{setMessage("Could not load the artwork image.");resolve();};
+    img.src=src;
+  });
+}
+function moveCorner(index,point) {
+  const next=artCorners.map(p=>p.slice()); next[index]=point;
+  if(!isConvex(next))return false;
+  artCorners=next; updateHandles(); updateAlignStatus(); return true;
+}
+function initCornerHandles() {
+  handleGroup=document.createElementNS(svgNS,"g"); handleGroup.setAttribute("display","none");
+  handleOutline=document.createElementNS(svgNS,"polygon");
+  handleOutline.setAttribute("fill","none"); handleOutline.setAttribute("stroke","#ffd54a");
+  handleOutline.setAttribute("stroke-width","2"); handleOutline.setAttribute("stroke-dasharray","8 6");
+  handleOutline.setAttribute("vector-effect","non-scaling-stroke"); handleOutline.setAttribute("pointer-events","none");
+  handleGroup.appendChild(handleOutline);
+  for(let i=0;i<4;i++) {
+    const h=document.createElementNS(svgNS,"circle");
+    h.setAttribute("r","300"); h.setAttribute("fill","rgba(255,213,74,.45)"); h.setAttribute("stroke","#ffd54a");
+    h.setAttribute("stroke-width","4"); h.setAttribute("vector-effect","non-scaling-stroke");
+    h.setAttribute("tabindex","0"); h.setAttribute("role","button"); h.style.cursor="grab"; h.style.touchAction="none";
+    h.setAttribute("aria-label","Artwork "+CORNER_NAMES[i]+" corner; drag or use arrow keys");
+    h.addEventListener("pointerdown",e=>{
+      if(e.button!==0||!validCorners(artCorners))return;
+      e.stopPropagation(); e.preventDefault(); h.setPointerCapture(e.pointerId); dragCorner=i;
+    });
+    h.addEventListener("pointermove",e=>{
+      if(dragCorner!==i)return;
+      const m=handleGroup.getScreenCTM(); if(!m)return;
+      const p=new DOMPoint(e.clientX,e.clientY).matrixTransform(m.inverse());
+      if(moveCorner(i,[p.x,p.y]))scheduleWarp();
+    });
+    const release=()=>{if(dragCorner===i){dragCorner=null;drawWarp(true);saveArt();}};
+    h.addEventListener("pointerup",release); h.addEventListener("pointercancel",release);
+    h.addEventListener("keydown",e=>{
+      const dir={ArrowLeft:[-1,0],ArrowRight:[1,0],ArrowUp:[0,-1],ArrowDown:[0,1]}[e.key];
+      if(!dir||!validCorners(artCorners))return;
+      e.preventDefault();
+      const step=Number($("artStep").value);
+      if(moveCorner(i,[artCorners[i][0]+dir[0]*step,artCorners[i][1]+dir[1]*step])){drawWarp(false);saveArt();}
+    });
+    h.addEventListener("keyup",e=>{if(e.key.startsWith("Arrow"))drawWarp(true);});
+    artHandles.push(h); handleGroup.appendChild(h);
+  }
+}
 function initArt() {
   const svg=$("map");
   artGroup=document.createElementNS(svgNS,"g"); artGroup.setAttribute("pointer-events","none");
-  artImage=document.createElementNS(svgNS,"image");
-  artImage.setAttribute("x",artBox.x); artImage.setAttribute("y",artBox.y);
-  artImage.setAttribute("width",artBox.w); artImage.setAttribute("height",artBox.h);
-  artImage.setAttribute("preserveAspectRatio","xMidYMid meet");
-  artGroup.appendChild(artImage);
+  artFO=document.createElementNS(svgNS,"foreignObject");
+  artCanvas=document.createElement("canvas"); artCanvas.style.cssText="display:block;width:100%;height:100%";
+  artFO.appendChild(artCanvas); artGroup.appendChild(artFO);
   artSilk=document.createElementNS(svgNS,"image"); artSilk.setAttribute("display","none"); artGroup.appendChild(artSilk);
   svg.appendChild(artGroup);
+  initCornerHandles(); svg.appendChild(handleGroup);
   $("artSilkShow").addEventListener("change",()=>artSilk.setAttribute("display",$("artSilkShow").checked?"inline":"none"));
   let saved={};
   try{saved=JSON.parse(localStorage.getItem(ART_KEY)||"{}");}catch(e){}
   for(const id of ART_IDS) if(saved[id]!==undefined) $(id).value=saved[id];
-  if(saved.src) artImage.setAttribute("href",saved.src);
+  if(validCorners(saved.corners)) artCorners=saved.corners;
+  setBend(saved.bend);
+  if(typeof saved.src==="string"&&saved.src.startsWith("data:image/")) loadArtSource(saved.src,"custom",true);
   else loadBoardArt();
   for(const id of ART_IDS) $(id).addEventListener("input",()=>{layoutArt();saveArt();});
+  $("artCornersEdit").addEventListener("change",layoutArt);
+  $("artCornersReset").addEventListener("click",()=>{
+    if(!defaultCorners)return;
+    artCorners=defaultCorners.map(p=>p.slice()); setBend([]); updateHandles(); drawWarp(true); saveArt(); updateAlignStatus();
+  });
+  initAlignment();
+  initPins();
   $("artFile").addEventListener("change",e=>{
     const f=e.target.files[0]; if(!f)return;
     const reader=new FileReader();
-    reader.onload=()=>{artImage.removeAttribute("transform");for(const [k,v] of Object.entries({x:artBox.x,y:artBox.y,width:artBox.w,height:artBox.h}))artImage.setAttribute(k,v);artImage.setAttribute("preserveAspectRatio","xMidYMid meet");artImage.setAttribute("href",reader.result);layoutArt();saveArt();};
+    reader.onload=async()=>{await loadArtSource(reader.result,"custom",false);layoutArt();saveArt();};
     reader.readAsDataURL(f);
   });
-  $("artClear").addEventListener("click",()=>{artImage.removeAttribute("href");$("artFile").value="";saveArt();layoutArt();});
+  $("artClear").addEventListener("click",()=>{
+    artSrc=null; artSrcKind="none"; artSrcUrl=""; $("artFile").value="";
+    artCanvas.getContext("2d").clearRect(0,0,artCanvas.width,artCanvas.height); saveArt(); layoutArt();
+  });
   layoutArt();
 }
-const MAP_JPG={w:2852,h:2665,m:[4.8355,-0.02685,0.0781,4.3672,345.17,-3680.5]};
 async function loadBoardArt() {
-  artImage.setAttribute("x",0);artImage.setAttribute("y",0);
-  artImage.setAttribute("width",MAP_JPG.w);artImage.setAttribute("height",MAP_JPG.h);
-  artImage.setAttribute("preserveAspectRatio","none");
-  artImage.setAttribute("transform",`matrix(${MAP_JPG.m.join(" ")})`);
-  artImage.setAttribute("href","/map-image.jpg");
   const [a,b,c,d,e,f]=MAP_JPG.m;
   const xs=[e,a*MAP_JPG.w+e],ys=[f,d*MAP_JPG.h+f];
   artBox={x:Math.min(...xs),y:Math.min(...ys),w:Math.abs(xs[1]-xs[0]),h:Math.abs(ys[1]-ys[0])};
-  $("map").setAttribute("viewBox",`${artBox.x} ${artBox.y} ${artBox.w} ${artBox.h}`);
+  $("map").setAttribute("viewBox",`${artBox.x-VIEW_MARGIN} ${artBox.y-VIEW_MARGIN} ${artBox.w+2*VIEW_MARGIN} ${artBox.h+2*VIEW_MARGIN}`);
   $("artOpacity").value=100;layoutArt();
+  loadArtSource("/map-image.jpg","board",true);
   try {
     const res=await fetch("/board-art.svg"); if(!res.ok)return;
     const text=await res.text();
@@ -303,7 +519,7 @@ async function loadBoardArt() {
   } catch(e) {}
 }
 function saveArt() {
-  const out={src:artImage.getAttribute("href")||""};
+  const out={src:artSrcKind==="custom"?artSrcUrl:"",corners:artCorners,bend:artBend};
   for(const id of ART_IDS) out[id]=$(id).value;
   try{localStorage.setItem(ART_KEY,JSON.stringify(out));}catch(e){$("message").textContent="Artwork too large to remember between reloads; it stays loaded for this session.";}
 }
@@ -311,15 +527,251 @@ function layoutArt() {
   const cx=artBox.x+artBox.w/2,cy=artBox.y+artBox.h/2;
   const s=Number($("artScale").value)/100,dx=Number($("artX").value),dy=Number($("artY").value),r=Number($("artRot").value);
   artGroup.setAttribute("transform",`translate(${cx+dx} ${cy+dy}) rotate(${r}) scale(${s}) translate(${-cx} ${-cy})`);
+  handleGroup.setAttribute("transform",artGroup.getAttribute("transform"));
+  handleGroup.setAttribute("display",$("artCornersEdit").checked?"inline":"none");
   artGroup.setAttribute("opacity",Number($("artOpacity").value)/100);
   const svg=$("map");
   if($("artMode").value==="over") svg.appendChild(artGroup); else svg.insertBefore(artGroup,svg.firstChild);
+  svg.appendChild(handleGroup);
+  if(pinGroup){pinGroup.setAttribute("transform",artGroup.getAttribute("transform"));svg.appendChild(pinGroup);}
+  updateAlignStatus();
+}
+const ALIGN_IDS=["artScale","artX","artY","artRot"];
+let approvedAlign=null;
+function currentAlign() {
+  const a=Object.fromEntries(ALIGN_IDS.map(id=>[id,Number($(id).value)]));
+  if(validCorners(artCorners)) a.corners=artCorners.map(p=>p.slice());
+  a.bend=artBend.map(i=>({uv:i.uv.slice(),d:i.d.slice()}));
+  return a;
+}
+function sameAlign(a,b) {
+  if(!a||!b||!ALIGN_IDS.every(id=>Math.abs(a[id]-b[id])<1e-6))return false;
+  const ba=a.bend||[],bb=b.bend||[];
+  if(ba.length!==bb.length||!ba.every((p,i)=>[0,1].every(k=>Math.abs(p.uv[k]-bb[i].uv[k])<1e-6&&Math.abs(p.d[k]-bb[i].d[k])<1e-3)))return false;
+  if(!validCorners(a.corners)||!validCorners(b.corners))return !validCorners(a.corners)&&!validCorners(b.corners);
+  return a.corners.every((p,i)=>Math.abs(p[0]-b.corners[i][0])<1e-3&&Math.abs(p[1]-b.corners[i][1])<1e-3);
+}
+function applyAlign(a) {
+  for(const id of ALIGN_IDS) $(id).value=a[id];
+  if(validCorners(a.corners)) artCorners=a.corners.map(p=>p.slice());
+  else if(defaultCorners) artCorners=defaultCorners.map(p=>p.slice());
+  setBend(a.bend);
+  updateHandles(); drawWarp(true); layoutArt(); saveArt();
+}
+function updateAlignStatus() {
+  const status=$("artStatus"); if(!status)return;
+  const now=currentAlign();
+  const same=sameAlign(now,approvedAlign);
+  status.className=same?"align-approved":"align-dirty";
+  status.textContent=(same?"Approved alignment ✓ ":approvedAlign?"Unapproved changes ":"Not yet approved ")+
+    `· scale ${now.artScale.toFixed(2)}% · X ${now.artX.toFixed(1)} · Y ${now.artY.toFixed(1)} · rot ${now.artRot.toFixed(2)}°`;
+}
+function nudge(id,delta) {
+  const input=$(id), next=Math.min(Number(input.max),Math.max(Number(input.min),Number(input.value)+delta));
+  input.value=Math.round(next*1000)/1000; layoutArt(); saveArt();
+}
+const PIN_SCALE=10000; // keeps the least-squares system well conditioned
+let pins=[],pendingLed=null,pinSuggestions=null;
+function solveLinear(A,b) {
+  const n=b.length,M=A.map((row,i)=>[...row,b[i]]);
+  for(let c=0;c<n;c++) {
+    let piv=c; for(let r=c+1;r<n;r++) if(Math.abs(M[r][c])>Math.abs(M[piv][c])) piv=r;
+    if(Math.abs(M[piv][c])<1e-12)return null;
+    [M[c],M[piv]]=[M[piv],M[c]];
+    for(let r=0;r<n;r++) if(r!==c) { const f=M[r][c]/M[c][c]; for(let k=c;k<=n;k++) M[r][k]-=f*M[c][k]; }
+  }
+  return M.map((row,i)=>row[n]/row[i]);
+}
+function fitHomography(src,dst) {
+  const AtA=Array.from({length:8},()=>Array(8).fill(0)),Atb=Array(8).fill(0);
+  const add=(row,v)=>{for(let i=0;i<8;i++){Atb[i]+=row[i]*v;for(let j=0;j<8;j++)AtA[i][j]+=row[i]*row[j];}};
+  src.forEach(([u,v],i)=>{
+    const [x,y]=dst[i];
+    add([u,v,1,0,0,0,-u*x,-v*x],x); add([0,0,0,u,v,1,-u*y,-v*y],y);
+  });
+  const h=solveLinear(AtA,Atb); return h&&[...h,1];
+}
+function applyH(h,u,v) { const w=h[6]*u+h[7]*v+h[8]; return [(h[0]*u+h[1]*v+h[2])/w,(h[3]*u+h[4]*v+h[5])/w]; }
+function invertH(h) {
+  const [a,b,c,d,e,f,g,i,j]=h, det=a*(e*j-f*i)-b*(d*j-f*g)+c*(d*i-e*g);
+  if(Math.abs(det)<1e-18)return null;
+  return [(e*j-f*i),(c*i-b*j),(b*f-c*e),(f*g-d*j),(a*j-c*g),(c*d-a*f),(d*i-e*g),(b*g-a*i),(a*e-b*d)].map(v=>v/det);
+}
+function groupMatrix() {
+  const cx=artBox.x+artBox.w/2,cy=artBox.y+artBox.h/2;
+  return new DOMMatrix().translate(cx+Number($("artX").value),cy+Number($("artY").value))
+    .rotate(Number($("artRot").value)).scale(Number($("artScale").value)/100).translate(-cx,-cy);
+}
+function ledLocal(index) {
+  const p=metadata.pixels[index], q=groupMatrix().inverse().transformPoint(new DOMPoint(p.x,-p.y));
+  return [q.x,q.y];
+}
+function clickToUv(event) {
+  const user=new DOMPoint(event.clientX,event.clientY).matrixTransform($("map").getScreenCTM().inverse());
+  const local=groupMatrix().inverse().transformPoint(user);
+  const h=fitHomography([[0,0],[1,0],[1,1],[0,1]],artCorners.map(p=>p.map(v=>v/PIN_SCALE)));
+  const inv=h&&invertH(h); if(!inv)return null;
+  let uv=applyH(inv,local.x/PIN_SCALE,local.y/PIN_SCALE);
+  for(let i=0;artBendFn&&i<8&&uv.every(Number.isFinite);i++) { // undo the bend iteratively; it is a small offset
+    const d=artBendFn(uv[0],uv[1]);
+    uv=applyH(inv,(local.x-d[0])/PIN_SCALE,(local.y-d[1])/PIN_SCALE);
+  }
+  return uv.every(Number.isFinite)?uv:null;
+}
+function pinLabel(index) { const p=metadata.pixels[index]; return p.designator+" "+p.route+" "+stationDescription(p); }
+function computeSuggestions() {
+  const stations=mapPixels().filter(p=>p.semanticType==="STATION");
+  const pick=(key,dir)=>stations.slice().sort((a,b)=>dir*(key(a)-key(b)))[0];
+  const list=[pick(p=>p.x,1),pick(p=>p.x,-1),pick(p=>p.y,-1),pick(p=>p.y,1)];
+  return [...new Set(list.map(p=>p.globalIndex))];
+}
+function nextSuggestion() {
+  if(!pinSuggestions) pinSuggestions=computeSuggestions();
+  const used=new Set(pins.map(p=>p.led));
+  const found=pinSuggestions.find(i=>!used.has(i));
+  return found===undefined?null:found;
+}
+function setPinStatus(text) { $("pinStatus").textContent=text; }
+function pinRms(withBend=true) {
+  if(!validCorners(artCorners)||!pins.length)return null;
+  const map=withBend?warpMap():squareToQuad(artCorners);
+  const errs=pins.map(pin=>{
+    const m=map(pin.uv[0],pin.uv[1]), led=ledLocal(pin.led);
+    return Math.hypot(m[0]-led[0],m[1]-led[1]);
+  });
+  return {rms:Math.sqrt(errs.reduce((s,e)=>s+e*e,0)/errs.length),max:Math.max(...errs)};
+}
+function renderPins() {
+  if(!pinGroup||!metadata||!validCorners(artCorners))return;
+  pinGroup.replaceChildren();
+  const mk=(tag,attrs)=>{const e=document.createElementNS(svgNS,tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);pinGroup.appendChild(e);return e;};
+  const map=warpMap();
+  for(const pin of pins) {
+    const led=ledLocal(pin.led), m=map(pin.uv[0],pin.uv[1]);
+    mk("line",{x1:led[0],y1:led[1],x2:m[0],y2:m[1],stroke:"#ff3b30","stroke-width":3,"vector-effect":"non-scaling-stroke"});
+    mk("circle",{cx:led[0],cy:led[1],r:120,fill:"none",stroke:"#00e5a0","stroke-width":3,"vector-effect":"non-scaling-stroke"});
+    const x=mk("path",{d:`M${m[0]-130} ${m[1]}H${m[0]+130}M${m[0]} ${m[1]-130}V${m[1]+130}`,stroke:"#ff3b30","stroke-width":3,fill:"none","vector-effect":"non-scaling-stroke"});
+    x.setAttribute("pointer-events","none");
+  }
+  if(pendingLed!==null) {
+    const led=ledLocal(pendingLed);
+    mk("circle",{cx:led[0],cy:led[1],r:230,fill:"rgba(0,229,255,.18)",stroke:"#00e5ff","stroke-width":4,"vector-effect":"non-scaling-stroke"});
+    const t=mk("text",{x:led[0]+270,y:led[1]-200,"font-size":260,fill:"#00e5ff",stroke:"#000","stroke-width":5,"paint-order":"stroke"});
+    t.textContent=pinLabel(pendingLed);
+  }
+  pinGroup.setAttribute("pointer-events","none");
+}
+function updatePinStatus() {
+  const fit=pinRms(true), base=pinRms(false), diameter=104, f=v=>(v/diameter).toFixed(2);
+  const quality=pins.length>=4&&fit?` · error before bend RMS ${f(base.rms)} / max ${f(base.max)}`+
+    (artBendFn?`, after bend RMS ${f(fit.rms)} / max ${f(fit.max)}`:"")+" LED diameters":"";
+  const next=pendingLed!==null?`Click the station for ${pinLabel(pendingLed)} on the map.`
+    :pins.length<4?"Click an LED to start the next pin."
+    :pins.length<BEND_MIN_PINS?`Add ${BEND_MIN_PINS-pins.length} more pin(s) to let the map bend to local distortion.`
+    :"Add pins where it is still off (8-20 total), then Approve alignment.";
+  setPinStatus(`${pins.length} pin${pins.length===1?"":"s"}${pins.length<4?" (need 4)":""}${quality}. ${next}`);
+}
+function setPendingLed(index) { pendingLed=index; renderPins(); updatePinStatus(); }
+function refit() {
+  if(pins.length<4)return true;
+  const dst=pins.map(p=>ledLocal(p.led).map(v=>v/PIN_SCALE));
+  const h=fitHomography(pins.map(p=>p.uv),dst);
+  const corners=h&&[[0,0],[1,0],[1,1],[0,1]].map(([u,v])=>applyH(h,u,v).map(c=>c*PIN_SCALE));
+  if(!corners||!corners.flat().every(Number.isFinite)||!isConvex(corners)||corners.flat().some(c=>Math.abs(c)>200000)) {
+    setMessage("These pins can't be solved to a valid artwork shape; check that each pin matches its station, or undo the last pin.");
+    return false;
+  }
+  artCorners=corners;
+  const base=squareToQuad(corners);
+  setBend(pins.length>=BEND_MIN_PINS?pins.map(p=>{
+    const b=base(p.uv[0],p.uv[1]), led=ledLocal(p.led);
+    return {uv:p.uv.slice(),d:[led[0]-b[0],led[1]-b[1]]};
+  }):[]);
+  updateHandles(); drawWarp(true); saveArt(); updateAlignStatus();
+  return true;
+}
+function addPin(led,uv) {
+  pins=pins.filter(p=>p.led!==led); pins.push({led,uv});
+  const ok=refit(); if(ok)setMessage("");
+  pendingLed=nextSuggestion(); renderPins(); updatePinStatus();
+}
+function initPins() {
+  pinGroup=document.createElementNS(svgNS,"g"); $("map").appendChild(pinGroup);
+  $("pinMode").addEventListener("change",()=>{
+    if($("pinMode").checked) { pendingLed=nextSuggestion(); $("artCornersEdit").checked=false; layoutArt(); }
+    else pendingLed=null;
+    $("map").style.cursor=$("pinMode").checked?"crosshair":"";
+    renderPins(); updatePinStatus();
+  });
+  $("pinChoose").addEventListener("click",()=>{ pendingLed=null; renderPins(); updatePinStatus(); setPinStatus("Click the LED you want to pin (or a row in the audit table)."); });
+  $("pinUndo").addEventListener("click",()=>{ pins.pop(); if(pins.length>=4)refit(); pendingLed=nextSuggestion(); renderPins(); updatePinStatus(); });
+  $("pinClear").addEventListener("click",()=>{ pins=[]; pendingLed=$("pinMode").checked?nextSuggestion():null; renderPins(); updatePinStatus(); });
+  $("map").addEventListener("click",event=>{
+    if(!$("pinMode").checked||artHandles.includes(event.target))return;
+    event.stopPropagation(); event.preventDefault();
+    const node=event.target.closest&&event.target.closest(".led");
+    if(pendingLed===null) {
+      if(node)setPendingLed(Number(node.dataset.index));
+      return;
+    }
+    const uv=clickToUv(event);
+    if(uv&&uv.every(v=>v>=-0.05&&v<=1.05)) addPin(pendingLed,uv);
+    else setMessage("That click is outside the artwork.");
+  },true);
+}
+const allOn=()=>$("artAllOn").checked; // display-only alignment aid; firmware frames are untouched
+function initAlignment() {
+  $("artAllOn").addEventListener("change",()=>{ if(frame) renderFrame(frame); });
+  const step=()=>Number($("artStep").value);
+  $("nudgeLeft").addEventListener("click",()=>nudge("artX",-step()));
+  $("nudgeRight").addEventListener("click",()=>nudge("artX",step()));
+  $("nudgeUp").addEventListener("click",()=>nudge("artY",-step()));
+  $("nudgeDown").addEventListener("click",()=>nudge("artY",step()));
+  $("nudgeShrink").addEventListener("click",()=>nudge("artScale",-step()/50));
+  $("nudgeGrow").addEventListener("click",()=>nudge("artScale",step()/50));
+  $("nudgeCcw").addEventListener("click",()=>nudge("artRot",-step()/40));
+  $("nudgeCw").addEventListener("click",()=>nudge("artRot",step()/40));
+  $("artApprove").addEventListener("click",async()=>{
+    try {
+      const response=await fetch("/api/alignment",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(currentAlign())});
+      const result=await response.json(); if(!response.ok)throw new Error(result.error||"save failed");
+      approvedAlign=result;
+      updateAlignStatus(); setMessage("Alignment approved and saved to tools/virtual_map/artwork/alignment.json.");
+    } catch(e) { setMessage("Could not save alignment: "+e.message); }
+  });
+  $("artRevert").addEventListener("click",()=>{
+    if(!approvedAlign){setMessage("No approved alignment exists yet.");return;}
+    applyAlign(approvedAlign);
+  });
+  const wrap=document.querySelector(".map-wrap"), svg=$("map");
+  let drag=null;
+  svg.addEventListener("pointerdown",e=>{
+    if(!$("artDrag").checked||e.button!==0)return;
+    drag={x:e.clientX,y:e.clientY,ax:Number($("artX").value),ay:Number($("artY").value),scale:svg.getScreenCTM().a};
+    svg.setPointerCapture(e.pointerId); wrap.classList.add("dragging"); e.preventDefault();
+  });
+  svg.addEventListener("pointermove",e=>{
+    if(!drag)return;
+    for(const [id,start,delta] of [["artX",drag.ax,e.clientX-drag.x],["artY",drag.ay,e.clientY-drag.y]]) {
+      const input=$(id); input.value=Math.round(Math.min(Number(input.max),Math.max(Number(input.min),start+delta/drag.scale))*10)/10;
+    }
+    layoutArt();
+  });
+  const endDrag=()=>{ if(drag){drag=null;wrap.classList.remove("dragging");saveArt();} };
+  svg.addEventListener("pointerup",endDrag); svg.addEventListener("pointercancel",endDrag);
+  fetch("/api/alignment",{cache:"no-store"}).then(r=>r.json()).then(data=>{
+    if(ALIGN_IDS.every(id=>typeof data[id]==="number")) {
+      approvedAlign=data;
+      if(!localStorage.getItem(ART_KEY)) applyAlign(approvedAlign);
+    }
+    updateAlignStatus();
+  }).catch(()=>updateAlignStatus());
 }
 function drawMetadata() {
   const points=metadata.pixels;
   const xs=points.map(p=>p.x), ys=points.map(p=>-p.y);
   const minX=Math.min(...xs),maxX=Math.max(...xs),minY=Math.min(...ys),maxY=Math.max(...ys),pad=180;
-  const svg=$("map"); svg.setAttribute("viewBox",`${minX-pad} ${minY-pad} ${maxX-minX+2*pad} ${maxY-minY+2*pad}`);
+  const svg=$("map"); svg.setAttribute("viewBox",`${minX-pad-VIEW_MARGIN} ${minY-pad-VIEW_MARGIN} ${maxX-minX+2*pad+2*VIEW_MARGIN} ${maxY-minY+2*pad+2*VIEW_MARGIN}`);
   artBox={x:minX-pad,y:minY-pad,w:maxX-minX+2*pad,h:maxY-minY+2*pad};
   initArt();
   for(const p of points) {
@@ -342,7 +794,7 @@ function drawMetadata() {
     [p.designator,p.globalIndex,`CH${p.channel}/${p.channelIndex}`,p.semanticType,p.route,desc,p.x,p.y]
       .forEach(v=>htmlText(tr,"td",String(v)));
     if(observationTargets[p.designator]) tr.title="Observation target: "+observationTargets[p.designator];
-    tr.addEventListener("click",()=>{inspect(p.globalIndex,true);selectPoint(p.globalIndex);});
+    tr.addEventListener("click",()=>{inspect(p.globalIndex,true);selectPoint(p.globalIndex);if($("pinMode").checked)setPendingLed(p.globalIndex);});
     body.appendChild(tr);
   }
 }
@@ -485,7 +937,7 @@ function renderFrame(frameData) {
   frame=frameData;
   for(const node of document.querySelectorAll(".led")) {
     const i=Number(node.dataset.index),p=frame.pixels[i],meta=metadata.pixels[i];
-    const hex=rgbHex(p),was=node.getAttribute("fill"),isLit=Boolean(p.r||p.g||p.b);
+    const hex=allOn()?"#ff00ff":rgbHex(p),was=node.getAttribute("fill"),isLit=allOn()||Boolean(p.r||p.g||p.b);
     if(was&&was!==hex&&isLit){node.classList.remove("arrived");void node.getBoundingClientRect();node.classList.add("arrived");}
     node.setAttribute("fill",hex);
     node.style.setProperty("--led-glow-color",hex);

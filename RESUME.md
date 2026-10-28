@@ -31,7 +31,25 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Latest — Phase 4AA stable-network soak (2026-10-21)
+## Latest — Simulator artwork alignment tools (2026-10-28, uncommitted)
+
+- **Host-only, no firmware/PCB change.** Work is in `tools/virtual_map/index.html`,
+  `tools/virtual_map/run.py`, and `docs/PHASE4X_VIRTUAL_MAP_SIMULATOR.md`; nothing is committed yet.
+- **Added:** fine alignment nudges, 4-corner perspective warp, **All LEDs on**
+  (magenta, display-only), **Pin landmarks** (click each highlighted LED's station;
+  4 pins solve the corners, 6+ also bend the map with a thin-plate spline), and
+  **Approve alignment** which saves via `/api/alignment` to
+  `tools/virtual_map/artwork/alignment.json` (corners + `bend`, validated, untracked).
+- **State:** `alignment.json` holds the user's earlier approved corners with no
+  bend. The user has not yet approved a pinned/bent alignment. Pins are not persisted.
+- **Verified:** `python tools\run_virtual_map_tests.py` = 80 checks, 0 failures; synthetic
+  bend test went from 1.07 to 0.00 LED diameters; bend persists across reload.
+- **Run:** `python tools\virtual_map\run.py --live-mta --port 8766 --no-browser`, open
+  `http://127.0.0.1:8766/?live=1`. An older simulator on port 8765 serves stale code.
+- **Next action:** user pins 8–20 stations in Pin mode, checks the error readout, clicks
+  Approve alignment; then review and commit the three files above plus `alignment.json`.
+
+## Previous — Phase 4AA stable-network soak (2026-10-21)
 
 - **Stable-network XIAO soak: PASS.** `xiao-s3-network`, stable Wi-Fi (not the
   phone hotspot), about 7,200 s. No intentional network disruption. 102 MTA

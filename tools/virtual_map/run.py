@@ -43,6 +43,15 @@ from replay.core import (
 from replay.record import fetch
 
 
+ALIGNMENT_FILE = HERE / "artwork" / "alignment.json"
+ALIGNMENT_LIMITS = {
+    "artScale": (20, 300),
+    "artX": (-2000, 2000),
+    "artY": (-2000, 2000),
+    "artRot": (-180, 180),
+}
+
+
 def utc_now():
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
@@ -470,6 +479,13 @@ class Handler(BaseHTTPRequestHandler):
                 return
             self.respond(200, art.read_bytes(), "image/svg+xml")
             return
+        elif request_path == "/api/alignment":
+            try:
+                body = ALIGNMENT_FILE.read_bytes()
+            except OSError:
+                body = b"{}"
+            self.respond(200, body, "application/json; charset=utf-8")
+            return
         elif request_path == "/metadata.json":
             self.respond(200, self.server.metadata_blob, "application/json; charset=utf-8")
             return
@@ -487,7 +503,63 @@ class Handler(BaseHTTPRequestHandler):
             return
         self.respond(200, path.read_bytes(), content_type)
 
+    def save_alignment(self):
+        try:
+            if not self.headers.get("Content-Type", "").startswith("application/json"):
+                raise ValueError("Content-Type must be application/json")
+            size = int(self.headers.get("Content-Length", "0"))
+            if size <= 0 or size > 16384:
+                raise ValueError("request body must be between 1 and 16384 bytes")
+            data = json.loads(self.rfile.read(size))
+            if not isinstance(data, dict):
+                raise ValueError("alignment must be an object")
+            clean = {}
+            for key, (low, high) in ALIGNMENT_LIMITS.items():
+                value = data.get(key)
+                if type(value) not in (int, float) or not low <= value <= high:
+                    raise ValueError(f"{key} must be a number from {low} to {high}")
+                clean[key] = value
+            if "corners" in data:
+                corners = data["corners"]
+                if (
+                    not isinstance(corners, list) or len(corners) != 4
+                    or any(
+                        not isinstance(point, list) or len(point) != 2
+                        or any(type(v) not in (int, float) or not -200000 <= v <= 200000 for v in point)
+                        for point in corners
+                    )
+                ):
+                    raise ValueError("corners must be four [x, y] points within +/-200000")
+                clean["corners"] = corners
+            if "bend" in data:
+                bend = data["bend"]
+                number = lambda v, limit: type(v) in (int, float) and -limit <= v <= limit
+
+                def valid_bend_point(item):
+                    return (
+                        isinstance(item, dict)
+                        and isinstance(item.get("uv"), list) and len(item["uv"]) == 2
+                        and all(number(v, 2) for v in item["uv"])
+                        and isinstance(item.get("d"), list) and len(item["d"]) == 2
+                        and all(number(v, 5000) for v in item["d"])
+                    )
+
+                if not isinstance(bend, list) or len(bend) > 64 or not all(valid_bend_point(i) for i in bend):
+                    raise ValueError("bend must be at most 64 {uv, d} points (uv within +/-2, d within +/-5000)")
+                clean["bend"] = [{"uv": i["uv"], "d": i["d"]} for i in bend]
+            clean["approvedUtc"] = utc_now()
+            ALIGNMENT_FILE.write_text(
+                json.dumps(clean, indent=2, sort_keys=True) + "\n", encoding="utf-8", newline="\n"
+            )
+            self.respond(200, json.dumps(clean).encode("utf-8"), "application/json; charset=utf-8")
+        except (ValueError, json.JSONDecodeError) as error:
+            message = json.dumps({"error": str(error)}).encode("utf-8")
+            self.respond(400, message, "application/json; charset=utf-8")
+
     def do_POST(self):
+        if self.path == "/api/alignment":
+            self.save_alignment()
+            return
         if self.path != "/api/render":
             self.respond(404, b"Not found\n", "text/plain; charset=utf-8")
             return

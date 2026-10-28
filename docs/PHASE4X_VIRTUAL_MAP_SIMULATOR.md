@@ -128,6 +128,14 @@ The toolbar's **Map artwork** loader places a user-supplied PNG/JPEG/SVG/WebP in
 
 The default underlay is the MTA Brooklyn subway diagram (`tools/virtual_map/artwork/brooklyn_subway_diagram.jpeg`, served as `/map-image.jpg`). It is registered to the LED coordinates with a least-squares affine transform fitted to nine landmark stations (constants `MAP_JPG` in `index.html`); the residual is about one LED diameter at worst. The four status LEDs have no place on the diagram and appear below it. The map also serves `/board-art.svg`, the top silkscreen and board outline rendered from the fabrication Gerber ZIP by `python tools/virtual_map/extract_gerber_art.py` (needs `pip install gerbonara`, host tooling only), toggled with **PCB silkscreen**. The Gerber's offset is fitted by matching all 306 LEDs to top paste pads. The Gerber is read-only input, and its proprietary "Colorful" layers are encrypted and not used.
 
+### Manual alignment and approval
+
+The **Fine alignment** bar nudges the artwork (arrows, scale, rotate, or **Drag map to move**) with fine/medium/coarse steps. **Edit 4 corners** shows a handle on each artwork corner; drag them, or focus one and use the arrow keys, to perspective-warp the diagram onto the LEDs. A move that would make the quad non-convex is ignored. **Reset corners** restores the original registration. **Approve alignment** writes the sliders and the four corners to `tools/virtual_map/artwork/alignment.json` (loopback-only, validated server-side), which is then the default; **Revert to approved** returns to it. The warp is rendered client-side to a canvas and only affects the diagram underlay, never firmware-rendered LED colors.
+
+**All LEDs on** is a display-only override that lights all 306 LEDs magenta so they are visible against the diagram.
+
+**Pin landmarks** aligns by example: tick *Pin mode*, then click the station on the diagram that matches each highlighted LED (suggested extreme stations first; *Choose LED* or an audit-table row picks another). With four or more pins the corners are re-solved by a least-squares homography and the status line shows the fit error in LED diameters. Use 6–8 well-spread pins, then **Approve alignment**. With 4–5 pins the corners are solved by a perspective fit; from 6 pins the map also *bends* (a thin-plate spline of the per-pin residuals) to follow local distortion between the MTA diagram and the schematic PCB layout. The status line shows the error before and after the bend in LED diameters; add pins where it is still off (8–20 total). **Reset corners** clears the bend. Approve saves the corners and the bend (`bend` in `alignment.json`, validated, max 64 points). Pins themselves are not persisted.
+
 ## Frame interchange
 
 Frame JSON uses schema version 1. A saved frame contains exactly 306 logical
