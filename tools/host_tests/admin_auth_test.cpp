@@ -315,8 +315,9 @@ void testCookieAndEndpointPolicy() {
 
   const char *const mutations[] = {
       "/config/brightness", "/config/routes", "/config/dns", "/wifi/setup",
-      "/wifi/setup/confirm", "/reboot", "/network-diagnostics/run",
-      "/admin/password", "/logout", "/login"};
+      "/wifi/setup/confirm", "/reboot", "/update/check", "/update/install",
+      "/update/reboot", "/network-diagnostics/run", "/admin/password",
+      "/logout", "/login"};
   for (const char *path : mutations) {
     CHECK(brooklyn::admin::isMutationEndpoint("POST", path));
     CHECK(brooklyn::admin::isProtectedEndpoint("POST", path));

@@ -18,12 +18,15 @@ class WebOtaSession {
  public:
   WebOtaSession();
   ~WebOtaSession();
-  Result start(size_t contentLength);
+  Result start(size_t contentLength, bool deferActivation = false);
   Result feed(const uint8_t *data, size_t length);
   Result finish();
+  bool activatePendingImage();
+  bool activationPending() const;
   void abort();
   const Installer *installer() const { return installer_.get(); }
   static const char *targetName();
+  static const char *firmwareVersion();
 
  private:
   class Impl;

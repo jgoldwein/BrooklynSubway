@@ -1,19 +1,28 @@
 # Phase 4W — Secure authenticated web OTA firmware update
 
-Status: implemented, host/build verified, and hardware-validated on the
-authorized XIAO ESP32-S3. The XIAO is running normal Phase 4W. The production
-PCB is untouched; no production firmware was uploaded. Physical LED output
-remains disabled (`BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0`).
+Status: signed manual OTA was previously hardware-validated on the authorized
+XIAO ESP32-S3. The six-hour GitHub release check and two-step approval flow are
+implemented and build/host-test verified, but have not yet been hardware-tested.
+The production PCB is untouched; no production firmware was uploaded. Physical
+LED output remains disabled (`BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0`).
 
 ## Scope
 
-An administrator signs in on the normal LAN UI, opens `/update`, and manually
-uploads a signed `.bkota` package for this hardware target. The device
-verifies it and, only if everything passes, activates it and reboots.
+The network-enabled firmware checks the public GitHub Releases endpoint every
+six hours while connected to Wi-Fi with synchronized time and an administrator
+configured. It considers only
+the latest published stable release and only offers it when its three-part
+numeric version is newer than the running firmware. The device never installs
+without administrator approval: an administrator signs in at `/update`,
+approves downloading/installing the signed target package, then separately
+approves the reboot that activates it.
 
-Not included: automatic or unattended Internet updates, device-side GitHub
-queries, eFuse, Secure Boot, Flash Encryption. The provisioning portal
-(`BrooklynMap-Avi`, `192.168.4.1`) has no update route.
+Manual signed `.bkota` upload remains available on the same page. It also
+stages the image and requires the separate reboot approval. The setup portal
+(`BrooklynMap-Avi`, `192.168.4.1`) has no update route. There is no unattended
+install, GitHub token in firmware, eFuse, Secure Boot, or Flash Encryption.
+Devices on earlier firmware need one manual signed OTA or USB flash to install
+this release-checking capability.
 
 ## Threat model and HTTP limitation
 
@@ -110,20 +119,30 @@ rotate keys as part of Phase 4W.
 
 ## Routes and authentication
 
-- `GET /update` — admin page (session required; includes the CSRF token).
+- `GET /update` — admin page (session required; includes CSRF-protected update
+  and reboot approval forms).
 - `POST /update` — raw `application/octet-stream` body streamed through the
   WebServer raw callback. Requires, all checked before the first body byte is
   consumed: configured administrator, valid session cookie, and a valid
   `X-CSRF-Token` header. Multipart or other content types get `415`.
+- `POST /update/check` — request an immediate stable-release check.
+- `POST /update/install` — approve downloading and verifying the available
+  target-specific signed package.
+- `POST /update/reboot` — separately approve selecting the staged image as the
+  next boot image and rebooting.
 - Both are in the Phase 4V protected-endpoint policy. There is no
   Tailscale/LAN-address bypass.
 - Status codes: 401 not signed in, 403 bad/missing CSRF or no admin, 413 too
   large, 422 invalid package, 503 no key provisioned, 500 flash error.
 
-Success sequence: authorized → header parsed → target/flags/key checked →
-signature verified → `esp_ota_begin` → stream + SHA-256 → digest matches →
-`esp_ota_end` (image validation) → `esp_ota_set_boot_partition` → response →
-reboot.
+For both manual and GitHub updates, the image is streamed and verified into
+the inactive slot first. It remains unselected for boot until the administrator
+approves reboot; only then does the firmware call
+`esp_ota_set_boot_partition()` and restart. A power loss before that approval
+leaves the old image selected. GitHub transport uses certificate-validated
+HTTPS; package authenticity still depends on the embedded ECDSA signing key.
+Automatic checks use the public repository's `/releases/latest` API and
+versioned assets; no credentials are embedded in firmware.
 
 ## Streaming, memory, failure behavior
 
@@ -134,8 +153,8 @@ library) plus the installer's 148 B header/signature scratch ≈ 1.6 KiB, plus
 
 Any failure (auth, signature, digest, flash, truncated or aborted upload)
 calls `esp_ota_abort`, never sets the boot partition, never reboots, and
-leaves the running image and NVS untouched. An unconfirmed candidate is not
-bootable.
+leaves the running image and NVS untouched. A staged but unapproved candidate
+is written to the inactive slot but is not selected as bootable.
 
 ## Rollback and health gate
 
@@ -163,11 +182,14 @@ Phase 4W (build and sign locally).
 Helper: `python tools\release_firmware.py --version 4.23.0 --private-key <pem>`
 builds both network targets, signs, verifies, writes `dist\<version>\`
 (`.bkota`, `SHA256SUMS.txt`, `RELEASE_NOTES.md`). It refuses a dirty tree and
-a tag that is not at `HEAD`. Add `--create-draft` to create a **draft** release
+a tag that is not at `HEAD`. The release version is embedded in the firmware
+and must be three-part numeric. Add `--create-draft` to create a **draft** release
 with `gh` (requires `gh` installed and the tag pushed); otherwise upload the
 files from `dist\<version>\` in the GitHub web UI. Publishing is always a
-manual decision. The device `/update` page stays a manual upload; it does not
-contact GitHub. A future device-side "check for update" is out of scope.
+manual decision. Drafts and prereleases are not returned by the stable latest
+endpoint. Once a stable release is published, online devices will discover it
+within six hours; an administrator still explicitly approves install and
+reboot. The `/update` page also allows direct manual `.bkota` upload.
 
 Release checklist: all host tests + clean builds pass → commit → tag →
 push tag → `release_firmware.py` → review → draft release → publish.

@@ -83,6 +83,15 @@ setup page. The network-disabled `brooklyn-s3` environment remains unchanged;
 do not upload either production environment until the assembled PCB has passed
 the reviewed electrical bring-up checks.
 
+The network-enabled targets check the public GitHub Releases page for a newer
+stable firmware version every six hours when Wi-Fi and time synchronization
+are available. An administrator must approve downloading/installing the
+signed package and separately approve rebooting into it. The authenticated
+`/update` page also keeps manual signed `.bkota` uploads available. A published
+stable GitHub Release is required; drafts and prereleases are ignored. See
+[`docs/PHASE4W_SECURE_WEB_OTA.md`](docs/PHASE4W_SECURE_WEB_OTA.md) for the
+release and security workflow.
+
 ## Licensing
 
 - Firmware/software: Apache-2.0.
