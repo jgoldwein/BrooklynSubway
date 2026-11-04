@@ -55,6 +55,9 @@ class LanWebUi {
   int updateAuthorizationStatus();
   bool updateContentTypeAccepted();
   void sendHtml(const char *body, size_t length);
+  void sendNotice(int httpCode, const char *title, const char *message,
+                  int kind, int refreshSeconds);
+  void handleUpdateProgress();
   bool authorizeRequest(bool requireCsrf);
   bool requestSession(char *csrfToken, size_t capacity);
   void sendLoginRedirect();
@@ -76,6 +79,10 @@ class LanWebUi {
   ota::Result updateResult_ = ota::Result::NotStarted;
   bool forceReleaseCheck_ = false;
   bool installReleaseRequested_ = false;
+  // 0 idle, 1 downloading, 2 staged, 3 failed
+  uint8_t installPhase_ = 0;
+  uint32_t installReceived_ = 0;
+  uint32_t installTotal_ = 0;
   bool hasReleaseCheck_ = false;
   bool updateAvailable_ = false;
   uint32_t lastReleaseCheckMs_ = 0;

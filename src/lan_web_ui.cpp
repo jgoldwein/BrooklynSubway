@@ -44,6 +44,18 @@ constexpr const char *kRebooting =
     "<title>Rebooting</title></head><body><h1>Rebooting</h1>"
     "<p>Configuration and Wi-Fi credentials are retained.</p></body></html>";
 
+constexpr const char *kUpdateStyle =
+    "body{font:16px/1.5 system-ui,sans-serif;max-width:40rem;margin:1rem auto;"
+    "padding:0 1rem;color:#17232b}h1{margin-bottom:.2rem}h2{margin-top:1.8rem}"
+    ".card{padding:.9rem 1rem;border-radius:.5rem;border:1px solid #cdd7de;"
+    "background:#f3f6f8;margin:1rem 0}.ok{background:#e6f5ea;border-color:#9bd0a9}"
+    ".warn{background:#fff4d6;border-color:#e5c96a}.bad{background:#fde8e8;"
+    "border-color:#e0a0a0}.muted{color:#52616b;font-size:.9rem}"
+    "button,input{font:inherit;padding:.55rem .9rem}button{cursor:pointer;"
+    "border:1px solid #1a5fa8;background:#1a5fa8;color:#fff;border-radius:.4rem}"
+    "button.secondary{background:#fff;color:#1a5fa8}dl{display:grid;"
+    "grid-template-columns:9rem 1fr;gap:.3rem}dt{font-weight:600}dd{margin:0}";
+
 void eraseString(String &value) {
   for (size_t i = 0; i < value.length(); ++i) value.setCharAt(i, '\0');
   value.clear();
@@ -138,6 +150,7 @@ void LanWebUi::registerRoutes() {
   const char *headers[] = {"Cookie", "X-CSRF-Token", "Content-Type"};
   server_.collectHeaders(headers, 3);
   server_.on("/update", HTTP_GET, [this]() { handleUpdatePage(); });
+  server_.on("/update/progress", HTTP_GET, [this]() { handleUpdateProgress(); });
   server_.on("/update", HTTP_POST, [this]() { handleUpdateComplete(); },
              [this]() { handleUpdateRaw(); });
   server_.on("/update/check", HTTP_POST,
@@ -196,6 +209,39 @@ void LanWebUi::sendHtml(const char *body, size_t length) {
   server_.setContentLength(length);
   server_.send(200, "text/html; charset=utf-8", "");
   server_.sendContent(body, length);
+}
+
+// kind: 0 = success, 1 = notice, 2 = problem. refreshSeconds > 0 returns to /update.
+void LanWebUi::sendNotice(int httpCode, const char *title, const char *message,
+                          int kind, int refreshSeconds) {
+  char refresh[64] = {};
+  if (refreshSeconds > 0) {
+    snprintf(refresh, sizeof(refresh),
+             "<meta http-equiv=\"refresh\" content=\"%d;url=/update\">",
+             refreshSeconds);
+  }
+  const int length = snprintf(
+      gPage, kPageCapacity,
+      "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+      "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+      "%s<title>%s</title><style>%s</style></head><body><h1>%s</h1>"
+      "<div class=\"card %s\" role=\"status\"><p>%s</p>%s</div>"
+      "<p><a href=\"/update\">Back to firmware update</a> &middot; "
+      "<a href=\"/\">Status page</a></p></body></html>",
+      refresh, title, kUpdateStyle, title,
+      kind == 0 ? "ok" : (kind == 1 ? "warn" : "bad"), message,
+      refreshSeconds > 0 ? "<p class=\"muted\">Returning to the update page "
+                           "automatically&hellip;</p>"
+                         : "");
+  if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
+    server_.send(httpCode, "text/plain", message);
+    return;
+  }
+  server_.sendHeader("Cache-Control", "no-store");
+  server_.sendHeader("X-Content-Type-Options", "nosniff");
+  server_.sendHeader("X-Frame-Options", "DENY");
+  server_.sendHeader("Referrer-Policy", "same-origin");
+  server_.send(httpCode, "text/html; charset=utf-8", gPage);
 }
 
 void LanWebUi::handleHome() {
@@ -690,30 +736,61 @@ void LanWebUi::handleUpdatePage() {
       return;
     }
   }
-  char releaseControls[2048] = {};
+  char releaseControls[2816] = {};
   int controlsLength = 0;
-  if (otaSession_.activationPending()) {
+  if (installPhase_ == 1) {
     controlsLength = snprintf(
         releaseControls, sizeof(releaseControls),
-        "<p class=\"warn\">A verified image is staged. Approving below "
-        "activates it for the next boot and reboots the device.</p>"
+        "<div class=\"card\"><h2 style=\"margin-top:0\">Installing %s</h2>"
+        "<progress id=\"pg\" max=\"100\" value=\"0\" style=\"width:100%%\">"
+        "</progress><p id=\"pt\" role=\"status\">Starting download&hellip;</p>"
+        "<p class=\"muted\">The device verifies the signature as it downloads. "
+        "LEDs and feeds pause until this finishes. Do not unplug the board."
+        "</p></div><script>function poll(){var x=new XMLHttpRequest();"
+        "x.open(\"GET\",\"/update/progress\");x.onload=function(){try{"
+        "var d=JSON.parse(x.responseText);if(d.phase!==1){location.reload();"
+        "return}var p=d.total>0?Math.round(100*d.received/d.total):0;"
+        "document.getElementById(\"pg\").value=p;document.getElementById(\"pt\")"
+        ".textContent=d.total>0?\"Downloaded \"+Math.round(d.received/1024)+\" of \""
+        "+Math.round(d.total/1024)+\" KB (\"+p+\"%%)\":\"Starting download\\u2026\"}"
+        "catch(e){}setTimeout(poll,1000)};x.onerror=function(){setTimeout(poll,"
+        "2000)};x.send()}poll()</script>",
+        availableVersion_);
+  } else if (otaSession_.activationPending()) {
+    controlsLength = snprintf(
+        releaseControls, sizeof(releaseControls),
+        "<div class=\"card ok\"><h2 style=\"margin-top:0\">Ready to restart</h2>"
+        "<p>A verified, signed firmware image is staged. Nothing changes until "
+        "you approve the restart. Your settings and Wi-Fi are kept, and the "
+        "previous firmware is restored automatically if the new one fails its "
+        "health check.</p>"
         "<form method=\"post\" action=\"/update/reboot\">"
         "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
-        "<button type=\"submit\">Approve reboot into staged firmware</button>"
-        "</form>",
+        "<button type=\"submit\">Restart into new firmware</button></form></div>",
         csrf);
   } else if (updateAvailable_) {
+    char failNote[192] = {};
+    if (installPhase_ == 3) {
+      snprintf(failNote, sizeof(failNote),
+               "<div class=\"card bad\"><p><b>Last install attempt failed:</b> "
+               "%s</p></div>",
+               releaseStatus_);
+    }
     controlsLength = snprintf(
         releaseControls, sizeof(releaseControls),
-        "<p>Stable release <b>%s</b> is available.</p>"
+        "%s<div class=\"card warn\"><h2 style=\"margin-top:0\">Version %s is "
+        "available</h2><p>The download is about 1 MB and is checked against the "
+        "manufacturer signature before it is staged. You will be asked to "
+        "approve a restart separately.</p>"
         "<form method=\"post\" action=\"/update/install\">"
         "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
-        "<button type=\"submit\">Approve download and install</button>"
-        "</form>",
-        availableVersion_, csrf);
+        "<button type=\"submit\">Download and verify %s</button></form></div>",
+        failNote, availableVersion_, csrf, availableVersion_);
   } else {
-    controlsLength = snprintf(releaseControls, sizeof(releaseControls),
-                              "<p>%s</p>", releaseStatus_);
+    controlsLength = snprintf(
+        releaseControls, sizeof(releaseControls),
+        "<div class=\"card %s\" role=\"status\"><p>%s</p></div>",
+        installPhase_ == 3 ? "bad" : "", releaseStatus_);
   }
   if (controlsLength <= 0 ||
       static_cast<size_t>(controlsLength) >= sizeof(releaseControls)) {
@@ -725,35 +802,43 @@ void LanWebUi::handleUpdatePage() {
       gPage, kPageCapacity,
       "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-      "<title>Update firmware</title><style>"
-      "body{font:16px system-ui,sans-serif;max-width:40rem;margin:1rem auto;"
-      "padding:0 1rem}.warn{padding:.7rem;background:#fff4d6}"
-      "button,input{font:inherit;padding:.5rem}</style></head><body>"
+      "<title>Update firmware</title><style>%s</style></head><body>"
       "<h1>Update firmware</h1>"
-      "<p>Running: %s | Target: %s</p>"
-      "<p class=\"warn\">Stable GitHub releases are checked every 6 hours. "
-      "A signed package is required. HTTP is not encrypted; use only a "
-      "trusted network. A candidate is not activated until you approve its "
-      "reboot. Configuration and Wi-Fi credentials are kept.</p>"
+      "<dl><dt>Running</dt><dd>%s</dd><dt>Target</dt><dd>%s</dd>"
+      "<dt>Latest release</dt><dd>%s</dd></dl>"
       "%s"
       "<form method=\"post\" action=\"/update/check\">"
       "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
-      "<button type=\"submit\">Check for stable release now</button></form>"
+      "<button type=\"submit\" class=\"secondary\">Check for updates now</button>"
+      "</form><p class=\"muted\">The device checks GitHub for new stable "
+      "releases every 6 hours. Only signed packages are accepted, and nothing "
+      "is installed or restarted without your approval. This page uses "
+      "unencrypted HTTP, so use it only on a trusted network.</p>"
       "<h2>Manual signed package</h2>"
+      "<p>Have a <code>.bkota</code> file? Upload it here. It is verified and "
+      "staged, then you approve the restart.</p>"
       "<input type=\"file\" id=\"f\" accept=\".bkota\"> "
-      "<button id=\"b\">Upload and stage</button>"
-      "<p id=\"s\" role=\"status\"></p><p><a href=\"/\">Back</a></p>"
+      "<button id=\"b\">Upload and verify</button>"
+      "<progress id=\"up\" max=\"100\" value=\"0\" style=\"width:100%%;"
+      "display:none;margin-top:.6rem\"></progress>"
+      "<p id=\"s\" role=\"status\"></p><p><a href=\"/\">Back to status</a></p>"
       "<script>var t=\"%s\";document.getElementById(\"b\").onclick=function(){"
       "var f=document.getElementById(\"f\").files[0],s=document.getElementById"
-      "(\"s\");if(!f){s.textContent=\"Choose a package first.\";return}"
+      "(\"s\"),u=document.getElementById(\"up\");if(!f){s.textContent="
+      "\"Choose a package first.\";return}u.style.display=\"block\";"
       "var x=new XMLHttpRequest();x.open(\"POST\",\"/update\");"
       "x.setRequestHeader(\"X-CSRF-Token\",t);x.setRequestHeader("
       "\"Content-Type\",\"application/octet-stream\");x.upload.onprogress="
-      "function(e){s.textContent=\"Uploading \"+Math.round(100*e.loaded/"
-      "e.total)+\"%%\"};x.onload=function(){s.textContent=x.status+\": \"+"
-      "x.responseText};x.onerror=function(){s.textContent=\"Connection lost"
-      "\"};x.send(f)}</script></body></html>",
-      ota::WebOtaSession::firmwareVersion(), ota::WebOtaSession::targetName(),
+      "function(e){var p=Math.round(100*e.loaded/e.total);u.value=p;"
+      "s.textContent=\"Uploading \"+p+\"%%\"};x.onload=function(){"
+      "s.textContent=x.status==200?x.responseText:\"Rejected (\"+x.status+\"): \"+"
+      "x.responseText;if(x.status==200){setTimeout(function(){location.reload()}"
+      ",2500)}};x.onerror=function(){s.textContent=\"Connection lost\"};"
+      "x.send(f)}</script></body></html>",
+      kUpdateStyle, ota::WebOtaSession::firmwareVersion(),
+      ota::WebOtaSession::targetName(),
+      updateAvailable_ ? availableVersion_
+                       : (hasReleaseCheck_ ? "none newer" : "not checked yet"),
       releaseControls, csrf, csrf);
   eraseBytes(csrf, sizeof(csrf));
   if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
@@ -766,51 +851,94 @@ void LanWebUi::handleUpdatePage() {
 void LanWebUi::handleUpdateCheck() {
   if (!authorizeRequest(true)) return;
   if (server_.args() != 1) {
-    server_.send(400, "text/plain", "Invalid update-check request");
+    sendNotice(400, "Update check", "That request was not valid.", 2, 0);
+    return;
+  }
+  if (installPhase_ == 1) {
+    sendNotice(409, "Update check",
+               "An installation is already in progress.", 1, 2);
     return;
   }
   forceReleaseCheck_ = true;
-  server_.send(202, "text/plain", "Release check queued; reload /update shortly");
+  sendNotice(202, "Checking for updates",
+             "Contacting GitHub for the latest stable release. This takes a "
+             "few seconds.", 0, 6);
 }
 
 void LanWebUi::handleUpdateInstall() {
   if (!authorizeRequest(true)) return;
   if (server_.args() != 1) {
-    server_.send(400, "text/plain", "Invalid update-approval request");
+    sendNotice(400, "Install update", "That request was not valid.", 2, 0);
+    return;
+  }
+  if (installPhase_ == 1) {
+    sendNotice(409, "Install update",
+               "An installation is already in progress.", 1, 2);
     return;
   }
   if (!updateAvailable_ || otaSession_.activationPending()) {
-    server_.send(409, "text/plain", "No stable release is awaiting approval");
+    sendNotice(409, "Install update",
+               "No stable release is waiting for approval. Check for updates "
+               "first.", 1, 4);
     return;
   }
   installReleaseRequested_ = true;
-  server_.send(202, "text/plain",
-               "Approval recorded; signed firmware download will begin");
+  installPhase_ = 1;
+  installReceived_ = 0;
+  installTotal_ = 0;
+  sendNotice(202, "Download approved",
+             "Starting the signed firmware download. Progress will appear on "
+             "the update page.", 0, 2);
+}
+
+void LanWebUi::handleUpdateProgress() {
+  if (!authorizeRequest(false)) return;
+  const int length = snprintf(
+      gJson, kJsonCapacity,
+      "{\"phase\":%u,\"received\":%lu,\"total\":%lu}",
+      static_cast<unsigned>(installPhase_),
+      static_cast<unsigned long>(installReceived_),
+      static_cast<unsigned long>(installTotal_));
+  if (length <= 0 || static_cast<size_t>(length) >= kJsonCapacity) {
+    server_.send(500, "text/plain", "Unable to render progress");
+    return;
+  }
+  server_.sendHeader("Cache-Control", "no-store");
+  server_.sendHeader("X-Content-Type-Options", "nosniff");
+  server_.send(200, "application/json", gJson);
 }
 
 void LanWebUi::handleUpdateReboot() {
   if (!authorizeRequest(true)) return;
   if (server_.args() != 1) {
-    server_.send(400, "text/plain", "Invalid reboot-approval request");
+    sendNotice(400, "Restart", "That request was not valid.", 2, 0);
     return;
   }
   if (!otaSession_.activationPending()) {
-    server_.send(409, "text/plain", "No verified firmware image is staged");
+    sendNotice(409, "Restart",
+               "No verified firmware image is staged, so there is nothing to "
+               "restart into.", 1, 4);
     return;
   }
   if (!otaSession_.activatePendingImage()) {
-    server_.send(500, "text/plain", "Unable to activate staged firmware");
+    sendNotice(500, "Restart failed",
+               "The staged firmware could not be activated. The current "
+               "firmware is unchanged.", 2, 0);
     return;
   }
   rebootRequested_ = true;
-  server_.send(200, "text/plain",
-               "Reboot approved; the device will start the staged firmware");
+  sendNotice(200, "Restarting",
+             "Restart approved. The device is restarting into the new "
+             "firmware and will be back in about 30 seconds. Open the status "
+             "page then to confirm the new version.", 0, 0);
 }
 
 void LanWebUi::serviceFirmwareUpdates(uint32_t nowMs) {
   if (installReleaseRequested_) {
     installReleaseRequested_ = false;
-    installAvailableRelease();
+    installPhase_ = 1;
+    const bool staged = installAvailableRelease();
+    installPhase_ = staged ? 2 : 3;
     return;
   }
   if (!status_.networkConnected || !status_.timeSynchronized ||
@@ -991,8 +1119,16 @@ bool LanWebUi::installAvailableRelease() {
   uint8_t buffer[1024];
   size_t received = 0;
   uint32_t lastProgressMs = millis();
+  uint32_t lastServeMs = lastProgressMs;
+  installTotal_ = static_cast<uint32_t>(contentLength);
+  installReceived_ = 0;
   stream->setTimeout(1000);
   while (received < static_cast<size_t>(contentLength)) {
+    // Keep the page and progress endpoint responsive during the download.
+    if (static_cast<uint32_t>(millis() - lastServeMs) >= 250) {
+      server_.handleClient();
+      lastServeMs = millis();
+    }
     const int available = stream->available();
     if (available <= 0) {
       if (!stream->connected() ||
@@ -1015,6 +1151,7 @@ bool LanWebUi::installAvailableRelease() {
     const size_t count = stream->readBytes(buffer, amount);
     if (count == 0) continue;
     received += count;
+    installReceived_ = static_cast<uint32_t>(received);
     lastProgressMs = millis();
     result = otaSession_.feed(buffer, count);
     if (result != ota::Result::Ok) {
@@ -1067,7 +1204,7 @@ void LanWebUi::handleUpdateRaw() {
   switch (raw.status) {
     case RAW_START: {
       updateStarted_ = true;
-      updateDeniedStatus_ = updateAuthorizationStatus();
+      updateDeniedStatus_ = installPhase_ == 1 ? 409 : updateAuthorizationStatus();
       updateResult_ = ota::Result::NotStarted;
       if (updateDeniedStatus_ != 0) {
         Serial.printf("OTA: upload denied (HTTP %d)\n", updateDeniedStatus_);
@@ -1115,6 +1252,12 @@ void LanWebUi::handleUpdateComplete() {
     server_.send(401, "text/plain", "Administrator sign-in is required");
     return;
   }
+  if (denied == 409) {
+    server_.send(409, "text/plain",
+                 "An installation is already in progress. Try again when it "
+                 "finishes.");
+    return;
+  }
   if (denied != 0) {
     server_.send(denied, "text/plain", "A valid CSRF token is required");
     return;
@@ -1132,8 +1275,8 @@ void LanWebUi::handleUpdateComplete() {
   }
   const int length = snprintf(
       gPage, kPageCapacity,
-      "Firmware %s verified and staged. Reload /update and separately approve "
-      "the reboot.%s",
+      "Firmware %s verified and staged. The page will reload so you can "
+      "approve the restart.%s",
       installer != nullptr ? installer->header().version : "?",
       downgrade ? " WARNING: this is an older version (downgrade)." : "");
   snprintf(releaseStatus_, sizeof(releaseStatus_),
