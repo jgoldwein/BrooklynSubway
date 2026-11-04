@@ -944,10 +944,38 @@ void LanWebUi::handleUpdateReboot() {
     return;
   }
   rebootRequested_ = true;
-  sendNotice(200, "Restarting",
-             "Restart approved. The device is restarting into the new "
-             "firmware and will be back in about 30 seconds. Open the status "
-             "page then to confirm the new version.", 0, 0);
+  const int length = snprintf(
+      gPage, kPageCapacity,
+      "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+      "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+      "<title>Restarting</title><style>%s</style></head><body>"
+      "<h1>Restarting</h1><div class=\"card ok\" role=\"status\">"
+      "<p id=\"m\">Restart approved. The device is restarting into the new "
+      "firmware. Opening the status page in <b id=\"n\">30</b> seconds.</p>"
+      "<progress id=\"pg\" max=\"30\" value=\"0\" style=\"width:100%%\"></progress>"
+      "<p class=\"muted\">You will need to sign in again.</p></div>"
+      "<p><a href=\"/\">Status page now</a></p>"
+      "<script>var left=30;function probe(){var c=new AbortController(),"
+      "k=setTimeout(function(){c.abort()},2500);fetch(\"/api/status\",{cache:"
+      "\"no-store\",signal:c.signal}).then(function(r){clearTimeout(k);"
+      "if(r.ok){location.replace(\"/\")}else{setTimeout(probe,2000)}})"
+      ".catch(function(){clearTimeout(k);setTimeout(probe,2000)})}"
+      "var iv=setInterval(function(){left--;document.getElementById(\"n\")"
+      ".textContent=left;document.getElementById(\"pg\").value=30-left;"
+      "if(left<=0){clearInterval(iv);document.getElementById(\"m\").textContent="
+      "\"Waiting for the device to come back\\u2026\";probe()}},1000)</script>"
+      "</body></html>",
+      kUpdateStyle);
+  if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
+    server_.send(200, "text/plain", "Restart approved. Reopen the status page "
+                                    "in about 30 seconds.");
+    return;
+  }
+  server_.sendHeader("Cache-Control", "no-store");
+  server_.sendHeader("X-Content-Type-Options", "nosniff");
+  server_.sendHeader("X-Frame-Options", "DENY");
+  server_.sendHeader("Referrer-Policy", "same-origin");
+  server_.send(200, "text/html; charset=utf-8", gPage);
 }
 
 void LanWebUi::serviceFirmwareUpdates(uint32_t nowMs) {
