@@ -757,17 +757,34 @@ void LanWebUi::handleUpdatePage() {
         "2000)};x.send()}poll()</script>",
         availableVersion_);
   } else if (otaSession_.activationPending()) {
+    const ota::Installer *staged = otaSession_.installer();
+    const char *stagedVersion = (staged != nullptr && staged->headerValid())
+                                    ? staged->header().version
+                                    : "";
+    char stagedLabel[48] = {};
+    for (size_t i = 0; i + 1 < sizeof(stagedLabel) && stagedVersion[i] != '\0';
+         ++i) {
+      const char c = stagedVersion[i];
+      stagedLabel[i] = ((c >= '0' && c <= '9') || c == '.' ||
+                        (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') ||
+                        c == '-' || c == '+')
+                           ? c
+                           : '?';
+    }
     controlsLength = snprintf(
         releaseControls, sizeof(releaseControls),
-        "<div class=\"card ok\"><h2 style=\"margin-top:0\">Ready to restart</h2>"
+        "<div class=\"card ok\"><h2 style=\"margin-top:0\">Version %s is ready "
+        "to install</h2>"
         "<p>A verified, signed firmware image is staged. Nothing changes until "
         "you approve the restart. Your settings and Wi-Fi are kept, and the "
         "previous firmware is restored automatically if the new one fails its "
         "health check.</p>"
         "<form method=\"post\" action=\"/update/reboot\">"
         "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
-        "<button type=\"submit\">Restart into new firmware</button></form></div>",
-        csrf);
+        "<button type=\"submit\">Restart into new firmware version %s</button>"
+        "</form></div>",
+        stagedLabel[0] != '\0' ? stagedLabel : "(unknown)", csrf,
+        stagedLabel[0] != '\0' ? stagedLabel : "(unknown)");
   } else if (updateAvailable_) {
     char failNote[192] = {};
     if (installPhase_ == 3) {
@@ -1116,7 +1133,7 @@ bool LanWebUi::installAvailableRelease() {
     return false;
   }
 
-  uint8_t buffer[1024];
+  static uint8_t buffer[1024];  // static: keeps the loop-task stack free for TLS
   size_t received = 0;
   uint32_t lastProgressMs = millis();
   uint32_t lastServeMs = lastProgressMs;
