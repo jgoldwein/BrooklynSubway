@@ -323,6 +323,15 @@ size_t renderHomePage(char *out, size_t capacity,
   writer.append(displayStateName(status.displayState));
   writer.append("</p><section><h2>Device</h2><dl><dt>Firmware</dt><dd>");
   writer.append(kFirmwareId);
+  writer.append("</dd><dt>Firmware version</dt><dd>");
+  writer.html(status.firmwareVersion[0] != '\0' ? status.firmwareVersion : "unknown");
+  writer.append("</dd><dt>Available release</dt><dd>");
+  if (status.availableVersion[0] != '\0') {
+    writer.html(status.availableVersion);
+    writer.append(" (<a href=\"/update\">review update</a>)");
+  } else {
+    writer.append("none newer known");
+  }
   writer.append("</dd><dt>Target</dt><dd>");
   writer.html(status.target);
   writer.append("</dd><dt>Uptime</dt><dd>");
