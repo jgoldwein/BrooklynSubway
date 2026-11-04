@@ -25,7 +25,10 @@ namespace {
 constexpr size_t kPageCapacity = 12288;
 constexpr size_t kJsonCapacity = 2048;
 constexpr size_t kNetworkDiagnosticsJsonCapacity = 1536;
-constexpr uint32_t kReleaseCheckIntervalMs = 6u * 60u * 60u * 1000u;
+#ifndef BROOKLYN_RELEASE_CHECK_INTERVAL_MS
+#define BROOKLYN_RELEASE_CHECK_INTERVAL_MS (6u * 60u * 60u * 1000u)  // bench tests may override
+#endif
+constexpr uint32_t kReleaseCheckIntervalMs = BROOKLYN_RELEASE_CHECK_INTERVAL_MS;
 constexpr size_t kReleaseMetadataLimit = 8192;
 constexpr size_t kMaxFirmwarePackageSize = 0x640000u + 148u;
 char gPage[kPageCapacity];
