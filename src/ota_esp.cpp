@@ -17,6 +17,14 @@
 
 #include <new>
 
+#ifndef BROOKLYN_FIRMWARE_VERSION_MAJOR
+#define BROOKLYN_FIRMWARE_VERSION_MAJOR 0
+#define BROOKLYN_FIRMWARE_VERSION_MINOR 0
+#define BROOKLYN_FIRMWARE_VERSION_PATCH 0
+#endif
+#define BROOKLYN_STRINGIFY_INNER(value) #value
+#define BROOKLYN_STRINGIFY(value) BROOKLYN_STRINGIFY_INNER(value)
+
 #if defined(BROOKLYN_TARGET_XIAO)
 #define BROOKLYN_OTA_TARGET ::brooklyn::ota::Target::Xiao
 #define BROOKLYN_OTA_TARGET_NAME "xiao-s3"
@@ -95,7 +103,8 @@ class EspImageWriter : public ImageWriter {
     return partition_ != nullptr ? partition_->size : 0;
   }
   bool begin(uint32_t payloadSize) override {
-    if (partition_ == nullptr || payloadSize > partition_->size) return false;
+    if (pendingActivation_ || partition_ == nullptr ||
+        payloadSize > partition_->size) return false;
     if (esp_ota_begin(partition_, payloadSize, &handle_) != ESP_OK) {
       return false;
     }
@@ -109,8 +118,20 @@ class EspImageWriter : public ImageWriter {
     if (!open_) return false;
     open_ = false;
     if (esp_ota_end(handle_) != ESP_OK) return false;
+    if (deferActivation_) {
+      pendingActivation_ = true;
+      return true;
+    }
     return esp_ota_set_boot_partition(partition_) == ESP_OK;
   }
+  bool activatePendingImage() {
+    if (!pendingActivation_ || partition_ == nullptr) return false;
+    if (esp_ota_set_boot_partition(partition_) != ESP_OK) return false;
+    pendingActivation_ = false;
+    return true;
+  }
+  bool activationPending() const { return pendingActivation_; }
+  void deferActivation(bool defer) { deferActivation_ = defer; }
   void abort() override {
     if (open_) {
       esp_ota_abort(handle_);
@@ -122,6 +143,8 @@ class EspImageWriter : public ImageWriter {
   const esp_partition_t *partition_ = nullptr;
   esp_ota_handle_t handle_ = 0;
   bool open_ = false;
+  bool deferActivation_ = false;
+  bool pendingActivation_ = false;
 };
 
 bool gSetupHealthy = false;
@@ -143,11 +166,19 @@ WebOtaSession::~WebOtaSession() = default;
 
 const char *WebOtaSession::targetName() { return BROOKLYN_OTA_TARGET_NAME; }
 
-Result WebOtaSession::start(size_t contentLength) {
+const char *WebOtaSession::firmwareVersion() {
+  return BROOKLYN_STRINGIFY(BROOKLYN_FIRMWARE_VERSION_MAJOR) "."
+         BROOKLYN_STRINGIFY(BROOKLYN_FIRMWARE_VERSION_MINOR) "."
+         BROOKLYN_STRINGIFY(BROOKLYN_FIRMWARE_VERSION_PATCH);
+}
+
+Result WebOtaSession::start(size_t contentLength, bool deferActivation) {
   if (!impl_) return Result::WriterBegin;
+  if (impl_->writer.activationPending()) return Result::Busy;
   if (installer_) installer_->abort();
+  impl_->writer.deferActivation(deferActivation);
   const InstallerConfig config{BROOKLYN_OTA_TARGET, kTrustedKeys,
-                               kTrustedKeyCount, web::kFirmwareId};
+                               kTrustedKeyCount, firmwareVersion()};
   installer_.reset(new (std::nothrow) Installer(config, impl_->sha,
                                                 impl_->verifier,
                                                 impl_->writer));
@@ -183,10 +214,24 @@ Result WebOtaSession::feed(const uint8_t *data, size_t length) {
 Result WebOtaSession::finish() {
   if (!installer_) return Result::NotStarted;
   const Result result = installer_->finish();
-  Serial.printf("OTA: %s\n", result == Result::Ok
-                                 ? "verified; new image activated, reboot permitted"
-                                 : resultName(result));
+  Serial.printf("OTA: %s\n",
+                result == Result::Ok
+                    ? (impl_->writer.activationPending()
+                           ? "verified; image staged, awaiting reboot approval"
+                           : "verified; new image activated, reboot permitted")
+                    : resultName(result));
   return result;
+}
+
+bool WebOtaSession::activatePendingImage() {
+  if (!impl_) return false;
+  const bool activated = impl_->writer.activatePendingImage();
+  Serial.printf("OTA: boot activation %s\n", activated ? "approved" : "FAILED");
+  return activated;
+}
+
+bool WebOtaSession::activationPending() const {
+  return impl_ != nullptr && impl_->writer.activationPending();
 }
 
 void WebOtaSession::abort() {

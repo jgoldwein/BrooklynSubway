@@ -18,6 +18,8 @@ The private key is never uploaded, copied, or printed.
 
 import argparse
 import hashlib
+import os
+import re
 import shutil
 import subprocess
 import sys
@@ -54,8 +56,13 @@ def main(argv=None):
                    help="create a DRAFT GitHub Release with gh (never auto-published)")
     args = p.parse_args(argv)
 
+    if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", args.version) is None:
+        sys.exit("version must be dotted numeric, for example 4.23.0")
+
     key = sf.load_private_key(args.private_key)  # refuses keys inside the repo
     tag = args.tag or "v" + args.version
+    if tag != "v" + args.version:
+        sys.exit("automatic OTA requires the release tag v<version>")
     if git_output("status", "--porcelain") and not args.allow_dirty:
         sys.exit("working tree is dirty; commit first or pass --allow-dirty")
     tag_commit = git_output("rev-list", "-n", "1", tag)
@@ -71,10 +78,20 @@ def main(argv=None):
 
     assets = []
     for target, env in ENVS.items():
+        build_dir = ROOT / ".pio" / "build" / env
         if not args.skip_build:
+            os.environ["BROOKLYN_FIRMWARE_VERSION"] = args.version
             if run([PLATFORMIO, "run", "-e", env]).returncode != 0:
                 sys.exit("build failed for %s" % env)
-        firmware = ROOT / ".pio/build" / env / "firmware.bin"
+        version_file = build_dir / "brooklyn_firmware_version.txt"
+        if not version_file.exists() or version_file.read_text(
+            encoding="ascii"
+        ).strip() != args.version:
+            sys.exit(
+                "build for %s is not version %s; rebuild without --skip-build"
+                % (env, args.version)
+            )
+        firmware = build_dir / "firmware.bin"
         package = out / ("%s-network-%s.bkota" % (target, args.version))
         data = sf.build_package(firmware.read_bytes(), target, args.version,
                                 args.key_id, key)
@@ -94,7 +111,8 @@ def main(argv=None):
         notes.write_text(
             "# Brooklyn Active Subway Map %s\n\n"
             "PRE-RELEASE: not a final production-validated release.\n\n"
-            "Signed OTA packages (manual upload via the device /update page).\n"
+            "Signed OTA packages for administrator-approved automatic OTA "
+            "from GitHub Releases or manual upload via /update.\n"
             "Pick the package matching your hardware target; wrong-target or "
             "unsigned packages are rejected by the device.\n\n"
             "Hardware validation: the XIAO ESP32-S3 OTA path was hardware-validated. "

@@ -8,9 +8,16 @@
 #include "ota_upload_gate.h"
 
 #include <Arduino.h>
+#include <HTTPClient.h>
+#include <WiFi.h>
+#include <WiFiClientSecure.h>
+#include <cJSON.h>
 
 #include <stdio.h>
 #include <string.h>
+
+extern const uint8_t rootca_crt_bundle_start[]
+    asm("_binary_x509_crt_bundle_start");
 
 namespace brooklyn::web {
 namespace {
@@ -18,6 +25,9 @@ namespace {
 constexpr size_t kPageCapacity = 12288;
 constexpr size_t kJsonCapacity = 2048;
 constexpr size_t kNetworkDiagnosticsJsonCapacity = 1536;
+constexpr uint32_t kReleaseCheckIntervalMs = 6u * 60u * 60u * 1000u;
+constexpr size_t kReleaseMetadataLimit = 8192;
+constexpr size_t kMaxFirmwarePackageSize = 0x640000u + 148u;
 char gPage[kPageCapacity];
 char gJson[kJsonCapacity];
 char gNetworkDiagnosticsJson[kNetworkDiagnosticsJsonCapacity];
@@ -63,6 +73,41 @@ bool hasNoEmbeddedNull(const String &value) {
   return strlen(value.c_str()) == value.length();
 }
 
+bool releaseVersionFromJson(const char *json, size_t length, char *version,
+                            size_t capacity) {
+  if (json == nullptr || version == nullptr || capacity < 2) return false;
+  cJSON *root = cJSON_ParseWithLength(json, length);
+  if (root == nullptr) return false;
+  const cJSON *tag = cJSON_GetObjectItemCaseSensitive(root, "tag_name");
+  bool valid = false;
+  if (cJSON_IsObject(root) && cJSON_IsString(tag) &&
+      tag->valuestring != nullptr) {
+    const char *text = tag->valuestring;
+    const size_t tagLength = strlen(text);
+    const char *number = text + 1;
+    unsigned int components = 1;
+    bool numeric = tagLength > 1 && text[0] == 'v' &&
+                   tagLength - 1 < capacity;
+    for (size_t i = 1; numeric && i < tagLength; ++i) {
+      if (text[i] == '.') {
+        ++components;
+        if (i == 1 || text[i - 1] == '.' || i + 1 == tagLength) {
+          numeric = false;
+        }
+      } else if (text[i] < '0' || text[i] > '9') {
+        numeric = false;
+      }
+    }
+    if (numeric && components == 3 &&
+        ota::compareVersions(number, "0.0.0") != 2) {
+      memcpy(version, text + 1, tagLength);
+      valid = true;
+    }
+  }
+  cJSON_Delete(root);
+  return valid;
+}
+
 }  // namespace
 
 LanWebUi::LanWebUi(config::DeviceConfiguration &configuration)
@@ -95,6 +140,12 @@ void LanWebUi::registerRoutes() {
   server_.on("/update", HTTP_GET, [this]() { handleUpdatePage(); });
   server_.on("/update", HTTP_POST, [this]() { handleUpdateComplete(); },
              [this]() { handleUpdateRaw(); });
+  server_.on("/update/check", HTTP_POST,
+             [this]() { handleUpdateCheck(); });
+  server_.on("/update/install", HTTP_POST,
+             [this]() { handleUpdateInstall(); });
+  server_.on("/update/reboot", HTTP_POST,
+             [this]() { handleUpdateReboot(); });
   server_.on("/", HTTP_GET, [this]() { handleHome(); });
   server_.on("/login", HTTP_GET, [this]() { handleLoginPage(); });
   server_.on("/login", HTTP_POST, [this]() { handleLogin(); });
@@ -131,6 +182,7 @@ void LanWebUi::service(const StatusSnapshot &status) {
   if (!active_) return;
   status_ = status;
   server_.handleClient();
+  serviceFirmwareUpdates(millis());
 }
 
 void LanWebUi::sendHtml(const char *body, size_t length) {
@@ -632,6 +684,37 @@ void LanWebUi::handleUpdatePage() {
       return;
     }
   }
+  char releaseControls[2048] = {};
+  int controlsLength = 0;
+  if (otaSession_.activationPending()) {
+    controlsLength = snprintf(
+        releaseControls, sizeof(releaseControls),
+        "<p class=\"warn\">A verified image is staged. Approving below "
+        "activates it for the next boot and reboots the device.</p>"
+        "<form method=\"post\" action=\"/update/reboot\">"
+        "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
+        "<button type=\"submit\">Approve reboot into staged firmware</button>"
+        "</form>",
+        csrf);
+  } else if (updateAvailable_) {
+    controlsLength = snprintf(
+        releaseControls, sizeof(releaseControls),
+        "<p>Stable release <b>%s</b> is available.</p>"
+        "<form method=\"post\" action=\"/update/install\">"
+        "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
+        "<button type=\"submit\">Approve download and install</button>"
+        "</form>",
+        availableVersion_, csrf);
+  } else {
+    controlsLength = snprintf(releaseControls, sizeof(releaseControls),
+                              "<p>%s</p>", releaseStatus_);
+  }
+  if (controlsLength <= 0 ||
+      static_cast<size_t>(controlsLength) >= sizeof(releaseControls)) {
+    eraseBytes(csrf, sizeof(csrf));
+    server_.send(500, "text/plain", "Unable to render update controls");
+    return;
+  }
   const int length = snprintf(
       gPage, kPageCapacity,
       "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
@@ -642,13 +725,17 @@ void LanWebUi::handleUpdatePage() {
       "button,input{font:inherit;padding:.5rem}</style></head><body>"
       "<h1>Update firmware</h1>"
       "<p>Running: %s | Target: %s</p>"
-      "<p class=\"warn\">Upload a signed <b>.bkota</b> package built for this "
-      "target. Unsigned or wrong-target packages are rejected. HTTP is not "
-      "encrypted; use only a trusted network. Older signed versions are "
-      "accepted (downgrade). Configuration and Wi-Fi credentials are kept. "
-      "The device reboots after a verified update.</p>"
+      "<p class=\"warn\">Stable GitHub releases are checked every 6 hours. "
+      "A signed package is required. HTTP is not encrypted; use only a "
+      "trusted network. A candidate is not activated until you approve its "
+      "reboot. Configuration and Wi-Fi credentials are kept.</p>"
+      "%s"
+      "<form method=\"post\" action=\"/update/check\">"
+      "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
+      "<button type=\"submit\">Check for stable release now</button></form>"
+      "<h2>Manual signed package</h2>"
       "<input type=\"file\" id=\"f\" accept=\".bkota\"> "
-      "<button id=\"b\">Upload and install</button>"
+      "<button id=\"b\">Upload and stage</button>"
       "<p id=\"s\" role=\"status\"></p><p><a href=\"/\">Back</a></p>"
       "<script>var t=\"%s\";document.getElementById(\"b\").onclick=function(){"
       "var f=document.getElementById(\"f\").files[0],s=document.getElementById"
@@ -659,14 +746,312 @@ void LanWebUi::handleUpdatePage() {
       "function(e){s.textContent=\"Uploading \"+Math.round(100*e.loaded/"
       "e.total)+\"%%\"};x.onload=function(){s.textContent=x.status+\": \"+"
       "x.responseText};x.onerror=function(){s.textContent=\"Connection lost"
-      " (the device may be rebooting).\"};x.send(f)}</script></body></html>",
-      web::kFirmwareId, ota::WebOtaSession::targetName(), csrf);
+      "\"};x.send(f)}</script></body></html>",
+      ota::WebOtaSession::firmwareVersion(), ota::WebOtaSession::targetName(),
+      releaseControls, csrf, csrf);
   eraseBytes(csrf, sizeof(csrf));
   if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
     server_.send(500, "text/plain", "Page too large");
     return;
   }
   sendHtml(gPage, static_cast<size_t>(length));
+}
+
+void LanWebUi::handleUpdateCheck() {
+  if (!authorizeRequest(true)) return;
+  if (server_.args() != 1) {
+    server_.send(400, "text/plain", "Invalid update-check request");
+    return;
+  }
+  forceReleaseCheck_ = true;
+  server_.send(202, "text/plain", "Release check queued; reload /update shortly");
+}
+
+void LanWebUi::handleUpdateInstall() {
+  if (!authorizeRequest(true)) return;
+  if (server_.args() != 1) {
+    server_.send(400, "text/plain", "Invalid update-approval request");
+    return;
+  }
+  if (!updateAvailable_ || otaSession_.activationPending()) {
+    server_.send(409, "text/plain", "No stable release is awaiting approval");
+    return;
+  }
+  installReleaseRequested_ = true;
+  server_.send(202, "text/plain",
+               "Approval recorded; signed firmware download will begin");
+}
+
+void LanWebUi::handleUpdateReboot() {
+  if (!authorizeRequest(true)) return;
+  if (server_.args() != 1) {
+    server_.send(400, "text/plain", "Invalid reboot-approval request");
+    return;
+  }
+  if (!otaSession_.activationPending()) {
+    server_.send(409, "text/plain", "No verified firmware image is staged");
+    return;
+  }
+  if (!otaSession_.activatePendingImage()) {
+    server_.send(500, "text/plain", "Unable to activate staged firmware");
+    return;
+  }
+  rebootRequested_ = true;
+  server_.send(200, "text/plain",
+               "Reboot approved; the device will start the staged firmware");
+}
+
+void LanWebUi::serviceFirmwareUpdates(uint32_t nowMs) {
+  if (installReleaseRequested_) {
+    installReleaseRequested_ = false;
+    installAvailableRelease();
+    return;
+  }
+  if (!status_.networkConnected || !status_.timeSynchronized ||
+      !auth_.configured() || otaSession_.activationPending()) {
+    return;
+  }
+  const bool intervalElapsed =
+      !hasReleaseCheck_ || nowMs - lastReleaseCheckMs_ >=
+                               kReleaseCheckIntervalMs;
+  if (!forceReleaseCheck_ && !intervalElapsed) return;
+  forceReleaseCheck_ = false;
+  lastReleaseCheckMs_ = nowMs;
+  hasReleaseCheck_ = true;
+  checkLatestRelease();
+}
+
+bool LanWebUi::checkLatestRelease() {
+  updateAvailable_ = false;
+  availableVersion_[0] = '\0';
+
+  WiFiClientSecure client;
+  client.setCACertBundle(rootca_crt_bundle_start);
+  HTTPClient http;
+  http.setConnectTimeout(8000);
+  http.setTimeout(10000);
+  http.setReuse(false);
+  if (!http.begin(client,
+                  "https://api.github.com/repos/jgoldwein/BrooklynSubway/"
+                  "releases/latest")) {
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "Could not start secure GitHub release check");
+    Serial.println("OTA release check: HTTPS request setup failed");
+    return false;
+  }
+  http.addHeader("Accept", "application/vnd.github+json");
+  http.addHeader("X-GitHub-Api-Version", "2022-11-28");
+  http.addHeader("User-Agent", "BrooklynSubwayFirmware");
+  const int code = http.GET();
+  if (code != HTTP_CODE_OK) {
+    if (code == 404) {
+      snprintf(releaseStatus_, sizeof(releaseStatus_),
+               "No published stable GitHub release found");
+    } else {
+      snprintf(releaseStatus_, sizeof(releaseStatus_),
+               "GitHub release check failed (HTTP %d)", code);
+    }
+    Serial.printf("OTA release check: HTTP %d\n", code);
+    http.end();
+    return false;
+  }
+  const int contentLength = http.getSize();
+  if (contentLength <= 0 ||
+      static_cast<size_t>(contentLength) > kReleaseMetadataLimit) {
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "GitHub release metadata length was invalid");
+    Serial.printf("OTA release check: invalid metadata length %d\n",
+                  contentLength);
+    http.end();
+    return false;
+  }
+  const String body = http.getString();
+  http.end();
+  char latestVersion[sizeof(availableVersion_)] = {};
+  if (body.length() != static_cast<unsigned int>(contentLength) ||
+      !releaseVersionFromJson(body.c_str(), body.length(), latestVersion,
+                              sizeof(latestVersion))) {
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "GitHub release metadata was incomplete or invalid");
+    Serial.println("OTA release check: invalid release metadata");
+    return false;
+  }
+
+  const int order = ota::compareVersions(
+      latestVersion, ota::WebOtaSession::firmwareVersion());
+  if (order == 2) {
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "Running firmware version is not comparable; update blocked");
+    Serial.println("OTA release check: running firmware version is invalid");
+    return false;
+  }
+  if (order > 0) {
+    memcpy(availableVersion_, latestVersion, sizeof(availableVersion_));
+    updateAvailable_ = true;
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "Stable release %s is available", availableVersion_);
+  } else {
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "Firmware is up to date (latest stable release %s)",
+             latestVersion);
+  }
+  Serial.printf("OTA release check: %s\n", releaseStatus_);
+  return updateAvailable_;
+}
+
+bool LanWebUi::installAvailableRelease() {
+  if (!updateAvailable_ || availableVersion_[0] == '\0' ||
+      otaSession_.activationPending()) {
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "No stable release is awaiting approval");
+    return false;
+  }
+  char approvedVersion[sizeof(availableVersion_)] = {};
+  memcpy(approvedVersion, availableVersion_, sizeof(approvedVersion));
+  if (ota::compareVersions(approvedVersion,
+                           ota::WebOtaSession::firmwareVersion()) != 1) {
+    updateAvailable_ = false;
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "Release is no longer newer than the running firmware");
+    return false;
+  }
+
+  char url[256] = {};
+  const int urlLength = snprintf(
+      url, sizeof(url),
+      "https://github.com/jgoldwein/BrooklynSubway/releases/download/v%s/"
+      "%s-network-%s.bkota",
+      approvedVersion, ota::WebOtaSession::targetName(), approvedVersion);
+  if (urlLength <= 0 || static_cast<size_t>(urlLength) >= sizeof(url)) {
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "Unable to construct the release download URL");
+    return false;
+  }
+
+  snprintf(releaseStatus_, sizeof(releaseStatus_),
+           "Downloading approved release %s", approvedVersion);
+  Serial.printf("OTA release: downloading version=%s target=%s\n",
+                approvedVersion, ota::WebOtaSession::targetName());
+  WiFiClientSecure client;
+  client.setCACertBundle(rootca_crt_bundle_start);
+  HTTPClient http;
+  http.setConnectTimeout(10000);
+  http.setTimeout(15000);
+  http.setReuse(false);
+  http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+  if (!http.begin(client, url)) {
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "Could not start secure firmware download");
+    Serial.println("OTA release: HTTPS download setup failed");
+    return false;
+  }
+  const int code = http.GET();
+  if (code != HTTP_CODE_OK) {
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "Firmware download failed (HTTP %d)", code);
+    Serial.printf("OTA release: download HTTP %d\n", code);
+    http.end();
+    return false;
+  }
+  const int contentLength = http.getSize();
+  if (contentLength <= 0 ||
+      static_cast<size_t>(contentLength) > kMaxFirmwarePackageSize) {
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "Firmware package length was invalid");
+    Serial.printf("OTA release: invalid package length %d\n", contentLength);
+    http.end();
+    return false;
+  }
+  ota::Result result =
+      otaSession_.start(static_cast<size_t>(contentLength), true);
+  if (result != ota::Result::Ok) {
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "Firmware installer could not start: %s",
+             ota::resultName(result));
+    Serial.printf("OTA release: installer start failed - %s\n",
+                  ota::resultName(result));
+    http.end();
+    return false;
+  }
+  WiFiClient *stream = http.getStreamPtr();
+  if (stream == nullptr) {
+    otaSession_.abort();
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "Firmware download stream was unavailable");
+    http.end();
+    return false;
+  }
+
+  uint8_t buffer[1024];
+  size_t received = 0;
+  uint32_t lastProgressMs = millis();
+  stream->setTimeout(1000);
+  while (received < static_cast<size_t>(contentLength)) {
+    const int available = stream->available();
+    if (available <= 0) {
+      if (!stream->connected() ||
+          static_cast<uint32_t>(millis() - lastProgressMs) >= 15000) {
+        otaSession_.abort();
+        snprintf(releaseStatus_, sizeof(releaseStatus_),
+                 "Firmware download was interrupted");
+        Serial.println("OTA release: download interrupted or timed out");
+        http.end();
+        return false;
+      }
+      delay(1);
+      continue;
+    }
+    size_t amount = static_cast<size_t>(available);
+    if (amount > sizeof(buffer)) amount = sizeof(buffer);
+    const size_t remaining =
+        static_cast<size_t>(contentLength) - received;
+    if (amount > remaining) amount = remaining;
+    const size_t count = stream->readBytes(buffer, amount);
+    if (count == 0) continue;
+    received += count;
+    lastProgressMs = millis();
+    result = otaSession_.feed(buffer, count);
+    if (result != ota::Result::Ok) {
+      otaSession_.abort();
+      snprintf(releaseStatus_, sizeof(releaseStatus_),
+               "Signed package rejected: %s", ota::resultName(result));
+      Serial.printf("OTA release: package rejected - %s\n",
+                    ota::resultName(result));
+      http.end();
+      return false;
+    }
+    const ota::Installer *installer = otaSession_.installer();
+    if (installer != nullptr && installer->headerValid() &&
+        strcmp(installer->header().version, approvedVersion) != 0) {
+      otaSession_.abort();
+      snprintf(releaseStatus_, sizeof(releaseStatus_),
+               "Package version did not match the approved release");
+      Serial.println("OTA release: signed package version mismatch");
+      http.end();
+      return false;
+    }
+  }
+  http.end();
+  result = otaSession_.finish();
+  if (result != ota::Result::Ok) {
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "Firmware verification failed: %s", ota::resultName(result));
+    return false;
+  }
+  const ota::Installer *installer = otaSession_.installer();
+  if (installer == nullptr || !otaSession_.activationPending() ||
+      strcmp(installer->header().version, approvedVersion) != 0) {
+    snprintf(releaseStatus_, sizeof(releaseStatus_),
+             "Verified image was not staged for the approved release");
+    return false;
+  }
+  updateAvailable_ = false;
+  snprintf(releaseStatus_, sizeof(releaseStatus_),
+           "Release %s verified and staged; approve reboot separately",
+           approvedVersion);
+  Serial.printf("OTA release: staged version=%s; reboot approval required\n",
+                approvedVersion);
+  return true;
 }
 
 // Streaming callback. Never sends a response; handleUpdateComplete() does.
@@ -684,7 +1069,8 @@ void LanWebUi::handleUpdateRaw() {
       }
       const int length = server_.clientContentLength();
       updateResult_ =
-          otaSession_.start(length > 0 ? static_cast<size_t>(length) : 0);
+          otaSession_.start(length > 0 ? static_cast<size_t>(length) : 0,
+                            true);
       break;
     }
     case RAW_WRITE:
@@ -734,13 +1120,22 @@ void LanWebUi::handleUpdateComplete() {
   }
   const ota::Installer *installer = otaSession_.installer();
   const bool downgrade = installer != nullptr && installer->downgrade();
+  if (!otaSession_.activationPending()) {
+    server_.send(500, "text/plain", "Verified image was not staged");
+    return;
+  }
   const int length = snprintf(
       gPage, kPageCapacity,
-      "Firmware %s verified and installed. Rebooting.%s",
+      "Firmware %s verified and staged. Reload /update and separately approve "
+      "the reboot.%s",
       installer != nullptr ? installer->header().version : "?",
       downgrade ? " WARNING: this is an older version (downgrade)." : "");
-  rebootRequested_ = true;
-  server_.send(200, "text/plain", length > 0 ? gPage : "Installed. Rebooting.");
+  snprintf(releaseStatus_, sizeof(releaseStatus_),
+           "Manual signed package verified and staged; approve reboot separately");
+  server_.send(200, "text/plain",
+               length > 0 && static_cast<size_t>(length) < kPageCapacity
+                   ? gPage
+                   : "Firmware verified and staged; approve reboot separately");
 }
 
 bool LanWebUi::authorizeRequest(bool requireCsrf) {

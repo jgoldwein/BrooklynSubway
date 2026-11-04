@@ -46,6 +46,12 @@ class LanWebUi {
   void handleUpdatePage();
   void handleUpdateRaw();
   void handleUpdateComplete();
+  void handleUpdateCheck();
+  void handleUpdateInstall();
+  void handleUpdateReboot();
+  void serviceFirmwareUpdates(uint32_t nowMs);
+  bool checkLatestRelease();
+  bool installAvailableRelease();
   int updateAuthorizationStatus();
   bool updateContentTypeAccepted();
   void sendHtml(const char *body, size_t length);
@@ -68,6 +74,13 @@ class LanWebUi {
   int updateDeniedStatus_ = 0;
   bool updateStarted_ = false;
   ota::Result updateResult_ = ota::Result::NotStarted;
+  bool forceReleaseCheck_ = false;
+  bool installReleaseRequested_ = false;
+  bool hasReleaseCheck_ = false;
+  bool updateAvailable_ = false;
+  uint32_t lastReleaseCheckMs_ = 0;
+  char availableVersion_[33] = {};
+  char releaseStatus_[112] = "Waiting for a network connection";
 };
 
 }  // namespace brooklyn::web
