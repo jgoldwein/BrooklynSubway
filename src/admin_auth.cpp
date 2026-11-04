@@ -440,7 +440,8 @@ bool extractNamedCookie(const char *cookieHeader, const char *name,
 bool isProtectedEndpoint(const char *method, const char *path) {
   if (method == nullptr || path == nullptr) return false;
   if (strcmp(method, "GET") == 0 &&
-      (strcmp(path, "/wifi/setup") == 0 || strcmp(path, "/update") == 0)) {
+      (strcmp(path, "/wifi/setup") == 0 || strcmp(path, "/update") == 0 ||
+       strcmp(path, "/update/progress") == 0)) {
     return true;
   }
   return isMutationEndpoint(method, path);
