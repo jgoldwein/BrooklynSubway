@@ -201,6 +201,12 @@ void LanWebUi::sendHtml(const char *body, size_t length) {
 void LanWebUi::handleHome() {
   StatusSnapshot pageStatus = status_;
   updateAdminStatus(pageStatus);
+  snprintf(pageStatus.firmwareVersion, sizeof(pageStatus.firmwareVersion), "%s",
+           ota::WebOtaSession::firmwareVersion());
+  if (updateAvailable_) {
+    snprintf(pageStatus.availableVersion, sizeof(pageStatus.availableVersion), "%s",
+             availableVersion_);
+  }
   char csrfToken[admin::kTokenSize * 2 + 1] = {};
   if (pageStatus.adminSessionActive) {
     if (!requestSession(csrfToken, sizeof(csrfToken))) {

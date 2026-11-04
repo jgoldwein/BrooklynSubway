@@ -50,6 +50,8 @@ struct StatusSnapshot {
   char dnsConfigStatus[16] = "disabled";
   bool adminConfigured = false;
   bool adminSessionActive = false;
+  char firmwareVersion[16] = {};
+  char availableVersion[33] = {};  // empty when no newer release is known
   int16_t rssi = -127;
   bool mdnsAvailable = false;
   bool timeSynchronized = false;
