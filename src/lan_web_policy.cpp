@@ -355,7 +355,12 @@ size_t renderHomePage(char *out, size_t capacity,
                   "<input type=\"hidden\" name=\"csrf\" value=\"");
     writer.html(csrfToken);
     writer.append("\"><button type=\"submit\">Sign out</button></form>"
-                  "<p><a href=\"/update\">Update firmware</a></p>"
+                  "<p><a href=\"/update\">Update firmware</a><br>Current: ");
+    writer.html(status.firmwareVersion[0] != '\0' ? status.firmwareVersion : "unknown");
+    writer.append(" | Available release: ");
+    writer.html(status.availableVersion[0] != '\0' ? status.availableVersion
+                                                    : "none newer known");
+    writer.append("</p>"
                   "<h3>Change administrator password</h3>"
                   "<form method=\"post\" action=\"/admin/password\">"
                   "<input type=\"hidden\" name=\"csrf\" value=\"");
