@@ -18,6 +18,11 @@
 
 #include <string.h>
 
+#if defined(BROOKLYN_NETWORK_ENABLED)
+// The HTTPS release download runs a TLS handshake on the loop task; the 8 KB default overflowed.
+SET_LOOP_TASK_STACK_SIZE(16 * 1024);
+#endif
+
 namespace {
 
 // The pipeline builds each cycle's candidate independently of the committed display frame.
