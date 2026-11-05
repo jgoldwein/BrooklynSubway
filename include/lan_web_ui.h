@@ -50,6 +50,7 @@ class LanWebUi {
   void handleUpdateInstall();
   void handleUpdateReboot();
   void handleUpdateAuto();
+  void handleUpdateInterval();
   void serviceFirmwareUpdates(uint32_t nowMs);
   bool checkLatestRelease();
   bool installAvailableRelease();
@@ -81,6 +82,7 @@ class LanWebUi {
   bool forceReleaseCheck_ = false;
   bool installReleaseRequested_ = false;
   bool autoInstall_ = false;
+  uint32_t checkIntervalMs_ = 0;
   // 0 idle, 1 downloading, 2 staged, 3 failed
   uint8_t installPhase_ = 0;
   uint32_t installReceived_ = 0;

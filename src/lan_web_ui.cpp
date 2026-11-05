@@ -33,6 +33,14 @@ constexpr size_t kNetworkDiagnosticsJsonCapacity = 1536;
 #define BROOKLYN_AUTO_INSTALL_RELEASES 0  // 1 = install and reboot unattended
 #endif
 constexpr uint32_t kReleaseCheckIntervalMs = BROOKLYN_RELEASE_CHECK_INTERVAL_MS;
+constexpr uint32_t kIntervalChoicesMin[] = {5, 15, 60, 360, 1440};
+
+bool intervalChoiceValid(uint32_t mins) {
+  for (const uint32_t choice : kIntervalChoicesMin) {
+    if (choice == mins) return true;
+  }
+  return false;
+}
 constexpr size_t kReleaseMetadataLimit = 8192;
 constexpr size_t kMaxFirmwarePackageSize = 0x640000u + 148u;
 char gPage[kPageCapacity];
@@ -142,8 +150,11 @@ bool LanWebUi::begin() {
   }
   if (!routesRegistered_) {
     Preferences prefs;
+    checkIntervalMs_ = kReleaseCheckIntervalMs;
     if (prefs.begin("otacfg", true)) {
       autoInstall_ = prefs.getBool("auto", BROOKLYN_AUTO_INSTALL_RELEASES != 0);
+      const uint32_t mins = prefs.getUInt("mins", 0);
+      if (intervalChoiceValid(mins)) checkIntervalMs_ = mins * 60000u;
       prefs.end();
     } else {
       autoInstall_ = BROOKLYN_AUTO_INSTALL_RELEASES != 0;
@@ -174,6 +185,8 @@ void LanWebUi::registerRoutes() {
   server_.on("/update/reboot", HTTP_POST,
              [this]() { handleUpdateReboot(); });
   server_.on("/update/auto", HTTP_POST, [this]() { handleUpdateAuto(); });
+  server_.on("/update/interval", HTTP_POST,
+             [this]() { handleUpdateInterval(); });
   server_.on("/", HTTP_GET, [this]() { handleHome(); });
   server_.on("/login", HTTP_GET, [this]() { handleLoginPage(); });
   server_.on("/login", HTTP_POST, [this]() { handleLogin(); });
@@ -830,6 +843,20 @@ void LanWebUi::handleUpdatePage() {
     server_.send(500, "text/plain", "Unable to render update controls");
     return;
   }
+  char intervalOptions[360] = {};
+  size_t optionsUsed = 0;
+  for (const uint32_t mins : kIntervalChoicesMin) {
+    const int n = snprintf(
+        intervalOptions + optionsUsed, sizeof(intervalOptions) - optionsUsed,
+        "<option value=\"%lu\"%s>%s</option>", static_cast<unsigned long>(mins),
+        mins == checkIntervalMs_ / 60000u ? " selected" : "",
+        mins == 5 ? "5 minutes" : mins == 15 ? "15 minutes"
+        : mins == 60 ? "hour" : mins == 360 ? "6 hours" : "24 hours");
+    if (n <= 0 || optionsUsed + static_cast<size_t>(n) >= sizeof(intervalOptions)) {
+      break;
+    }
+    optionsUsed += static_cast<size_t>(n);
+  }
   const int length = snprintf(
       gPage, kPageCapacity,
       "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
@@ -843,7 +870,7 @@ void LanWebUi::handleUpdatePage() {
       "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
       "<button type=\"submit\" class=\"secondary\">Check for updates now</button>"
       "</form><p class=\"muted\">The device checks GitHub for new stable "
-      "releases every 6 hours. Only signed packages are accepted. This page "
+      "releases on the schedule set below. Only signed packages are accepted. This page "
       "uses unencrypted HTTP, so use it only on a trusted network.</p>"
       "<h2>Automatic updates</h2>"
       "<p>Automatic updates are <b>%s</b>. %s</p>"
@@ -851,6 +878,12 @@ void LanWebUi::handleUpdatePage() {
       "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
       "<input type=\"hidden\" name=\"auto\" value=\"%s\">"
       "<button type=\"submit\" class=\"secondary\">%s</button></form>"
+      "<h2>Check interval</h2>"
+      "<form method=\"post\" action=\"/update/interval\">"
+      "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
+      "<label for=\"mins\">Check for new releases every </label>"
+      "<select name=\"mins\" id=\"mins\">%s</select> "
+      "<button type=\"submit\" class=\"secondary\">Save</button></form>"
       "<h2>Manual signed package</h2>"
       "<p>Have a <code>.bkota</code> file? Upload it here. It is verified and "
       "staged, then you approve the restart.</p>"
@@ -884,7 +917,7 @@ void LanWebUi::handleUpdatePage() {
                    : "Nothing is installed or restarted without your approval.",
       csrf, autoInstall_ ? "off" : "on",
       autoInstall_ ? "Turn automatic updates off" : "Turn automatic updates on",
-      csrf);
+      csrf, intervalOptions, csrf);
   eraseBytes(csrf, sizeof(csrf));
   if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
     server_.send(500, "text/plain", "Page too large");
@@ -1020,7 +1053,7 @@ void LanWebUi::serviceFirmwareUpdates(uint32_t nowMs) {
   }
   const bool intervalElapsed =
       !hasReleaseCheck_ || nowMs - lastReleaseCheckMs_ >=
-                               kReleaseCheckIntervalMs;
+                               checkIntervalMs_;
   if (!forceReleaseCheck_ && !intervalElapsed) return;
   forceReleaseCheck_ = false;
   lastReleaseCheckMs_ = nowMs;
@@ -1038,6 +1071,33 @@ void LanWebUi::serviceFirmwareUpdates(uint32_t nowMs) {
       rebootRequested_ = true;
     }
   }
+}
+
+void LanWebUi::handleUpdateInterval() {
+  if (!authorizeRequest(true)) return;
+  if (server_.args() != 2 || !server_.hasArg("mins")) {
+    sendNotice(400, "Check interval", "That request was not valid.", 2, 0);
+    return;
+  }
+  const long mins = server_.arg("mins").toInt();
+  if (mins <= 0 || !intervalChoiceValid(static_cast<uint32_t>(mins))) {
+    sendNotice(400, "Check interval", "That interval is not allowed.", 2, 0);
+    return;
+  }
+  Preferences prefs;
+  if (!prefs.begin("otacfg", false) ||
+      prefs.putUInt("mins", static_cast<uint32_t>(mins)) == 0) {
+    prefs.end();
+    sendNotice(500, "Check interval",
+               "The setting could not be saved. It is unchanged.", 2, 0);
+    return;
+  }
+  prefs.end();
+  checkIntervalMs_ = static_cast<uint32_t>(mins) * 60000u;
+  lastReleaseCheckMs_ = millis();
+  Serial.printf("OTA check interval: %ld min\n", mins);
+  sendNotice(200, "Check interval", "The release check interval was saved.", 0,
+             3);
 }
 
 void LanWebUi::handleUpdateAuto() {

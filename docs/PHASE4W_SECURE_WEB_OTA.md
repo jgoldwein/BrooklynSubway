@@ -22,7 +22,9 @@ namespace `otacfg`, key `auto`; the build default is off, overridable with
 `-DBROOKLYN_AUTO_INSTALL_RELEASES=1`). When on, a scheduled or manual release
 check that finds a newer signed release downloads, verifies, activates and
 restarts without further approval. Signature verification, the downgrade
-check and the boot health-gate rollback still apply.
+check and the boot health-gate rollback still apply. The check interval is also
+selectable at `/update` (5 min, 15 min, 1 h, 6 h or 24 h; NVS key `mins`,
+default 6 h).
 
 Manual signed `.bkota` upload remains available on the same page. It also
 stages the image and requires the separate reboot approval. The setup portal
