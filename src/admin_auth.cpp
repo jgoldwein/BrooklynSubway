@@ -462,6 +462,7 @@ bool isMutationEndpoint(const char *method, const char *path) {
          strcmp(path, "/update/check") == 0 ||
          strcmp(path, "/update/install") == 0 ||
          strcmp(path, "/update/reboot") == 0 ||
+         strcmp(path, "/update/auto") == 0 ||
          strcmp(path, "/network-diagnostics/run") == 0 ||
          strcmp(path, "/admin/password") == 0 ||
          strcmp(path, "/logout") == 0;
