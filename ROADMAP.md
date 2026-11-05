@@ -189,6 +189,20 @@ is authorized by this roadmap.
 - Ensure feed, Wi-Fi, settings, and hardware errors have understandable
   indications and do not cause unsafe output.
 
+### OLED and passive beeper opportunities (to-do)
+
+- OLED (U22, I2C SDA GPIO8 / SCL GPIO9; module still unconfirmed): show
+  firmware version, Wi-Fi/IP, MTA feed status, and the setup-AP details; show
+  OTA state (update available, download progress, "restarting into X.Y.Z",
+  rollback/failed) so an install is visible at the device.
+- Passive beeper (BUZZER on GPIO21, driven by PWM tone/LEDC; a passive part
+  needs a drive frequency, unlike an active buzzer): short, quiet patterns for
+  boot, Wi-Fi connected/lost, recovery-hold progress, OTA staged/restart/
+  success/failure, and rotary/button feedback. Default off or low volume, with a
+  user mute setting and a maximum duration per pattern.
+- Add a serial diagnostic for each new subsystem during bring-up, and verify
+  the OLED module and buzzer type on the manufactured board before coding.
+
 ## 7. Persistent Settings
 
 - Persist brightness limit, operating mode, selected routes/features, and
