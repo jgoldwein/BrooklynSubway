@@ -233,6 +233,15 @@ void testPortal() {
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "TestNetwork", "192.168.1.42", true);
   CHECK(strstr(page, "No administrator password is set") == nullptr);
   CHECK(strstr(page, "<form") == nullptr);
+  CHECK(strstr(page, "var ip=\"192.168.1.42\"") != nullptr);
+  CHECK(strstr(page, "location.replace(\"http://\"+ip+\"/\")") != nullptr);
+  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "TestNetwork", "1.2.3.4\";alert(1);//");
+  CHECK(strstr(page, "<script>") == nullptr);
+  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "TestNetwork", nullptr);
+  CHECK(strstr(page, "<script>") == nullptr);
+  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::SaveFailed, true, "TestNetwork", "192.168.1.42");
+  CHECK(strstr(page, "<script>") == nullptr);
+  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "TestNetwork", "192.168.1.42", true);
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "TestNetwork", "10.110.202.133");
   CHECK(strstr(page, "http://10.110.202.133/\">10.110.202.133</a>") != nullptr);
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, e[0].ssid, "192.168.1.42");

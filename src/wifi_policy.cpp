@@ -229,6 +229,24 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
   }
   if (status == PortalStatus::Saved) {
     // Provisioning is done: show only the result, not the setup forms.
+    bool ipSafe = connectedIp != nullptr && connectedIp[0] != 0;
+    for (const char *c = connectedIp; ipSafe && *c != 0; ++c) {
+      ipSafe = (*c >= '0' && *c <= '9') || *c == '.';
+    }
+    if (ipSafe) {
+      // The setup AP closes soon and the phone rejoins its normal Wi-Fi. Keep
+      // probing the LAN address and open it as soon as it is reachable.
+      o.put("<p id=\"w\" class=\"s\">This page will open the map's status page "
+            "automatically once your phone is back on the same Wi-Fi.</p>"
+            "<script>var ip=\"");
+      o.put(connectedIp);
+      o.put("\";function probe(){var c=new AbortController(),k=setTimeout("
+            "function(){c.abort()},2500);fetch(\"http://\"+ip+\"/api/status\","
+            "{mode:\"no-cors\",cache:\"no-store\",signal:c.signal}).then("
+            "function(){clearTimeout(k);location.replace(\"http://\"+ip+\"/\")})"
+            ".catch(function(){clearTimeout(k);setTimeout(probe,2000)})}"
+            "probe()</script>");
+    }
     if (!adminConfigured) {
       o.put("<p>No administrator password is set, so the LAN page stays "
             "locked. Reconnect to the setup Wi-Fi at "
