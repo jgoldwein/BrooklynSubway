@@ -236,9 +236,14 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
     if (ipSafe) {
       // The setup AP closes soon and the phone rejoins its normal Wi-Fi. Keep
       // probing the LAN address and open it as soon as it is reachable.
-      o.put("<p id=\"w\" class=\"s\">This page will open the map's status page "
-            "automatically once your phone is back on the same Wi-Fi.</p>"
-            "<script>var ip=\"");
+      o.put("<p id=\"w\" class=\"s\"><b>Next:</b> reconnect your phone to "
+            "your normal Wi-Fi, then open <a href=\"http://");
+      o.put(connectedIp);
+      o.put("/\">");
+      o.put(connectedIp);
+      o.put("</a> or <b>brooklynmap.local</b> in your regular browser. "
+            "(Android's setup pop-up can't reach your home network, so it may "
+            "not redirect on its own.)</p><script>var ip=\"");
       o.put(connectedIp);
       o.put("\";function probe(){var c=new AbortController(),k=setTimeout("
             "function(){c.abort()},2500);fetch(\"http://\"+ip+\"/api/status\","
