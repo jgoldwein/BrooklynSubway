@@ -28,6 +28,9 @@ constexpr size_t kNetworkDiagnosticsJsonCapacity = 1536;
 #ifndef BROOKLYN_RELEASE_CHECK_INTERVAL_MS
 #define BROOKLYN_RELEASE_CHECK_INTERVAL_MS (6u * 60u * 60u * 1000u)  // bench tests may override
 #endif
+#ifndef BROOKLYN_AUTO_INSTALL_RELEASES
+#define BROOKLYN_AUTO_INSTALL_RELEASES 0  // 1 = install and reboot unattended
+#endif
 constexpr uint32_t kReleaseCheckIntervalMs = BROOKLYN_RELEASE_CHECK_INTERVAL_MS;
 constexpr size_t kReleaseMetadataLimit = 8192;
 constexpr size_t kMaxFirmwarePackageSize = 0x640000u + 148u;
@@ -1001,6 +1004,20 @@ void LanWebUi::serviceFirmwareUpdates(uint32_t nowMs) {
   lastReleaseCheckMs_ = nowMs;
   hasReleaseCheck_ = true;
   checkLatestRelease();
+#if BROOKLYN_AUTO_INSTALL_RELEASES
+  // Opt-in unattended mode: the same signed-image verification applies, and
+  // the existing boot health gate still rolls back a bad image.
+  if (updateAvailable_) {
+    Serial.println("OTA auto-install: newer release found, installing");
+    installPhase_ = 1;
+    const bool staged = installAvailableRelease();
+    installPhase_ = staged ? 2 : 3;
+    if (staged && otaSession_.activatePendingImage()) {
+      Serial.println("OTA auto-install: image activated, rebooting");
+      rebootRequested_ = true;
+    }
+  }
+#endif
 }
 
 bool LanWebUi::checkLatestRelease() {
