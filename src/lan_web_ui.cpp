@@ -282,19 +282,39 @@ void LanWebUi::handleHome() {
              availableVersion_);
   }
   char csrfToken[admin::kTokenSize * 2 + 1] = {};
+  char loginCookie[admin::kTokenSize * 2 + 1] = {};
   if (pageStatus.adminSessionActive) {
     if (!requestSession(csrfToken, sizeof(csrfToken))) {
       pageStatus.adminSessionActive = false;
     }
+  }
+  bool loginCookiePending = false;
+  if (!pageStatus.adminSessionActive && pageStatus.adminConfigured) {
+    loginCookiePending = auth_.createLoginCsrf(
+        loginCookie, sizeof(loginCookie), csrfToken, sizeof(csrfToken), millis());
+    if (!loginCookiePending) csrfToken[0] = '\0';
   }
   const size_t length = renderHomePage(
       gPage, sizeof(gPage), pageStatus, configuration_.brightness(),
       configuration_.routeVisibilityMask(), csrfToken);
   eraseBytes(csrfToken, sizeof(csrfToken));
   if (length == 0) {
+    eraseBytes(loginCookie, sizeof(loginCookie));
     server_.send(500, "text/plain", "Unable to render status page");
     return;
   }
+  if (loginCookiePending) {
+    char cookie[128] = {};
+    const int written =
+        snprintf(cookie, sizeof(cookie),
+                 "%s=%s; Path=/; HttpOnly; SameSite=Strict; Max-Age=300",
+                 admin::kLoginCookieName, loginCookie);
+    if (written > 0 && static_cast<size_t>(written) < sizeof(cookie)) {
+      server_.sendHeader("Set-Cookie", cookie);
+    }
+    eraseBytes(cookie, sizeof(cookie));
+  }
+  eraseBytes(loginCookie, sizeof(loginCookie));
   sendHtml(gPage, length);
 }
 

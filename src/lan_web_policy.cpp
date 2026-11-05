@@ -299,10 +299,14 @@ size_t renderHomePage(char *out, size_t capacity,
                       const StatusSnapshot &status, uint8_t brightness,
                       uint32_t routeVisibilityMask, const char *csrfToken) {
   Writer writer(out, capacity);
+  // A signed-out page with an inline sign-in form must not auto-refresh, or it
+  // would clear the password field and rotate the one-time sign-in token.
+  const bool inlineLogin = status.adminConfigured && !status.adminSessionActive &&
+                           csrfToken != nullptr && csrfToken[0] != '\0';
   writer.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
-                "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-                "<meta http-equiv=\"refresh\" content=\"20\">"
-                "<title>Brooklyn Active Subway Map</title><style>"
+                "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">");
+  if (!inlineLogin) writer.append("<meta http-equiv=\"refresh\" content=\"20\">");
+  writer.append("<title>Brooklyn Active Subway Map</title><style>"
                 "body{font:16px system-ui,sans-serif;line-height:1.45;max-width:52rem;"
                 "margin:1rem auto;padding:0 1rem;color:#17212b}"
                 "h1{font-size:1.65rem}.status{padding:.7rem;background:#eef3f6}"
@@ -345,6 +349,16 @@ size_t renderHomePage(char *out, size_t capacity,
                   "BrooklynMap-Avi provisioning network.");
   } else if (status.adminSessionActive) {
     writer.append("Signed in. Normal-LAN settings are unlocked.");
+  } else if (inlineLogin) {
+    writer.append("Settings are locked. Sign in to change them.</p>"
+                  "<form method=\"post\" action=\"/login\">"
+                  "<input type=\"hidden\" name=\"csrf\" value=\"");
+    writer.html(csrfToken);
+    writer.append("\"><label>Password <input type=\"password\" name=\"password\" "
+                  "autocomplete=\"current-password\" required></label> "
+                  "<button type=\"submit\">Sign in</button></form><p "
+                  "class=\"muted\">This page stops refreshing while the sign-in "
+                  "form is shown.");
   } else {
     writer.append("Settings are locked. <a href=\"/login\">Sign in</a>");
   }

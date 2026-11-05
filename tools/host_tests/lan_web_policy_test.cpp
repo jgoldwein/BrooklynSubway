@@ -545,6 +545,31 @@ void testPageEscapingAndRequiredContent() {
             brooklyn::semantic::kAllRoutesVisibleMask, csrfToken) == 0);
 }
 
+void testInlineLoginOnStatusPage() {
+  static char page[12288];
+  brooklyn::web::StatusSnapshot status{};
+  status.adminConfigured = true;
+  status.adminSessionActive = false;
+  const char token[] = "abcdef0123456789abcdef0123456789";
+  CHECK(brooklyn::web::renderHomePage(
+            page, sizeof(page), status, 64,
+            brooklyn::semantic::kAllRoutesVisibleMask, token) > 0);
+  CHECK(strstr(page, "action=\"/login\"") != nullptr);
+  CHECK(strstr(page, token) != nullptr);
+  CHECK(strstr(page, "type=\"password\"") != nullptr);
+  CHECK(strstr(page, "http-equiv=\"refresh\"") == nullptr);
+  CHECK(brooklyn::web::renderHomePage(
+            page, sizeof(page), status, 64,
+            brooklyn::semantic::kAllRoutesVisibleMask, nullptr) > 0);
+  CHECK(strstr(page, "<a href=\"/login\">Sign in</a>") != nullptr);
+  CHECK(strstr(page, "http-equiv=\"refresh\"") != nullptr);
+  status.adminConfigured = false;
+  CHECK(brooklyn::web::renderHomePage(
+            page, sizeof(page), status, 64,
+            brooklyn::semantic::kAllRoutesVisibleMask, token) > 0);
+  CHECK(strstr(page, "action=\"/login\"") == nullptr);
+}
+
 void testLoginPageCsrfRendering() {
   char page[1024] = {};
   const char csrf[] = "abcdef0123456789abcdef0123456789";
@@ -717,8 +742,8 @@ int main() {
   testDnsSettingsFormParsing();
   testRouteVisibilityPersistenceAndMigration();
   testPageEscapingAndRequiredContent();
-  testLoginPageCsrfRendering();
-  testJsonStatusIsEscapedAndSecretFree();
+  testInlineLoginOnStatusPage();
+  testLoginPageCsrfRendering();  testJsonStatusIsEscapedAndSecretFree();
   testRouteVisibilityApiMasks();
   testRouteSelectionParsing();
   testServerOwnershipTransitions();
