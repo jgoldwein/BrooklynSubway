@@ -49,6 +49,7 @@ class LanWebUi {
   void handleUpdateCheck();
   void handleUpdateInstall();
   void handleUpdateReboot();
+  void handleUpdateAuto();
   void serviceFirmwareUpdates(uint32_t nowMs);
   bool checkLatestRelease();
   bool installAvailableRelease();
@@ -79,6 +80,7 @@ class LanWebUi {
   ota::Result updateResult_ = ota::Result::NotStarted;
   bool forceReleaseCheck_ = false;
   bool installReleaseRequested_ = false;
+  bool autoInstall_ = false;
   // 0 idle, 1 downloading, 2 staged, 3 failed
   uint8_t installPhase_ = 0;
   uint32_t installReceived_ = 0;

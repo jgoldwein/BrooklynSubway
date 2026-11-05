@@ -9,6 +9,7 @@
 
 #include <Arduino.h>
 #include <HTTPClient.h>
+#include <Preferences.h>
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <cJSON.h>
@@ -140,6 +141,13 @@ bool LanWebUi::begin() {
     return false;
   }
   if (!routesRegistered_) {
+    Preferences prefs;
+    if (prefs.begin("otacfg", true)) {
+      autoInstall_ = prefs.getBool("auto", BROOKLYN_AUTO_INSTALL_RELEASES != 0);
+      prefs.end();
+    } else {
+      autoInstall_ = BROOKLYN_AUTO_INSTALL_RELEASES != 0;
+    }
     registerRoutes();
     routesRegistered_ = true;
   }
@@ -165,6 +173,7 @@ void LanWebUi::registerRoutes() {
              [this]() { handleUpdateInstall(); });
   server_.on("/update/reboot", HTTP_POST,
              [this]() { handleUpdateReboot(); });
+  server_.on("/update/auto", HTTP_POST, [this]() { handleUpdateAuto(); });
   server_.on("/", HTTP_GET, [this]() { handleHome(); });
   server_.on("/login", HTTP_GET, [this]() { handleLoginPage(); });
   server_.on("/login", HTTP_POST, [this]() { handleLogin(); });
@@ -834,9 +843,14 @@ void LanWebUi::handleUpdatePage() {
       "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
       "<button type=\"submit\" class=\"secondary\">Check for updates now</button>"
       "</form><p class=\"muted\">The device checks GitHub for new stable "
-      "releases every 6 hours. Only signed packages are accepted, and nothing "
-      "is installed or restarted without your approval. This page uses "
-      "unencrypted HTTP, so use it only on a trusted network.</p>"
+      "releases every 6 hours. Only signed packages are accepted. This page "
+      "uses unencrypted HTTP, so use it only on a trusted network.</p>"
+      "<h2>Automatic updates</h2>"
+      "<p>Automatic updates are <b>%s</b>. %s</p>"
+      "<form method=\"post\" action=\"/update/auto\">"
+      "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
+      "<input type=\"hidden\" name=\"auto\" value=\"%s\">"
+      "<button type=\"submit\" class=\"secondary\">%s</button></form>"
       "<h2>Manual signed package</h2>"
       "<p>Have a <code>.bkota</code> file? Upload it here. It is verified and "
       "staged, then you approve the restart.</p>"
@@ -862,7 +876,15 @@ void LanWebUi::handleUpdatePage() {
       ota::WebOtaSession::targetName(),
       updateAvailable_ ? availableVersion_
                        : (hasReleaseCheck_ ? "none newer" : "not checked yet"),
-      releaseControls, csrf, csrf);
+      releaseControls, csrf,
+      autoInstall_ ? "ON" : "OFF",
+      autoInstall_ ? "New signed stable releases are installed and the device "
+                     "restarts by itself, with automatic rollback if the new "
+                     "firmware fails its health check."
+                   : "Nothing is installed or restarted without your approval.",
+      csrf, autoInstall_ ? "off" : "on",
+      autoInstall_ ? "Turn automatic updates off" : "Turn automatic updates on",
+      csrf);
   eraseBytes(csrf, sizeof(csrf));
   if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
     server_.send(500, "text/plain", "Page too large");
@@ -1004,10 +1026,9 @@ void LanWebUi::serviceFirmwareUpdates(uint32_t nowMs) {
   lastReleaseCheckMs_ = nowMs;
   hasReleaseCheck_ = true;
   checkLatestRelease();
-#if BROOKLYN_AUTO_INSTALL_RELEASES
-  // Opt-in unattended mode: the same signed-image verification applies, and
-  // the existing boot health gate still rolls back a bad image.
-  if (updateAvailable_) {
+  // Opt-in unattended mode (admin setting): the same signed-image
+  // verification applies, and the boot health gate still rolls back a bad image.
+  if (autoInstall_ && updateAvailable_) {
     Serial.println("OTA auto-install: newer release found, installing");
     installPhase_ = 1;
     const bool staged = installAvailableRelease();
@@ -1017,7 +1038,36 @@ void LanWebUi::serviceFirmwareUpdates(uint32_t nowMs) {
       rebootRequested_ = true;
     }
   }
-#endif
+}
+
+void LanWebUi::handleUpdateAuto() {
+  if (!authorizeRequest(true)) return;
+  if (server_.args() != 2 || !server_.hasArg("auto")) {
+    sendNotice(400, "Automatic updates", "That request was not valid.", 2, 0);
+    return;
+  }
+  const String value = server_.arg("auto");
+  if (value != "on" && value != "off") {
+    sendNotice(400, "Automatic updates", "That request was not valid.", 2, 0);
+    return;
+  }
+  const bool enable = value == "on";
+  Preferences prefs;
+  if (!prefs.begin("otacfg", false) || !prefs.putBool("auto", enable)) {
+    prefs.end();
+    sendNotice(500, "Automatic updates",
+               "The setting could not be saved. It is unchanged.", 2, 0);
+    return;
+  }
+  prefs.end();
+  autoInstall_ = enable;
+  Serial.printf("OTA auto-install setting: %s\n", enable ? "ON" : "OFF");
+  sendNotice(200, "Automatic updates",
+             enable ? "Automatic updates are ON. The device will install new "
+                      "signed stable releases and restart by itself."
+                    : "Automatic updates are OFF. New releases wait for your "
+                      "approval.",
+             0, 3);
 }
 
 bool LanWebUi::checkLatestRelease() {
