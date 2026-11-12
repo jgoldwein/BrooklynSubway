@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "wifi_policy.h"
+#include "password_visibility.h"
 
 #include <string.h>
 
@@ -273,8 +274,9 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
   }
   o.put("</select>"
         "<label>Password (leave empty for an open network)</label>"
-        "<input name=\"pass\" type=\"password\" maxlength=\"63\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\">"
-        "<button type=\"submit\">Save and connect</button></form>"
+        "<input name=\"pass\" type=\"password\" maxlength=\"63\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\">");
+  o.put(web::kPasswordVisibilityControl);
+  o.put("<button type=\"submit\">Save and connect</button></form>"
         "<section><h2>Administrator password</h2>");
   if (adminConfigured) {
     o.put("<p>An administrator password is configured. Setting a new one "
@@ -289,8 +291,9 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
         "maxlength=\"128\" autocomplete=\"new-password\" required>"
         "<label>Confirm password</label>"
         "<input name=\"confirmation\" type=\"password\" minlength=\"8\" "
-        "maxlength=\"128\" autocomplete=\"new-password\" required>"
-        "<button type=\"submit\">");
+        "maxlength=\"128\" autocomplete=\"new-password\" required>");
+  o.put(web::kPasswordVisibilityControl);
+  o.put("<button type=\"submit\">");
   o.put(adminConfigured ? "Reset administrator password"
                         : "Set administrator password");
   o.put("</button></form></section>"

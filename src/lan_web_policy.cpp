@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "lan_web_policy.h"
+#include "password_visibility.h"
 #include "normal_config.h"
 #include "semantic_api.h"
 
@@ -355,8 +356,9 @@ size_t renderHomePage(char *out, size_t capacity,
                   "<input type=\"hidden\" name=\"csrf\" value=\"");
     writer.html(csrfToken);
     writer.append("\"><label>Password <input type=\"password\" name=\"password\" "
-                  "autocomplete=\"current-password\" required></label> "
-                  "<button type=\"submit\">Sign in</button></form><p "
+                  "autocomplete=\"current-password\" required></label> ");
+    writer.append(kPasswordVisibilityControl);
+    writer.append("<button type=\"submit\">Sign in</button></form><p "
                   "class=\"muted\">This page stops refreshing while the sign-in "
                   "form is shown.");
   } else {
@@ -384,8 +386,9 @@ size_t renderHomePage(char *out, size_t capacity,
                   "autocomplete=\"new-password\" required></label> "
                   "<label>Confirm password <input type=\"password\" "
                   "name=\"confirmation\" minlength=\"8\" maxlength=\"128\" "
-                  "autocomplete=\"new-password\" required></label> "
-                  "<button type=\"submit\">Change password</button></form>");
+                  "autocomplete=\"new-password\" required></label> ");
+    writer.append(kPasswordVisibilityControl);
+    writer.append("<button type=\"submit\">Change password</button></form>");
   }
   writer.append("<p class=\"muted\">Normal-LAN access uses HTTP; passwords "
                 "and page contents are not encrypted in transit. Do not use "
@@ -694,8 +697,9 @@ size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken) {
                 "<input type=\"hidden\" name=\"csrf\" value=\"");
   writer.html(csrfToken);
   writer.append("\"><label>Password <input type=\"password\" name=\"password\" "
-                "autocomplete=\"current-password\" required></label> "
-                "<button type=\"submit\">Sign in</button></form>"
+                "autocomplete=\"current-password\" required></label> ");
+  writer.append(kPasswordVisibilityControl);
+  writer.append("<button type=\"submit\">Sign in</button></form>"
                 "<p><a href=\"/\">Return to status</a></p>"
                 "<p>Normal-LAN access uses unencrypted HTTP.</p>"
                 "</body></html>");

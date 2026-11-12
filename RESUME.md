@@ -31,7 +31,22 @@ If the chat history is unavailable, do not guess what the user intended from
 the changed files alone. Use this checkpoint and the git history; ask Joel for
 clarification only if the requested next action remains ambiguous.
 
-## Latest — Simulator artwork alignment tools (2026-10-28, uncommitted)
+## Latest — Production PCB programming (2026-11-12)
+
+- Release 0.2.4: all 22 host runners pass (OTA 207 checks / 19 oracle verifications); all four PlatformIO environments built with embedded version 0.2.4. Publishing signed production and bench packages at user's explicit request. Release includes only firmware UI/first-boot fixes and release/checkpoint documentation; unrelated simulator/replay work remains uncommitted. No physical LED enable changes.
+
+- Next revision: added form-local Show passwords checkboxes for Wi-Fi setup, administrator setup/change, and both sign-in forms (`include/password_visibility.h`, `src/wifi_policy.cpp`, `src/lan_web_policy.cpp`). Inputs remain masked by default; checkbox has no submitted name. No upload requested/performed for this UI revision. User subsequently reported production Wi-Fi success, synchronized time, Fresh display, complete 8/8 feed cycles, external-RAM buffer, and disabled physical output. Administrator setup was still required in supplied status page.
+
+- Follow-up: user reached setup AP page but received `Unable to load administrator settings`. Fixed `src/admin_auth_esp.cpp` to open `bkmap_cfg` read/write during credential load so a fresh NVS namespace can be created. Production network build and COM5 upload passed with all writes hash-verified. Physical output remains disabled. Host auth tests could not run: no host C++ compiler found. User must reload setup page to validate the fix on hardware.
+
+- User confirmed visual/electrical checks passed and production PCB connected by USB only, external 5 V/barrel disconnected.
+- Built and uploaded `brooklyn-s3-network` to COM5, MAC `28:84:85:36:d0:7c`; esptool verified all writes. Firmware binary 1,146,240 bytes; linked flash usage 1,145,873 bytes, RAM 94,620 bytes.
+- Physical LED output remains disabled (`BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0`); no firmware, pin, power-limit, or board-file changes.
+- Runtime validation remains incomplete: initial serial capture was empty; reset capture reported `USB_UART_CHIP_RESET`, `DOWNLOAD(USB/UART0)`, waiting for download. Esptool `run` followed by hard reset succeeded, but final serial capture was empty. No application flash/PSRAM diagnostics captured.
+- Next: release BOOT (SW14), press RESET (SW11), capture application boot diagnostics on COM5. Keep external power disconnected and physical LED output disabled. Do not mark physical validation complete.
+- Existing simulator/replay modifications preserved. Only this checkpoint changed during programming.
+
+## Previous — Simulator artwork alignment tools (2026-10-28, uncommitted)
 
 - **Host-only, no firmware/PCB change.** Work is in `tools/virtual_map/index.html`,
   `tools/virtual_map/run.py`, and `docs/PHASE4X_VIRTUAL_MAP_SIMULATOR.md`; nothing is committed yet.
