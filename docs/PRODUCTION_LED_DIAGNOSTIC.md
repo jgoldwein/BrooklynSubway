@@ -1,5 +1,14 @@
 # Integrated first-LED diagnostic
 
+LED42 is the F-line 18 Av station light between Ditmas Av and Avenue I in the
+lower-middle map area. User reported no visible light with barrel power in the
+first physical test; serial results are pending. Physical operation is unverified.
+
+From 0.2.6, the separate yellow U23 Avi-location indicator briefly flashes twice
+after local startup checks. It works from either logic supply and returns LOW.
+It does not enable addressable output or indicate network/feed readiness. The
+four addressable status LEDs require the separate barrel-fed 5 V LED rail.
+
 Scope approved on 2026-11-12: user confirmed correct measured rails and a
 5 V, 3 A center-positive supply, then authorized the integrated guarded test.
 This supersedes the USB-only restriction solely for the following manual test;

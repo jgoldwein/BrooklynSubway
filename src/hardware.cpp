@@ -11,6 +11,27 @@
 
 namespace brooklyn::hardware {
 
+void indicateStartup(bool checksPassed) {
+#if defined(BROOKLYN_TARGET_PCB)
+  constexpr uint8_t kPulseCount = 2;
+  constexpr uint32_t kPulseMs = 150;
+  digitalWrite(pins::AVI_LOCATION_LED, LOW);
+  if (!checksPassed) {
+    Serial.println("Startup indicator: local checks FAILED; U23/GPIO14 remains LOW");
+    return;
+  }
+  Serial.println("Startup indicator: U23/GPIO14 two flashes; local checks passed (Wi-Fi/feed readiness is separate)");
+  for (uint8_t pulse = 0; pulse < kPulseCount; ++pulse) {
+    digitalWrite(pins::AVI_LOCATION_LED, HIGH);
+    delay(kPulseMs);
+    digitalWrite(pins::AVI_LOCATION_LED, LOW);
+    if (pulse + 1 < kPulseCount) delay(kPulseMs);
+  }
+#else
+  (void)checksPassed;
+#endif
+}
+
 bool beginSafe() {
 #if defined(BROOKLYN_TARGET_PCB)
   digitalWrite(pins::LED_ENABLE, LOW);
