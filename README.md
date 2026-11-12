@@ -23,7 +23,9 @@ Initial firmware scaffold for the manufactured Brooklyn Active Subway Map V1.1 P
 
 Phase 1 initializes only production-board controls, power status, the user
 indicator, and I2C. GPIO1 LED output-enable remains LOW; no addressable LEDs
-or buzzer tones are activated. The XIAO target provides serial diagnostics and
+are activated automatically. After local self-checks pass, U23 flashes twice
+and the passive buzzer plays a brief rising two-note startup chime. Hold DIM
+while powering on or resetting to mute the chime for that startup. The XIAO target provides serial diagnostics and
 heartbeat output without initializing production PCB GPIOs. Production input
 pull-ups are provided by the PCB, so front switches and rotary push are read
 as active-low inputs.

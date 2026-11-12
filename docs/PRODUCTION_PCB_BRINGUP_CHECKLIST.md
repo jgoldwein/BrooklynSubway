@@ -2,6 +2,10 @@
 
 ## Limited authorization update — 2026-11-12
 
+Result update: Joel reported both LED42-only and CH1 walk tests ran correctly.
+This establishes user-observed success for those limited tests. CH2–CH8 and
+full-map output remain unvalidated; no additional output permission is implied.
+
 After observing 18 Av/LED42 light red, Joel authorized the guarded CH1 walk:
 37 pixels sequentially, one at a time at red=4/255, 500 ms per pixel. See the
 integrated diagnostic procedure below. Normal map output/other channels remain
