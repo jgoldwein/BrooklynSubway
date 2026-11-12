@@ -20,7 +20,9 @@ constexpr char kCredentialKey[] = "admin_v1";
 
 bool loadCredential(void *, CredentialRecord &record, bool &present) {
   Preferences preferences;
-  if (!preferences.begin(kNamespace, true)) return false;
+  // A fresh production board has no namespace yet. Open read/write so NVS
+  // creates it; a missing credential then loads as an unconfigured account.
+  if (!preferences.begin(kNamespace, false)) return false;
   present = preferences.isKey(kCredentialKey);
   const size_t read =
       present ? preferences.getBytes(kCredentialKey, &record, sizeof(record))
