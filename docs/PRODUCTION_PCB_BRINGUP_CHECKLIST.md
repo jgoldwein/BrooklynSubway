@@ -2,6 +2,11 @@
 
 ## Limited authorization update — 2026-11-12
 
+After observing 18 Av/LED42 light red, Joel authorized the guarded CH1 walk:
+37 pixels sequentially, one at a time at red=4/255, 500 ms per pixel. See the
+integrated diagnostic procedure below. Normal map output/other channels remain
+locked. CH1 walk physical results are pending.
+
 Joel reported correct measured rails and a 5 V, 3 A center-positive supply,
 and authorized the integrated one-LED diagnostic. Follow
 [the limited LED42 procedure](PRODUCTION_LED_DIAGNOSTIC.md) for that test only.
