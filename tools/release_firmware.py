@@ -17,6 +17,7 @@ The private key is never uploaded, copied, or printed.
 """
 
 import argparse
+import ast
 import hashlib
 import os
 import re
@@ -31,6 +32,25 @@ import sign_firmware as sf  # noqa: E402
 ROOT = sf.REPO_ROOT
 ENVS = {"brooklyn-s3": "brooklyn-s3-network", "xiao-s3": "xiao-s3-network"}
 PLATFORMIO = Path.home() / ".platformio/penv/Scripts/platformio.exe"
+
+
+def check_developer_credentials(payload):
+    """Refuse release binaries containing local development string credentials."""
+    secrets = ROOT / "include" / "secrets.h"
+    if not secrets.exists():
+        return
+    # Accept definitions with or without trailing whitespace/comments.
+    definitions = re.findall(
+        r'^\s*#define\s+(\w+)\s+("(?:\\.|[^"\\])*")',
+        secrets.read_text(encoding="utf-8"), re.MULTILINE,
+    )
+    for name, literal in definitions:
+        if not any(label in name.upper() for label in
+                   ("PASSWORD", "SSID", "TOKEN", "SECRET")):
+            continue
+        value = ast.literal_eval(literal).encode("utf-8")
+        if value and value in payload:
+            sys.exit("refusing release: embedded developer credential " + name)
 
 
 def run(cmd, **kwargs):
@@ -92,6 +112,7 @@ def main(argv=None):
                 % (env, args.version)
             )
         firmware = build_dir / "firmware.bin"
+        check_developer_credentials(firmware.read_bytes())
         package = out / ("%s-network-%s.bkota" % (target, args.version))
         data = sf.build_package(firmware.read_bytes(), target, args.version,
                                 args.key_id, key)

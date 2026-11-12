@@ -10,8 +10,8 @@
 namespace brooklyn::led::power {
 
 constexpr uint16_t NOMINAL_SUPPLY_VOLTAGE_MV = 5000;
-constexpr uint16_t NOMINAL_SUPPLY_CURRENT_LIMIT_MA = 5000;
-constexpr uint16_t FIRMWARE_LED_CURRENT_BUDGET_MA = 4000;
+constexpr uint16_t NOMINAL_SUPPLY_CURRENT_LIMIT_MA = 3000;
+constexpr uint16_t FIRMWARE_LED_CURRENT_BUDGET_MA = 2000;
 
 // Configurable LED-load estimate only: 20 mA per full-scale RGB component is
 // not measured for this board and excludes MCU/peripheral current.

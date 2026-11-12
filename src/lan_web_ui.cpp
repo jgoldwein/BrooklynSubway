@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "lan_web_ui.h"
+#include "led_backend.h"
 
 #if BROOKLYN_NETWORK_ENABLED
 
@@ -188,6 +189,8 @@ void LanWebUi::registerRoutes() {
   server_.on("/update/interval", HTTP_POST,
              [this]() { handleUpdateInterval(); });
   server_.on("/", HTTP_GET, [this]() { handleHome(); });
+  server_.on("/hardware-test", HTTP_GET, [this]() { handleLedDiagnosticPage(); });
+  server_.on("/hardware-test/run", HTTP_POST, [this]() { handleLedDiagnosticRun(); });
   server_.on("/login", HTTP_GET, [this]() { handleLoginPage(); });
   server_.on("/login", HTTP_POST, [this]() { handleLogin(); });
   server_.on("/logout", HTTP_POST, [this]() { handleLogout(); });
@@ -1480,6 +1483,45 @@ void LanWebUi::handleUpdateComplete() {
                length > 0 && static_cast<size_t>(length) < kPageCapacity
                    ? gPage
                    : "Firmware verified and staged; approve reboot separately");
+}
+
+void LanWebUi::handleLedDiagnosticPage() {
+  if (!authorizeRequest(false)) return;
+  char csrf[admin::kTokenSize * 2 + 1]{};
+  if (!requestSession(csrf, sizeof(csrf))) {
+    server_.send(403, "text/plain", "Sign in again");
+    return;
+  }
+  const int length = snprintf(gPage, kPageCapacity,
+      "<!doctype html><html lang=\"en\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+      "<title>Hardware diagnostics</title><h1>First LED test</h1>"
+      "<p>Production PCB only. Normal map output stays locked. No test runs at startup.</p>"
+      "<p>Verify 5 V and 3.3 V rails and use the verified 5 V, 3 A center-positive supply. "
+      "Connect barrel power only after these checks. Stop and disconnect power if heating, resets, or unexpected LEDs occur.</p>"
+      "<p>CH1, index 0, LED42: dim red (4/255) for two seconds, then black and outputs disabled. "
+      "Alternatively hold TEST for 3 seconds and release. Observe the result; software cannot confirm illumination.</p>"
+      "<form method=\"post\" action=\"/hardware-test/run\">"
+      "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
+      "<label><input type=\"checkbox\" name=\"confirmed\" value=\"yes\" required>Rails, polarity and supply checked; ready to observe one LED</label>"
+      "<button type=\"submit\">Run two-second LED42 test</button></form><p><a href=\"/\">Status</a></p></html>", csrf);
+  if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
+    server_.send(500, "text/plain", "Diagnostic page unavailable");
+    return;
+  }
+  sendHtml(gPage, static_cast<size_t>(length));
+}
+
+void LanWebUi::handleLedDiagnosticRun() {
+  if (!authorizeRequest(true)) return;
+  if (server_.args() != 2 || server_.arg("confirmed") != "yes") {
+    server_.send(400, "text/plain", "Confirm the electrical checks before testing");
+    return;
+  }
+  const bool ok = led::backend::runFirstLedDiagnostic();
+  sendNotice(ok ? 200 : 503, "LED diagnostic",
+             ok ? "Sequence completed and outputs disabled. Confirm that only LED42 lit dim red and went out."
+                : "Test failed or unavailable; outputs disabled. Inspect serial diagnostics.",
+             ok ? 0 : 2, 0);
 }
 
 bool LanWebUi::authorizeRequest(bool requireCsrf) {

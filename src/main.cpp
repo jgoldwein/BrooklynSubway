@@ -7,6 +7,7 @@
 #include "display_output.h"
 #include "hardware.h"
 #include "led_engine.h"
+#include "led_backend.h"
 #include "network_service.h"
 #include "operational_display.h"
 #include "ota_esp.h"
@@ -245,6 +246,7 @@ void setup() {
   brooklyn::diagnostics::begin();
   const bool pipelineReady = brooklyn::pipeline::selfCheckEmptyCycle(trainPipeline);
   systemHealthy = hardwareReady && pipelineReady;
+  brooklyn::led::backend::setDiagnosticSystemReady(systemHealthy);
   Serial.printf("Train pipeline self-check (no feeds, no LED output): %s\n",
                 pipelineReady ? "PASS" : "FAIL");
   brooklyn::telemetry::begin();
@@ -265,6 +267,9 @@ void setup() {
 
 void loop() {
   brooklyn::controls::update();
+  if (brooklyn::controls::consumeLedDiagnosticRequest()) {
+    (void)brooklyn::led::backend::runFirstLedDiagnostic();
+  }
 #if BROOKLYN_NETWORK_ENABLED
   brooklyn::ota::healthService(millis());
 #endif

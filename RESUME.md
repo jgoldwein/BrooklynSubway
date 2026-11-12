@@ -33,6 +33,10 @@ clarification only if the requested next action remains ambiguous.
 
 ## Latest — Production PCB programming (2026-11-12)
 
+- 0.2.5 integrated diagnostic: user authorized after confirming measured rails and 5 V/3 A center-positive supply. Adds protected `/hardware-test`, TEST hold/release, fixed LED42 red=4/255 for 2 s with black-first/last and GPIO1 LOW afterward. Normal map output flag remains zero. Supply/estimate now 3000/2000 mA. Procedure: `docs/PRODUCTION_LED_DIAGNOSTIC.md`. Physical observation pending; no test remotely triggered.
+- 0.2.5 validation: all 24 host runners pass, all four versioned builds pass, known development-credential binary scan clean. New fake GPIO/NeoPixel sequence tests and release-credential rejection test pass.
+- Release incident: scan found existing secrets.h fallback credentials in 0.2.4 packages and older 0.2.0–0.2.3 releases. Removed 0.2.4 package downloads and marked it withdrawn; reversibly hid 0.2.0–0.2.3 as drafts. User informed credentials must be rotated. Signing key not embedded. Versioned builds now exclude secrets.h, and release helper refuses known embedded development credential strings. Publishing corrected 0.2.5 through existing OTA path.
+
 - Release 0.2.4: all 22 host runners pass (OTA 207 checks / 19 oracle verifications); all four PlatformIO environments built with embedded version 0.2.4. Publishing signed production and bench packages at user's explicit request. Release includes only firmware UI/first-boot fixes and release/checkpoint documentation; unrelated simulator/replay work remains uncommitted. No physical LED enable changes.
 
 - Next revision: added form-local Show passwords checkboxes for Wi-Fi setup, administrator setup/change, and both sign-in forms (`include/password_visibility.h`, `src/wifi_policy.cpp`, `src/lan_web_policy.cpp`). Inputs remain masked by default; checkbox has no submitted name. No upload requested/performed for this UI revision. User subsequently reported production Wi-Fi success, synchronized time, Fresh display, complete 8/8 feed cycles, external-RAM buffer, and disabled physical output. Administrator setup was still required in supplied status page.

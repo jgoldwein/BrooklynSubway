@@ -13,6 +13,9 @@ if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
     raise ValueError("BROOKLYN_FIRMWARE_VERSION must be a three-part numeric version")
 
 components = [int(component) for component in version.split(".")]
+if version != "0.0.0":
+    # Public releases must never compile developer Wi-Fi/MQTT credentials.
+    env.Append(CPPDEFINES=[("BROOKLYN_RELEASE_BUILD", 1)])
 env.Append(
     CPPDEFINES=[
         ("BROOKLYN_FIRMWARE_VERSION_MAJOR", components[0]),

@@ -39,13 +39,18 @@ CH8 status LEDs and 302 addressable map LEDs; LED291 remains a normal map LED.
 
 ## Phase 2B status
 
+Integrated production first-LED testing is described in
+[`docs/PRODUCTION_LED_DIAGNOSTIC.md`](docs/PRODUCTION_LED_DIAGNOSTIC.md).
+It is a manually triggered, fixed LED42 diagnostic; normal map output remains
+locked. The reviewed supply is 5 V / 3 A, with a 2000 mA estimated LED budget.
+
 The production backend uses Adafruit NeoPixel 1.12.3 for the eight WS2812
 channels. Production startup initializes channel data pins, sends an all-black
 frame while GPIO1 `LED_ENABLE` is LOW, and leaves outputs disarmed.
 `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0` prevents arming in the standard build.
 The software current estimate uses a configurable 20 mA per full-scale RGB
-component assumption and a 4000 mA LED firmware budget against the nominal 5 V,
-5 A input path; the estimate is not a measurement of the board LEDs and excludes
+component assumption and a 2000 mA LED firmware budget for the reviewed 5 V,
+3 A supply; the estimate is not a measurement of the board LEDs and excludes
 MCU/peripheral load. Physical output remains disabled pending reviewed bring-up.
 
 Build the bench target:

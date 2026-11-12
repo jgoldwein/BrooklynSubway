@@ -317,7 +317,7 @@ void testCookieAndEndpointPolicy() {
       "/config/brightness", "/config/routes", "/config/dns", "/wifi/setup",
       "/wifi/setup/confirm", "/reboot", "/update/check", "/update/install",
       "/update/reboot", "/update/auto", "/update/interval",
-      "/network-diagnostics/run",
+      "/network-diagnostics/run", "/hardware-test/run",
       "/admin/password",
       "/logout", "/login"};
   for (const char *path : mutations) {
@@ -325,6 +325,8 @@ void testCookieAndEndpointPolicy() {
     CHECK(brooklyn::admin::isProtectedEndpoint("POST", path));
   }
   CHECK(brooklyn::admin::isProtectedEndpoint("GET", "/wifi/setup"));
+  CHECK(brooklyn::admin::isProtectedEndpoint("GET", "/hardware-test"));
+  CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/hardware-test/run"));
   CHECK(brooklyn::admin::isProtectedEndpoint("GET", "/update/progress"));
   CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/update/progress"));
   CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/wifi/setup"));
