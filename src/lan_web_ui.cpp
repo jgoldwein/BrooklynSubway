@@ -3,6 +3,7 @@
 
 #include "lan_web_ui.h"
 #include "led_backend.h"
+#include "ota_progress_script.h"
 
 #if BROOKLYN_NETWORK_ENABLED
 
@@ -324,6 +325,9 @@ void LanWebUi::handleHome() {
 void LanWebUi::handleStatus() {
   StatusSnapshot publicStatus = status_;
   updateAdminStatus(publicStatus);
+  snprintf(publicStatus.firmwareVersion, sizeof(publicStatus.firmwareVersion), "%s",
+           ota::WebOtaSession::firmwareVersion());
+  publicStatus.otaBootConfirmed = ota::healthConfirmed();
   const size_t length = renderStatusJson(
       gJson, sizeof(gJson), publicStatus, configuration_.brightness(),
       configuration_.routeVisibilityMask());
@@ -787,31 +791,20 @@ void LanWebUi::handleUpdatePage() {
       return;
     }
   }
-  char releaseControls[2816] = {};
+  static char releaseControls[4096];
+  releaseControls[0] = '\0';
   int controlsLength = 0;
   if (installPhase_ == 1) {
     controlsLength = snprintf(
         releaseControls, sizeof(releaseControls),
-        "<div class=\"card\"><h2 style=\"margin-top:0\">Installing %s</h2>"
+        "<div class=\"card\"><h2 id=\"oh\" style=\"margin-top:0\">Installing %s</h2>"
         "<progress id=\"pg\" max=\"100\" value=\"0\" style=\"width:100%%\">"
         "</progress><p id=\"pt\" role=\"status\">Starting download&hellip;</p>"
         "<p class=\"muted\">The device verifies the signature as it downloads. "
         "LEDs and feeds pause until this finishes. Do not unplug the board."
         "</p><p><a href=\"/\">View running firmware version</a></p></div>"
-        "<script>function retry(){document.getElementById(\"pt\").textContent="
-        "\"Connection interrupted; waiting for the device. Installation may be restarting.\";"
-        "setTimeout(poll,2000)}function poll(){var x=new XMLHttpRequest();"
-        "x.open(\"GET\",\"/update/progress\");x.timeout=5000;"
-        "x.onload=function(){if(x.status===401||x.status===403){"
-        "location.replace(\"/\");return}if(x.status!==200){retry();return}try{"
-        "var d=JSON.parse(x.responseText);if(d.phase!==1){location.reload();"
-        "return}var p=d.total>0?Math.round(100*d.received/d.total):0;"
-        "document.getElementById(\"pg\").value=p;document.getElementById(\"pt\")"
-        ".textContent=d.total>0?\"Downloaded \"+Math.round(d.received/1024)+\" of \""
-        "+Math.round(d.total/1024)+\" KB (\"+p+\"%%)\":\"Starting download\\u2026\"}"
-        "catch(e){retry();return}setTimeout(poll,1000)};"
-        "x.onerror=retry;x.ontimeout=retry;x.send()}poll()</script>",
-        availableVersion_);
+        "<script>var expected=\"%s\",waitingForRestart=false;%s</script>",
+        availableVersion_, availableVersion_, kOtaProgressScript);
   } else if (otaSession_.activationPending()) {
     const ota::Installer *staged = otaSession_.installer();
     const char *stagedVersion = (staged != nullptr && staged->headerValid())
@@ -1001,10 +994,10 @@ void LanWebUi::handleUpdateProgress() {
   if (!authorizeRequest(false)) return;
   const int length = snprintf(
       gJson, kJsonCapacity,
-      "{\"phase\":%u,\"received\":%lu,\"total\":%lu}",
+      "{\"phase\":%u,\"received\":%lu,\"total\":%lu,\"restarting\":%s}",
       static_cast<unsigned>(installPhase_),
       static_cast<unsigned long>(installReceived_),
-      static_cast<unsigned long>(installTotal_));
+      static_cast<unsigned long>(installTotal_), rebootRequested_ ? "true" : "false");
   if (length <= 0 || static_cast<size_t>(length) >= kJsonCapacity) {
     server_.send(500, "text/plain", "Unable to render progress");
     return;
@@ -1020,7 +1013,8 @@ void LanWebUi::handleUpdateReboot() {
     sendNotice(400, "Restart", "That request was not valid.", 2, 0);
     return;
   }
-  if (!otaSession_.activationPending()) {
+  const ota::Installer *staged = otaSession_.installer();
+  if (!otaSession_.activationPending() || staged == nullptr || !staged->headerValid()) {
     sendNotice(409, "Restart",
                "No verified firmware image is staged, so there is nothing to "
                "restart into.", 1, 4);
@@ -1033,28 +1027,19 @@ void LanWebUi::handleUpdateReboot() {
     return;
   }
   rebootRequested_ = true;
+  const char *expectedVersion = staged->header().version;
   const int length = snprintf(
       gPage, kPageCapacity,
       "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
       "<title>Restarting</title><style>%s</style></head><body>"
-      "<h1>Restarting</h1><div class=\"card ok\" role=\"status\">"
-      "<p id=\"m\">Restart approved. The device is restarting into the new "
-      "firmware. Opening the status page in <b id=\"n\">30</b> seconds.</p>"
-      "<progress id=\"pg\" max=\"30\" value=\"0\" style=\"width:100%%\"></progress>"
-      "<p class=\"muted\">You will need to sign in again.</p></div>"
-      "<p><a href=\"/\">Status page now</a></p>"
-      "<script>var left=30;function probe(){var c=new AbortController(),"
-      "k=setTimeout(function(){c.abort()},2500);fetch(\"/api/status\",{cache:"
-      "\"no-store\",signal:c.signal}).then(function(r){clearTimeout(k);"
-      "if(r.ok){location.replace(\"/\")}else{setTimeout(probe,2000)}})"
-      ".catch(function(){clearTimeout(k);setTimeout(probe,2000)})}"
-      "var iv=setInterval(function(){left--;document.getElementById(\"n\")"
-      ".textContent=left;document.getElementById(\"pg\").value=30-left;"
-      "if(left<=0){clearInterval(iv);document.getElementById(\"m\").textContent="
-      "\"Waiting for the device to come back\\u2026\";probe()}},1000)</script>"
-      "</body></html>",
-      kUpdateStyle);
+      "<h1 id=\"oh\">Restarting</h1><div class=\"card\" role=\"status\">"
+      "<progress id=\"pg\" max=\"100\" value=\"99\" style=\"width:100%%\"></progress>"
+      "<p id=\"pt\">Waiting for the new firmware to restart and confirm startup...</p>"
+      "<p class=\"muted\">Keep power connected. You will need to sign in again.</p></div>"
+      "<p><a href=\"/\">View running firmware version</a></p>"
+      "<script>var expected=\"%s\",waitingForRestart=true;%s</script></body></html>",
+      kUpdateStyle, expectedVersion, kOtaProgressScript);
   if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
     server_.send(200, "text/plain", "Restart approved. Reopen the status page "
                                     "in about 30 seconds.");

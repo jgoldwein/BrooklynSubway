@@ -585,6 +585,8 @@ void testLoginPageCsrfRendering() {
 void testJsonStatusIsEscapedAndSecretFree() {
   char json[2048];
   brooklyn::web::StatusSnapshot status = sampleStatus();
+  strncpy(status.firmwareVersion, "0.2.8", sizeof(status.firmwareVersion) - 1);
+  status.otaBootConfirmed = true;
   strncpy(status.ssid, "test\"\\wifi\n\t", sizeof(status.ssid) - 1);
   strncpy(status.deviceName, "device\"\\\x01",
           sizeof(status.deviceName) - 1);
@@ -596,6 +598,8 @@ void testJsonStatusIsEscapedAndSecretFree() {
             brooklyn::semantic::kAllRoutesVisibleMask) > 0);
   CHECK(strstr(json, "\"physicalLedOutputEnabled\":false") != nullptr);
   CHECK(strstr(json, "\"firmware\":\"Phase 4W\"") != nullptr);
+  CHECK(strstr(json, "\"firmwareVersion\":\"0.2.8\"") != nullptr);
+  CHECK(strstr(json, "\"otaBootConfirmed\":true") != nullptr);
   CHECK(strstr(json, "\"adminConfigured\":false") != nullptr);
   CHECK(strstr(json, "\"adminSessionActive\":false") != nullptr);
   CHECK(strstr(json, "\"dhcpDns1\":\"0.0.0.0\"") != nullptr);
