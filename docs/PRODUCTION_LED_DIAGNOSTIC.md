@@ -1,5 +1,11 @@
 # Integrated guarded LED diagnostics
 
+## Observed results — 2026-11-12
+
+Joel reported both the LED42-only test and CH1 walk ran correctly. This is
+user-observed low-brightness test success; current and timing were not measured.
+Other channels and normal full-map physical output remain unvalidated.
+
 LED42 is the F-line 18 Av station light between Ditmas Av and Avenue I in the
 lower-middle map area. User reported no visible light with barrel power in the
 first physical test, then subsequently observed 18 Av light red briefly. This

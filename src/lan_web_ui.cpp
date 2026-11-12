@@ -1486,6 +1486,7 @@ void LanWebUi::handleLedDiagnosticPage() {
       "<!doctype html><html lang=\"en\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
       "<title>Hardware diagnostics</title><h1>LED diagnostics</h1>"
       "<p>Production PCB only. Normal map output stays locked. No test runs at startup.</p>"
+      "<p>Startup gives two brief Avi-marker flashes and a short two-note chime. Hold DIM while powering on or resetting to mute that startup.</p>"
       "<p>Verify 5 V and 3.3 V rails and use the verified 5 V, 3 A center-positive supply. "
       "Connect barrel power only after these checks. Stop and disconnect power if heating, resets, or unexpected LEDs occur.</p>"
       "<p>LED42 is the F-line 18 Av station light, between Ditmas Av and Avenue I in the lower-middle map area. "
