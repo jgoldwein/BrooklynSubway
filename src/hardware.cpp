@@ -22,16 +22,25 @@ void playStartupChime() {
   constexpr uint8_t kResolutionBits = 8;
   // 50% square wave, matching the datasheet waveform, at the existing 3.3 V.
   constexpr uint8_t kStartupDuty = 128;
-  constexpr uint32_t kGapMs = 45;
-  struct Note { uint16_t frequencyHz; uint16_t durationMs; };
-  constexpr Note kNotes[] = {{2500, 80}, {3000, 80}, {3500, 100}, {4000, 180}};
+  struct Note {
+    uint16_t frequencyHz;
+    uint16_t durationMs;
+    uint16_t gapAfterMs;
+  };
+  // Preserve the startup motif, then a subway-style descending pair.
+  // Reference recording is approximately 655/530 Hz; shift two octaves up
+  // for this small piezo. These are approximated, not official MTA pitches.
+  constexpr Note kNotes[] = {
+      {2500, 80, 45}, {3000, 80, 45}, {3500, 100, 45}, {4000, 180, 250},
+      {2620, 600, 90}, {2120, 750, 0},
+  };
   constexpr uint8_t kNoteCount = sizeof(kNotes) / sizeof(kNotes[0]);
   digitalWrite(pins::BUZZER, LOW);
   if (startupMuted) {
     Serial.println("Startup buzzer: muted by DIM at boot; GPIO21 LOW");
     return;
   }
-  Serial.println("Startup buzzer: BUZZER3 GPIO21, four rising notes, 50% PWM, 45 ms gaps");
+  Serial.println("Startup buzzer: BUZZER3 GPIO21, four rising notes then subway-style ding-dong, 50% PWM");
   bool attached = false;
   bool complete = true;
   for (uint8_t note = 0; note < kNoteCount; ++note) {
@@ -48,7 +57,7 @@ void playStartupChime() {
     ledcWrite(kBuzzerChannel, kStartupDuty);
     delay(kNotes[note].durationMs);
     ledcWrite(kBuzzerChannel, 0);
-    if (note + 1 < kNoteCount) delay(kGapMs);
+    if (kNotes[note].gapAfterMs != 0) delay(kNotes[note].gapAfterMs);
   }
   if (attached) {
     ledcWrite(kBuzzerChannel, 0);

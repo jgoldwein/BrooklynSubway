@@ -33,6 +33,10 @@ clarification only if the requested next action remains ambiguous.
 
 ## Latest — Production PCB programming (2026-11-12)
 
+- 0.2.11: user requested subway-style descending ding-dong appended after existing startup motif. Retained original four notes; added 250 ms pause, 2620 Hz/600 ms, 90 ms gap, 2120 Hz/750 ms. Total2265 ms at50%PWM. Based on approximate655/530 Hz peaks from locally analyzed original AudioCookbook field recording, transposed2octaves for piezo; not official MTA pitches and no recording redistribution. DIM mutes fullsequence; GPIO21 endsLOW; originalhardware/outputlocks preserved. Updated startup fake-hardware tests pass. Preparing next signed OTA release; physical listening pending.
+
+- Published stable v0.2.10 from `692d7dd`; both signed packages verified against embedded key and credential-scanned clean; latest metadata7943 B. All25 host runners and four builds pass. Four-tone 575 ms chime uses50%PWM; DIM mute preserved. User should update and assess revised loudness/tone pattern. No remote sound/LED test triggered; physical listening result pending.
+
 - 0.2.10: user confirmed 0.2.9 chime audible but requested louder/multi-tone. Revised to four rising notes (2500/3000/3500/4000 Hz, 80/80/100/180 ms), three 45 ms gaps, total575 ms. Duty128 at8bits =50%, matching datasheet waveform; same3.3V GPIO21, DIM-at-boot mute, fail-silent cleanup, and no addressable startup output. Updated fake-PWM tests pass including failure at every note. Preparing signed OTA release; revised loudness observation pending.
 
 - Published stable v0.2.9 from `fadd65a` after resolving buzzer model. Both signed packages verified against embedded key and credential-scanned clean; latest metadata 7941 bytes. Startup sequence is 3000/4000 Hz, 80 ms each / 60 ms gap, low-duty PWM; DIM held at safe init mutes one boot. All 25 host runners passed, updated-frequency startup test passed, all four builds passed. User should update and observe actual sound; acoustic/current validation remains pending. Earlier notes about blocking 0.2.9 are superseded by the confirmed model and this release.
