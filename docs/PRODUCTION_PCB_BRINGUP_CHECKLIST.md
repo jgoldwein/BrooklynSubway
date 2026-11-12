@@ -1,5 +1,15 @@
 # Production PCB bring-up checklist
 
+## Limited authorization update — 2026-11-12
+
+Joel reported correct measured rails and a 5 V, 3 A center-positive supply,
+and authorized the integrated one-LED diagnostic. Follow
+[the limited LED42 procedure](PRODUCTION_LED_DIAGNOSTIC.md) for that test only.
+The USB-only restrictions below describe the earlier phase. Normal map output,
+other physical LED tests, and higher brightness remain unauthorized. The LED
+estimate budget is now 2000 mA for the reviewed 3000 mA supply; it is not
+measured current protection. Physical test results have not yet been reported.
+
 ## Read before connecting power
 
 **PRODUCTION PCB SCHEMATIC AUDIT:** GO for USB-only initial bring-up with the

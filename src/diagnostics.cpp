@@ -77,6 +77,9 @@ void begin() {
                     ? "initialized"
                     : "not initialized");
   Serial.println("Physical LED outputs: DISARMED");
+#if BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
+  Serial.println("LED diagnostic available: hold TEST 3 s then release, or administrator Hardware diagnostics; LED42 only, red 4/255, 2 s");
+#endif
   Serial.printf("Physical LED output permission: %s\n",
                 brooklyn::led::backend::physicalLedOutputPermissionEnabled()
                     ? "ENABLED BY BUILD"

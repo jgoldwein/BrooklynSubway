@@ -68,7 +68,7 @@ void forceDataPinsLow() {
 
 bool setEnable(void *, bool enabled) {
   if (enabled) {
-#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1
+#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1 || BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
     digitalWrite(brooklyn::pins::LED_ENABLE, HIGH);
     return true;
 #else
@@ -80,7 +80,7 @@ bool setEnable(void *, bool enabled) {
 }
 
 bool initializeStrips(void *) {
-#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1
+#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1 || BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
   initialized = false;
   auto *strips = productionStrips();
   for (uint8_t channel = 0; channel < brooklyn::led::map::CHANNEL_COUNT;
@@ -107,7 +107,7 @@ bool initializeStrips(void *) {
 }
 
 bool setDataPinsLow(void *) {
-#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1
+#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1 || BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
   forceDataPinsLow();
   return true;
 #else
@@ -117,7 +117,7 @@ bool setDataPinsLow(void *) {
 
 bool prepareBlack(void *, const DisplayState *black, DisplayState *limited,
                   uint16_t count) {
-#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1
+#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1 || BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
   if (black == nullptr || limited == nullptr ||
       count != brooklyn::led::map::TOTAL_LED_COUNT) {
     return false;
@@ -137,7 +137,7 @@ bool prepareBlack(void *, const DisplayState *black, DisplayState *limited,
 }
 
 bool transmitOnHardware(void *, const DisplayState *frame, uint16_t count) {
-#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1
+#if BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT == 1 || BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
   if (!initialized || frame == nullptr ||
       count != brooklyn::led::map::TOTAL_LED_COUNT) {
     return false;
@@ -172,6 +172,56 @@ const safety::Operations kOutputOperations = {
 #endif
 
 namespace brooklyn::led::backend {
+namespace {
+bool diagnosticSystemReady = false;
+}
+
+void setDiagnosticSystemReady(bool ready) {
+  diagnosticSystemReady = ready;
+  if (!ready) disarmLedOutputs();
+}
+
+bool runFirstLedDiagnostic() {
+#if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
+  constexpr uint32_t kDurationMs = 2000;
+  constexpr uint8_t kRed = 4;
+  DisplayState frame[map::TOTAL_LED_COUNT]{};
+  GlobalPhysicalIndex index{};
+  map::PhysicalLed physical{};
+  disarmLedOutputs();
+  if (!diagnosticSystemReady) {
+    Serial.println("LED diagnostic refused: startup checks have not passed");
+    return false;
+  }
+  if (!map::toGlobalIndex({PhysicalChannel::CH1, 0}, index) ||
+      !map::physicalLed(index, physical) || physical.designator.value != 42) {
+    Serial.println("LED diagnostic refused: CH1/LED42 mapping mismatch");
+    return false;
+  }
+  Serial.println("LED diagnostic: CH1 GPIO4 index0 LED42 red=4/255, 2000ms; GPIO1 enable; 5V/3A supply, one pixel only");
+  if (!outputController.initialize(kOutputOperations, true) ||
+      !outputController.arm(kOutputOperations, true)) {
+    disarmLedOutputs();
+    Serial.println("LED diagnostic FAIL: black-first initialization/arming");
+    return false;
+  }
+  frame[index.value].color = {kRed, 0, 0};
+  const bool lit = outputController.transmit(kOutputOperations, true, frame,
+                                            map::TOTAL_LED_COUNT);
+  if (lit) delay(kDurationMs);
+  frame[index.value].color = {0, 0, 0};
+  const bool cleared = outputController.transmit(kOutputOperations, true, frame,
+                                                map::TOTAL_LED_COUNT);
+  disarmLedOutputs();
+  Serial.printf("LED diagnostic %s; black sent=%s; GPIO1 LOW; visual confirmation required\n",
+                lit && cleared ? "sequence complete" : "FAIL",
+                cleared ? "yes" : "no");
+  return lit && cleared;
+#else
+  Serial.println("LED diagnostic unavailable on this target");
+  return false;
+#endif
+}
 
 bool initializePhysicalLedBackend() {
 #if defined(BROOKLYN_TARGET_PCB)

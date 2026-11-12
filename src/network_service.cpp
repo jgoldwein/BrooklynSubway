@@ -34,7 +34,7 @@
 #include <string.h>
 #include <unistd.h>
 
-#if __has_include("secrets.h")
+#if __has_include("secrets.h") && !defined(BROOKLYN_RELEASE_BUILD)
 #include "secrets.h"
 #endif
 

@@ -6,7 +6,7 @@
 #include "telemetry_service.h"
 
 #if defined(BROOKLYN_TARGET_XIAO) && BROOKLYN_NETWORK_ENABLED
-#if __has_include("secrets.h")
+#if __has_include("secrets.h") && !defined(BROOKLYN_RELEASE_BUILD)
 #include "secrets.h"
 #endif
 #endif

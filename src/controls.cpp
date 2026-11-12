@@ -38,11 +38,22 @@ bool isPressed(uint8_t pin) {
 
 brooklyn::wifi::HoldDetector rotaryHold;
 bool wifiRecoveryRequested = false;
+bool ledDiagnosticRequested = false;
 
 }  // namespace
 #endif
 
 namespace brooklyn::controls {
+
+bool consumeLedDiagnosticRequest() {
+#if defined(BROOKLYN_TARGET_PCB)
+  const bool requested = ledDiagnosticRequested;
+  ledDiagnosticRequested = false;
+  return requested;
+#else
+  return false;
+#endif
+}
 
 bool consumeWifiRecoveryRequest() {
 #if defined(BROOKLYN_TARGET_PCB)
@@ -62,7 +73,8 @@ void begin() {
     button.stablePressed = pressed;
     button.lastReadingPressed = pressed;
     button.lastChangeMs = now;
-    button.pressedAtMs = pressed ? now : 0;
+    // A button held during boot must be released and pressed again to test.
+    button.pressedAtMs = 0;
   }
 #endif
 }
@@ -85,6 +97,11 @@ void update() {
         Serial.printf("Control PRESS: %s\n", button.name);
       } else {
         const uint32_t heldMs = now - button.pressedAtMs;
+        if (button.pin == brooklyn::pins::BUTTON_TEST &&
+            button.pressedAtMs != 0 && heldMs >= 3000) {
+          ledDiagnosticRequested = true;
+          Serial.println("Control HOLD: TEST 3 s released -> LED42 diagnostic requested");
+        }
         Serial.printf("Control RELEASE: %s (held %lu ms)\n", button.name,
                       static_cast<unsigned long>(heldMs));
       }

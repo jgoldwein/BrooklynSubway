@@ -16,5 +16,9 @@ bool physicalLedOutputsArmed();
 bool physicalLedBackendInitialized();
 bool physicalLedOutputPermissionEnabled();
 bool transmitFrame(const DisplayState *frame, uint16_t count);
+// Fixed CH1/LED42 red=4 test, two seconds, black-first/black-last.
+// Synchronous: never overlaps blocking feed retrieval or OTA work.
+bool runFirstLedDiagnostic();
+void setDiagnosticSystemReady(bool ready);
 
 }  // namespace brooklyn::led::backend
