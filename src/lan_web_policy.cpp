@@ -713,7 +713,10 @@ size_t renderStatusJson(char *out, size_t capacity,
   Writer writer(out, capacity);
   writer.append("{\"firmware\":\"");
   writer.append(kFirmwareId);
-  writer.append("\",\"deviceName\":\"");
+  writer.append("\",\"firmwareVersion\":\"");
+  writer.json(status.firmwareVersion);
+  writer.format("\",\"otaBootConfirmed\":%s", status.otaBootConfirmed ? "true" : "false");
+  writer.append(",\"deviceName\":\"");
   writer.json(status.deviceName);
   writer.append("\",\"target\":\"");
   writer.json(status.target);

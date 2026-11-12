@@ -150,6 +150,7 @@ class EspImageWriter : public ImageWriter {
 bool gSetupHealthy = false;
 bool gSetupReported = false;
 bool gMarkedValid = false;
+bool gImageConfirmed = false;
 constexpr uint32_t kHealthyUptimeMs = 15000;
 
 }  // namespace
@@ -251,9 +252,12 @@ void healthService(uint32_t nowMs) {
   if (nowMs < kHealthyUptimeMs) return;
   gMarkedValid = true;
   const esp_err_t result = esp_ota_mark_app_valid_cancel_rollback();
+  gImageConfirmed = result == ESP_OK;
   Serial.printf("OTA health gate: image confirmed (%s)\n",
                 result == ESP_OK ? "ok" : esp_err_to_name(result));
 }
+
+bool healthConfirmed() { return gImageConfirmed; }
 
 }  // namespace brooklyn::ota
 

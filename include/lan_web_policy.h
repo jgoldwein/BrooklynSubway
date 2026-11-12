@@ -51,6 +51,7 @@ struct StatusSnapshot {
   bool adminConfigured = false;
   bool adminSessionActive = false;
   char firmwareVersion[16] = {};
+  bool otaBootConfirmed = false;
   char availableVersion[33] = {};  // empty when no newer release is known
   int16_t rssi = -127;
   bool mdnsAvailable = false;

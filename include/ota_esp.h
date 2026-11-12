@@ -39,6 +39,7 @@ class WebOtaSession {
 // setup() and healthService() from loop().
 void healthSetupComplete(bool setupHealthy);
 void healthService(uint32_t nowMs);
+bool healthConfirmed();
 
 }  // namespace brooklyn::ota
 
