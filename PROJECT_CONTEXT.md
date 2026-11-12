@@ -55,8 +55,9 @@ User confirmed BUZZER3 is LCSC C20181991, Same Sky/CUI CPT-9019A-SMT-TR,
 on 2026-11-12. It is an externally driven piezo transducer; manufacturer
 specifies 3 Vp-p rated, 1–25 Vp-p operating, 4 kHz rated frequency, and 1 mA
 specified at 3 Vp-p / 4 kHz / 50% duty. GPIO21 connects directly to pad 2;
-pad 1 is GND. The brief low-duty 3.3 V startup pattern is a limited firmware
-test, not measured acoustic/current validation. No board modification.
+pad 1 is GND. The brief 3.3 V startup pattern uses 50% PWM from 0.2.10,
+following the user's request for a louder multi-tone chime. Actual acoustic
+level/current are not measured. No board modification.
 
 Source: [manufacturer datasheet](https://www.mouser.com/datasheet/2/1628/cpt_9019a_smt_tr-3510475.pdf)
 

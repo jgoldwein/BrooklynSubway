@@ -20,20 +20,22 @@ void playStartupChime() {
   // Reserve channel 7 (LEDC timer 3) for BUZZER3. No tone task is allocated.
   constexpr uint8_t kBuzzerChannel = 7;
   constexpr uint8_t kResolutionBits = 8;
-  constexpr uint8_t kQuietDuty = 16;
-  constexpr uint32_t kNoteMs = 80;
-  constexpr uint32_t kGapMs = 60;
-  constexpr uint16_t kNotesHz[] = {3000, 4000};
+  // 50% square wave, matching the datasheet waveform, at the existing 3.3 V.
+  constexpr uint8_t kStartupDuty = 128;
+  constexpr uint32_t kGapMs = 45;
+  struct Note { uint16_t frequencyHz; uint16_t durationMs; };
+  constexpr Note kNotes[] = {{2500, 80}, {3000, 80}, {3500, 100}, {4000, 180}};
+  constexpr uint8_t kNoteCount = sizeof(kNotes) / sizeof(kNotes[0]);
   digitalWrite(pins::BUZZER, LOW);
   if (startupMuted) {
     Serial.println("Startup buzzer: muted by DIM at boot; GPIO21 LOW");
     return;
   }
-  Serial.println("Startup buzzer: BUZZER3 GPIO21, 3000/4000 Hz, 80 ms each, duty 16/255, 60 ms gap");
+  Serial.println("Startup buzzer: BUZZER3 GPIO21, four rising notes, 50% PWM, 45 ms gaps");
   bool attached = false;
   bool complete = true;
-  for (uint8_t note = 0; note < 2; ++note) {
-    if (ledcSetup(kBuzzerChannel, kNotesHz[note], kResolutionBits) == 0) {
+  for (uint8_t note = 0; note < kNoteCount; ++note) {
+    if (ledcSetup(kBuzzerChannel, kNotes[note].frequencyHz, kResolutionBits) == 0) {
       complete = false;
       break;
     }
@@ -41,10 +43,12 @@ void playStartupChime() {
       ledcAttachPin(pins::BUZZER, kBuzzerChannel);
       attached = true;
     }
-    ledcWrite(kBuzzerChannel, kQuietDuty);
-    delay(kNoteMs);
+    Serial.printf("Startup buzzer: note %u, %u Hz, %u ms\n", note + 1,
+                  kNotes[note].frequencyHz, kNotes[note].durationMs);
+    ledcWrite(kBuzzerChannel, kStartupDuty);
+    delay(kNotes[note].durationMs);
     ledcWrite(kBuzzerChannel, 0);
-    if (note == 0) delay(kGapMs);
+    if (note + 1 < kNoteCount) delay(kGapMs);
   }
   if (attached) {
     ledcWrite(kBuzzerChannel, 0);

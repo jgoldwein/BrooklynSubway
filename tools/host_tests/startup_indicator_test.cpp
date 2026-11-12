@@ -12,6 +12,8 @@ int enable = LOW, indicator = LOW, buzzer = LOW, dim = HIGH;
 int setupCalls = 0, attachCalls = 0, detachCalls = 0, failSetupAt = -1;
 uint32_t frequency = 0, duty = 0;
 bool buzzerOutput = false;
+constexpr uint32_t expectedHz[] = {2500, 3000, 3500, 4000};
+constexpr uint32_t expectedMs[] = {80, 80, 100, 180};
 #define CHECK(x) do { if (!(x)) { printf("FAIL line %d: %s\n", __LINE__, #x); exit(1); } } while (0)
 void pinMode(uint8_t pin, int mode) {
   if (pin == brooklyn::pins::BUZZER) { CHECK(mode == OUTPUT); buzzerOutput = true; }
@@ -28,7 +30,7 @@ void digitalWrite(uint8_t pin, int value) {
 }
 uint32_t ledcSetup(uint8_t channel, uint32_t hz, uint8_t resolution) {
   CHECK(channel == 7 && resolution == 8 && duty == 0);
-  CHECK(hz == (setupCalls == 0 ? 3000u : 4000u));
+  CHECK(setupCalls < 4 && hz == expectedHz[setupCalls]);
   const bool fail = setupCalls++ == failSetupAt;
   frequency = hz;
   return fail ? 0 : hz;
@@ -38,7 +40,7 @@ void ledcAttachPin(uint8_t pin, uint8_t channel) {
   ++attachCalls;
 }
 void ledcWrite(uint8_t channel, uint32_t value) {
-  CHECK(channel == 7 && (value == 0 || value == 16));
+  CHECK(channel == 7 && (value == 0 || value == 128));
   duty = value;
 }
 void ledcDetachPin(uint8_t pin) {
@@ -50,11 +52,11 @@ void delay(uint32_t ms) {
   if (ms == 150) {
     CHECK(duty == 0 && indicator == (indicatorDelays % 2 == 0 ? HIGH : LOW));
     ++indicatorDelays;
-  } else if (ms == 80) {
-    CHECK(duty == 16 && indicator == LOW);
-    CHECK(frequency == (notes == 0 ? 3000u : 4000u));
+  } else if (duty != 0) {
+    CHECK(notes < 4 && ms == expectedMs[notes]);
+    CHECK(duty == 128 && indicator == LOW && frequency == expectedHz[notes]);
     ++notes;
-  } else { CHECK(ms == 60 && duty == 0 && notes == 1); ++gaps; }
+  } else { CHECK(ms == 45 && notes >= 1 && notes <= 3); ++gaps; }
 }
 void reset(bool muted, int failAt = -1) {
   pulses = indicatorDelays = notes = gaps = 0;
@@ -70,16 +72,16 @@ int main() {
   brooklyn::hardware::indicateStartup(false);
   CHECK(pulses == 0 && setupCalls == 0 && indicator == LOW && buzzer == LOW);
   brooklyn::hardware::indicateStartup(true);
-  CHECK(pulses == 2 && indicatorDelays == 3 && notes == 2 && gaps == 1);
+  CHECK(pulses == 2 && indicatorDelays == 3 && notes == 4 && gaps == 3);
   CHECK(attachCalls == 1 && detachCalls == 1 && duty == 0 && buzzer == LOW && enable == LOW);
   reset(true);
   brooklyn::hardware::indicateStartup(true);
   CHECK(pulses == 2 && setupCalls == 0 && notes == 0 && buzzer == LOW);
-  for (int failAt = 0; failAt < 2; ++failAt) {
+  for (int failAt = 0; failAt < 4; ++failAt) {
     reset(false, failAt);
     brooklyn::hardware::indicateStartup(true);
     CHECK(notes == failAt && duty == 0 && buzzer == LOW && enable == LOW);
-    CHECK(attachCalls == failAt && detachCalls == failAt);
+    CHECK(attachCalls == (failAt > 0 ? 1 : 0) && detachCalls == attachCalls);
   }
-  puts("Startup: U23 pulses, two quiet PWM notes, DIM mute, failed-check silence, PWM failure cleanup, addressable outputs disabled PASS");
+  puts("Startup: U23 pulses, four 50%-duty PWM notes, DIM mute, failed-check silence, PWM failure cleanup, addressable outputs disabled PASS");
 }
