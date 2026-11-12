@@ -797,15 +797,20 @@ void LanWebUi::handleUpdatePage() {
         "</progress><p id=\"pt\" role=\"status\">Starting download&hellip;</p>"
         "<p class=\"muted\">The device verifies the signature as it downloads. "
         "LEDs and feeds pause until this finishes. Do not unplug the board."
-        "</p></div><script>function poll(){var x=new XMLHttpRequest();"
-        "x.open(\"GET\",\"/update/progress\");x.onload=function(){try{"
+        "</p><p><a href=\"/\">View running firmware version</a></p></div>"
+        "<script>function retry(){document.getElementById(\"pt\").textContent="
+        "\"Connection interrupted; waiting for the device. Installation may be restarting.\";"
+        "setTimeout(poll,2000)}function poll(){var x=new XMLHttpRequest();"
+        "x.open(\"GET\",\"/update/progress\");x.timeout=5000;"
+        "x.onload=function(){if(x.status===401||x.status===403){"
+        "location.replace(\"/\");return}if(x.status!==200){retry();return}try{"
         "var d=JSON.parse(x.responseText);if(d.phase!==1){location.reload();"
         "return}var p=d.total>0?Math.round(100*d.received/d.total):0;"
         "document.getElementById(\"pg\").value=p;document.getElementById(\"pt\")"
         ".textContent=d.total>0?\"Downloaded \"+Math.round(d.received/1024)+\" of \""
         "+Math.round(d.total/1024)+\" KB (\"+p+\"%%)\":\"Starting download\\u2026\"}"
-        "catch(e){}setTimeout(poll,1000)};x.onerror=function(){setTimeout(poll,"
-        "2000)};x.send()}poll()</script>",
+        "catch(e){retry();return}setTimeout(poll,1000)};"
+        "x.onerror=retry;x.ontimeout=retry;x.send()}poll()</script>",
         availableVersion_);
   } else if (otaSession_.activationPending()) {
     const ota::Installer *staged = otaSession_.installer();
@@ -1494,7 +1499,7 @@ void LanWebUi::handleLedDiagnosticPage() {
   }
   const int length = snprintf(gPage, kPageCapacity,
       "<!doctype html><html lang=\"en\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-      "<title>Hardware diagnostics</title><h1>First LED test</h1>"
+      "<title>Hardware diagnostics</title><h1>LED diagnostics</h1>"
       "<p>Production PCB only. Normal map output stays locked. No test runs at startup.</p>"
       "<p>Verify 5 V and 3.3 V rails and use the verified 5 V, 3 A center-positive supply. "
       "Connect barrel power only after these checks. Stop and disconnect power if heating, resets, or unexpected LEDs occur.</p>"
@@ -1503,8 +1508,12 @@ void LanWebUi::handleLedDiagnosticPage() {
       "Alternatively hold TEST for 3 seconds and release. Observe the result; software cannot confirm illumination.</p>"
       "<form method=\"post\" action=\"/hardware-test/run\">"
       "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
-      "<label><input type=\"checkbox\" name=\"confirmed\" value=\"yes\" required>Rails, polarity and supply checked; ready to observe one LED</label>"
-      "<button type=\"submit\">Run two-second LED42 test</button></form><p><a href=\"/\">Status</a></p></html>", csrf);
+      "<label>Test <select name=\"test\"><option value=\"first\">LED42 only (2 seconds)</option>"
+      "<option value=\"ch1\">CH1 walk: 37 LEDs, one at a time (about 19 seconds)</option></select></label>"
+      "<p>CH1 walk uses the same dim red, 0.5 seconds per LED. Feeds and this page pause during testing. "
+      "Press POWER to abort the walk. Other channels stay dark; all LEDs are cleared afterward.</p>"
+      "<label><input type=\"checkbox\" name=\"confirmed\" value=\"yes\" required>Rails, polarity and supply checked; ready to observe the selected test</label>"
+      "<button type=\"submit\">Run selected test</button></form><p><a href=\"/\">Status</a></p></html>", csrf);
   if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
     server_.send(500, "text/plain", "Diagnostic page unavailable");
     return;
@@ -1514,14 +1523,21 @@ void LanWebUi::handleLedDiagnosticPage() {
 
 void LanWebUi::handleLedDiagnosticRun() {
   if (!authorizeRequest(true)) return;
-  if (server_.args() != 2 || server_.arg("confirmed") != "yes") {
+  if (installPhase_ == 1 || updateStarted_) {
+    server_.send(409, "text/plain", "Wait for the firmware update to finish before testing LEDs");
+    return;
+  }
+  const String test = server_.arg("test");
+  if (server_.args() != 3 || server_.arg("confirmed") != "yes" ||
+      (test != "first" && test != "ch1")) {
     server_.send(400, "text/plain", "Confirm the electrical checks before testing");
     return;
   }
-  const bool ok = led::backend::runFirstLedDiagnostic();
+  const bool ok = test == "ch1" ? led::backend::runChannelOneDiagnostic()
+                                : led::backend::runFirstLedDiagnostic();
   sendNotice(ok ? 200 : 503, "LED diagnostic",
-             ok ? "Sequence completed and outputs disabled. Confirm that only LED42 lit dim red and went out."
-                : "Test failed or unavailable; outputs disabled. Inspect serial diagnostics.",
+             ok ? "Selected sequence completed; LEDs cleared and outputs disabled. Confirm the observed LED positions and count."
+                : "Test failed, was aborted, or unavailable; outputs disabled. Inspect serial diagnostics.",
              ok ? 0 : 2, 0);
 }
 

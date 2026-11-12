@@ -11,6 +11,8 @@ int shows = 0;
 int coloredShows = 0;
 int delays = 0;
 int enableHighs = 0;
+int expectedPixels = 1;
+int abortAfter = -1;
 #define CHECK(x) do { if (!(x)) { printf("FAIL line %d: %s\n", __LINE__, #x); exit(1); } } while (0)
 namespace backend = brooklyn::led::backend;
 void digitalWrite(uint8_t pin, int level) {
@@ -25,8 +27,8 @@ void observeStrip(uint8_t pin, const uint32_t *pixels, uint16_t count) {
   int colored = 0;
   for (uint16_t i = 0; i < count; ++i) {
     if (pixels[i]) {
-      CHECK(frame == 1);
-      CHECK(pin == 4 && i == 0 && pixels[i] == 0x040000);
+      CHECK(frame >= 1 && frame <= expectedPixels);
+      CHECK(pin == 4 && i == frame - 1 && pixels[i] == 0x040000);
       ++colored;
     }
   }
@@ -35,9 +37,18 @@ void observeStrip(uint8_t pin, const uint32_t *pixels, uint16_t count) {
   ++shows;
 }
 void delay(uint32_t milliseconds) {
-  CHECK(milliseconds == 2000);
-  CHECK(shows == 16 && coloredShows == 1 && enable == HIGH);
+  CHECK(milliseconds == (expectedPixels == 1 ? 2000u : 500u));
+  CHECK(shows == (delays + 2) * 8 && coloredShows == delays + 1 && enable == HIGH);
   ++delays;
+}
+int digitalRead(uint8_t pin) {
+  CHECK(pin == brooklyn::pins::BUTTON_POWER);
+  return abortAfter >= 0 && delays >= abortAfter ? LOW : HIGH;
+}
+void resetWalk(int abortAt) {
+  shows = coloredShows = delays = 0;
+  expectedPixels = 37;
+  abortAfter = abortAt;
 }
 int main() {
   CHECK(!backend::initializePhysicalLedBackend());
@@ -60,5 +71,17 @@ int main() {
   backend::setDiagnosticSystemReady(false);
   CHECK(!backend::runFirstLedDiagnostic());
   CHECK(enable == LOW && shows == 24);
-  puts("LED diagnostic: startup interlock, allocation failure, black/color/black, exact duration, normal-output lock PASS");
+  backend::setDiagnosticSystemReady(true);
+  resetWalk(-1);
+  CHECK(backend::runChannelOneDiagnostic());
+  CHECK(shows == 39 * 8 && coloredShows == 37 && delays == 37);
+  CHECK(enable == LOW && !backend::physicalLedOutputsArmed());
+  resetWalk(3);
+  CHECK(!backend::runChannelOneDiagnostic());
+  CHECK(shows == 5 * 8 && coloredShows == 3 && delays == 3 && enable == LOW);
+  resetWalk(0);
+  CHECK(!backend::runChannelOneDiagnostic());
+  CHECK(shows == 2 * 8 && coloredShows == 0 && delays == 0 && enable == LOW);
+  CHECK(!backend::armLedOutputs());
+  puts("LED diagnostic: CH1 37-pixel walk/POWER abort plus startup interlock, allocation failure, black/color/black, exact duration, normal-output lock PASS");
 }

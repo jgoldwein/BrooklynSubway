@@ -181,9 +181,11 @@ void setDiagnosticSystemReady(bool ready) {
   if (!ready) disarmLedOutputs();
 }
 
-bool runFirstLedDiagnostic() {
+namespace {
+bool runDiagnostic(bool walkChannelOne) {
 #if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
-  constexpr uint32_t kDurationMs = 2000;
+  const uint32_t durationMs = walkChannelOne ? 500 : 2000;
+  const uint8_t pixelCount = walkChannelOne ? 37 : 1;
   constexpr uint8_t kRed = 4;
   DisplayState frame[map::TOTAL_LED_COUNT]{};
   GlobalPhysicalIndex index{};
@@ -193,23 +195,49 @@ bool runFirstLedDiagnostic() {
     Serial.println("LED diagnostic refused: startup checks have not passed");
     return false;
   }
-  if (!map::toGlobalIndex({PhysicalChannel::CH1, 0}, index) ||
-      !map::physicalLed(index, physical) || physical.designator.value != 42) {
-    Serial.println("LED diagnostic refused: CH1/LED42 mapping mismatch");
-    return false;
+  // Validate the full requested physical range before enabling any outputs.
+  if (map::channelLedCount(PhysicalChannel::CH1) != 37) return false;
+  for (uint8_t pixel = 0; pixel < pixelCount; ++pixel) {
+    if (!map::toGlobalIndex({PhysicalChannel::CH1, pixel}, index) ||
+        !map::physicalLed(index, physical) ||
+        physical.address.channel != PhysicalChannel::CH1 ||
+        physical.address.index != pixel ||
+        physical.role != LedRole::Map ||
+        (pixel == 0 && physical.designator.value != 42)) {
+      Serial.println("LED diagnostic refused: CH1 mapping mismatch");
+      return false;
+    }
   }
-  Serial.println("LED diagnostic: CH1 GPIO4 index0 LED42 red=4/255, 2000ms; GPIO1 enable; 5V/3A supply, one pixel only");
+  Serial.printf("LED diagnostic: CH1 GPIO4, %u pixel(s), red=4/255, %lu ms per pixel; GPIO1 enable; POWER aborts walk\n",
+                pixelCount, static_cast<unsigned long>(durationMs));
   if (!outputController.initialize(kOutputOperations, true) ||
       !outputController.arm(kOutputOperations, true)) {
     disarmLedOutputs();
     Serial.println("LED diagnostic FAIL: black-first initialization/arming");
     return false;
   }
-  frame[index.value].color = {kRed, 0, 0};
-  const bool lit = outputController.transmit(kOutputOperations, true, frame,
-                                            map::TOTAL_LED_COUNT);
-  if (lit) delay(kDurationMs);
-  frame[index.value].color = {0, 0, 0};
+  bool lit = true;
+  for (uint8_t pixel = 0; pixel < pixelCount; ++pixel) {
+    if (walkChannelOne && digitalRead(brooklyn::pins::BUTTON_POWER) == LOW) {
+      Serial.println("LED diagnostic: aborted by POWER");
+      lit = false;
+      break;
+    }
+    if (!map::toGlobalIndex({PhysicalChannel::CH1, pixel}, index) ||
+        !map::physicalLed(index, physical)) {
+      lit = false;
+      break;
+    }
+    Serial.printf("LED diagnostic: CH1 index %u LED%u\n", pixel,
+                  physical.designator.value);
+    frame[index.value].color = {kRed, 0, 0};
+    lit = outputController.transmit(kOutputOperations, true, frame,
+                                     map::TOTAL_LED_COUNT);
+    if (lit) delay(durationMs);
+    // Previous pixel is black in the next transmitted frame.
+    frame[index.value].color = {0, 0, 0};
+    if (!lit) break;
+  }
   const bool cleared = outputController.transmit(kOutputOperations, true, frame,
                                                 map::TOTAL_LED_COUNT);
   disarmLedOutputs();
@@ -218,10 +246,16 @@ bool runFirstLedDiagnostic() {
                 cleared ? "yes" : "no");
   return lit && cleared;
 #else
+  (void)walkChannelOne;
   Serial.println("LED diagnostic unavailable on this target");
   return false;
 #endif
 }
+
+}  // namespace
+
+bool runFirstLedDiagnostic() { return runDiagnostic(false); }
+bool runChannelOneDiagnostic() { return runDiagnostic(true); }
 
 bool initializePhysicalLedBackend() {
 #if defined(BROOKLYN_TARGET_PCB)
