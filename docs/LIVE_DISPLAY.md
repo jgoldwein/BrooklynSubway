@@ -115,3 +115,14 @@ Before valid SNTP time it displays "Syncing time...". A separate low-priority
 Only the OLED task uses I2C after initialization. U8g2 2.36.18 supplies the
 SSD1309 driver and fonts; the framebuffer is 1024 bytes. Missing hardware is
 logged and skipped; I2C uses the manufactured GPIO8 SDA / GPIO9 SCL pins.
+
+### OLED startup isolation (0.2.22)
+
+Application startup queues the OLED task after starting the live service; it
+never probes or initializes the panel inline. The worker logs each initialization
+stage and reuses the board's existing Wire bus. Held-low lines, missing devices
+and transfer failures stop only the OLED worker. Transactions time out at 50 ms;
+a latched error suppresses the remaining initialization/framebuffer writes.
+If upgrading from a board that stalls with the OLED connected, disconnect power,
+unplug the OLED, boot and install the update, then disconnect power before
+reconnecting the display. Serial output at 115200 identifies the failed stage.

@@ -283,8 +283,8 @@ void setup() {
     Serial.println("ERROR: I2C initialization failed; LED outputs remain disabled.");
   }
   brooklyn::hardware::indicateStartup(systemHealthy);
-  if (hardwareReady) brooklyn::oled::begin();
   if (systemHealthy) (void)brooklyn::display::live::begin();
+  if (hardwareReady) brooklyn::oled::begin();
 #if defined(BROOKLYN_TARGET_XIAO)
   if (brooklyn::led::runSelfTest()) {
     brooklyn::led::runXiaoDemonstration();
