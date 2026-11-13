@@ -41,6 +41,8 @@ struct TrainFrame {
   // Bit set only when every contribution to a pixel is approaching.
   // A stopped train sharing the pixel always takes steady-display priority.
   uint8_t approachingOnly[(kFrameLedCount + 7) / 8];
+  uint8_t uncertainOnly[(kFrameLedCount + 7) / 8];
+  uint32_t uncertainTrains;
   uint32_t approachingTrains;
   uint32_t animationEpochUnix;
   StationTiming timing[kFrameLedCount];
@@ -79,6 +81,9 @@ FrameAdd addGtfsResult(TrainFrame &frame, const GtfsMapResult &result);
 bool validatedGlobalIndex(const GtfsMapResult &result, uint16_t &globalIndex);
 bool addValidatedLed(TrainFrame &frame, uint16_t globalIndex,
                      bool approaching = false);
+enum class StationIndication : uint8_t { Stopped, Approaching, Uncertain };
+bool addIndicatedLed(TrainFrame &frame, uint16_t globalIndex, StationIndication indication);
+bool isUncertainOnly(const TrainFrame &frame, uint16_t globalIndex);
 bool isApproachingOnly(const TrainFrame &frame, uint16_t globalIndex);
 
 // Clears then adds every result. Order-independent. Returns trains Added.

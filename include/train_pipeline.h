@@ -90,6 +90,7 @@ struct PredictionEntry {
   char stop[4];
   semantic::Route route;
   bool conflict;
+  bool hasArrival;
 };
 
 // All counters saturate and never wrap. After finishCycle() every vehicle
@@ -177,7 +178,7 @@ class TrainPipeline {
   semantic::RgbFrame rgb_;
   TripEntry trips_[kTripTableSlots];
   PredictionEntry predictions_[kTripTableSlots];  // reused per feed, not per cycle
-  struct BlueHistory { uint32_t h1, h2; uint16_t led; };
+  struct BlueHistory { uint32_t h1, h2, movementTimestamp, sourceTimestamp; uint16_t led; };
   static constexpr uint16_t kBlueHistoryCapacity = 256;
   BlueHistory blueHistory_[kBlueHistoryCapacity];
   uint16_t blueHistoryCount_ = 0, blueHistoryDropped_ = 0;

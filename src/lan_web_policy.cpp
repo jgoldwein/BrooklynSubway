@@ -302,7 +302,8 @@ size_t renderBlueSummary(char *out, size_t capacity, const pipeline::BlueReport 
   if (!report.timestamp) { w.append("Waiting for a completed poll."); return w.size(); }
   w.format("Latest poll: %lu (Unix). Station LEDs, visible routes; held/paused display may differ.\n",
            static_cast<unsigned long>(report.timestamp));
-  w.append("Route  LEDs Trains Old NextDiff Future NoETA Shared Changed\n");
+  w.format("Station indications: %u steady blue, %u estimated approach, %u uncertain orange.\n", report.steadyLeds, report.estimatedApproachLeds, report.uncertainLeds);
+  w.append("Reported STOPPED_AT candidates (not all shown blue):\nRoute  LEDs Trains Old NextDiff Future NoETA Shared Changed\n");
   for (uint8_t i = 1; i <= semantic::kRouteCount; ++i) {
     const auto &r = report.routes[i];
     if (!r.leds) continue;
@@ -552,10 +553,10 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<dt>Approaching trains (included above)</dt><dd data-status=\"approachingTrains\">%lu</dd>"
                 "<dt>Occupied LEDs</dt><dd data-status=\"occupiedLeds\">%u</dd>"
                 "<dt>Collision count</dt><dd data-status=\"collisionCount\">%u</dd></dl>"
-                "<p>At station: steady blue. Approaching: orange transitioning to cyan during the final 30 predicted seconds; "
+                "<p>Corroborated station report: steady blue. Uncertain position: slow orange pulse. Approaching: orange transitioning to cyan during the final 30 predicted seconds; "
                 "blinking speeds up (about 0.5 to 3 blinks/second). Departing: blue transitioning to magenta while fading out; "
                 "the trail slows and clears within 30 seconds. These are estimated movement cues, not measured distance. "
-                "Missing or stalled predictions use orange with a fixed blink. A stopped train sharing a light "
+                "Missing or stalled predictions use orange with a fixed blink. A corroborated station report sharing a light "
                 "takes priority; extra indicators do not add trains or brightness.</p></section>"
                 "<section><h2>Network diagnostics</h2><dl>"
                 "<dt>Diagnostic run</dt><dd>%s</dd>"

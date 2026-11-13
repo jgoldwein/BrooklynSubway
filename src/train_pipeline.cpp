@@ -65,6 +65,8 @@ void TrainPipeline::beginCycle(uint32_t nowUnix, const semantic::RenderConfig &c
       if (blueHistoryCount_ == kBlueHistoryCapacity) { ++blueHistoryDropped_; continue; }
       auto &saved = blueHistory_[blueHistoryCount_++];
       saved.h1=e.h1; saved.h2=e.h2; saved.led=e.outcome & 0x1FF;
+      saved.movementTimestamp=blueEvidence_[i].movementTimestamp;
+      saved.sourceTimestamp=blueEvidence_[i].sourceTimestamp;
     }
   }
   finishedForBlueHistory_ = false;
@@ -115,11 +117,12 @@ void TrainPipeline::onPrediction(const gtfsrt::RtTrain &train, uint32_t feedTime
     if (!entry.h1) {
       entry.h1 = h1; entry.h2 = h2; entry.arrival = arrival;
       entry.timestamp = train.tripUpdateTimestamp ? train.tripUpdateTimestamp : feedTimestamp;
+      entry.hasArrival = train.nextStopArrival != 0;
       memcpy(entry.stop, train.nextStopId, 4); entry.route = route;
       return;
     }
     if (entry.h1 == h1 && entry.h2 == h2) {
-      if (entry.arrival != arrival || entry.route != route || memcmp(entry.stop, train.nextStopId, 4)) entry.conflict = true;
+      if (entry.arrival != arrival || entry.route != route || entry.hasArrival != (train.nextStopArrival != 0) || memcmp(entry.stop, train.nextStopId, 4)) entry.conflict = true;
       return;
     }
     slot = (slot + 1) & (kTripTableSlots - 1);
@@ -163,8 +166,12 @@ void TrainPipeline::record(const char *tripId, uint16_t outcome, const MotionEvi
         if ((e.outcome & kOutcomeMask) != outcome) e.outcome |= kConflictBit;
         if (memcmp(&e.motion, &motion, sizeof motion) != 0) e.motion = {};
         auto &saved = blueEvidence_[slot];
-        saved.flags |= blue.flags;
+        const uint8_t agreedFresh = saved.flags & blue.flags & (FreshFuture | FreshDwell);
+        saved.flags = static_cast<uint8_t>(((saved.flags | blue.flags) & ~(FreshFuture | FreshDwell)) | agreedFresh);
         if (blue.age > saved.age) saved.age = blue.age;
+        if (blue.sourceTimestamp < saved.sourceTimestamp) saved.sourceTimestamp = blue.sourceTimestamp;
+        if (saved.movementTimestamp != blue.movementTimestamp)
+          saved.flags &= ~(FreshFuture | FreshDwell);
         if (memcmp(saved.nextStop, blue.nextStop, 4)) memset(saved.nextStop, 0, 4);
         return;
       }
@@ -177,7 +184,8 @@ void TrainPipeline::record(const char *tripId, uint16_t outcome, const MotionEvi
 
 void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimestamp) {
   gtfsrt::RtTrain t = vehicle;
-  BlueEvidence blue{}; blue.flags = NoPrediction;
+  BlueEvidence blue{}; blue.flags = NoPrediction; blue.movementTimestamp = vehicle.vehicleTimestamp;
+  blue.sourceTimestamp = feedTimestamp;
   const uint32_t diagnosticTime = feedTimestamp > nowUnix_ ? feedTimestamp : nowUnix_;
   const uint32_t predictionH1 = tripHashPrimary(t.tripId), predictionH2 = tripHashSecondary(t.tripId);
   uint16_t predictionSlot = predictionH1 & (kTripTableSlots - 1);
@@ -189,6 +197,19 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimes
         memcpy(blue.nextStop, prediction.stop, 4); blue.flags = 0;
         if (memcmp(prediction.stop, vehicle.vehicleStopId, 4)) blue.flags |= NextDifferent;
         else if (diagnosticTime && prediction.arrival > diagnosticTime) blue.flags |= FutureArrival;
+        const bool feedFresh = feedTimestamp && nowUnix_ &&
+            (feedTimestamp <= nowUnix_ || feedTimestamp - nowUnix_ <= 30) &&
+            (nowUnix_ <= feedTimestamp || nowUnix_ - feedTimestamp <= 60);
+        const bool predictionFresh = feedFresh && prediction.hasArrival && prediction.timestamp &&
+            prediction.timestamp <= feedTimestamp && prediction.timestamp >= vehicle.vehicleTimestamp && diagnosticTime >= prediction.timestamp &&
+            diagnosticTime - prediction.timestamp <= 60 && vehicle.vehicleTimestamp &&
+            diagnosticTime >= vehicle.vehicleTimestamp && diagnosticTime - vehicle.vehicleTimestamp <= 90;
+        if (predictionFresh && !(blue.flags & NextDifferent)) {
+          if (prediction.arrival > diagnosticTime && prediction.arrival - diagnosticTime <= 600)
+            blue.flags |= FreshFuture;
+          else if (prediction.arrival <= diagnosticTime && diagnosticTime - prediction.arrival <= 30)
+            blue.flags |= FreshDwell;
+        }
         char next[5]{}; memcpy(next, prediction.stop, 4);
         const bool inferred = gtfsrt::applyVerifiedTripDeparture(t, next, prediction.arrival,
             prediction.timestamp, feedTimestamp, nowUnix_);
@@ -251,6 +272,12 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimes
         ? diagnosticTime - t.vehicleTimestamp : UINT32_MAX;
     blue.age = diagnosticAge < 255 ? diagnosticAge : 255;
     if (diagnosticAge == UINT32_MAX) blue.flags |= UnknownAge;
+    if (bucket == kStation && (blue.flags & FreshFuture) && t.nextStopArrival > reference &&
+        t.nextStopArrival - reference <= 630) {
+      motion.approachLedPlusOne = led + 1;
+      motion.arrivalSecondsPlusOne = t.nextStopArrival - reference + 1;
+      motion.movementAgeSeconds = blue.age;
+    }
     if ((bucket == kApproaching || bucket == kSegment) && t.status != gtfsrt::VehicleStatus::StoppedAt) {
       semantic::GtfsTrainState next{};
       next.routeId = t.routeId; next.stopId = t.vehicleStopId;
@@ -336,13 +363,29 @@ void TrainPipeline::finishCycle() {
     }
     add(counters_.duplicateIdentical, static_cast<uint32_t>(e.records) - 1u);
     const uint16_t bucket = static_cast<uint16_t>(e.outcome >> 9);
+    auto indication = bucket == kApproaching ? semantic::StationIndication::Approaching : semantic::StationIndication::Stopped;
+    if (bucket == kStation) {
+      const auto &b = blueEvidence_[i];
+      indication = semantic::StationIndication::Uncertain;
+      if (b.flags & FreshFuture) indication = semantic::StationIndication::Approaching;
+      else if ((b.flags & FreshDwell) && !(b.flags & (NoPrediction | NextDifferent | UnknownAge))) {
+        for (uint16_t h = 0; h < blueHistoryCount_; ++h) {
+          const auto &previous = blueHistory_[h];
+          if (previous.h1 == e.h1 && previous.h2 == e.h2 && previous.led == (e.outcome & 0x1FF) &&
+              previous.movementTimestamp == b.movementTimestamp && b.movementTimestamp &&
+              previous.sourceTimestamp && b.sourceTimestamp > previous.sourceTimestamp) {
+            indication = semantic::StationIndication::Stopped; break;
+          }
+        }
+      }
+    }
     if ((bucket == kStation || bucket == kSegment || bucket == kApproaching) &&
-        !semantic::addValidatedLed(frame_, static_cast<uint16_t>(e.outcome & 0x1FF),
-                                  bucket == kApproaching)) {
+        !semantic::addIndicatedLed(frame_, static_cast<uint16_t>(e.outcome & 0x1FF), indication)) {
       bump(counters_.frameRejected);
       continue;
     }
     bumpBucket(bucket);
+    if (bucket == kStation && indication == semantic::StationIndication::Approaching) bump(counters_.approachingStation);
     if (bucket == kStation) {
       const uint16_t led = e.outcome & 0x1FF;
       const auto *mapped = semantic::semanticForLed(led);
@@ -384,9 +427,12 @@ void TrainPipeline::finishCycle() {
     const auto *mapped = semantic::semanticForLed(led);
     auto &r = blueReport_.routes[static_cast<uint8_t>(mapped->route)];
     ++r.leds;
+    if (semantic::isUncertainOnly(frame_, led)) ++blueReport_.uncertainLeds;
+    else if (semantic::isApproachingOnly(frame_, led)) ++blueReport_.estimatedApproachLeds;
+    else ++blueReport_.steadyLeds;
     if (frame_.occupancy[led] > 1) ++r.shared;
     const auto &b = perLed[led];
-    if (blueReport_.sampleCount < kBlueSamples && (b.flags || b.age > 90)) {
+    if (blueReport_.sampleCount < kBlueSamples && ((b.flags & (NoPrediction | NextDifferent | FutureArrival | UnknownAge | StopChanged)) || b.age > 90)) {
       auto &sample = blueReport_.samples[blueReport_.sampleCount++];
       sample.led = led; sample.age = b.age; sample.flags = b.flags;
       sample.trains = frame_.occupancy[led];

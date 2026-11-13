@@ -42,6 +42,7 @@ namespace {
 
 FrameAdd countLed(TrainFrame &frame, uint16_t globalIndex) {
   frame.approachingOnly[globalIndex / 8] &= ~(uint8_t{1} << (globalIndex % 8));
+  frame.uncertainOnly[globalIndex / 8] &= ~(uint8_t{1} << (globalIndex % 8));
   uint8_t &count = frame.occupancy[globalIndex];
   if (frame.resolvedTrains < 0xFFFFFFFFu) ++frame.resolvedTrains;
   if (count == 0) {
@@ -91,16 +92,34 @@ bool validatedGlobalIndex(const GtfsMapResult &result, uint16_t &globalIndex) {
 }
 
 bool addValidatedLed(TrainFrame &frame, uint16_t globalIndex, bool approaching) {
+  return addIndicatedLed(frame, globalIndex, approaching ? StationIndication::Approaching : StationIndication::Stopped);
+}
+
+bool addIndicatedLed(TrainFrame &frame, uint16_t globalIndex, StationIndication indication) {
   if (globalIndex >= kFrameLedCount || semanticForLed(globalIndex) == nullptr) return false;
   led::map::PhysicalLed phys{};
   if (!led::map::physicalLed(led::GlobalPhysicalIndex{globalIndex}, phys)) return false;
   if (phys.role != led::LedRole::Map) return false;
-  const bool blink = approaching &&
-      (frame.occupancy[globalIndex] == 0 || isApproachingOnly(frame, globalIndex));
+  // Stronger evidence wins, regardless of contribution order: stopped > approach > uncertain.
+  StationIndication chosen = indication;
+  if (frame.occupancy[globalIndex]) {
+    const auto existing = isUncertainOnly(frame, globalIndex) ? StationIndication::Uncertain :
+        isApproachingOnly(frame, globalIndex) ? StationIndication::Approaching : StationIndication::Stopped;
+    if (existing == StationIndication::Stopped || indication == StationIndication::Stopped) chosen = StationIndication::Stopped;
+    else if (existing == StationIndication::Approaching || indication == StationIndication::Approaching) chosen = StationIndication::Approaching;
+  }
   countLed(frame, globalIndex);
-  if (blink) frame.approachingOnly[globalIndex / 8] |= uint8_t{1} << (globalIndex % 8);
-  if (approaching && frame.approachingTrains != UINT32_MAX) ++frame.approachingTrains;
+  const uint8_t bit = uint8_t{1} << (globalIndex % 8);
+  if (chosen == StationIndication::Approaching) frame.approachingOnly[globalIndex / 8] |= bit;
+  if (chosen == StationIndication::Uncertain) frame.uncertainOnly[globalIndex / 8] |= bit;
+  if (indication == StationIndication::Approaching && frame.approachingTrains != UINT32_MAX) ++frame.approachingTrains;
+  if (indication == StationIndication::Uncertain && frame.uncertainTrains != UINT32_MAX) ++frame.uncertainTrains;
   return true;
+}
+
+bool isUncertainOnly(const TrainFrame &frame, uint16_t globalIndex) {
+  return globalIndex < kFrameLedCount &&
+      (frame.uncertainOnly[globalIndex / 8] & (uint8_t{1} << (globalIndex % 8))) != 0;
 }
 
 bool isApproachingOnly(const TrainFrame &frame, uint16_t globalIndex) {
