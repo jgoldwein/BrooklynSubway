@@ -8,6 +8,7 @@
 #include "live_display.h"
 #include <time.h>
 #include "hardware.h"
+#include "oled_clock.h"
 #include "led_engine.h"
 #include "led_backend.h"
 #include "network_service.h"
@@ -282,6 +283,7 @@ void setup() {
     Serial.println("ERROR: I2C initialization failed; LED outputs remain disabled.");
   }
   brooklyn::hardware::indicateStartup(systemHealthy);
+  if (hardwareReady) brooklyn::oled::begin();
   if (systemHealthy) (void)brooklyn::display::live::begin();
 #if defined(BROOKLYN_TARGET_XIAO)
   if (brooklyn::led::runSelfTest()) {

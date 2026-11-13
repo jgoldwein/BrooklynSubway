@@ -440,9 +440,9 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "href=\"http://192.0.2.17/\"") != nullptr);
   CHECK(strstr(page, "http://brooklynmap.local/") != nullptr);
   CHECK(strstr(page, "Brightness: 64 / 255") != nullptr);
-  CHECK(strstr(page, "<dt>Resolved trains</dt><dd>57</dd>") != nullptr);
-  CHECK(strstr(page, "<dt>Occupied LEDs</dt><dd>53</dd>") != nullptr);
-  CHECK(strstr(page, "<dt>Collision count</dt><dd>4</dd>") != nullptr);
+  CHECK(strstr(page, "<dt>Resolved trains</dt><dd data-status=\"resolvedTrains\">57</dd>") != nullptr);
+  CHECK(strstr(page, "<dt>Occupied LEDs</dt><dd data-status=\"occupiedLeds\">53</dd>") != nullptr);
+  CHECK(strstr(page, "<dt>Collision count</dt><dd data-status=\"collisionCount\">4</dd>") != nullptr);
   CHECK(strstr(page, "Fresh") != nullptr);
   CHECK(strstr(page, "DISABLED") != nullptr);
   CHECK(strstr(page, "power-on") != nullptr);
@@ -549,7 +549,7 @@ void testPageEscapingAndRequiredContent() {
   CHECK(brooklyn::web::renderHomePage(
             page, sizeof(page), status, 64,
             brooklyn::semantic::kAllRoutesVisibleMask, csrfToken) > 0);
-  CHECK(strstr(page, "<dt>Last usable update age</dt><dd>Not available</dd>") !=
+  CHECK(strstr(page, "<dt>Last usable update age</dt><dd data-status=\"dataAgeSeconds\">Not available</dd>") !=
         nullptr);
   CHECK(brooklyn::web::renderHomePage(
             page, 8, status, 64,
@@ -573,7 +573,10 @@ void testInlineLoginOnStatusPage() {
             page, sizeof(page), status, 64,
             brooklyn::semantic::kAllRoutesVisibleMask, nullptr) > 0);
   CHECK(strstr(page, "<a href=\"/login\">Sign in</a>") != nullptr);
-  CHECK(strstr(page, "http-equiv=\"refresh\"") != nullptr);
+  CHECK(strstr(page, "http-equiv=\"refresh\"") == nullptr);
+  CHECK(strstr(page, "fetch('/api/status'") != nullptr);
+  CHECK(strstr(page, "setTimeout(refresh,5000)") != nullptr);
+  CHECK(strstr(page, "e.textContent=") != nullptr);
   status.adminConfigured = false;
   CHECK(brooklyn::web::renderHomePage(
             page, sizeof(page), status, 64,
