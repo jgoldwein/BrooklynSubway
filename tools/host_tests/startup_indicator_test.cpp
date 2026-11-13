@@ -15,6 +15,9 @@ bool buzzerOutput = false;
 bool cueMode = false;
 int beepStarts = 0, cueMs = 0, cueOnMs = 0, abortAtMs = -1;
 bool recoveryRequested = false;
+uint32_t feedDuty = 0;
+int feedSetups = 0, feedAttaches = 0, feedDetaches = 0;
+bool failFeedSetup = false;
 namespace brooklyn::controls {
 bool pollWifiRecoveryDuringDiagnostic() { return recoveryRequested; }
 }
@@ -43,6 +46,10 @@ void digitalWrite(uint8_t pin, int value) {
   }
 }
 uint32_t ledcSetup(uint8_t channel, uint32_t hz, uint8_t resolution) {
+  if (channel == 4) {
+    CHECK(hz == 2000 && resolution == 8);
+    ++feedSetups; return failFeedSetup ? 0 : hz;
+  }
   CHECK(channel == 7 && resolution == 8 && duty == 0);
   if (cueMode) { CHECK(setupCalls == 0 && hz == 4000); }
   else { CHECK(setupCalls < 6 && hz == expectedHz[setupCalls]); }
@@ -51,15 +58,20 @@ uint32_t ledcSetup(uint8_t channel, uint32_t hz, uint8_t resolution) {
   return fail ? 0 : hz;
 }
 void ledcAttachPin(uint8_t pin, uint8_t channel) {
+  if (pin == brooklyn::pins::AVI_LOCATION_LED) {
+    CHECK(channel == 4); ++feedAttaches; return;
+  }
   CHECK(pin == brooklyn::pins::BUZZER && channel == 7 && buzzerOutput);
   ++attachCalls;
 }
 void ledcWrite(uint8_t channel, uint32_t value) {
+  if (channel == 4) { CHECK(value == 0 || value == 8); feedDuty = value; return; }
   CHECK(channel == 7 && (value == 0 || value == 128));
   if (cueMode && value == 128) ++beepStarts;
   duty = value;
 }
 void ledcDetachPin(uint8_t pin) {
+  if (pin == brooklyn::pins::AVI_LOCATION_LED) { CHECK(feedDuty == 0); ++feedDetaches; return; }
   CHECK(pin == brooklyn::pins::BUZZER && duty == 0);
   ++detachCalls;
 }
@@ -145,5 +157,19 @@ int main() {
   resetCue();
   CHECK(!brooklyn::hardware::signalDiagnosticChannel(brooklyn::led::PhysicalChannel::CH1));
   CHECK(setupCalls == 0 && duty == 0);
+  reset(false);
+  brooklyn::hardware::setFeedIndicator(false); CHECK(feedDuty == 0 && feedSetups == 0);
+  brooklyn::hardware::setFeedIndicator(true);
+  CHECK(feedSetups == 1 && feedAttaches == 1 && feedDuty == 8 && enable == LOW);
+  brooklyn::hardware::setFeedIndicator(true); CHECK(feedSetups == 1);
+  brooklyn::hardware::setFeedIndicator(false); CHECK(feedDuty == 0);
+  brooklyn::hardware::setFeedIndicator(true); CHECK(feedDuty == 8 && feedSetups == 1);
+  CHECK(brooklyn::hardware::beginSafe()); CHECK(feedDuty == 0 && feedDetaches == 1);
+  failFeedSetup = true;
+  brooklyn::hardware::setFeedIndicator(true);
+  const int failedCalls = feedSetups;
+  brooklyn::hardware::setFeedIndicator(true);
+  CHECK(feedSetups == failedCalls && feedDuty == 0 && enable == LOW);
+  puts("U23 feed indicator: GPIO14, dim duty 8/255, separate PWM timer, OFF/stale path, reboot and allocation failure cleanup PASS");
   puts("Startup: U23 pulses, four rising notes plus descending pair, 2265 ms, 50%-duty PWM, DIM mute, failed-check silence, PWM failure cleanup, addressable outputs disabled PASS");
 }

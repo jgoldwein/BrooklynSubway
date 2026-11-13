@@ -85,6 +85,7 @@ static_assert(sizeof(TripEntry) == 20, "TripEntry layout");
 
 struct PredictionEntry {
   uint32_t h1, h2, arrival;
+  uint32_t timestamp;
   char stop[4];
   semantic::Route route;
   bool conflict;
@@ -106,6 +107,7 @@ struct Counters {
   uint32_t malformedEntities;    // damaged entities / vehicles without trip_id
   uint32_t tripUpdatesIgnored;   // legacy name: not position records; prediction pass may use them
   uint32_t predictionCapacityOverflow;
+  uint32_t verifiedTripDepartures;  // input records reconciled; not an added train count
   // Categories
   uint32_t resolvedStation;
   uint32_t approachingStation;  // subset of resolvedStation, next-stop fallback
@@ -163,7 +165,7 @@ class TrainPipeline {
 
   // Internal: one decoded VehiclePosition.
   void onVehicle(const gtfsrt::RtTrain &train, uint32_t feedTimestamp);
-  void onPrediction(const gtfsrt::RtTrain &train);
+  void onPrediction(const gtfsrt::RtTrain &train, uint32_t feedTimestamp = 0);
 
  private:
   void record(const char *tripId, uint16_t outcome, const MotionEvidence &motion);

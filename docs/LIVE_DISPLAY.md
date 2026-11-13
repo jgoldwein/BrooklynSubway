@@ -1,14 +1,13 @@
-# Live display (0.2.19)
+# Live display (0.2.20)
 
 1. Connect the verified 5 V, 3 A center-positive barrel supply; the rail and
    polarity checks must have passed. USB may remain connected for serial logs.
-2. Install the update and confirm version 0.2.19 on the status page.
+2. Install the update and confirm version 0.2.20 on the status page.
 3. Live output starts automatically after healthy startup and fresh MTA data.
 4. POWER toggles the lights off/on. Holding it toggles only once. Holding POWER
    at boot cancels automatic start; release and press again when data is fresh.
 5. A normal TEST press/release runs All subway lines quickly (about 35 seconds).
-   The web dropdown keeps the slower, roughly four-minute version. Web live
-   enable/disable controls remain available.
+   The web dropdown keeps the slower, roughly four-minute version. The separate web live enable/disable control has been removed.
 
 Live output is capped at 16/255 brightness (about 6%), with the existing 2000 mA
 LED-load estimate budget. These are estimates, not measured current protection.
@@ -46,8 +45,8 @@ Driver/render failures stop it too. All stops send black before GPIO1 LOW;
 startup/arming reuses the existing post-enable black-frame interlock. The task
 and stop operations share one mutex; after stopping, diagnostics can own the
 backend without the task touching it. These maintenance/fault stops revoke the
-POWER resume permission: re-enable from the web page. Only a POWER pause can be
-resumed with POWER; approval is never stored across a reboot.
+automatic restart intent. Once healthy fresh data returns, a physical POWER
+press can request a checked restart; maintenance never automatically resumes.
 
 Exception: a successful physical TEST-button sequence restores its prior live
 intent once data is fresh. A previously POWER-paused display remains paused
@@ -82,12 +81,19 @@ remain to be observed on the production board.
 The separate complete-line diagnostic ordering correction remains queued
 after the MTA representation work; this release preserves both full tests.
 
-From 0.2.19, station colours encode movement: orange (#FF6000) transitions to
-blue (#0000FF) during the final 120 predicted seconds before arrival. A stopped
-train is steady blue. The departure trail blends blue to orange over its bounded
+From 0.2.20, station colours encode movement: orange (#FF6000) transitions to
+cyan (#00FFFF) during the final 30 predicted seconds before arrival. A stopped
+train is steady blue. The departure trail blends blue to magenta while fading out over its bounded
 30-second lifetime. Missing/stalled predictions stay orange with the existing
 fixed blink; no colour progress is invented. Stopped occupancy wins. Route-family
 colours remain on mapped segment LEDs, and status/diagnostic colours are unchanged.
 Interpolation happens before brightness/current limiting. Low brightness such
 as 5/255 has only a few available channel levels, so visible steps are possible.
 The new unsaved brightness default is 5/255; existing NVS settings are retained.
+
+U23 is the separate discrete Avi-location LED on GPIO14, active HIGH through
+R60 (1 kOhm). From 0.2.20 it glows at 8/255 PWM duty (2 kHz) while a complete
+fresh frame is available, data age is at most 90 seconds, networking is Ready,
+and startup checks are healthy. It clears during setup, stale/partial data,
+maintenance and OTA. Map POWER pause leaves this feed-health indication active.
+LEDC channel 4/timer 2 is separate from the buzzer channel 7/timer 3.

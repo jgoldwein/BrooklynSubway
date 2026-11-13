@@ -319,14 +319,14 @@ int main() {
     CHECK(eq(stationMotionColor(StationMotion::Approaching, t, 0), Rgb{255, 96, 0}));
     // Simulate a fresh prediction near arrival, rather than a stale extrapolation.
     t.arrivalSecondsPlusOne = 1;
-    CHECK(eq(stationMotionColor(StationMotion::Approaching, t, 0), Rgb{0, 0, 255}));
+    CHECK(eq(stationMotionColor(StationMotion::Approaching, t, 0), Rgb{0, 255, 255}));
     CHECK(eq(stationMotionColor(StationMotion::Stopped, t, 0), Rgb{0, 0, 255}));
     CHECK(eq(stationMotionColor(StationMotion::Approaching, t, 91), Rgb{255, 96, 0}));
     t.arrivalSecondsPlusOne = UINT16_MAX;
     CHECK(eq(stationMotionColor(StationMotion::Approaching, t, 0), Rgb{255, 96, 0}));
     t.departureAgePlusOne = 1;
     CHECK(eq(stationMotionColor(StationMotion::Departing, t, 0), Rgb{0, 0, 255}));
-    CHECK(eq(stationMotionColor(StationMotion::Departing, t, 30), Rgb{255, 96, 0}));
+    CHECK(eq(stationMotionColor(StationMotion::Departing, t, 30), Rgb{0, 0, 0}));
     const auto middle = stationMotionColor(StationMotion::Departing, t, 15);
     CHECK(middle.red > 0 && middle.blue > 0 && middle.red < 255 && middle.blue < 255);
     TrainFrame f{}; clearFrame(f);
@@ -351,7 +351,7 @@ int main() {
     previousRed = 0; previousBlue = 255;
     for (unsigned age = 0; age <= 30; ++age) {
       const auto color = stationMotionColor(StationMotion::Departing, t, age);
-      CHECK(color.red >= previousRed && color.blue <= previousBlue);
+      CHECK(color.blue <= previousBlue); // departure fades continuously
       previousRed = color.red; previousBlue = color.blue;
     }
     clearFrame(f);
@@ -360,7 +360,7 @@ int main() {
     c.animationTimeMs = 0; renderTrainFrame(f, r, c);
     CHECK(eq(r.pixels[index], Rgb{5, 2, 0}));
     f.timing[index].arrivalSecondsPlusOne = 1;
-    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0, 0, 5}));
+    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0, 5, 5}));
   }
   printf("Phase 4H RGB renderer host tests: %d checks, %d failures\n", checks, failures);
   return failures == 0 ? 0 : 1;

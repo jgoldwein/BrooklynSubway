@@ -61,6 +61,13 @@ int main() {
     automatic.disable(ops);
     automatic.service(240, false, false, ops);
     CHECK(!automatic.enabled());  // Maintenance disable never auto-restarts.
+    automatic.publish(snapshot(260));
+    automatic.service(280, false, false, ops);
+    CHECK(!automatic.enabled() && automatic.stats().powerCanResume);
+    automatic.service(300, true, false, ops);
+    automatic.service(340, true, false, ops);
+    CHECK(automatic.enabled()); // Fresh data permits a physical POWER retry only.
+    automatic.disable(ops);
     live::Controller held(true);
     held.service(0, true, false, ops);
     held.publish(snapshot());

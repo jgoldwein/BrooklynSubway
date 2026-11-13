@@ -381,7 +381,6 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.html(csrfToken);
     writer.append("\"><button type=\"submit\">Sign out</button></form>"
                   "<p><a href=\"/hardware-test\">Hardware diagnostics</a></p>"
-                  "<p><a href=\"/live-display\">Enable / disable live display</a></p>"
                   "<p><a href=\"/update\">Update firmware</a><br>Current: ");
     writer.html(status.firmwareVersion[0] != '\0' ? status.firmwareVersion : "unknown");
     writer.append(" | Available release: ");
@@ -518,8 +517,8 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<dt>Approaching trains (included above)</dt><dd>%lu</dd>"
                 "<dt>Occupied LEDs</dt><dd>%u</dd>"
                 "<dt>Collision count</dt><dd>%u</dd></dl>"
-                "<p>At station: steady blue. Approaching: orange transitioning to blue as predicted arrival nears; "
-                "blinking speeds up (about 0.5 to 3 blinks/second). Departing: blue transitioning to orange; "
+                "<p>At station: steady blue. Approaching: orange transitioning to cyan during the final 30 predicted seconds; "
+                "blinking speeds up (about 0.5 to 3 blinks/second). Departing: blue transitioning to magenta while fading out; "
                 "the trail slows and clears within 30 seconds. These are estimated movement cues, not measured distance. "
                 "Missing or stalled predictions use orange with a fixed blink. A stopped train sharing a light "
                 "takes priority; extra indicators do not add trains or brightness.</p></section>"
@@ -627,8 +626,8 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.format("<p>Current setting: %u / 255 (%u%%).</p>", brightness,
                   static_cast<unsigned>(brightness) * 100 / 255);
   }
-  writer.append("<p class=\"muted\">Logical display setting. Enable physical output "
-                "separately under Live display; its brightness cap is 16/255."
+  writer.append("<p class=\"muted\">Live output starts automatically with fresh data. POWER toggles off/on; "
+                "the physical brightness cap remains 16/255."
                 "</p></section>");
   writer.format("<section><h2>MTA update interval</h2><p>Wait after each completed download cycle: %lu seconds. "
                 "Downloads add to the total interval. MTA feeds are typically generated about every 30 seconds; "

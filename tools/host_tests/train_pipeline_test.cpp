@@ -415,6 +415,33 @@ void testPredictionCapacity() {
   CHECK(gPipe.counters().resolvedTrains == 0);
 }
 
+void testVerifiedTripDeparture() {
+  rt::RtTrain vehicle{};
+  vehicle.hasVehicle = true; vehicle.status = rt::VehicleStatus::StoppedAt;
+  strcpy(vehicle.routeId, "2"); strcpy(vehicle.vehicleStopId, "233N");
+  vehicle.vehicleTimestamp = kNow - 10;
+  auto valid = vehicle;
+  CHECK(rt::applyVerifiedTripDeparture(valid, "232N", kNow + 30, kNow, kNow, kNow));
+  CHECK(valid.status == rt::VehicleStatus::InTransitTo && strcmp(valid.vehicleStopId, "232N") == 0);
+  auto wrongDirection = vehicle;
+  CHECK(!rt::applyVerifiedTripDeparture(wrongDirection, "232S", kNow + 30, kNow, kNow, kNow));
+  auto same = vehicle;
+  CHECK(!rt::applyVerifiedTripDeparture(same, "233N", kNow + 30, kNow, kNow, kNow));
+  auto stale = vehicle; stale.vehicleTimestamp = kNow - 91;
+  CHECK(!rt::applyVerifiedTripDeparture(stale, "232N", kNow + 30, kNow, kNow, kNow));
+  auto oldUpdate = vehicle;
+  CHECK(!rt::applyVerifiedTripDeparture(oldUpdate, "232N", kNow + 30, kNow - 20, kNow, kNow));
+  auto pastArrival = vehicle;
+  CHECK(!rt::applyVerifiedTripDeparture(pastArrival, "232N", kNow - 1, kNow, kNow, kNow));
+  begin();
+  Feed f(kNow);
+  f.vehicle("ADVANCE_2", "2", 1, "233N", kNow - 10);
+  f.add(predictionEntity("ADVANCE_2", "232N", kNow + 30));
+  feed(f); gPipe.finishCycle();
+  CHECK(gPipe.counters().verifiedTripDepartures == 1);
+  CHECK(gPipe.counters().resolvedTrains == 1 && gPipe.counters().approachingStation == 1);
+}
+
 void testH19Operational() {
   begin();
   Feed f(kNow);
@@ -925,6 +952,7 @@ int main(int argc, char **argv) {
   testApproachingRepresentation();
   testStationTimingPredictions();
   testPredictionCapacity();
+  testVerifiedTripDeparture();
   testH19Operational();
   testPreviousStopAmbiguous();
   testStale();

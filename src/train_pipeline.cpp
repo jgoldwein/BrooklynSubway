@@ -50,8 +50,8 @@ uint16_t packOutcome(Bucket b, uint16_t led) { return static_cast<uint16_t>((b <
 void visitor(void *context, const gtfsrt::RtTrain &train, uint32_t headerTimestamp) {
   static_cast<TrainPipeline *>(context)->onVehicle(train, headerTimestamp);
 }
-void predictionVisitor(void *context, const gtfsrt::RtTrain &train, uint32_t) {
-  static_cast<TrainPipeline *>(context)->onPrediction(train);
+void predictionVisitor(void *context, const gtfsrt::RtTrain &train, uint32_t timestamp) {
+  static_cast<TrainPipeline *>(context)->onPrediction(train, timestamp);
 }
 
 }  // namespace
@@ -91,7 +91,7 @@ uint32_t tripHashSecondary(const char *s) {
   return h;
 }
 
-void TrainPipeline::onPrediction(const gtfsrt::RtTrain &train) {
+void TrainPipeline::onPrediction(const gtfsrt::RtTrain &train, uint32_t feedTimestamp) {
   const auto route = semantic::routeFromGtfsRouteId(train.routeId);
   const uint32_t arrival = train.nextStopArrival ? train.nextStopArrival : train.nextStopDeparture;
   if (route == semantic::Route::None || !arrival || strlen(train.nextStopId) != 4 || train.fieldTruncated) return;
@@ -101,6 +101,7 @@ void TrainPipeline::onPrediction(const gtfsrt::RtTrain &train) {
     auto &entry = predictions_[slot];
     if (!entry.h1) {
       entry.h1 = h1; entry.h2 = h2; entry.arrival = arrival;
+      entry.timestamp = train.tripUpdateTimestamp ? train.tripUpdateTimestamp : feedTimestamp;
       memcpy(entry.stop, train.nextStopId, 4); entry.route = route;
       return;
     }
@@ -156,9 +157,14 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimes
     const auto &prediction = predictions_[predictionSlot];
     if (!prediction.h1) break;
     if (prediction.h1 == predictionH1 && prediction.h2 == predictionH2) {
-      if (!prediction.conflict && prediction.route == semantic::routeFromGtfsRouteId(t.routeId) &&
-          strlen(t.vehicleStopId) == 4 && memcmp(prediction.stop, t.vehicleStopId, 4) == 0)
-        t.nextStopArrival = prediction.arrival;
+      if (!prediction.conflict && prediction.route == semantic::routeFromGtfsRouteId(t.routeId)) {
+        char next[5]{}; memcpy(next, prediction.stop, 4);
+        const bool inferred = gtfsrt::applyVerifiedTripDeparture(t, next, prediction.arrival,
+            prediction.timestamp, feedTimestamp, nowUnix_);
+        if (inferred) bump(counters_.verifiedTripDepartures);
+        if (strlen(t.vehicleStopId) == 4 && memcmp(prediction.stop, t.vehicleStopId, 4) == 0)
+          t.nextStopArrival = prediction.arrival;
+      }
       break;
     }
     predictionSlot = (predictionSlot + 1) & (kTripTableSlots - 1);

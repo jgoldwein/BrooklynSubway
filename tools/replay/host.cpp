@@ -44,6 +44,7 @@ struct TrainMetadata {
   char category[32];
   char reason[32];
   bool approachingStation;
+  bool verifiedDeparture;
 };
 
 uint8_t gFeedBuffer[kMaxFeedBytes];
@@ -106,8 +107,23 @@ void collectVehicle(void *opaque, const gtfsrt::RtTrain &vehicle, uint32_t feedT
   if (semantic::routeFromGtfsRouteId(vehicle.routeId) == semantic::Route::None)
     return;
   MetadataContext &context = *static_cast<MetadataContext *>(opaque);
+  const gtfsrt::RtTrain *enriched = nullptr;
+  for (size_t i = 0; i < context.mergedCount; ++i) {
+    if (strcmp(context.merged[i].tripId, vehicle.tripId) == 0) {
+      enriched = &context.merged[i];
+      break;
+    }
+  }
+  auto observed = vehicle;
+  bool verifiedDeparture = false;
+  if (enriched && enriched->hasTripUpdate) {
+    verifiedDeparture = gtfsrt::applyVerifiedTripDeparture(observed, enriched->nextStopId,
+        enriched->nextStopArrival ? enriched->nextStopArrival : enriched->nextStopDeparture,
+        enriched->tripUpdateTimestamp ? enriched->tripUpdateTimestamp : feedTimestamp,
+        feedTimestamp, context.config.now);
+  }
   gtfsrt::Observation observation{};
-  gtfsrt::evaluateTrain(vehicle, feedTimestamp, context.config, observation);
+  gtfsrt::evaluateTrain(observed, feedTimestamp, context.config, observation);
   uint16_t globalIndex = UINT16_MAX;
   const bool resolved =
       (observation.category == gtfsrt::Category::ResolvedStation ||
@@ -124,21 +140,15 @@ void collectVehicle(void *opaque, const gtfsrt::RtTrain &vehicle, uint32_t feedT
       (static_cast<uint32_t>(observation.approachingStation) << 30) |
       (reasonKey << 16) | (resolved ? globalIndex : UINT16_MAX);
 
-  const gtfsrt::RtTrain *enriched = nullptr;
-  for (size_t i = 0; i < context.mergedCount; ++i) {
-    if (strcmp(context.merged[i].tripId, vehicle.tripId) == 0) {
-      enriched = &context.merged[i];
-      break;
-    }
-  }
   TrainMetadata candidate{};
   candidate.approachingStation = observation.approachingStation;
+  candidate.verifiedDeparture = verifiedDeparture;
   candidate.globalIndex = resolved ? globalIndex : UINT16_MAX;
   snprintf(candidate.tripId, sizeof candidate.tripId, "%s", vehicle.tripId);
   snprintf(candidate.routeId, sizeof candidate.routeId, "%s", vehicle.routeId);
   snprintf(candidate.vehicleId, sizeof candidate.vehicleId, "%s", vehicle.vehicleId);
   snprintf(candidate.trainId, sizeof candidate.trainId, "%s", vehicle.trainId);
-  snprintf(candidate.currentStop, sizeof candidate.currentStop, "%s", vehicle.vehicleStopId);
+  snprintf(candidate.currentStop, sizeof candidate.currentStop, "%s", observed.vehicleStopId);
   if (enriched != nullptr) {
     if (enriched->vehicleId[0] != '\0')
       snprintf(candidate.vehicleId, sizeof candidate.vehicleId, "%s", enriched->vehicleId);
@@ -251,7 +261,7 @@ bool appendTrainRecords(size_t count) {
     jsonString(train.previousStop[0] == '\0' ? "Unavailable" : train.previousStop);
     printf(",\"previousStopSource\":");
     jsonString(train.previousSource);
-    printf(",\"approachingStation\":%s", train.approachingStation ? "true" : "false");
+    printf(",\"approachingStation\":%s,\"verifiedDeparture\":%s", train.approachingStation ? "true" : "false", train.verifiedDeparture ? "true" : "false");
     putchar('}');
   }
   return true;

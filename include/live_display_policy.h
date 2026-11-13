@@ -38,6 +38,7 @@ class Controller {
   explicit Controller(bool automaticStart = false) {
     automaticStartPending_ = automaticStart;
     powerCanResume_ = automaticStart;
+    physicalPowerControl_ = automaticStart;
   }
   void publish(const Snapshot &snapshot);
   bool enable(uint32_t nowMs);
@@ -62,6 +63,7 @@ class Controller {
   bool hasSnapshot_ = false;
   bool everHadFrame_ = false;
   bool suppressPowerUntilRelease_ = false;
+  bool physicalPowerControl_ = false;
   bool buttonInitialized_ = false;
   bool buttonReading_ = false;
   bool buttonStable_ = false;

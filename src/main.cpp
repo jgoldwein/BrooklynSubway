@@ -161,6 +161,10 @@ void updateLogicalDisplay(uint32_t nowMs) {
       operationalDisplay.state(),
       brightness,
   };
+  brooklyn::hardware::setFeedIndicator(systemHealthy &&
+      operationalDisplay.state() == brooklyn::display::State::Fresh &&
+      operationalDisplay.hasFrame() && operationalDisplay.dataAgeMs(nowMs) <= brooklyn::display::kPartialGraceMs &&
+      networkService.state() == brooklyn::network::State::Ready);
   static brooklyn::display::StatusIndicators previousStatus{};
   static bool hasPreviousStatus = false;
   const bool statusChanged =

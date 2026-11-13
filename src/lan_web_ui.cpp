@@ -194,8 +194,6 @@ void LanWebUi::registerRoutes() {
              [this]() { handleUpdateInterval(); });
   server_.on("/", HTTP_GET, [this]() { handleHome(); });
   server_.on("/hardware-test", HTTP_GET, [this]() { handleLedDiagnosticPage(); });
-  server_.on("/live-display", HTTP_GET, [this]() { handleLiveDisplayPage(); });
-  server_.on("/live-display/set", HTTP_POST, [this]() { handleLiveDisplaySet(); });
   server_.on("/hardware-test/run", HTTP_POST, [this]() { handleLedDiagnosticRun(); });
   server_.on("/login", HTTP_GET, [this]() { handleLoginPage(); });
   server_.on("/login", HTTP_POST, [this]() { handleLogin(); });
@@ -1512,54 +1510,6 @@ void LanWebUi::handleUpdateComplete() {
                    : "Firmware verified and staged; approve reboot separately");
 }
 
-void LanWebUi::handleLiveDisplayPage() {
-  if (!authorizeRequest(false)) return;
-  char csrf[admin::kTokenSize * 2 + 1]{};
-  if (!requestSession(csrf, sizeof(csrf))) { server_.send(403, "text/plain", "Sign in again"); return; }
-  const int length = snprintf(gPage, kPageCapacity,
-      "<!doctype html><html lang=\"en\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-      "<title>Live display</title><h1>Live MTA display</h1><p>Physical output: <strong>%s</strong>.</p>"
-      "<p>Use the verified 5 V, 3 A center-positive barrel supply. Confirm the power supply is connected "
-      "and the rails and polarity have been checked. Live brightness is capped at 16/255 (about 6%%), "
-      "with the existing estimated current budget. The normal brightness and route settings still apply.</p>"
-      "<p>Live output starts automatically after healthy startup and fresh MTA data. POWER toggles the lights off and back on. "
-      "Diagnostics, Wi-Fi setup, "
-      "firmware installation, failures and data older than five minutes stop live output; enable it again explicitly.</p>"
-      "<p>At station: steady blue. Approaching: orange to blue with a faster blink near predicted arrival. "
-      "Departing: blue to orange with a slowing, bounded trail. "
-      "These are estimated cues, not measured distance. Missing/stalled predictions use a fixed blink. Blink timing and POWER shutoff "
-      "continue while feeds download.</p>"
-      "<form method=\"post\" action=\"/live-display/set\"><input type=\"hidden\" name=\"csrf\" value=\"%s\">"
-      "<input type=\"hidden\" name=\"action\" value=\"enable\">"
-      "<label><input type=\"checkbox\" name=\"confirmed\" value=\"yes\" required>Supply connected; electrical checks passed</label>"
-      "<button>Enable live display</button></form>"
-      "<form method=\"post\" action=\"/live-display/set\"><input type=\"hidden\" name=\"csrf\" value=\"%s\">"
-      "<input type=\"hidden\" name=\"action\" value=\"disable\"><button>Disable live display</button></form>"
-      "<p><a href=\"/\">Status</a></p></html>",
-      display::live::enabled() ? "ENABLED" : display::live::available() ? "OFF" : "UNAVAILABLE on this target",
-      csrf, csrf);
-  if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) { server_.send(500, "text/plain", "Page unavailable"); return; }
-  sendHtml(gPage, length);
-}
-
-void LanWebUi::handleLiveDisplaySet() {
-  if (!authorizeRequest(true)) return;
-  const String action = server_.arg("action");
-  if (!hasNoEmbeddedNull(action)) { server_.send(400, "text/plain", "Invalid action"); return; }
-  if (action == "disable" && server_.args() == 2) {
-    display::live::disable();
-  } else if (action == "enable" && server_.args() == 3 && server_.arg("confirmed") == "yes") {
-    if (installPhase_ == 1 || updateStarted_ || otaSession_.activationPending()) {
-      server_.send(409, "text/plain", "Wait for the firmware installation/restart before enabling lights"); return;
-    }
-    if (!display::live::enable()) {
-      server_.send(409, "text/plain", "Live output unavailable: need healthy fresh MTA data, released POWER and no Wi-Fi recovery"); return;
-    }
-  } else { server_.send(400, "text/plain", "Confirm electrical checks and choose enable or disable"); return; }
-  server_.sendHeader("Location", "/live-display");
-  server_.send(303, "text/plain", "Live display setting applied");
-}
-
 void LanWebUi::handleLedDiagnosticPage() {
   if (!authorizeRequest(false)) return;
   char csrf[admin::kTokenSize * 2 + 1]{};
@@ -1578,8 +1528,6 @@ void LanWebUi::handleLedDiagnosticPage() {
       "<p role=\"status\">%s</p>"
       "<p>Production PCB only. Diagnostics stop live output first. No test runs at startup.</p>"
       "<p>Startup gives two brief Avi-marker flashes, four rising notes, then a subway-style ding-dong. Hold DIM while powering on or resetting to mute that startup.</p>"
-      "<p>Verify 5 V and 3.3 V rails and use the verified 5 V, 3 A center-positive supply. "
-      "Connect barrel power only after these checks. Stop and disconnect power if heating, resets, or unexpected LEDs occur.</p>"
       "<p>LED42 is the F-line 18 Av station light, between Ditmas Av and Avenue I in the lower-middle map area. "
       "CH1, index 0: dim red (4/255) for two seconds, then black and outputs disabled. "
       "The physical TEST button runs all subway lines at a faster pace (about 35 seconds). "
@@ -1602,7 +1550,6 @@ void LanWebUi::handleLedDiagnosticPage() {
       "<p>CH8 starts with SYSTEM, NETWORK, MTA FEED, MODE, then its 36 map LEDs. Observe each channel separately before trying the next.</p>"
       "<p>All channels runs CH1 through CH8 once: 1 beep before CH1, 2 before CH2, through 8 before CH8. "
       "Only one LED is lit at a time. POWER stops the entire sequence, including beeps. Leave this page open until the result returns.</p>"
-      "<label><input type=\"checkbox\" name=\"confirmed\" value=\"yes\" required>Rails, polarity and supply checked; ready to observe the selected test</label>"
       "<p>All subway lines runs 2, 3, 4, 5, A, B, C, D, F, G, J, L, M, N, Q, R, S, Z. "
       "Each mapped LED cycles red, green, blue at 4/255, 0.25 seconds each, one LED at a time. "
       "Status lights are excluded. Serial output identifies each line and LED. Channel-number beeps apply only to the channel test. POWER aborts either full test.</p>"
@@ -1622,10 +1569,9 @@ void LanWebUi::handleLedDiagnosticRun() {
   }
   const String test = server_.arg("test");
   led::diagnostic::Selection selection{};
-  if (server_.args() != 3 || server_.arg("confirmed") != "yes" ||
-      !hasNoEmbeddedNull(test) ||
+  if (server_.args() != 2 || !hasNoEmbeddedNull(test) ||
       !led::diagnostic::parseSelection(test.c_str(), selection)) {
-    server_.send(400, "text/plain", "Confirm the electrical checks before testing");
+    server_.send(400, "text/plain", "Choose a valid test");
     return;
   }
   if (selection.kind == led::diagnostic::Kind::AllRoutes) {

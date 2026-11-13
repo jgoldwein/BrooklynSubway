@@ -14,6 +14,12 @@ void Controller::publish(const Snapshot &snapshot) {
   snapshot_ = snapshot;
   hasSnapshot_ = true;
   everHadFrame_ = everHadFrame_ || snapshot.hasFrame;
+  // With no web enable switch, a later physical POWER press may retry once
+  // healthy data returns. This never auto-restarts a fault-stopped session.
+  if (physicalPowerControl_ && snapshot.hasFrame && snapshot.status.systemHealthy &&
+      !snapshot.status.provisioning &&
+      (snapshot.status.displayState == State::Fresh || snapshot.status.displayState == State::DegradedPartial))
+    powerCanResume_ = true;
   dirty_ = true;
 }
 
