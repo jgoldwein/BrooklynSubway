@@ -1,8 +1,8 @@
-# Live display (0.2.20)
+# Live display (0.2.33)
 
 1. Connect the verified 5 V, 3 A center-positive barrel supply; the rail and
    polarity checks must have passed. USB may remain connected for serial logs.
-2. Install the update and confirm version 0.2.20 on the status page.
+2. Install the update and confirm version 0.2.33 on the status page.
 3. Live output starts automatically after healthy startup and fresh MTA data.
 4. POWER toggles the lights off/on. Holding it toggles only once. Holding POWER
    at boot cancels automatic start; release and press again when data is fresh.
@@ -21,13 +21,16 @@ The service uses an 8192-byte-stack FreeRTOS task on core 1 at priority 2,
 serviced every 20 ms. It copies committed TrainFrame/status/settings snapshots
 under a mutex and renders station-motion/segment-route colours at the physical cap. The output
 task owns live rendering; main-loop feed retrieval never owns its working
-frame. Blink phase comes from monotonic time, independent of new feed commits.
+frame. Color transitions and expiry continue independently of new feed commits.
 Main-loop logical rendering remains separate. No new library dependency.
 
-From 0.2.18, approach pulses speed up using predicted arrival times. Previous
-stations can show a short trail that slows and clears within 30 seconds. These
-are estimated movement cues, not measured distance; overlays do not add trains.
-Missing/stalled predictions use a fixed blink. STOPPED_AT stays steady. Set the
+From 0.2.33, approaches use continuous orange-to-cyan color transitions using
+predicted arrival times. Previous stations show a blue-to-magenta trail that
+fades out within 30 seconds. These are estimated movement cues, not measured
+distance; overlays do not add trains. Missing/stalled predictions stay steady
+orange. Recent matching stopped reports stay blue for the configured hold
+(default 20 seconds), then become steady dim amber. Arrival/departure LEDs do
+not blink. Set the
 MTA update wait on the signed-in status page (15-120 seconds; default 15).
 
 The task debounces active-low POWER for 30 ms independently of network polling.
@@ -59,11 +62,11 @@ RGB levels, black-first/last and POWER/recovery abort rules apply.
 
 From 0.2.17, status/JSON and the serial heartbeat report successful live frame
 transmissions, occupancy/approach-data change count, last live-frame age (HTML),
-and blink-eligible LEDs. Data-change counts exclude repeated identical snapshots
-and blink phase changes. They count data received, including while paused;
+and the legacy blinking-LED count (now zero for color-only movement). Data-change
+counts exclude repeated identical snapshots. They count data received, including while paused;
 transmit counters count successful driver writes, not optical confirmation.
 Most station lights can remain steady even with fresh changing data. A stopped
-train sharing a pixel suppresses an approaching blink.
+train sharing a pixel takes priority over an approaching indication.
 
 `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0` remains set: generic arm/transmit APIs
 stay locked. Only production network builds add
@@ -71,11 +74,11 @@ stay locked. Only production network builds add
 startup/mapping health, frame size, per-component cap and total estimated
 current. Board pins and manufactured files are unchanged.
 
-Host tests cover simulated network stalls with continued blink updates,
+Host tests cover simulated network stalls with continued color/expiry updates,
 POWER/recovery stop, stale deadlines, millisecond rollover, full-map current
 and brightness limits, startup and driver failures, black-first/black-last
 hardware sequencing, existing diagnostic compatibility and authenticated POST
-endpoint policy. Physical colour, blink timing, POWER response and current
+endpoint policy. Physical colour, POWER response and current
 remain to be observed on the production board.
 
 The separate complete-line diagnostic ordering correction remains queued
@@ -84,8 +87,8 @@ after the MTA representation work; this release preserves both full tests.
 From 0.2.20, station colours encode movement: orange (#FF6000) transitions to
 cyan (#00FFFF) during the final 30 predicted seconds before arrival. A stopped
 train is steady blue. The departure trail blends blue to magenta while fading out over its bounded
-30-second lifetime. Missing/stalled predictions stay orange with the existing
-fixed blink; no colour progress is invented. Stopped occupancy wins. Route-family
+30-second lifetime. From 0.2.33, all movement colors are continuous, without
+blinking. Missing/stalled predictions stay steady orange; no colour progress is invented. Stopped occupancy wins. Route-family
 colours remain on mapped segment LEDs, and status/diagnostic colours are unchanged.
 Interpolation happens before brightness/current limiting. Low brightness such
 as 5/255 has only a few available channel levels, so visible steps are possible.

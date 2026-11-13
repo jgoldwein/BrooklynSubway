@@ -258,7 +258,7 @@ int main() {
     CHECK(memcmp(&a, &b, sizeof a) == 0);
   }
 
-  // Blink is explicit renderer input, and stopped occupancy wins in either order.
+  // Legacy blink-phase inputs no longer interrupt an approaching indication.
   {
     CHECK(approachingPhaseLit(0) && approachingPhaseLit(499));
     CHECK(!approachingPhaseLit(500) && !approachingPhaseLit(999));
@@ -272,7 +272,7 @@ int main() {
     CHECK(isApproachingOnly(tf, index) && tf.approachingTrains == 1);
     renderTrainFrame(tf, on, light);
     renderTrainFrame(tf, off, dark);
-    CHECK(!black(on.pixels[index]) && black(off.pixels[index]));
+    CHECK(!black(on.pixels[index]) && !black(off.pixels[index]));
     CHECK(addValidatedLed(tf, index));
     CHECK(!isApproachingOnly(tf, index));
     renderTrainFrame(tf, off, dark);
@@ -305,7 +305,7 @@ int main() {
     RenderConfig c = cfg(64); c.animateTraffic = true; c.nowUnix = 1000;
     RgbFrame r{};
     c.animationTimeMs = 0; renderTrainFrame(f, r, c); CHECK(!black(r.pixels[index]));
-    c.animationTimeMs = 300; renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
+    c.animationTimeMs = 300; renderTrainFrame(f, r, c); CHECK(!black(r.pixels[index]));
     c.nowUnix = 1030; c.animationTimeMs = 0;
     renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
     CHECK(addValidatedLed(f, index));
@@ -386,6 +386,31 @@ int main() {
     CHECK(!isUncertainOnly(f, index));
     CHECK(!addUncertainLed(f, kFrameLedCount));
     CHECK(!addUncertainLed(f, 30000));
+  }
+  {
+    // Sample old blink boundaries: neither approach nor departure may go dark.
+    TrainFrame f{}; clearFrame(f); const auto index = firstLed(Role::Station);
+    CHECK(addValidatedLed(f, index, true));
+    f.animationEpochUnix = 1000; f.timing[index].arrivalSecondsPlusOne = 121;
+    RenderConfig c = cfg(255); c.animateTraffic = true; c.nowUnix = 1000;
+    RgbFrame r{};
+    for (uint32_t ms = 0; ms < 4000; ms += 37) {
+      c.animationTimeMs = ms; c.approachingLit = false;
+      renderTrainFrame(f, r, c); CHECK(!black(r.pixels[index]));
+    }
+    f.timing[index].arrivalSecondsPlusOne = UINT16_MAX;
+    for (uint32_t ms = 0; ms < 2000; ms += 41) {
+      c.animationTimeMs = ms; renderTrainFrame(f, r, c);
+      CHECK(eq(r.pixels[index], Rgb{255, 96, 0}));
+    }
+    clearFrame(f); f.animationEpochUnix = 1000; f.timing[index].departureAgePlusOne = 1;
+    for (uint32_t age = 0; age < 30; ++age) {
+      c.nowUnix = 1000 + age;
+      for (uint32_t ms = 0; ms < 2000; ms += 113) {
+        c.animationTimeMs = ms; renderTrainFrame(f, r, c); CHECK(!black(r.pixels[index]));
+      }
+    }
+    c.nowUnix = 1030; renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
   }
   printf("Phase 4H RGB renderer host tests: %d checks, %d failures\n", checks, failures);
   return failures == 0 ? 0 : 1;

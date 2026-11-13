@@ -114,9 +114,9 @@ int main() {
   CHECK(c.enable(0));
   c.service(0, false, false, ops);
   CHECK(arms == 1 && writes == 1 && lit(0));
-  // No main-loop publishes during a simulated network stall: worker still blinks.
+  // No main-loop publishes during a simulated network stall: worker keeps approaching LEDs continuously lit.
   c.service(499, false, false, ops); CHECK(writes == 2);
-  c.service(520, false, false, ops); CHECK(writes == 3 && !lit(0));
+  c.service(520, false, false, ops); CHECK(writes == 3 && lit(0));
   c.service(1000, false, false, ops); CHECK(writes == 4 && lit(0));
   c.service(1020, true, false, ops);
   CHECK(c.enabled());  // Debounce before toggling; a hold must not repeat.
@@ -131,7 +131,7 @@ int main() {
   CHECK(c.enabled() && arms == 2 && !c.stats().powerCanResume);
   c.service(1300, true, false, ops); CHECK(c.enabled() && arms == 2);
   CHECK(c.stats().framesWritten == static_cast<uint32_t>(writes));
-  CHECK(c.stats().mapChanges == 1 && c.stats().blinkingLeds == 1);
+  CHECK(c.stats().mapChanges == 1 && c.stats().blinkingLeds == 0);
   c.publish(s); CHECK(c.stats().mapChanges == 1);
   c.service(1320, false, false, ops);
   CHECK(c.enable(1340)); c.service(1340, false, true, ops);
@@ -190,5 +190,5 @@ int main() {
     boot.service(440, true, false, ops);
     CHECK(!boot.enabled() && !boot.stats().powerCanResume);
   }
-  puts("Live display: safe startup, automatic/manual enable, independent blink, POWER toggle, test restoration, maintenance/fault guards, stale timeout, brightness/current caps and rollover PASS");
+  puts("Live display: safe startup, automatic/manual enable, continuous color, POWER toggle, test restoration, maintenance/fault guards, stale timeout, brightness/current caps and rollover PASS");
 }
