@@ -362,16 +362,6 @@ int main() {
     f.timing[index].arrivalSecondsPlusOne = 1;
     renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0, 5, 5}));
   }
-  {
-    TrainFrame f{}; clearFrame(f); const auto index = firstLed(Role::Station);
-    CHECK(addIndicatedLed(f, index, StationIndication::Uncertain));
-    RenderConfig c=cfg(5); c.animateTraffic=true; c.animationTimeMs=1200;
-    RgbFrame r{}; renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{5,2,0}));
-    c.animationTimeMs=0; renderTrainFrame(f,r,c); CHECK(black(r.pixels[index]));
-    CHECK(addValidatedLed(f,index)); renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{0,0,5}));
-    f.animationEpochUnix=1000; c.nowUnix=1031; c.animationTimeMs=1200;
-    renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{5,2,0})); // old support becomes uncertain, not departure
-  }
   printf("Phase 4H RGB renderer host tests: %d checks, %d failures\n", checks, failures);
   return failures == 0 ? 0 : 1;
 }

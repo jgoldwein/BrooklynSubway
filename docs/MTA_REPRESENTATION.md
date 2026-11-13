@@ -141,3 +141,11 @@ Direct shared contributions prioritize corroborated stop, then approach, then
 uncertainty, without increasing brightness or train counts. Static host rendering
 keeps route colors. The Why blue report distinguishes actual chosen indications
 from raw reported-stopped candidates; older diagnostic descriptions are historical.
+
+## Recovery in 0.2.28
+
+The 0.2.27 station evidence/uncertainty animation is withdrawn after the operator
+reported unacceptable widespread pulsing and a blank OLED. Active behavior is
+restored to 0.2.26, including its exact pipeline/frame memory layout. The Why
+blue? report and saved OLED address remain. The excess steady-blue interpretation
+is unresolved; the OLED failure is not explained by a driver-code change.

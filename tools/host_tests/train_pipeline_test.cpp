@@ -339,7 +339,7 @@ void testApproachingRepresentation() {
   mixed.vehicle("STOP_2", "2", 1, "232N", kNow);
   feed(mixed); gPipe.finishCycle();
   CHECK(gPipe.counters().resolvedTrains == 2 && gPipe.counters().collisionLeds == 1);
-  CHECK(sem::isApproachingOnly(gPipe.frame(), firstOccupied())); // future ETA does not corroborate a stopped report
+  CHECK(!sem::isApproachingOnly(gPipe.frame(), firstOccupied()));
   begin();
   Feed conflict(kNow);
   conflict.vehicle("SAME_2", "2", 2, "232N", kNow);
@@ -480,44 +480,6 @@ void testBlueDiagnostics() {
   feed(conflict); gPipe.finishCycle();
   CHECK(gPipe.blueReport().routes[static_cast<uint8_t>(sem::Route::Route2)].trains == 0);
 
-}
-
-void testStationEvidencePolicy() {
-  const uint8_t route = static_cast<uint8_t>(sem::Route::Route2);
-  begin(); Feed future(kNow);
-  future.vehicle("EVIDENCE_FUTURE", "2", 1, "233N", kNow - 10);
-  future.add(predictionEntity("EVIDENCE_FUTURE", "233N", kNow + 20));
-  feed(future); gPipe.finishCycle();
-  CHECK(sem::isApproachingOnly(gPipe.frame(), firstOccupied()));
-  CHECK(gPipe.frame().approachingTrains == 1 && gPipe.counters().approachingStation == 1);
-  begin(); Feed arrived(kNow);
-  arrived.vehicle("EVIDENCE_DWELL", "2", 1, "233N", kNow - 10);
-  arrived.add(predictionEntity("EVIDENCE_DWELL", "233N", kNow - 1));
-  feed(arrived); gPipe.finishCycle();
-  CHECK(sem::isUncertainOnly(gPipe.frame(), firstOccupied())); // one report is insufficient
-  gPipe.beginCycle(kNow + 10); feed(arrived); gPipe.finishCycle();
-  CHECK(sem::isUncertainOnly(gPipe.frame(), firstOccupied())); // repeated copy of same feed is not corroboration
-  gPipe.beginCycle(kNow + 15); Feed repeated(kNow + 15);
-  repeated.vehicle("EVIDENCE_DWELL", "2", 1, "233N", kNow - 10);
-  repeated.add(predictionEntity("EVIDENCE_DWELL", "233N", kNow - 1));
-  feed(repeated); gPipe.finishCycle();
-  CHECK(!sem::isUncertainOnly(gPipe.frame(), firstOccupied()) && !sem::isApproachingOnly(gPipe.frame(), firstOccupied()));
-  CHECK(gPipe.blueReport().steadyLeds == 1);
-  gPipe.beginCycle(kNow + 30); Feed movement(kNow + 30);
-  movement.vehicle("EVIDENCE_DWELL", "2", 1, "233N", kNow + 20);
-  movement.add(predictionEntity("EVIDENCE_DWELL", "233N", kNow + 15));
-  feed(movement); gPipe.finishCycle();
-  CHECK(sem::isUncertainOnly(gPipe.frame(), firstOccupied())); // movement changed, no invented departure
-  CHECK(gPipe.blueReport().routes[route].trains == 1 && gPipe.frame().resolvedTrains == 1);
-  gPipe.beginCycle(kNow + 120); Feed old(kNow + 120);
-  old.vehicle("EVIDENCE_DWELL", "2", 1, "233N", kNow - 10);
-  old.add(predictionEntity("EVIDENCE_DWELL", "233N", kNow - 1));
-  feed(old); gPipe.finishCycle();
-  CHECK(sem::isUncertainOnly(gPipe.frame(), firstOccupied()));
-  CHECK(gPipe.frame().resolvedTrains == 1); // a delayed train remains visible
-  begin(); Feed noPrediction(kNow); noPrediction.vehicle("EVIDENCE_NONE", "2", 1, "233N", kNow);
-  feed(noPrediction); gPipe.finishCycle();
-  CHECK(sem::isUncertainOnly(gPipe.frame(), firstOccupied()));
 }
 
 void testH19Operational() {
@@ -1032,7 +994,6 @@ int main(int argc, char **argv) {
   testPredictionCapacity();
   testVerifiedTripDeparture();
   testBlueDiagnostics();
-  testStationEvidencePolicy();
   testH19Operational();
   testPreviousStopAmbiguous();
   testStale();

@@ -164,3 +164,11 @@ an uncertain station position; it is not a train departure or distance estimate.
 A long-held blue frame loses its blue support after 30 seconds without a new
 frame. POWER, brightness/current caps, stale blanking and OLED behavior remain.
 See MTA_REPRESENTATION.md for the exact evidence rules and shared-light priority.
+
+## Recovery in 0.2.28
+
+The 0.2.27 station evidence/uncertainty animation is withdrawn after the operator
+reported unacceptable widespread pulsing and a blank OLED. Active behavior is
+restored to 0.2.26, including its exact pipeline/frame memory layout. The Why
+blue? report and saved OLED address remain. The excess steady-blue interpretation
+is unresolved; the OLED failure is not explained by a driver-code change.
