@@ -172,3 +172,12 @@ reported unacceptable widespread pulsing and a blank OLED. Active behavior is
 restored to 0.2.26, including its exact pipeline/frame memory layout. The Why
 blue? report and saved OLED address remain. The excess steady-blue interpretation
 is unresolved; the OLED failure is not explained by a driver-code change.
+
+## Next update: feed-ready cue
+
+At the first successful dim U23 feed-ready indication after boot, emit one
+100 ms, 2000 Hz, 50%-duty beep on GPIO21/BUZZER3. The U23 PWM output is on before
+the beep starts. Holding DIM at boot mutes this cue along with the startup chime.
+Later stale/recovery or test OFF/ON transitions do not repeat it. Failed U23 PWM
+allocation produces no ready beep; buzzer allocation failure leaves U23 working
+and GPIO21 LOW. No pin, display-rendering or OLED-address changes.
