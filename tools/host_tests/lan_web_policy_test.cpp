@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "lan_web_policy.h"
+#include "admin_auth.h"
 #include "led_power.h"
 #include "normal_config.h"
 #include "semantic_api.h"
@@ -536,6 +537,25 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "method=\"post\" action=\"/network-diagnostics/run\"") !=
         nullptr);
   CHECK(countSubstring(page, csrfToken) == 12);
+  // Exercise the actual generated forms against the runtime route policy.
+  // A rendered POST form must pass authorizeRequest's endpoint-policy gate.
+  const char *cursor = page;
+  const char *prefix = "<form method=\"post\" action=\"";
+  while ((cursor = strstr(cursor, prefix)) != nullptr) {
+    cursor += strlen(prefix);
+    const char *end = strchr(cursor, '"');
+    CHECK(end != nullptr);
+    if (!end) break;
+    char path[96]{};
+    const size_t length = static_cast<size_t>(end - cursor);
+    CHECK(length < sizeof(path));
+    if (length >= sizeof(path)) break;
+    memcpy(path, cursor, length);
+    CHECK(brooklyn::admin::isMutationEndpoint("POST", path));
+    CHECK(brooklyn::admin::isProtectedEndpoint("POST", path));
+    cursor = end + 1;
+  }
+
   CHECK(strstr(page, "action=\"/config/oled\"") != nullptr);
   CHECK(strstr(page, "Saved I2C address: 0x38") != nullptr);
   CHECK(strstr(page, "Reboot after changing") != nullptr);

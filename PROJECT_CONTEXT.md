@@ -201,6 +201,12 @@ The administrator slider applies without reboot via an atomic request consumed
 by the existing OLED worker. No web-handler I2C access or display reinitialization.
 Zero is minimum contrast, not power off. Preserve address fallback and GPIO8/9.
 
+0.2.32 fixes missing authorization-policy registration for /config/oled-dimmer
+and /config/blue-hold. In 0.2.31 their forms/handlers existed but saving failed
+with "Authorization policy mismatch" before session/CSRF validation. Register
+both as protected POST mutation endpoints; retain all existing checks. The LAN
+page test now checks every generated POST form against the actual auth policy.
+
 ## USB / programming
 
 - Native ESP32-S3 USB is wired to USB1: GPIO19 D-, GPIO20 D+.
