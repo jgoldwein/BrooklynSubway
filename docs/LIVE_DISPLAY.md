@@ -155,3 +155,12 @@ NVS and survives firmware updates/reboots. Reboot Device after changing it.
 Until reboot, the running OLED worker retains its prior address. On the next
 boot it tries only the saved address; there is no automatic fallback. Invalid
 or missing stored data falls back to default 0x38. GPIO8/9 and 100 kHz are fixed.
+
+## Station uncertainty (0.2.27)
+
+Blue now means a corroborated stopped report, not every raw STOPPED_AT value.
+Estimated approach remains orange-to-cyan. A slow 2.4-second orange pulse marks
+an uncertain station position; it is not a train departure or distance estimate.
+A long-held blue frame loses its blue support after 30 seconds without a new
+frame. POWER, brightness/current caps, stale blanking and OLED behavior remain.
+See MTA_REPRESENTATION.md for the exact evidence rules and shared-light priority.

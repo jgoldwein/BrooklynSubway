@@ -121,3 +121,23 @@ maximum gap. Coverage and dropped-history count are shown. Changed station is
 diagnostic evidence only; neither it nor any other flag changes live rendering.
 MTA's vehicle timestamp measures last detected movement; "old" does not prove
 that a train has departed. No station dwell is claimed as confirmed by this report.
+
+## Evidence-based station indications (0.2.27)
+
+Fresh matching-platform arrival predictions in the future show estimated
+approach, even if VehiclePosition says STOPPED_AT. Require a usable arrival
+(not departure-only), fresh feed/prediction timestamps and movement age <=90s.
+Predictions never independently declare arrival or create a departure trail.
+
+Blue requires a same-trip, same-station stopped report on a distinct newer feed,
+with unchanged nonzero movement timestamp and fresh same-stop arrival no more
+than 30 seconds in the past. The existing bounded two-poll history is used;
+missing history or uncertain evidence produces a slow orange pulse instead.
+This can leave a genuine long hold uncertain; it does not imply departure.
+Without a new frame, blue support ages into uncertainty after 30 seconds.
+
+A separate uncertain-only bitmap adds 40 bytes to TrainFrame (1640 bytes total).
+Direct shared contributions prioritize corroborated stop, then approach, then
+uncertainty, without increasing brightness or train counts. Static host rendering
+keeps route colors. The Why blue report distinguishes actual chosen indications
+from raw reported-stopped candidates; older diagnostic descriptions are historical.

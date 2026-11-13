@@ -9,6 +9,7 @@ void Controller::publish(const Snapshot &snapshot) {
               sizeof(snapshot.frame.occupancy)) != 0 ||
        memcmp(snapshot_.frame.approachingOnly, snapshot.frame.approachingOnly,
               sizeof(snapshot.frame.approachingOnly)) != 0 ||
+       memcmp(snapshot_.frame.uncertainOnly, snapshot.frame.uncertainOnly, sizeof(snapshot.frame.uncertainOnly)) != 0 ||
        memcmp(snapshot_.frame.timing, snapshot.frame.timing, sizeof(snapshot.frame.timing)) != 0) &&
       stats_.mapChanges != UINT32_MAX) ++stats_.mapChanges;
   snapshot_ = snapshot;
@@ -162,7 +163,8 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
       const bool overlay = snapshot_.frame.occupancy[i] == 0 && timed &&
           (timing.arrivalSecondsPlusOne ||
            semantic::departurePeriodMs(timing, elapsed));
-      if (mapped && (semantic::isApproachingOnly(snapshot_.frame, i) || overlay) &&
+      const bool expiredStation = mapped && mapped->role == semantic::Role::Station && snapshot_.frame.occupancy[i] && timed && elapsed > 30;
+      if (mapped && (expiredStation || semantic::isApproachingOnly(snapshot_.frame, i) || semantic::isUncertainOnly(snapshot_.frame, i) || overlay) &&
           semantic::routeVisible(config.routeVisibilityMask, mapped->route)) ++stats_.blinkingLeds;
     }
   }

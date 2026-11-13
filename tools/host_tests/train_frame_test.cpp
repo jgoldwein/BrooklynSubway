@@ -92,7 +92,7 @@ uint16_t firstLed(Role role, uint8_t slotCount = 0) {
 }
 
 void testBasic() {
-  static_assert(sizeof(TrainFrame) <= 1632, "occupancy, flags and 4-byte station timings stay bounded");
+  static_assert(sizeof(TrainFrame) <= 1664, "occupancy, flags and 4-byte station timings stay bounded");
   TrainFrame f;
   clearFrame(f);
   checkFrameInvariants(f);
@@ -414,6 +414,19 @@ int main() {
   testIdentityRejection();
   testAll302();
   testOrderIndependence();
+  {
+    using I = StationIndication;
+    const uint16_t led = kMapLeds[0].globalOrder;
+    const I kinds[] = {I::Uncertain, I::Approaching, I::Stopped};
+    for (unsigned a = 0; a < 3; ++a) for (unsigned b = 0; b < 3; ++b) {
+      TrainFrame f{};
+      CHECK(addIndicatedLed(f, led, kinds[a])); CHECK(addIndicatedLed(f, led, kinds[b]));
+      CHECK(f.resolvedTrains == 2 && f.occupancy[led] == 2);
+      const unsigned priority = a > b ? a : b;
+      CHECK(isUncertainOnly(f, led) == (priority == 0));
+      CHECK(isApproachingOnly(f, led) == (priority == 1));
+    }
+  }
   printf("sizeof(TrainFrame) = %zu\n", sizeof(TrainFrame));
   printf("Phase 4G train-frame host tests: %d checks, %d failures\n", checks, failures);
   return failures ? 1 : 0;

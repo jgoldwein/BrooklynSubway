@@ -131,7 +131,9 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
   for (uint16_t i = 0; i < kFrameLedCount; ++i) {
     const bool occupied = input.occupancy[i] != 0;
     const auto &timing = input.timing[i];
-    const bool approachOverlay = timed && !occupied && timing.arrivalSecondsPlusOne;
+    const bool uncertain = config.animateTraffic && (isUncertainOnly(input, i) ||
+        (occupied && timed && elapsed > 30 && isStationLed(i) && !isApproachingOnly(input, i)));
+    const bool approachOverlay = timed && (!occupied || uncertain) && timing.arrivalSecondsPlusOne;
     const uint16_t departure = timed && !occupied ? departurePeriodMs(timing, elapsed) : 0;
     if (!occupied && !approachOverlay && !departure) continue;
 
@@ -158,6 +160,12 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
           ? StationMotion::Approaching : !occupied && departure
           ? StationMotion::Departing : StationMotion::Stopped;
       color = stationMotionColor(motion, timing, elapsed);
+    }
+    if (uncertain && !approachOverlay) {
+      // A slow 2.4-second orange pulse expresses uncertainty, never departure.
+      const uint32_t phase = config.animationTimeMs % 2400;
+      const uint8_t level = static_cast<uint8_t>((phase <= 1200 ? phase : 2400 - phase) * 255 / 1200);
+      color = scaleBrightness(Rgb{255, 96, 0}, level);
     }
     output.pixels[i] = scaleBrightness(color, config.brightness);
     ++result.renderedLeds;
