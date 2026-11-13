@@ -37,6 +37,7 @@ enum Bucket : uint8_t {
   kNotStarted,
   kSkipped,
   kFrameRejected,
+  kApproaching,
 };
 
 constexpr uint16_t kConflictBit = 0x8000;
@@ -141,6 +142,7 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &t, uint32_t feedTimestamp) 
         bucket = o.category == Category::ResolvedStation ? kStation : kSegment;
       else
         bucket = kFrameRejected;
+      if (bucket == kStation && o.approachingStation) bucket = kApproaching;
       break;
     case Category::Unrepresented: bucket = kUnrepresented; break;
     case Category::InsufficientPosition: bucket = kInsufficient; break;
@@ -168,6 +170,10 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &t, uint32_t feedTimestamp) 
 void TrainPipeline::bumpBucket(uint16_t bucket) {
   switch (bucket) {
     case kStation: bump(counters_.resolvedStation); break;
+    case kApproaching:
+      bump(counters_.resolvedStation);
+      bump(counters_.approachingStation);
+      break;
     case kSegment: bump(counters_.resolvedSegment); break;
     case kUnrepresented: bump(counters_.unrepresented); break;
     case kInsufficient: bump(counters_.insufficientPosition); break;
@@ -207,8 +213,9 @@ void TrainPipeline::finishCycle() {
     }
     add(counters_.duplicateIdentical, static_cast<uint32_t>(e.records) - 1u);
     const uint16_t bucket = static_cast<uint16_t>(e.outcome >> 9);
-    if ((bucket == kStation || bucket == kSegment) &&
-        !semantic::addValidatedLed(frame_, static_cast<uint16_t>(e.outcome & 0x1FF))) {
+    if ((bucket == kStation || bucket == kSegment || bucket == kApproaching) &&
+        !semantic::addValidatedLed(frame_, static_cast<uint16_t>(e.outcome & 0x1FF),
+                                  bucket == kApproaching)) {
       bump(counters_.frameRejected);
       continue;
     }

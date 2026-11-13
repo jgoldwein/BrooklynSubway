@@ -34,6 +34,7 @@ bool systemHealthy = true;
 uint32_t renderedFrameRevision = UINT32_MAX;
 uint8_t renderedBrightness = UINT8_MAX;
 uint32_t renderedRouteVisibilityMask = UINT32_MAX;
+bool renderedApproachingLit = true;
 brooklyn::transport::CycleResult lastCycle{};
 bool hasLastCycle = false;
 
@@ -132,17 +133,22 @@ void updateLogicalDisplay(uint32_t nowMs) {
   bool changed = false;
   const uint8_t brightness = networkService.brightness();
   const uint32_t routeVisibilityMask = networkService.routeVisibilityMask();
+  const bool approachingLit = brooklyn::semantic::approachingPhaseLit(nowMs);
   if (renderedFrameRevision != operationalDisplay.frameRevision() ||
       renderedBrightness != brightness ||
-      renderedRouteVisibilityMask != routeVisibilityMask) {
+      renderedRouteVisibilityMask != routeVisibilityMask ||
+      (operationalDisplay.frame().approachingTrains != 0 &&
+       renderedApproachingLit != approachingLit)) {
     brooklyn::semantic::RenderConfig renderConfig{};
     renderConfig.brightness = brightness;
     renderConfig.routeVisibilityMask = routeVisibilityMask;
+    renderConfig.approachingLit = approachingLit;
     brooklyn::semantic::renderTrainFrame(operationalDisplay.frame(),
                                          logicalDisplayFrame, renderConfig);
     renderedFrameRevision = operationalDisplay.frameRevision();
     renderedBrightness = brightness;
     renderedRouteVisibilityMask = routeVisibilityMask;
+    renderedApproachingLit = approachingLit;
     changed = true;
   }
   const brooklyn::display::StatusIndicators status{
@@ -331,6 +337,7 @@ void loop() {
         operationalDisplay.completeAgeMs(displayNowMs) / 1000;
   }
   webStatus.resolvedTrains = operationalDisplay.frame().resolvedTrains;
+  webStatus.approachingTrains = operationalDisplay.frame().approachingTrains;
   webStatus.occupiedLeds = operationalDisplay.frame().occupiedLeds;
   webStatus.collisionCount = operationalDisplay.frame().collisionLeds;
   networkService.setWebStatus(webStatus);

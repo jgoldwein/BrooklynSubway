@@ -20,15 +20,19 @@
 // limit.
 //
 // Policy: an occupied map LED shows its semantic route colour at the configured
-// global brightness. Occupancy count never changes the colour (no additive
-// brightness, mixing, blinking, fading or animation). Empty map LEDs and the
-// four status LEDs are black.
+// global brightness. Occupancy never adds brightness or mixes colours.
+// Approaching-only station pixels use the caller's explicit blink phase;
+// a stopped train sharing the pixel stays steady. Empty/status pixels are black.
 namespace brooklyn::semantic {
 
 using Rgb = brooklyn::led::Rgb;  // existing generic POD; not hardware-coupled
 static_assert(sizeof(Rgb) == 3, "Rgb must be three bytes");
 
 constexpr uint8_t kDefaultRenderBrightness = 64;  // ~25% of nominal; logical only
+constexpr uint32_t kApproachingHalfPeriodMs = 500;
+inline bool approachingPhaseLit(uint32_t nowMs) {
+  return (nowMs / kApproachingHalfPeriodMs) % 2 == 0;
+}
 
 struct RgbFrame {
   Rgb pixels[kFrameLedCount];  // indexed by canonical led::map global index
@@ -37,6 +41,7 @@ struct RgbFrame {
 struct RenderConfig {
   uint8_t brightness = kDefaultRenderBrightness;  // 0..255 global scale
   uint32_t routeVisibilityMask = kAllRoutesVisibleMask;
+  bool approachingLit = true;  // caller supplies 500 ms on / 500 ms off phase
 };
 
 struct RenderResult {

@@ -300,10 +300,59 @@ void testUnknownUnrepresentedUnsupported() {
   feed(f);
   gPipe.finishCycle();
   const Counters &c = gPipe.counters();
-  CHECK(c.unknownStop == 1 && c.unrepresented == 1 && c.unsupportedRoute == 1);
+  CHECK(c.unknownStop == 1 && c.unrepresented == 0 && c.unsupportedRoute == 1);
+  CHECK(c.approachingStation == 1 && c.resolvedStation == 1);
   CHECK(c.supportedVehicles == 2 && c.vehiclesSeen == 3);
-  CHECK(c.occupiedLeds == 0);
+  CHECK(c.occupiedLeds == 1 && gPipe.frame().approachingTrains == 1);
   checkInvariants();
+}
+
+void testApproachingRepresentation() {
+  // Both directions and both moving statuses resolve to the reported next
+  // station, while mixed stopped/approaching occupancy stays steady.
+  const char *stops[] = {"232N", "232S"};
+  for (const char *stop : stops) {
+    for (int status = 0; status <= 2; status += 2) {
+      begin();
+      Feed f(kNow);
+      f.vehicle("APP_2", "2", status, stop, kNow);
+      feed(f);
+      gPipe.finishCycle();
+      CHECK(gPipe.counters().approachingStation == 1);
+      const uint16_t index = firstOccupied();
+      sem::GtfsTrainState stopped{};
+      stopped.routeId = "2"; stopped.stopId = stop;
+      stopped.status = sem::GtfsVehicleStatus::StoppedAt;
+      CHECK(sem::mapGtfsTrain(stopped).resolved.globalIndex == index);
+      CHECK(sem::isApproachingOnly(gPipe.frame(), index));
+      sem::RenderConfig dark{}; dark.approachingLit = false;
+      sem::RgbFrame rgb{};
+      sem::renderTrainFrame(gPipe.frame(), rgb, dark);
+      CHECK(rgb.pixels[index].red == 0 && rgb.pixels[index].green == 0 &&
+            rgb.pixels[index].blue == 0);
+      checkInvariants();
+    }
+  }
+  begin();
+  Feed mixed(kNow);
+  mixed.vehicle("APP_2", "2", 2, "232N", kNow);
+  mixed.vehicle("STOP_2", "2", 1, "232N", kNow);
+  feed(mixed); gPipe.finishCycle();
+  CHECK(gPipe.counters().resolvedTrains == 2 && gPipe.counters().collisionLeds == 1);
+  CHECK(!sem::isApproachingOnly(gPipe.frame(), firstOccupied()));
+  begin();
+  Feed conflict(kNow);
+  conflict.vehicle("SAME_2", "2", 2, "232N", kNow);
+  feed(conflict);
+  Feed stopped(kNow);
+  stopped.vehicle("SAME_2", "2", 1, "232N", kNow);
+  feed(stopped); gPipe.finishCycle();
+  CHECK(gPipe.counters().conflictedTrips == 1 && gPipe.counters().resolvedTrains == 0);
+  begin();
+  Feed stale(kNow);
+  stale.vehicle("OLD_2", "2", 2, "232N", kNow - 1000);
+  feed(stale); gPipe.finishCycle();
+  CHECK(gPipe.counters().stale == 1 && gPipe.counters().approachingStation == 0);
 }
 
 void testH19Operational() {
@@ -813,6 +862,7 @@ int main(int argc, char **argv) {
   testMultiPixelSegmentsEndToEnd();
   testDSegmentWithKnownPreviousStop();
   testUnknownUnrepresentedUnsupported();
+  testApproachingRepresentation();
   testH19Operational();
   testPreviousStopAmbiguous();
   testStale();

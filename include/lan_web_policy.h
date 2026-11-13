@@ -67,6 +67,7 @@ struct StatusSnapshot {
   bool hasCompleteAge = false;
   uint32_t completeAgeSeconds = 0;
   uint32_t resolvedTrains = 0;
+  uint32_t approachingTrains = 0;
   uint16_t occupiedLeds = 0;
   uint16_t collisionCount = 0;
   uint32_t freeInternalHeap = 0;

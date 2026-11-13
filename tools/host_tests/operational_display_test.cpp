@@ -379,6 +379,19 @@ void testStatusOverlayAndRenderingBoundary() {
 }  // namespace
 
 int main() {
+  {
+    display::Controller controller;
+    semantic::TrainFrame frame{};
+    CHECK(semantic::addValidatedLed(frame, 0, true));
+    controller.completeCycle(frame, display::CycleQuality::Complete, 1000);
+    CHECK(semantic::isApproachingOnly(controller.frame(), 0));
+    controller.update(1000 + display::kHardStaleLimitMs);
+    CHECK(controller.state() == display::State::NoData);
+    CHECK(controller.frame().approachingTrains == 0);
+    CHECK(!semantic::isApproachingOnly(controller.frame(), 0));
+    controller.completeCycle(frame, display::CycleQuality::Partial, 302000);
+    CHECK(semantic::isApproachingOnly(controller.frame(), 0));
+  }
   printf("sizeof(OperationalDisplay::Controller)=%zu sizeof(TrainFrame)=%zu "
          "sizeof(RgbFrame)=%zu\n",
          sizeof(display::Controller), sizeof(semantic::TrainFrame),

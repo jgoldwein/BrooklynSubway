@@ -597,6 +597,7 @@ void testJsonStatusIsEscapedAndSecretFree() {
             json, sizeof(json), status, 64,
             brooklyn::semantic::kAllRoutesVisibleMask) > 0);
   CHECK(strstr(json, "\"physicalLedOutputEnabled\":false") != nullptr);
+  CHECK(strstr(json, "\"approachingTrains\":0") != nullptr);
   CHECK(strstr(json, "\"firmware\":\"Phase 4W\"") != nullptr);
   CHECK(strstr(json, "\"firmwareVersion\":\"0.2.8\"") != nullptr);
   CHECK(strstr(json, "\"otaBootConfirmed\":true") != nullptr);
