@@ -6,7 +6,8 @@
 3. Wait for fresh MTA data, sign in, and follow Enable / disable live display.
 4. Check the supply confirmation and select Enable live display.
 5. Observe route colours, steady stopped trains and blinking approaching-only
-   stations through a feed poll. Press POWER to turn the lights off.
+   stations through a feed poll. From 0.2.17, POWER toggles the lights off/on
+   within that boot's approved live session. Holding it toggles only once.
 
 Live output is capped at 16/255 brightness (about 6%), with the existing 2000 mA
 LED-load estimate budget. These are estimates, not measured current protection.
@@ -22,8 +23,10 @@ task owns live rendering; main-loop feed retrieval never owns its working
 frame. Blink phase comes from monotonic time, independent of new feed commits.
 Main-loop logical rendering remains separate. No new library dependency.
 
-The task checks raw active-low POWER independently of network polling and
-latches live output OFF. It also detects the manufactured 10-second rotary
+The task debounces active-low POWER for 30 ms independently of network polling.
+A held-at-boot button cannot enable the display. POWER pause preserves that
+boot's approval, and the next press can resume with healthy fresh data. It also
+detects the manufactured 10-second rotary
 hold, stops output, and queues Wi-Fi recovery for the main loop. The main-loop
 recovery path and diagnostic rotary recovery remain in place. The latest frame's
 commit timestamp travels with its snapshot; a stalled main loop cannot keep a
@@ -34,7 +37,17 @@ live session before using the LEDs, reconfiguring Wi-Fi or writing firmware.
 Driver/render failures stop it too. All stops send black before GPIO1 LOW;
 startup/arming reuses the existing post-enable black-frame interlock. The task
 and stop operations share one mutex; after stopping, diagnostics can own the
-backend without the task touching it. Re-enabling is always explicit.
+backend without the task touching it. These maintenance/fault stops revoke the
+POWER resume permission: re-enable from the web page. Only a POWER pause can be
+resumed with POWER; approval is never stored across a reboot.
+
+From 0.2.17, status/JSON and the serial heartbeat report successful live frame
+transmissions, occupancy/approach-data change count, last live-frame age (HTML),
+and blink-eligible LEDs. Data-change counts exclude repeated identical snapshots
+and blink phase changes. They count data received, including while paused;
+transmit counters count successful driver writes, not optical confirmation.
+Most station lights can remain steady even with fresh changing data. A stopped
+train sharing a pixel suppresses an approaching blink.
 
 `BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0` remains set: generic arm/transmit APIs
 stay locked. Only production network builds add

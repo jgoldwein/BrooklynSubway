@@ -598,9 +598,15 @@ void testJsonStatusIsEscapedAndSecretFree() {
             brooklyn::semantic::kAllRoutesVisibleMask) > 0);
   CHECK(strstr(json, "\"physicalLedOutputEnabled\":false") != nullptr);
   status.physicalLedOutputEnabled = true;
+  status.physicalFramesWritten = 42;
+  status.physicalMapChanges = 7;
+  status.physicalBlinkingLeds = 3;
   CHECK(brooklyn::web::renderStatusJson(json, sizeof(json), status, 64,
             brooklyn::semantic::kAllRoutesVisibleMask) > 0);
   CHECK(strstr(json, "\"physicalLedOutputEnabled\":true") != nullptr);
+  CHECK(strstr(json, "\"physicalFramesWritten\":42") != nullptr);
+  CHECK(strstr(json, "\"physicalMapChanges\":7") != nullptr);
+  CHECK(strstr(json, "\"physicalBlinkingLeds\":3") != nullptr);
   status.physicalLedOutputEnabled = false;
   CHECK(brooklyn::web::renderStatusJson(json, sizeof(json), status, 64,
             brooklyn::semantic::kAllRoutesVisibleMask) > 0);

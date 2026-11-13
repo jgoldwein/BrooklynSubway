@@ -1508,7 +1508,7 @@ void LanWebUi::handleLiveDisplayPage() {
       "<p>Use the verified 5 V, 3 A center-positive barrel supply. Confirm the power supply is connected "
       "and the rails and polarity have been checked. Live brightness is capped at 16/255 (about 6%%), "
       "with the existing estimated current budget. The normal brightness and route settings still apply.</p>"
-      "<p>Press POWER to switch the lights off. Output starts OFF after every reboot. Diagnostics, Wi-Fi setup, "
+      "<p>After enabling here, POWER toggles the lights off and back on. Output starts OFF after every reboot. Diagnostics, Wi-Fi setup, "
       "firmware installation, failures and data older than five minutes stop live output; enable it again explicitly.</p>"
       "<p>Stopped trains show steadily. Approaching-only station lights blink. Blink timing and POWER shutoff "
       "continue while feeds download.</p>"
@@ -1730,6 +1730,12 @@ void LanWebUi::sendLoginFailure(admin::LoginResult::Code code) {
 }
 
 void LanWebUi::updateAdminStatus(StatusSnapshot &status) {
+  const auto output = display::live::stats();
+  status.physicalPowerPaused = output.powerCanResume;
+  status.physicalFramesWritten = output.framesWritten;
+  status.physicalMapChanges = output.mapChanges;
+  status.physicalBlinkingLeds = output.blinkingLeds;
+  status.physicalFrameAgeSeconds = (millis() - output.lastWriteAtMs) / 1000;
   status.adminConfigured = auth_.configured();
   String cookieHeader = server_.header("Cookie");
   status.adminSessionActive =
