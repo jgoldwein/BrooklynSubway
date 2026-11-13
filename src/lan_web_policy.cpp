@@ -296,6 +296,12 @@ bool parseRouteSelection(const RouteSelectionParam *parameters, size_t count,
   return true;
 }
 
+size_t renderOledStatus(char *out, size_t capacity, const oled::Status &s) {
+  const int n = snprintf(out, capacity, "%s; startup address 0x%02X; active address 0x%02X; I2C code %u",
+      oled::stateName(s.state), s.requestedAddress, s.activeAddress, s.error);
+  return n > 0 && static_cast<size_t>(n) < capacity ? static_cast<size_t>(n) : 0;
+}
+
 // Compact, read-only report: counts describe the latest poll, not optical feedback.
 size_t renderBlueSummary(char *out, size_t capacity, const pipeline::BlueReport &report) {
   Writer w(out, capacity);
@@ -682,6 +688,11 @@ size_t renderHomePage(char *out, size_t capacity,
   }
   writer.append("</section>");
   writer.format("<section><h2>OLED</h2><p>Saved I2C address: 0x%02X. Default: 0x38. Reboot after changing.</p>", status.oledAddress);
+  {
+    char text[160]; renderOledStatus(text, sizeof(text), status.oledStatus);
+    writer.append("<p data-status=\"oledStatus\">"); writer.html(text); writer.append("</p>");
+    writer.append("<p class=\"muted\">Startup tries the saved address first, then 0x38/0x3C/0x3D. Active 0x00 means none. I2C: 0=OK, 1=short write, 2=NACK, 4=other, 5=timeout.</p>");
+  }
   if (status.adminSessionActive && csrfToken && csrfToken[0]) {
     writer.append("<form method=\"post\" action=\"/config/oled\"><input type=\"hidden\" name=\"csrf\" value=\"");
     writer.html(csrfToken);
@@ -866,6 +877,11 @@ size_t renderStatusJson(char *out, size_t capacity,
   appendNullableAge(writer, status.hasCompleteAge, status.completeAgeSeconds);
   writer.format(",\"approachingTrains\":%lu", static_cast<unsigned long>(status.approachingTrains));
   writer.format(",\"oledAddress\":%u", status.oledAddress);
+  {
+    char text[160]; renderOledStatus(text, sizeof(text), status.oledStatus);
+    writer.append(",\"oledStatus\":\""); writer.json(text); writer.append("\"");
+    writer.format(",\"oledActiveAddress\":%u,\"oledI2cError\":%u", status.oledStatus.activeAddress, status.oledStatus.error);
+  }
   writer.format(",\"pollSeconds\":%lu", static_cast<unsigned long>(status.pollSeconds));
   writer.format(",\"physicalFramesWritten\":%lu,\"physicalMapChanges\":%lu,"
                 "\"physicalBlinkingLeds\":%u,\"physicalPowerPaused\":%s",

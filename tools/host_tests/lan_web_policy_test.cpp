@@ -433,7 +433,7 @@ brooklyn::web::StatusSnapshot sampleStatus() {
 }
 
 void testPageEscapingAndRequiredContent() {
-  char page[12288];
+  char page[16384];
   brooklyn::web::StatusSnapshot status = sampleStatus();
   status.adminConfigured = true;
   status.adminSessionActive = true;
@@ -579,7 +579,7 @@ void testPageEscapingAndRequiredContent() {
 }
 
 void testInlineLoginOnStatusPage() {
-  static char page[12288];
+  static char page[16384];
   brooklyn::web::StatusSnapshot status{};
   status.adminConfigured = true;
   status.adminSessionActive = false;
@@ -840,6 +840,16 @@ int main() {
     CHECK(strstr(json,"NextDiff") != nullptr && strstr(json,"232N (different)") != nullptr);
     CHECK(brooklyn::web::renderHomePage(page,sizeof(page),status,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
     CHECK(strstr(page,"Why blue?") != nullptr && strstr(page,"data-status=\"blueSummary\"") != nullptr);
+  }
+  {
+    auto s = sampleStatus();
+    s.oledStatus.state = brooklyn::oled::State::Ready;
+    s.oledStatus.requestedAddress = 0x38; s.oledStatus.activeAddress = 0x3c;
+    static char page[16384], json[6144];
+    CHECK(brooklyn::web::renderHomePage(page,sizeof(page),s,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
+    CHECK(strstr(page,"Frame writes OK; startup address 0x38; active address 0x3C")!=nullptr);
+    CHECK(brooklyn::web::renderStatusJson(json,sizeof(json),s,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
+    CHECK(strstr(json,"\"oledActiveAddress\":60")!=nullptr);
   }
   testPersistentConfiguration();
   testDnsConfigurationAndValidation();

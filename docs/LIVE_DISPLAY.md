@@ -173,7 +173,7 @@ restored to 0.2.26, including its exact pipeline/frame memory layout. The Why
 blue? report and saved OLED address remain. The excess steady-blue interpretation
 is unresolved; the OLED failure is not explained by a driver-code change.
 
-## Next update: feed-ready cue
+## Feed-ready cue (0.2.29)
 
 At the first successful dim U23 feed-ready indication after boot, emit one
 100 ms, 2000 Hz, 50%-duty beep on GPIO21/BUZZER3. The U23 PWM output is on before
@@ -181,3 +181,18 @@ the beep starts. Holding DIM at boot mutes this cue along with the startup chime
 Later stale/recovery or test OFF/ON transitions do not repeat it. Failed U23 PWM
 allocation produces no ready beep; buzzer allocation failure leaves U23 working
 and GPIO21 LOW. No pin, display-rendering or OLED-address changes.
+
+## OLED detection and live diagnostics (0.2.29)
+
+The saved OLED address is a startup preference. Restore the formerly working
+fallback detection: probe that address first, then distinct 0x38, 0x3C and 0x3D
+candidates; make at most two passes, separated by 100 ms. Never rewrite the
+saved preference automatically. The OLED section shows saved, startup and active
+addresses separately. Active 0x00 means no device has been selected.
+
+The live status also distinguishes held-low bus lines, no acknowledgement,
+initialization failure, successful frame writes, runtime transfer failure and
+task-allocation failure. I2C codes: 0 success, 1 short write, 2 NACK, 4 other,
+5 timeout. These values refresh automatically without a serial connection.
+The firmware cannot optically verify the image, so Frame writes OK only confirms
+communication. Pin ownership and startup isolation remain unchanged.
