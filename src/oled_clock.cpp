@@ -6,10 +6,10 @@
 #include <U8g2lib.h>
 namespace brooklyn::oled {
 namespace {
-U8G2_SSD1309_128X64_NONAME0_F_HW_I2C screen(U8G2_R0, U8X8_PIN_NONE,
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C screen(U8G2_R0, U8X8_PIN_NONE,
     pins::I2C_SCL, pins::I2C_SDA);
 TaskHandle_t clockTask = nullptr;
-uint8_t address = 0;
+constexpr uint8_t address = 0x3c; // Matches the working ESPHome configuration.
 void draw(const char *clock) {
   screen.clearBuffer();
   screen.setFont(u8g2_font_6x12_tf);
@@ -50,16 +50,12 @@ void run(void *) {
     Serial.println("OLED clock: SDA/SCL held LOW; OLED skipped, map continues");
     vTaskDelete(nullptr); return;
   }
-  const uint8_t candidates[] = {0x3c, 0x3d};
-  for (uint8_t candidate : candidates) {
-    Wire.beginTransmission(candidate);
-    if (Wire.endTransmission() == 0) { address = candidate; break; }
-  }
-  if (!address) {
-    Serial.println("OLED clock: absent at 0x3C/0x3D; map continues");
+  Wire.beginTransmission(address);
+  if (Wire.endTransmission() != 0) {
+    Serial.println("OLED clock: absent at 0x3C; map continues");
     vTaskDelete(nullptr); return;
   }
-  Serial.printf("OLED clock: address 0x%02X acknowledged; initializing SSD1309\n", address);
+  Serial.printf("OLED clock: address 0x%02X acknowledged; initializing SSD1306 128x64\n", address);
   screen.setI2CAddress(address * 2);
   screen.setBusClock(100000);
   screen.getU8x8()->byte_cb = boundedI2c;

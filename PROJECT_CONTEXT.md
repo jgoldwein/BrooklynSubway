@@ -137,8 +137,9 @@ U22 is a four-pin OLED header:
 4. SDA = GPIO8
 
 User confirmed on 2026-11-13: 2.42-inch SSD1309 128x64, four-pin IIC/I2C module.
-Firmware uses the SSD1309 driver on the manufactured GPIO8/9 header; probes
-0x3C then 0x3D. No separate reset pin is wired.
+User subsequently supplied a working ESPHome configuration for the same display:
+SSD1306 128x64 at 0x3C, updating every second. From 0.2.23 firmware uses that
+proven initialization profile on GPIO8/9. No separate reset pin is wired.
 
 ## USB / programming
 
