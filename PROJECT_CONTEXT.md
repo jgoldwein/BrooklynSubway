@@ -156,6 +156,30 @@ visually confirmed the OLED working on 0.2.29 and confirmed all beeps correct.
 A CPU-only reset does not remove OLED power. Keep this verified baseline;
 the excess steady-blue MTA interpretation remains a separate unresolved issue.
 
+Independent address verification on 2026-11-13 used a temporary Wire-only
+scanner on GPIO8 SDA / GPIO9 SCL at 100 kHz, probing 7-bit addresses 0x08-0x77
+without OLED initialization or saved settings. Repeated scans with the OLED
+connected acknowledged only 0x3C (write-address byte 0x78); 0x38 and 0x3D did
+not acknowledge. After the user removed power and unplugged the OLED, repeated
+control scans found no devices. Both tests had idle SDA/SCL HIGH and no other
+bus errors. This independently establishes the module's actual address as
+0x3C, regardless of the saved preferred address 0x38. Logs are in ignored
+captures/i2c-oled-connected.txt and captures/i2c-oled-disconnected.txt.
+The verified original 0.2.29 application was restored after the scan, retaining
+NVS settings; the LAN status confirmed 0.2.29 and Fresh data with OLED unplugged.
+
+
+## Station confidence revision prepared after 0.2.29
+
+The 0.2.30 source uses steady dim amber for uncertain STOPPED_AT reports,
+without the withdrawn 0.2.27 pulsing policy. Blue requires a matching arrival
+within the last 30 seconds, vehicle age <=90 seconds and feed/prediction age
+<=60 seconds. Shared-pixel priority is recent matching stop, approach, uncertain.
+Matching recent reports are still feed evidence, not independent dwell proof.
+Four fresh NQRW captures 30 seconds apart confirmed stop changes while status
+remained STOPPED_AT; replay still yields 16-20 blue and 1-3 amber map LEDs per
+snapshot. Do not promise that all blue lights should disappear. OLED and beeps
+are unchanged. See docs/RELEASE_0.2.30.md for scope and validation.
 
 ## USB / programming
 

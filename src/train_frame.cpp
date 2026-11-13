@@ -42,6 +42,7 @@ namespace {
 
 FrameAdd countLed(TrainFrame &frame, uint16_t globalIndex) {
   frame.approachingOnly[globalIndex / 8] &= ~(uint8_t{1} << (globalIndex % 8));
+  frame.uncertainOnly[globalIndex / 8] &= ~(uint8_t{1} << (globalIndex % 8));
   uint8_t &count = frame.occupancy[globalIndex];
   if (frame.resolvedTrains < 0xFFFFFFFFu) ++frame.resolvedTrains;
   if (count == 0) {
@@ -96,10 +97,26 @@ bool addValidatedLed(TrainFrame &frame, uint16_t globalIndex, bool approaching) 
   if (!led::map::physicalLed(led::GlobalPhysicalIndex{globalIndex}, phys)) return false;
   if (phys.role != led::LedRole::Map) return false;
   const bool blink = approaching &&
-      (frame.occupancy[globalIndex] == 0 || isApproachingOnly(frame, globalIndex));
+      (frame.occupancy[globalIndex] == 0 || isApproachingOnly(frame, globalIndex) ||
+       isUncertainOnly(frame, globalIndex));
   countLed(frame, globalIndex);
   if (blink) frame.approachingOnly[globalIndex / 8] |= uint8_t{1} << (globalIndex % 8);
   if (approaching && frame.approachingTrains != UINT32_MAX) ++frame.approachingTrains;
+  return true;
+}
+
+bool isUncertainOnly(const TrainFrame &frame, uint16_t globalIndex) {
+  return globalIndex < kFrameLedCount &&
+      (frame.uncertainOnly[globalIndex / 8] & (uint8_t{1} << (globalIndex % 8))) != 0;
+}
+
+bool addUncertainLed(TrainFrame &frame, uint16_t globalIndex) {
+  if (globalIndex >= kFrameLedCount) return false;
+  const bool uncertain = !frame.occupancy[globalIndex] || isUncertainOnly(frame, globalIndex);
+  const bool approaching = isApproachingOnly(frame, globalIndex);
+  if (!addValidatedLed(frame, globalIndex)) return false;
+  if (approaching) frame.approachingOnly[globalIndex / 8] |= uint8_t{1} << (globalIndex % 8);
+  if (uncertain) frame.uncertainOnly[globalIndex / 8] |= uint8_t{1} << (globalIndex % 8);
   return true;
 }
 

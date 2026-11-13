@@ -90,6 +90,7 @@ struct PredictionEntry {
   char stop[4];
   semantic::Route route;
   bool conflict;
+  bool hasArrival;
 };
 
 // All counters saturate and never wrap. After finishCycle() every vehicle
