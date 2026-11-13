@@ -5,7 +5,7 @@
    polarity checks must have passed. USB may remain connected for serial logs.
 3. Wait for fresh MTA data, sign in, and follow Enable / disable live display.
 4. Check the supply confirmation and select Enable live display.
-5. Observe route colours, steady stopped trains and blinking approaching-only
+5. Observe route colours, steady stopped trains and pulsing approach/departure
    stations through a feed poll. From 0.2.17, POWER toggles the lights off/on
    within that boot's approved live session. Holding it toggles only once.
 
@@ -22,6 +22,12 @@ under a mutex and renders the route colours at the physical cap. The output
 task owns live rendering; main-loop feed retrieval never owns its working
 frame. Blink phase comes from monotonic time, independent of new feed commits.
 Main-loop logical rendering remains separate. No new library dependency.
+
+From 0.2.18, approach pulses speed up using predicted arrival times. Previous
+stations can show a short trail that slows and clears within 30 seconds. These
+are estimated movement cues, not measured distance; overlays do not add trains.
+Missing/stalled predictions use a fixed blink. STOPPED_AT stays steady. Set the
+MTA update wait on the signed-in status page (15-120 seconds; default 15).
 
 The task debounces active-low POWER for 30 ms independently of network polling.
 A held-at-boot button cannot enable the display. POWER pause preserves that

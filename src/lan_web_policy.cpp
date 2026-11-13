@@ -518,9 +518,11 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<dt>Approaching trains (included above)</dt><dd>%lu</dd>"
                 "<dt>Occupied LEDs</dt><dd>%u</dd>"
                 "<dt>Collision count</dt><dd>%u</dd></dl>"
-                "<p>Steady station light: train reported stopped. Blinking station light: "
-                "train approaching where no segment LED is mapped. A stopped train sharing "
-                "the light takes priority. Multiple trains do not increase brightness.</p></section>"
+                "<p>Steady station light: train reported stopped. Approach blinking speeds up "
+                "using arrival predictions (about 0.5 to 3 blinks/second). A departure trail slows "
+                "and clears within 30 seconds. These are estimated movement cues, not measured distance. "
+                "Missing or stalled predictions use a fixed blink. A stopped train sharing a light "
+                "takes priority; extra indicators do not add trains or brightness.</p></section>"
                 "<section><h2>Network diagnostics</h2><dl>"
                 "<dt>Diagnostic run</dt><dd>%s</dd>"
                 "<dt>NTP DNS</dt><dd>%s",
@@ -628,6 +630,16 @@ size_t renderHomePage(char *out, size_t capacity,
   writer.append("<p class=\"muted\">Logical display setting. Enable physical output "
                 "separately under Live display; its brightness cap is 16/255."
                 "</p></section>");
+  writer.format("<section><h2>MTA update interval</h2><p>Wait after each completed download cycle: %lu seconds. "
+                "Downloads add to the total interval. MTA feeds are typically generated about every 30 seconds; "
+                "faster checks can return identical data.</p>", static_cast<unsigned long>(status.pollSeconds));
+  if (status.adminSessionActive && csrfToken && csrfToken[0]) {
+    writer.append("<form method=\"post\" action=\"/config/poll\"><input type=\"hidden\" name=\"csrf\" value=\"");
+    writer.html(csrfToken);
+    writer.format("\"><label>Seconds <input type=\"number\" name=\"seconds\" min=\"15\" max=\"120\" value=\"%lu\" required></label>"
+                  "<button>Save update interval</button></form>", static_cast<unsigned long>(status.pollSeconds));
+  }
+  writer.append("</section>");
   uint8_t visibleRoutes = 0;
   for (uint8_t route = 1; route <= semantic::kRouteCount; ++route) {
     if ((routeVisibilityMask & (uint32_t{1} << (route - 1))) != 0) {
@@ -791,6 +803,7 @@ size_t renderStatusJson(char *out, size_t capacity,
   writer.append(",\"completeAgeSeconds\":");
   appendNullableAge(writer, status.hasCompleteAge, status.completeAgeSeconds);
   writer.format(",\"approachingTrains\":%lu", static_cast<unsigned long>(status.approachingTrains));
+  writer.format(",\"pollSeconds\":%lu", static_cast<unsigned long>(status.pollSeconds));
   writer.format(",\"physicalFramesWritten\":%lu,\"physicalMapChanges\":%lu,"
                 "\"physicalBlinkingLeds\":%u,\"physicalPowerPaused\":%s",
                 static_cast<unsigned long>(status.physicalFramesWritten),

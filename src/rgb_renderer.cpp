@@ -72,13 +72,34 @@ Rgb scaleBrightness(Rgb color, uint8_t brightness) {
              static_cast<uint8_t>((color.blue * b + 127) / 255)};
 }
 
+uint16_t approachPeriodMs(const StationTiming &timing, uint32_t elapsedSeconds) {
+  if (!timing.arrivalSecondsPlusOne || timing.arrivalSecondsPlusOne == UINT16_MAX ||
+      timing.movementAgeSeconds + elapsedSeconds > 90) return 1000;
+  const uint32_t eta = timing.arrivalSecondsPlusOne - 1;
+  const uint32_t remaining = eta > elapsedSeconds ? eta - elapsedSeconds : 0;
+  return remaining <= 15 ? 334 : remaining <= 30 ? 500 : remaining <= 60 ? 1000 : 2000;
+}
+
+uint16_t departurePeriodMs(const StationTiming &timing, uint32_t elapsedSeconds) {
+  if (!timing.departureAgePlusOne) return 0;
+  const uint32_t age = timing.departureAgePlusOne - 1 + elapsedSeconds;
+  return age < 10 ? 500 : age < 20 ? 1000 : age < 30 ? 2000 : 0;
+}
+
 RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
                               const RenderConfig &config) {
   memset(&output, 0, sizeof output);
   RenderResult result{};
+  const bool timed = config.animateTraffic && input.animationEpochUnix &&
+                     config.nowUnix >= input.animationEpochUnix;
+  const uint32_t elapsed = timed ? config.nowUnix - input.animationEpochUnix : 0;
 
   for (uint16_t i = 0; i < kFrameLedCount; ++i) {
-    if (input.occupancy[i] == 0) continue;
+    const bool occupied = input.occupancy[i] != 0;
+    const auto &timing = input.timing[i];
+    const bool approachOverlay = timed && !occupied && timing.arrivalSecondsPlusOne;
+    const uint16_t departure = timed && !occupied ? departurePeriodMs(timing, elapsed) : 0;
+    if (!occupied && !approachOverlay && !departure) continue;
 
     const MapLed *semantic = nullptr;
     if (!mapIdentityValid(i, semantic)) {
@@ -91,7 +112,11 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
       continue;
     }
     if (!routeVisible(config.routeVisibilityMask, semantic->route)) continue;
-    if (!config.approachingLit && isApproachingOnly(input, i)) continue;
+    if (isApproachingOnly(input, i) || approachOverlay) {
+      const uint16_t period = approachPeriodMs(timing, elapsed);
+      const bool lit = timed ? config.animationTimeMs % period < period / 2 : config.approachingLit;
+      if (!lit) continue;
+    } else if (!occupied && departure && config.animationTimeMs % departure >= departure / 2) continue;
 
     output.pixels[i] = scaleBrightness(nominalRouteColor(semantic->route), config.brightness);
     ++result.renderedLeds;

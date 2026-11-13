@@ -209,6 +209,7 @@ void LanWebUi::registerRoutes() {
              [this]() { handleRunNetworkDiagnostics(); });
   server_.on("/config/brightness", HTTP_POST,
              [this]() { handleBrightness(); });
+  server_.on("/config/poll", HTTP_POST, [this]() { handlePollInterval(); });
   server_.on("/config/dns", HTTP_POST, [this]() { handleDnsSettings(); });
   server_.on("/config/routes", HTTP_POST, [this]() { handleRoutes(); });
   server_.on("/wifi/setup", HTTP_GET,
@@ -387,6 +388,19 @@ void LanWebUi::handleRunNetworkDiagnostics() {
   networkDiagnosticsRequested_ = true;
   server_.sendHeader("Cache-Control", "no-store");
   server_.send(202, "application/json", "{\"state\":\"accepted\"}");
+}
+
+void LanWebUi::handlePollInterval() {
+  if (!authorizeRequest(true)) return;
+  const String text = server_.arg("seconds");
+  uint32_t seconds = 0;
+  if (server_.args() != 2 || !hasNoEmbeddedNull(text) ||
+      !config::parsePollSeconds(text.c_str(), seconds)) {
+    server_.send(400, "text/plain", "Choose 15 to 120 seconds"); return;
+  }
+  if (!configuration_.setPollSeconds(seconds)) { server_.send(500, "text/plain", "Could not save interval"); return; }
+  Serial.printf("MTA poll wait: %lu seconds after each completed cycle\n", static_cast<unsigned long>(seconds));
+  server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "Interval saved");
 }
 
 void LanWebUi::handleBrightness() {
@@ -1510,7 +1524,8 @@ void LanWebUi::handleLiveDisplayPage() {
       "with the existing estimated current budget. The normal brightness and route settings still apply.</p>"
       "<p>After enabling here, POWER toggles the lights off and back on. Output starts OFF after every reboot. Diagnostics, Wi-Fi setup, "
       "firmware installation, failures and data older than five minutes stop live output; enable it again explicitly.</p>"
-      "<p>Stopped trains show steadily. Approaching-only station lights blink. Blink timing and POWER shutoff "
+      "<p>Stopped trains show steadily. Arrival estimates speed up the next station's blink; a short departure trail slows down. "
+      "These are estimated cues, not measured distance. Missing/stalled predictions use a fixed blink. Blink timing and POWER shutoff "
       "continue while feeds download.</p>"
       "<form method=\"post\" action=\"/live-display/set\"><input type=\"hidden\" name=\"csrf\" value=\"%s\">"
       "<input type=\"hidden\" name=\"action\" value=\"enable\">"
@@ -1730,6 +1745,7 @@ void LanWebUi::sendLoginFailure(admin::LoginResult::Code code) {
 }
 
 void LanWebUi::updateAdminStatus(StatusSnapshot &status) {
+  status.pollSeconds = configuration_.pollSeconds();
   const auto output = display::live::stats();
   status.physicalPowerPaused = output.powerCanResume;
   status.physicalFramesWritten = output.framesWritten;

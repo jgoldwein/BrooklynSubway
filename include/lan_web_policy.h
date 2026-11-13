@@ -32,6 +32,7 @@ class ServerOwnership {
 
 struct StatusSnapshot {
   uint32_t uptimeSeconds = 0;
+  uint32_t pollSeconds = 15;
   char deviceName[33] = {};
   char target[48] = {};
   char resetReason[24] = {};

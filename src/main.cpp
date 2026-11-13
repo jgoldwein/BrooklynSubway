@@ -6,6 +6,7 @@
 #include "diagnostics.h"
 #include "display_output.h"
 #include "live_display.h"
+#include <time.h>
 #include "hardware.h"
 #include "led_engine.h"
 #include "led_backend.h"
@@ -187,6 +188,8 @@ void updateLogicalDisplay(uint32_t nowMs) {
       snapshot.routeMask = routeVisibilityMask;
       snapshot.brightness = brightness;
       snapshot.hasFrame = operationalDisplay.hasFrame();
+      snapshot.clockUnix = static_cast<uint32_t>(time(nullptr));
+      snapshot.clockAtMs = nowMs;
       brooklyn::display::live::publish(snapshot);
     }
     previousStatus = status;

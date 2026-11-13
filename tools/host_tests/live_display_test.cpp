@@ -50,9 +50,9 @@ int main() {
   c.service(0, false, false, ops);
   CHECK(arms == 1 && writes == 1 && lit(0));
   // No main-loop publishes during a simulated network stall: worker still blinks.
-  c.service(499, false, false, ops); CHECK(writes == 1);
-  c.service(500, false, false, ops); CHECK(writes == 2 && !lit(0));
-  c.service(1000, false, false, ops); CHECK(writes == 3 && lit(0));
+  c.service(499, false, false, ops); CHECK(writes == 2);
+  c.service(520, false, false, ops); CHECK(writes == 3 && !lit(0));
+  c.service(1000, false, false, ops); CHECK(writes == 4 && lit(0));
   c.service(1020, true, false, ops);
   CHECK(c.enabled());  // Debounce before toggling; a hold must not repeat.
   c.service(1050, true, false, ops);

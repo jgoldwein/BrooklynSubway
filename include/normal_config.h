@@ -17,6 +17,7 @@ constexpr const char *kNvsNamespace = "bkmap_cfg";
 constexpr const char *kBrightnessKey = "brightness";
 constexpr const char *kRouteVisibilityMaskKey = "route_mask";
 constexpr const char *kDnsOverrideKey = "dns_ovr";
+constexpr const char *kPollIntervalKey = "poll_sec";
 
 struct Store {
   void *context;
@@ -26,6 +27,8 @@ struct Store {
   bool (*saveRouteVisibilityMask)(void *context, uint32_t value);
   bool (*loadDnsOverride)(void *context, bool &enabled, uint32_t &ipv4);
   bool (*saveDnsOverride)(void *context, bool enabled, uint32_t ipv4);
+  bool (*loadPollSeconds)(void *context, uint32_t &value);
+  bool (*savePollSeconds)(void *context, uint32_t value);
 };
 
 class DeviceConfiguration {
@@ -34,6 +37,8 @@ class DeviceConfiguration {
 
   bool load();
   bool setBrightness(uint8_t brightness);
+  bool setPollSeconds(uint32_t seconds);
+  uint32_t pollSeconds() const { return pollSeconds_; }
   bool setRouteVisibilityMask(uint32_t mask);
   bool setDnsOverride(bool enabled, uint32_t ipv4);
   uint8_t brightness() const { return brightness_; }
@@ -43,6 +48,7 @@ class DeviceConfiguration {
 
  private:
   Store store_;
+  uint32_t pollSeconds_ = 15;
   uint8_t brightness_ = kDefaultBrightness;
   uint32_t routeVisibilityMask_ = kDefaultRouteVisibilityMask;
   bool dnsOverrideEnabled_ = false;
@@ -50,6 +56,7 @@ class DeviceConfiguration {
 };
 
 bool parseDnsIpv4(const char *text, uint32_t &ipv4);
+bool parsePollSeconds(const char *text, uint32_t &seconds);
 bool validDnsIpv4(uint32_t ipv4);
 size_t formatDnsIpv4(uint32_t ipv4, char *out, size_t capacity);
 

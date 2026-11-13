@@ -284,6 +284,35 @@ int main() {
     CHECK(!addValidatedLed(tf, 306, true));
     CHECK(!isApproachingOnly(tf, 306));
   }
+  {
+    StationTiming t{};
+    t.arrivalSecondsPlusOne = 121;
+    CHECK(approachPeriodMs(t, 0) == 2000);
+    CHECK(approachPeriodMs(t, 60) == 1000);
+    CHECK(approachPeriodMs(t, 90) == 500);
+    t.arrivalSecondsPlusOne = 16;
+    CHECK(approachPeriodMs(t, 0) == 334);
+    CHECK(approachPeriodMs(t, 91) == 1000); // stalled data does not keep accelerating
+    t.departureAgePlusOne = 1;
+    CHECK(departurePeriodMs(t, 0) == 500);
+    CHECK(departurePeriodMs(t, 10) == 1000);
+    CHECK(departurePeriodMs(t, 20) == 2000);
+    CHECK(departurePeriodMs(t, 30) == 0);
+    TrainFrame f{}; clearFrame(f);
+    const uint16_t index = kMapLeds[0].globalOrder;
+    f.animationEpochUnix = 1000;
+    f.timing[index].departureAgePlusOne = 1;
+    RenderConfig c = cfg(64); c.animateTraffic = true; c.nowUnix = 1000;
+    RgbFrame r{};
+    c.animationTimeMs = 0; renderTrainFrame(f, r, c); CHECK(!black(r.pixels[index]));
+    c.animationTimeMs = 300; renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
+    c.nowUnix = 1030; c.animationTimeMs = 0;
+    renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
+    CHECK(addValidatedLed(f, index));
+    c.animationTimeMs = 300;
+    renderTrainFrame(f, r, c); CHECK(!black(r.pixels[index])); // stopped wins
+    CHECK(f.resolvedTrains == 1);
+  }
   printf("Phase 4H RGB renderer host tests: %d checks, %d failures\n", checks, failures);
   return failures == 0 ? 0 : 1;
 }

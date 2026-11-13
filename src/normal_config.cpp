@@ -8,6 +8,7 @@
 namespace brooklyn::config {
 
 bool DeviceConfiguration::load() {
+  pollSeconds_ = 15;
   brightness_ = kDefaultBrightness;
   routeVisibilityMask_ = kDefaultRouteVisibilityMask;
   dnsOverrideEnabled_ = false;
@@ -15,6 +16,8 @@ bool DeviceConfiguration::load() {
   bool loaded = false;
 
   uint32_t stored = 0;
+  if (store_.loadPollSeconds && store_.loadPollSeconds(store_.context, stored) &&
+      stored >= 15 && stored <= 120) { pollSeconds_ = stored; loaded = true; }
   if (store_.loadBrightness != nullptr &&
       store_.loadBrightness(store_.context, stored) && stored <= 255) {
     brightness_ = static_cast<uint8_t>(stored);
@@ -36,6 +39,25 @@ bool DeviceConfiguration::load() {
     loaded = true;
   }
   return loaded;
+}
+
+bool DeviceConfiguration::setPollSeconds(uint32_t seconds) {
+  if (seconds < 15 || seconds > 120 || !store_.savePollSeconds ||
+      !store_.savePollSeconds(store_.context, seconds)) return false;
+  pollSeconds_ = seconds;
+  return true;
+}
+
+bool parsePollSeconds(const char *text, uint32_t &seconds) {
+  if (!text || !*text) return false;
+  uint32_t value = 0;
+  for (const char *p = text; *p; ++p) {
+    if (*p < '0' || *p > '9' || value > 120) return false;
+    value = value * 10 + (*p - '0');
+  }
+  if (value < 15 || value > 120) return false;
+  seconds = value;
+  return true;
 }
 
 bool DeviceConfiguration::setBrightness(uint8_t brightness) {

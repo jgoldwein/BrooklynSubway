@@ -29,6 +29,36 @@
   Serial diagnostics report station, approaching, segment, unrepresented,
   insufficient, unknown-stop and stale counts for each cycle.
 
+From 0.2.18, the pipeline also reads TripUpdate predictions in a bounded first
+pass, then streams VehiclePositions as before. Matching uses the same trip hash
+pair, normalized route and exact next-platform stop. Conflicting predictions are
+discarded; unknown, canceled, ambiguous and stale position handling is unchanged.
+The prediction table is reused per feed and has an overflow counter.
+
+The next station's estimated approach rate is 0.5 Hz beyond 60 seconds, 1 Hz at
+31-60 seconds, 2 Hz at 16-30 seconds and about 3 Hz at 0-15 seconds. Missing or
+old movement evidence uses the existing fixed 1 Hz blink. Predictions never
+declare arrival: STOPPED_AT remains authoritative for a steady station light.
+After 90 seconds without detected movement, the rate stops accelerating.
+
+A uniquely identified previous station can carry a departure trail: 2 Hz for
+the first 10 seconds, 1 Hz for the next 10, then 0.5 Hz until 30 seconds, when it
+clears. Age uses MTA's last-detected-movement timestamp, not measured distance
+or a confirmed departure timestamp. Both station cues are estimates selected by
+Joel. Stopped occupancy wins, route visibility applies, and overlays never add
+to resolved train counts. A mapped segment may remain visible too.
+
+Station timing occupies four bytes per physical index. TrainFrame grows from
+372 to 1600 bytes and TrainPipeline to 43,640 bytes; production static RAM grows
+by about 32 KiB. No per-feed heap or second raw feed buffer is added. Live
+rendering runs at up to 25 frames/second in its existing output task to support
+variable pulse rates, retaining brightness/current caps and POWER behavior.
+
+The authenticated MTA update interval control persists a 15-120 second wait
+after cycle completion, default 15 seconds. Download duration adds to the
+effective interval; cycles never overlap. Older settings migrate without
+changing Wi-Fi, routes, brightness or administrator credentials.
+
 Physical live output starts OFF and can be enabled explicitly from the signed-in
 Live display page in 0.2.16. See LIVE_DISPLAY.md for limits and shutoff behavior.
 GPIO, board files and the existing brightness/current limits do not change.

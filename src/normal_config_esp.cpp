@@ -21,6 +21,21 @@ bool loadBrightness(void *, uint32_t &value) {
   return value != UINT32_MAX;
 }
 
+bool loadPollSeconds(void *, uint32_t &value) {
+  Preferences prefs;
+  if (!prefs.begin(kNvsNamespace, true)) return false;
+  value = prefs.getUInt(kPollIntervalKey, UINT32_MAX);
+  prefs.end();
+  return value != UINT32_MAX;
+}
+bool savePollSeconds(void *, uint32_t value) {
+  Preferences prefs;
+  if (!prefs.begin(kNvsNamespace, false)) return false;
+  const size_t written = prefs.putUInt(kPollIntervalKey, value);
+  prefs.end();
+  return written == sizeof(value);
+}
+
 bool saveBrightness(void *, uint8_t value) {
   Preferences prefs;
   if (!prefs.begin(kNvsNamespace, false)) return false;
@@ -88,7 +103,7 @@ bool saveDnsOverride(void *, bool enabled, uint32_t ipv4) {
 
 Store nvsStore() {
   return {nullptr, loadBrightness, saveBrightness, loadRouteVisibilityMask,
-          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride};
+          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPollSeconds, savePollSeconds};
 }
 
 }  // namespace brooklyn::config
@@ -101,6 +116,8 @@ namespace {
 
 bool loadBrightness(void *, uint32_t &) { return false; }
 bool saveBrightness(void *, uint8_t) { return false; }
+bool loadPollSeconds(void *, uint32_t &) { return false; }
+bool savePollSeconds(void *, uint32_t) { return false; }
 bool loadRouteVisibilityMask(void *, uint32_t &) { return false; }
 bool saveRouteVisibilityMask(void *, uint32_t) { return false; }
 bool loadDnsOverride(void *, bool &, uint32_t &) { return false; }
@@ -110,7 +127,7 @@ bool saveDnsOverride(void *, bool, uint32_t) { return false; }
 
 Store nvsStore() {
   return {nullptr, loadBrightness, saveBrightness, loadRouteVisibilityMask,
-          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride};
+          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPollSeconds, savePollSeconds};
 }
 
 }  // namespace brooklyn::config

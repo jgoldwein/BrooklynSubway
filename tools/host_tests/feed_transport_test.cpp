@@ -671,7 +671,7 @@ void testConfig() {
   }
   CHECK(net::kFeedBufferCapacity == 524288);
   CHECK(net::kFeedBufferCapacity > 239678u * 2);
-  CHECK(net::kDefaultPollIntervalMs == 30000);
+  CHECK(net::kDefaultPollIntervalMs == 15000);
   CHECK(!net::kDefaultNetworkConfig.enabled);  // network OFF by default
   CHECK(!net::kDefaultNetworkConfig.acceptUnknownLength);
   CHECK(net::kMinValidUnixTime == 1767225600u);

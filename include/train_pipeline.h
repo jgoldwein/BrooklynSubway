@@ -66,14 +66,29 @@ static_assert(kMaxTrackedTrips < kTripTableSlots, "table must never fill complet
 uint32_t tripHashPrimary(const char *tripId);
 uint32_t tripHashSecondary(const char *tripId);
 
-// One tracked trip: 12 B. h1 == 0 marks an empty slot.
+// One tracked trip: 20 B, including bounded timing evidence. h1 == 0 marks an empty slot.
+struct MotionEvidence {
+  uint16_t arrivalSecondsPlusOne;
+  uint16_t departureLedPlusOne;
+  uint16_t approachLedPlusOne;
+  uint8_t movementAgeSeconds;
+  uint8_t departureAgePlusOne;
+};
 struct TripEntry {
   uint32_t h1;
   uint32_t h2;
   uint16_t outcome;  // packed Outcome + map LED; top bit = conflict
   uint16_t records;  // VehiclePosition records seen for this trip (saturating)
+  MotionEvidence motion;
 };
-static_assert(sizeof(TripEntry) == 12, "TripEntry layout");
+static_assert(sizeof(TripEntry) == 20, "TripEntry layout");
+
+struct PredictionEntry {
+  uint32_t h1, h2, arrival;
+  char stop[4];
+  semantic::Route route;
+  bool conflict;
+};
 
 // All counters saturate and never wrap. After finishCycle() every vehicle
 // record delivered to the pipeline (`vehiclesSeen`) lands in exactly one
@@ -89,7 +104,8 @@ struct Counters {
   uint32_t vehiclesSeen;         // VehiclePosition records with a trip_id
   uint32_t supportedVehicles;    // subset of vehiclesSeen whose route is on the map
   uint32_t malformedEntities;    // damaged entities / vehicles without trip_id
-  uint32_t tripUpdatesIgnored;   // TripUpdate entities (not decoded)
+  uint32_t tripUpdatesIgnored;   // legacy name: not position records; prediction pass may use them
+  uint32_t predictionCapacityOverflow;
   // Categories
   uint32_t resolvedStation;
   uint32_t approachingStation;  // subset of resolvedStation, next-stop fallback
@@ -147,14 +163,16 @@ class TrainPipeline {
 
   // Internal: one decoded VehiclePosition.
   void onVehicle(const gtfsrt::RtTrain &train, uint32_t feedTimestamp);
+  void onPrediction(const gtfsrt::RtTrain &train);
 
  private:
-  void record(const char *tripId, uint16_t outcome);
+  void record(const char *tripId, uint16_t outcome, const MotionEvidence &motion);
   void bumpBucket(uint16_t bucket);
 
   semantic::TrainFrame frame_;
   semantic::RgbFrame rgb_;
   TripEntry trips_[kTripTableSlots];
+  PredictionEntry predictions_[kTripTableSlots];  // reused per feed, not per cycle
   Counters counters_;
   uint32_t nowUnix_;
   uint16_t tracked_;

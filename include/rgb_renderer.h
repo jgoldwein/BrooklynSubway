@@ -42,6 +42,9 @@ struct RenderConfig {
   uint8_t brightness = kDefaultRenderBrightness;  // 0..255 global scale
   uint32_t routeVisibilityMask = kAllRoutesVisibleMask;
   bool approachingLit = true;  // caller supplies 500 ms on / 500 ms off phase
+  bool animateTraffic = false;
+  uint32_t nowUnix = 0;
+  uint32_t animationTimeMs = 0;
 };
 
 struct RenderResult {
@@ -58,6 +61,8 @@ Rgb nominalRouteColor(Route route);
 
 // (component * brightness + 127) / 255 per component; 0 -> black, 255 -> unchanged.
 Rgb scaleBrightness(Rgb color, uint8_t brightness);
+uint16_t approachPeriodMs(const StationTiming &timing, uint32_t elapsedSeconds);
+uint16_t departurePeriodMs(const StationTiming &timing, uint32_t elapsedSeconds);
 
 // Clears `output`, then paints every valid occupied, visible map LED. Hidden
 // routes remain in `input`; visibility affects only this final RGB rendering.

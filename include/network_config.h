@@ -43,7 +43,7 @@ constexpr size_t kFeedCount = sizeof(kFeeds) / sizeof(kFeeds[0]);
 constexpr size_t kFeedBufferCapacity = 512u * 1024u;
 
 // MTA feeds refresh roughly every 30 s; polling faster only repeats data.
-constexpr uint32_t kDefaultPollIntervalMs = 30000;
+constexpr uint32_t kDefaultPollIntervalMs = 15000;
 constexpr uint32_t kMinPollIntervalMs = 15000;
 
 // Unix time before which the system clock is considered unset (2026-01-01 UTC).
