@@ -258,6 +258,32 @@ int main() {
     CHECK(memcmp(&a, &b, sizeof a) == 0);
   }
 
+  // Blink is explicit renderer input, and stopped occupancy wins in either order.
+  {
+    CHECK(approachingPhaseLit(0) && approachingPhaseLit(499));
+    CHECK(!approachingPhaseLit(500) && !approachingPhaseLit(999));
+    CHECK(approachingPhaseLit(1000));
+    const uint16_t index = kMapLeds[0].globalOrder;
+    TrainFrame tf; clearFrame(tf);
+    RgbFrame on, off;
+    RenderConfig light = cfg(64), dark = cfg(64);
+    dark.approachingLit = false;
+    CHECK(addValidatedLed(tf, index, true));
+    CHECK(isApproachingOnly(tf, index) && tf.approachingTrains == 1);
+    renderTrainFrame(tf, on, light);
+    renderTrainFrame(tf, off, dark);
+    CHECK(!black(on.pixels[index]) && black(off.pixels[index]));
+    CHECK(addValidatedLed(tf, index));
+    CHECK(!isApproachingOnly(tf, index));
+    renderTrainFrame(tf, off, dark);
+    CHECK(!black(off.pixels[index]));
+    clearFrame(tf);
+    CHECK(addValidatedLed(tf, index));
+    for (unsigned i = 0; i < 300; ++i) CHECK(addValidatedLed(tf, index, true));
+    CHECK(!isApproachingOnly(tf, index) && tf.occupancy[index] == 255);
+    CHECK(!addValidatedLed(tf, 306, true));
+    CHECK(!isApproachingOnly(tf, 306));
+  }
   printf("Phase 4H RGB renderer host tests: %d checks, %d failures\n", checks, failures);
   return failures == 0 ? 0 : 1;
 }

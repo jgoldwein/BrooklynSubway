@@ -92,6 +92,7 @@ struct Counters {
   uint32_t tripUpdatesIgnored;   // TripUpdate entities (not decoded)
   // Categories
   uint32_t resolvedStation;
+  uint32_t approachingStation;  // subset of resolvedStation, next-stop fallback
   uint32_t resolvedSegment;
   uint32_t unrepresented;
   uint32_t insufficientPosition;

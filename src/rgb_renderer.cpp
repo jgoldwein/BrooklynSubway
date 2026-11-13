@@ -91,6 +91,7 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
       continue;
     }
     if (!routeVisible(config.routeVisibilityMask, semantic->route)) continue;
+    if (!config.approachingLit && isApproachingOnly(input, i)) continue;
 
     output.pixels[i] = scaleBrightness(nominalRouteColor(semantic->route), config.brightness);
     ++result.renderedLeds;

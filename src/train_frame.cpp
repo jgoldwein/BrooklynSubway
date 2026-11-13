@@ -41,6 +41,7 @@ void clearFrame(TrainFrame &frame) { memset(&frame, 0, sizeof frame); }
 namespace {
 
 FrameAdd countLed(TrainFrame &frame, uint16_t globalIndex) {
+  frame.approachingOnly[globalIndex / 8] &= ~(uint8_t{1} << (globalIndex % 8));
   uint8_t &count = frame.occupancy[globalIndex];
   if (frame.resolvedTrains < 0xFFFFFFFFu) ++frame.resolvedTrains;
   if (count == 0) {
@@ -89,13 +90,22 @@ bool validatedGlobalIndex(const GtfsMapResult &result, uint16_t &globalIndex) {
   return true;
 }
 
-bool addValidatedLed(TrainFrame &frame, uint16_t globalIndex) {
+bool addValidatedLed(TrainFrame &frame, uint16_t globalIndex, bool approaching) {
   if (globalIndex >= kFrameLedCount || semanticForLed(globalIndex) == nullptr) return false;
   led::map::PhysicalLed phys{};
   if (!led::map::physicalLed(led::GlobalPhysicalIndex{globalIndex}, phys)) return false;
   if (phys.role != led::LedRole::Map) return false;
+  const bool blink = approaching &&
+      (frame.occupancy[globalIndex] == 0 || isApproachingOnly(frame, globalIndex));
   countLed(frame, globalIndex);
+  if (blink) frame.approachingOnly[globalIndex / 8] |= uint8_t{1} << (globalIndex % 8);
+  if (approaching && frame.approachingTrains != UINT32_MAX) ++frame.approachingTrains;
   return true;
+}
+
+bool isApproachingOnly(const TrainFrame &frame, uint16_t globalIndex) {
+  return globalIndex < kFrameLedCount &&
+      (frame.approachingOnly[globalIndex / 8] & (uint8_t{1} << (globalIndex % 8))) != 0;
 }
 
 size_t composeTrainFrame(TrainFrame &frame, const GtfsMapResult *results, size_t count) {

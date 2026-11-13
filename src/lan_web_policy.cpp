@@ -505,12 +505,17 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.append("Not available");
   }
   writer.format("</dd><dt>Resolved trains</dt><dd>%lu</dd>"
+                "<dt>Approaching trains (included above)</dt><dd>%lu</dd>"
                 "<dt>Occupied LEDs</dt><dd>%u</dd>"
-                "<dt>Collision count</dt><dd>%u</dd></dl></section>"
+                "<dt>Collision count</dt><dd>%u</dd></dl>"
+                "<p>Steady station light: train reported stopped. Blinking station light: "
+                "train approaching where no segment LED is mapped. A stopped train sharing "
+                "the light takes priority. Multiple trains do not increase brightness.</p></section>"
                 "<section><h2>Network diagnostics</h2><dl>"
                 "<dt>Diagnostic run</dt><dd>%s</dd>"
                 "<dt>NTP DNS</dt><dd>%s",
                 static_cast<unsigned long>(status.resolvedTrains),
+                static_cast<unsigned long>(status.approachingTrains),
                 status.occupiedLeds, status.collisionCount,
                 network::diagnostics::runStateName(
                     status.networkDiagnostics.state),
@@ -775,6 +780,7 @@ size_t renderStatusJson(char *out, size_t capacity,
   appendNullableAge(writer, status.hasDataAge, status.dataAgeSeconds);
   writer.append(",\"completeAgeSeconds\":");
   appendNullableAge(writer, status.hasCompleteAge, status.completeAgeSeconds);
+  writer.format(",\"approachingTrains\":%lu", static_cast<unsigned long>(status.approachingTrains));
   writer.format(",\"resolvedTrains\":%lu,\"occupiedLeds\":%u,"
                 "\"collisionCount\":%u,\"brightness\":%u,"
                 "\"routeVisibilityMask\":%lu,\"routeCount\":%u,"

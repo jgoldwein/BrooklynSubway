@@ -517,6 +517,7 @@ void NetworkService::setWebStatus(const web::StatusSnapshot &status) {
   webStatus_.hasCompleteAge = status.hasCompleteAge;
   webStatus_.completeAgeSeconds = status.completeAgeSeconds;
   webStatus_.resolvedTrains = status.resolvedTrains;
+  webStatus_.approachingTrains = status.approachingTrains;
   webStatus_.occupiedLeds = status.occupiedLeds;
   webStatus_.collisionCount = status.collisionCount;
 }
@@ -723,6 +724,14 @@ void NetworkService::printStatus(const transport::CycleResult &r) const {
   static const char *const kNames[] = {"COMPLETE", "PARTIAL", "NO FEEDS", "SKIPPED(buffer)",
                                        "SKIPPED(wifi)", "SKIPPED(time)"};
   const pipeline::Counters &p = pipeline_.counters();
+  Serial.printf("Representation: station %lu (approaching %lu), segment %lu, unrepresented %lu, insufficient %lu, unknown stop %lu, stale %lu\n",
+                static_cast<unsigned long>(p.resolvedStation),
+                static_cast<unsigned long>(p.approachingStation),
+                static_cast<unsigned long>(p.resolvedSegment),
+                static_cast<unsigned long>(p.unrepresented),
+                static_cast<unsigned long>(p.insufficientPosition),
+                static_cast<unsigned long>(p.unknownStop),
+                static_cast<unsigned long>(p.stale));
   Serial.printf("Network cycle %s: feeds %u/%u (skipped by budget %u), trains %lu, LEDs %u (collisions %u), decodeFail %lu\n",
                 kNames[static_cast<uint8_t>(r.outcome)], r.processed, r.attempted, r.skippedByBudget,
                 static_cast<unsigned long>(p.resolvedTrains), p.occupiedLeds, p.collisionLeds,

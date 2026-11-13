@@ -15,7 +15,8 @@
 // Policy (direct GTFS facts only; nothing is estimated):
 //   STOPPED_AT                -> StoppedAt at VehiclePosition.stop_id
 //   INCOMING_AT/IN_TRANSIT_TO -> segment previous->VehiclePosition.stop_id,
-//                                progress = kProgressUnknown
+//     progress = kProgressUnknown; if no segment is represented, a mapped next
+//     station may be returned with approachingStation=true (blink, not arrival).
 // The realtime feed carries no past stops, so the previous stop comes from a
 // caller-supplied PreviousStopProvider (static schedule data). If it cannot
 // supply one the train is Skipped(NoPreviousStop); it is never guessed.
@@ -102,6 +103,7 @@ struct Observation {
   Reason reason;
   semantic::GtfsVehicleStatus gtfsStatus;  // normalized status fed to the adapter
   bool adapted;                      // mapGtfsTrain was called
+  bool approachingStation;           // moving; next-station fallback, never an arrival
   semantic::GtfsMapResult result;    // valid when `adapted`
   PreviousStop previous;
 };

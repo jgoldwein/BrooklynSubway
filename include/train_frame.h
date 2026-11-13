@@ -14,8 +14,8 @@
 //   resolved trains -> TrainFrame (this file) -> FUTURE renderer -> FUTURE LED driver
 //
 // The frame records only HOW MANY resolved trains map to each canonical global
-// physical LED index (led::map order, 0..305). It has no colour, brightness,
-// animation or persistence, no dependency on any LED driver, and it never
+// physical LED index (led::map order, 0..305), plus approaching-only flags.
+// It has no colour, brightness, clock or persistence, no LED driver, and never
 // touches GPIO or LED output. Only the 302 semantic map LEDs can be occupied;
 // the four status LEDs (and U23, which is not addressable) never can.
 //
@@ -29,6 +29,10 @@ constexpr uint8_t kOccupancyMax = 255;        // per-LED count saturates here
 
 struct TrainFrame {
   uint8_t occupancy[kFrameLedCount];  // trains on each global LED (saturating)
+  // Bit set only when every contribution to a pixel is approaching.
+  // A stopped train sharing the pixel always takes steady-display priority.
+  uint8_t approachingOnly[(kFrameLedCount + 7) / 8];
+  uint32_t approachingTrains;
   uint32_t resolvedTrains;   // accepted trains (including saturated ones)
   uint32_t excessTrains;     // resolvedTrains - occupiedLeds
   uint16_t occupiedLeds;     // LEDs with occupancy >= 1
@@ -62,7 +66,9 @@ FrameAdd addGtfsResult(TrainFrame &frame, const GtfsMapResult &result);
 // returns true and stores the canonical global index. addValidatedLed counts
 // one train on that index (false if it is not a canonical map LED).
 bool validatedGlobalIndex(const GtfsMapResult &result, uint16_t &globalIndex);
-bool addValidatedLed(TrainFrame &frame, uint16_t globalIndex);
+bool addValidatedLed(TrainFrame &frame, uint16_t globalIndex,
+                     bool approaching = false);
+bool isApproachingOnly(const TrainFrame &frame, uint16_t globalIndex);
 
 // Clears then adds every result. Order-independent. Returns trains Added.
 size_t composeTrainFrame(TrainFrame &frame, const GtfsMapResult *results, size_t count);

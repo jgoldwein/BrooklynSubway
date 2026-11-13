@@ -43,6 +43,7 @@ struct TrainMetadata {
   char previousFailure[24];
   char category[32];
   char reason[32];
+  bool approachingStation;
 };
 
 uint8_t gFeedBuffer[kMaxFeedBytes];
@@ -120,6 +121,7 @@ void collectVehicle(void *opaque, const gtfsrt::RtTrain &vehicle, uint32_t feedT
   }
   const uint32_t outcome =
       (static_cast<uint32_t>(observation.category) << 24) |
+      (static_cast<uint32_t>(observation.approachingStation) << 30) |
       (reasonKey << 16) | (resolved ? globalIndex : UINT16_MAX);
 
   const gtfsrt::RtTrain *enriched = nullptr;
@@ -130,6 +132,7 @@ void collectVehicle(void *opaque, const gtfsrt::RtTrain &vehicle, uint32_t feedT
     }
   }
   TrainMetadata candidate{};
+  candidate.approachingStation = observation.approachingStation;
   candidate.globalIndex = resolved ? globalIndex : UINT16_MAX;
   snprintf(candidate.tripId, sizeof candidate.tripId, "%s", vehicle.tripId);
   snprintf(candidate.routeId, sizeof candidate.routeId, "%s", vehicle.routeId);
@@ -248,6 +251,7 @@ bool appendTrainRecords(size_t count) {
     jsonString(train.previousStop[0] == '\0' ? "Unavailable" : train.previousStop);
     printf(",\"previousStopSource\":");
     jsonString(train.previousSource);
+    printf(",\"approachingStation\":%s", train.approachingStation ? "true" : "false");
     putchar('}');
   }
   return true;
@@ -323,6 +327,7 @@ bool emitCycle(uint32_t cycleIndex, uint32_t replayUnix, uint32_t elapsedMs,
   semantic::RenderConfig renderConfig{};
   renderConfig.brightness = static_cast<uint8_t>(brightness);
   renderConfig.routeVisibilityMask = routeMask;
+  renderConfig.approachingLit = semantic::approachingPhaseLit(elapsedMs);
   const semantic::RenderResult renderResult =
       semantic::renderTrainFrame(controller.frame(), rendered, renderConfig);
   display::StatusIndicators indicators{};
@@ -358,7 +363,7 @@ bool emitCycle(uint32_t cycleIndex, uint32_t replayUnix, uint32_t elapsedMs,
   printf("]},\"pipeline\":{\"feedsProcessed\":%u,\"feedDecodeFailures\":%u,"
          "\"entitiesSeen\":%u,\"vehiclesSeen\":%u,\"supportedVehicles\":%u,"
          "\"malformedEntities\":%u,\"tripUpdatesIgnored\":%u,"
-         "\"resolvedStation\":%u,\"resolvedSegment\":%u,\"unrepresented\":%u,"
+         "\"resolvedStation\":%u,\"approachingStation\":%u,\"resolvedSegment\":%u,\"unrepresented\":%u,"
          "\"insufficientPosition\":%u,\"unsupportedRoute\":%u,\"unknownStop\":%u,"
          "\"invalid\":%u,\"previousStopAmbiguous\":%u,\"operationalStop\":%u,"
          "\"stale\":%u,\"notStarted\":%u,\"skipped\":%u,"
@@ -371,7 +376,7 @@ bool emitCycle(uint32_t cycleIndex, uint32_t replayUnix, uint32_t elapsedMs,
          "\"occupancy\":[",
          counts.feedsProcessed, counts.feedDecodeFailures, counts.entitiesSeen,
          counts.vehiclesSeen, counts.supportedVehicles, counts.malformedEntities,
-         counts.tripUpdatesIgnored, counts.resolvedStation, counts.resolvedSegment,
+         counts.tripUpdatesIgnored, counts.resolvedStation, counts.approachingStation, counts.resolvedSegment,
          counts.unrepresented, counts.insufficientPosition, counts.unsupportedRoute,
          counts.unknownStop, counts.invalid, counts.previousStopAmbiguous,
          counts.operationalStop, counts.stale, counts.notStarted, counts.skipped,

@@ -155,6 +155,19 @@ void evaluateTrain(const RtTrain &t, uint32_t feedTimestamp,
 
   o.result = semantic::mapGtfsTrain(s);
   o.adapted = true;
+  // Where there is no physical segment LED, retain the reported next stop as
+  // an explicitly approaching station. Do not invent progress on multi-pixel
+  // segments, resolve unknown stops, or bypass ambiguous previous-stop checks.
+  if (s.status != GtfsVehicleStatus::StoppedAt &&
+      o.result.status == GtfsMapStatus::Unrepresented) {
+    GtfsTrainState next = s;
+    next.status = GtfsVehicleStatus::StoppedAt;
+    const auto station = semantic::mapGtfsTrain(next);
+    if (station.status == GtfsMapStatus::Match) {
+      o.result = station;
+      o.approachingStation = true;
+    }
+  }
   switch (o.result.status) {
     case GtfsMapStatus::Match:
       o.category = o.result.position.kind == PositionKind::Segment ? Category::ResolvedSegment
