@@ -141,11 +141,21 @@ User subsequently supplied a working ESPHome configuration for the same display:
 SSD1306 128x64 at 0x3C, updating every second. From 0.2.23 firmware uses that
 proven initialization profile on GPIO8/9. From 0.2.24, probe user-requested
 0x38 first, with 0x3C fallback; Wire exclusively owns pin initialization.
-User reports the OLED working at 0x38. From 0.2.25, use the saved administrator
+User initially reported the OLED working with 0x38 selected; this did not
+establish its active address because fallback was enabled. From 0.2.25, use the saved administrator
 OLED address (default 0x38); reboot to apply edits, with no address fallback.
 From 0.2.29, the saved address is preferred, with fallback probing of
 0x38/0x3C/0x3D when needed. Web status reports the active address and I2C error.
 No separate reset pin is wired.
+
+Live verification on 2026-11-13: the board on 0.2.29 reports saved/startup address
+0x38, active address 0x3C, and successful frame writes (I2C code 0). The original
+signed 0.2.24 application was also blank until both USB and barrel power were
+removed together for 10 seconds. After the same complete power cycle, the user
+visually confirmed the OLED working on 0.2.29 and confirmed all beeps correct.
+A CPU-only reset does not remove OLED power. Keep this verified baseline;
+the excess steady-blue MTA interpretation remains a separate unresolved issue.
+
 
 ## USB / programming
 

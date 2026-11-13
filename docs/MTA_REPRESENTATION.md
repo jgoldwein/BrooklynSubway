@@ -149,3 +149,11 @@ reported unacceptable widespread pulsing and a blank OLED. Active behavior is
 restored to 0.2.26, including its exact pipeline/frame memory layout. The Why
 blue? report and saved OLED address remain. The excess steady-blue interpretation
 is unresolved; the OLED failure is not explained by a driver-code change.
+
+## Confirmed hardware baseline (2026-11-13)
+
+User confirmed 0.2.29 OLED operation after a complete USB-plus-barrel power cycle,
+and confirmed all beeps correct. Many steady-blue map LEDs remain; this is still
+the reported-stopped interpretation problem, not confirmation of failed output.
+Keep the recovered rendering baseline while investigating recorded feeds. The
+withdrawn widespread uncertainty pulse must not be reintroduced as the default.
