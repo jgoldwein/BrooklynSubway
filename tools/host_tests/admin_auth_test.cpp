@@ -326,9 +326,9 @@ void testCookieAndEndpointPolicy() {
   }
   CHECK(brooklyn::admin::isProtectedEndpoint("GET", "/wifi/setup"));
   CHECK(brooklyn::admin::isProtectedEndpoint("GET", "/hardware-test"));
-  CHECK(brooklyn::admin::isProtectedEndpoint("GET", "/live-display"));
-  CHECK(brooklyn::admin::isProtectedEndpoint("POST", "/live-display/set"));
-  CHECK(brooklyn::admin::isMutationEndpoint("POST", "/live-display/set"));
+  CHECK(!brooklyn::admin::isProtectedEndpoint("GET", "/live-display"));
+  CHECK(!brooklyn::admin::isProtectedEndpoint("POST", "/live-display/set"));
+  CHECK(!brooklyn::admin::isMutationEndpoint("POST", "/live-display/set"));
   CHECK(brooklyn::admin::isMutationEndpoint("POST", "/config/poll"));
   CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/live-display/set"));
   CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/hardware-test/run"));

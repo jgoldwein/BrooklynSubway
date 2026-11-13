@@ -2,6 +2,7 @@
 
 #if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
 #include "board_pins.h"
+#include "hardware.h"
 #include "led_backend.h"
 #include "wifi_policy.h"
 #include "test_button_policy.h"
@@ -41,7 +42,7 @@ void run(void *) {
                        recoveryPending, operations);
     if (wasEnabled && !controller.enabled()) Serial.println(controller.stats().powerCanResume
         ? "Live display paused by POWER; press POWER again to resume"
-        : "Live display stopped; GPIO1 LOW; enable again from web");
+        : "Live display stopped; GPIO1 LOW; press POWER when fresh data returns");
     if (!wasEnabled && controller.enabled()) Serial.println("Live display started/resumed after checks");
     xSemaphoreGive(mutex);
     vTaskDelay(pdMS_TO_TICKS(20));
@@ -70,15 +71,8 @@ void publish(const Snapshot &snapshot) {
   controller.publish(snapshot);
   xSemaphoreGive(mutex);
 }
-bool enable() {
-  if (!available()) return false;
-  xSemaphoreTake(mutex, portMAX_DELAY);
-  const bool result = !recoveryPending && digitalRead(pins::BUTTON_POWER) != LOW && controller.enable(millis());
-  xSemaphoreGive(mutex);
-  Serial.println(result ? "Live display enabled explicitly; brightness capped at 16/255" : "Live display refused: need healthy fresh data, released POWER and no recovery");
-  return result;
-}
 void disable() {
+  hardware::setFeedIndicator(false);
   if (!available()) return;
   xSemaphoreTake(mutex, portMAX_DELAY);
   controller.disable(operations);
@@ -149,7 +143,6 @@ namespace brooklyn::display::live {
 bool begin() { return false; }
 bool available() { return false; }
 void publish(const Snapshot &) {}
-bool enable() { return false; }
 void disable() {}
 bool enabled() { return false; }
 OutputStats stats() { return {}; }

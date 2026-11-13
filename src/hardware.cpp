@@ -16,6 +16,9 @@ namespace brooklyn::hardware {
 #if defined(BROOKLYN_TARGET_PCB)
 namespace {
 bool startupMuted = false;
+bool feedIndicatorAttached = false;
+bool feedIndicatorOn = false;
+bool feedIndicatorUnavailable = false;
 
 void playStartupChime() {
   // Reserve channel 7 (LEDC timer 3) for BUZZER3. No tone task is allocated.
@@ -141,6 +144,35 @@ void indicateStartup(bool checksPassed) {
 #endif
 }
 
+void setFeedIndicator(bool freshComplete) {
+#if defined(BROOKLYN_TARGET_PCB)
+  // Channel 4 uses timer 2, separate from buzzer channel 7 / timer 3.
+  constexpr uint8_t kIndicatorChannel = 4;
+  constexpr uint8_t kDimDuty = 8;  // 8/255, about 3% of the discrete LED's on-current
+  if (freshComplete == feedIndicatorOn) return;
+  if (freshComplete && feedIndicatorUnavailable) return;
+  if (freshComplete && !feedIndicatorAttached) {
+    if (ledcSetup(kIndicatorChannel, 2000, 8) == 0) {
+      digitalWrite(pins::AVI_LOCATION_LED, LOW);
+      feedIndicatorUnavailable = true;
+      Serial.println("Feed indicator: U23/GPIO14 PWM setup failed; remains OFF");
+      return;
+    }
+    ledcWrite(kIndicatorChannel, 0);
+    ledcAttachPin(pins::AVI_LOCATION_LED, kIndicatorChannel);
+    feedIndicatorAttached = true;
+  }
+  if (feedIndicatorAttached) ledcWrite(kIndicatorChannel, freshComplete ? kDimDuty : 0);
+  else digitalWrite(pins::AVI_LOCATION_LED, LOW);
+  if (freshComplete != feedIndicatorOn) {
+    Serial.println(freshComplete ? "Feed indicator: U23/GPIO14 dim ON, duty 8/255" : "Feed indicator: U23/GPIO14 OFF (feed not fresh/complete)");
+    feedIndicatorOn = freshComplete;
+  }
+#else
+  (void)freshComplete;
+#endif
+}
+
 bool beginSafe() {
 #if defined(BROOKLYN_TARGET_PCB)
   digitalWrite(pins::LED_ENABLE, LOW);
@@ -161,6 +193,13 @@ bool beginSafe() {
   pinMode(pins::POWER_STAT, INPUT);
 
   digitalWrite(pins::AVI_LOCATION_LED, LOW);
+  if (feedIndicatorAttached) {
+    ledcWrite(4, 0);
+    ledcDetachPin(pins::AVI_LOCATION_LED);
+    feedIndicatorAttached = false;
+  }
+  feedIndicatorOn = false;
+  feedIndicatorUnavailable = false;
   pinMode(pins::AVI_LOCATION_LED, OUTPUT);
 
   digitalWrite(pins::BUZZER, LOW);

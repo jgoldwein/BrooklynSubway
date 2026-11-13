@@ -90,24 +90,34 @@ Rgb stationMotionColor(StationMotion motion, const StationTiming &timing,
                        uint32_t elapsedSeconds) {
   constexpr Rgb orange{255, 96, 0};
   constexpr Rgb blue{0, 0, 255};
-  uint32_t blueWeight = 255;
+  constexpr Rgb cyan{0, 255, 255};
+  constexpr Rgb magenta{255, 0, 255};
+  constexpr uint32_t kApproachTransitionSeconds = 30;
+  constexpr uint32_t kDepartureTrailSeconds = 30;
+  Rgb from = blue, to = blue;
+  uint32_t weight = 0;
+  uint8_t fade = 255;
   if (motion == StationMotion::Approaching) {
     // Unknown/stalled predictions stay orange instead of inventing progress.
     if (!timing.arrivalSecondsPlusOne || timing.arrivalSecondsPlusOne == UINT16_MAX ||
         timing.movementAgeSeconds + elapsedSeconds > 90) return orange;
     const uint32_t eta = timing.arrivalSecondsPlusOne - 1;
-    uint32_t remaining = eta > elapsedSeconds ? eta - elapsedSeconds : 0;
-    if (remaining > 120) remaining = 120;
-    blueWeight = (120 - remaining) * 255 / 120;
+    const uint32_t remaining = eta > elapsedSeconds ? eta - elapsedSeconds : 0;
+    from = orange; to = cyan;
+    weight = remaining >= kApproachTransitionSeconds ? 0 :
+        (kApproachTransitionSeconds - remaining) * 255 / kApproachTransitionSeconds;
   } else if (motion == StationMotion::Departing) {
     uint32_t age = timing.departureAgePlusOne ? timing.departureAgePlusOne - 1 + elapsedSeconds : 0;
-    if (age > 30) age = 30;
-    blueWeight = (30 - age) * 255 / 30;
+    if (age > kDepartureTrailSeconds) age = kDepartureTrailSeconds;
+    from = blue; to = magenta;
+    weight = age * 255 / kDepartureTrailSeconds;
+    fade = static_cast<uint8_t>((kDepartureTrailSeconds - age) * 255 / kDepartureTrailSeconds);
   }
-  const uint32_t orangeWeight = 255 - blueWeight;
-  return Rgb{static_cast<uint8_t>((orange.red * orangeWeight + blue.red * blueWeight + 127) / 255),
-             static_cast<uint8_t>((orange.green * orangeWeight + blue.green * blueWeight + 127) / 255),
-             static_cast<uint8_t>((orange.blue * orangeWeight + blue.blue * blueWeight + 127) / 255)};
+  const uint32_t inverse = 255 - weight;
+  return scaleBrightness(Rgb{
+      static_cast<uint8_t>((from.red * inverse + to.red * weight + 127) / 255),
+      static_cast<uint8_t>((from.green * inverse + to.green * weight + 127) / 255),
+      static_cast<uint8_t>((from.blue * inverse + to.blue * weight + 127) / 255)}, fade);
 }
 
 RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,

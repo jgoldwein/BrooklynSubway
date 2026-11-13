@@ -60,8 +60,8 @@ effective interval; cycles never overlap. Older settings migrate without
 changing Wi-Fi, routes, brightness or administrator credentials.
 
 From 0.2.19, physical live output starts automatically after healthy startup and
-fresh data; GPIO1 remains LOW while waiting. POWER toggles off/on. Web controls
-remain available. See LIVE_DISPLAY.md for limits and shutoff behavior.
+fresh data; GPIO1 remains LOW while waiting. POWER toggles off/on. The redundant web enable/disable controls
+are removed in 0.2.20. See LIVE_DISPLAY.md for limits and shutoff behavior.
 GPIO, board files and the existing brightness/current limits do not change.
 
 ## Validation
@@ -91,3 +91,17 @@ channel diagnostic available independently.
 
 - [GTFS-Realtime reference](https://gtfs.org/documentation/realtime/reference/)
 - [MTA subway feed reference](https://www.mta.info/document/134521)
+
+## Verified departures (0.2.20)
+
+Some N/R VehiclePositions retain STOPPED_AT while trips advance. A matching
+TripUpdate can now establish departure only when its first remaining stop is
+a different platform in the same direction, with a unique topology predecessor
+matching the old station. The prediction must be newer than the position, its
+arrival in the next 600 seconds, the position at most 90 seconds old, and feed
+age at most 60 seconds (future-clock tolerance 30 seconds). When the optional
+TripUpdate timestamp is absent, its enclosing feed timestamp supplies freshness.
+Conflicting, canceled, stale, opposite-direction and ambiguous cases stay
+unchanged. This does not invent an arrival or add trains. Serial diagnostics
+report the number of verified input departures. Pipeline scratch storage is
+now 47,740 bytes; no new dependency or raw feed buffer is added.

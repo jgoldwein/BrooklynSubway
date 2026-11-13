@@ -79,6 +79,34 @@ bool isRealtimeOnlyOperationalStop(const char *routeId, const char *stopId) {
   return strcmp(stopId, "H19") == 0 || strcmp(stopId, "H19N") == 0 || strcmp(stopId, "H19S") == 0;
 }
 
+bool applyVerifiedTripDeparture(RtTrain &vehicle, const char *nextStop,
+                                uint32_t arrival, uint32_t predictionTimestamp,
+                                uint32_t feedTimestamp, uint32_t nowUnix) {
+  if (!vehicle.hasVehicle || vehicle.status != VehicleStatus::StoppedAt ||
+      vehicle.fieldTruncated || vehicle.scheduleRelationship == 3 || !nextStop || strlen(nextStop) != 4 ||
+      strlen(vehicle.vehicleStopId) != 4 || !vehicle.vehicleTimestamp ||
+      !feedTimestamp || !predictionTimestamp) return false;
+  const uint32_t reference = nowUnix ? nowUnix : feedTimestamp;
+  const uint32_t observedNow = reference > feedTimestamp ? reference : feedTimestamp;
+  if (feedTimestamp > reference && feedTimestamp - reference > 30) return false;
+  if (reference > feedTimestamp && reference - feedTimestamp > 60) return false;
+  if (predictionTimestamp <= vehicle.vehicleTimestamp || predictionTimestamp > feedTimestamp ||
+      observedNow < vehicle.vehicleTimestamp || observedNow - vehicle.vehicleTimestamp > 90 ||
+      arrival <= observedNow || arrival - observedNow > 600) return false;
+  const char direction = vehicle.vehicleStopId[3];
+  if ((vehicle.nyctDirection == NyctDirection::North && direction != 'N') ||
+      (vehicle.nyctDirection == NyctDirection::South && direction != 'S')) return false;
+  if ((direction != 'N' && direction != 'S') || nextStop[3] != direction ||
+      strncmp(nextStop, vehicle.vehicleStopId, 3) == 0) return false;
+  const auto previous = gtfs_topology::previousStopFromTopology(vehicle.routeId, nextStop, direction);
+  if (previous.status != gtfs_topology::PrevStatus::Match || previous.count != 1 ||
+      strncmp(previous.candidates[0], vehicle.vehicleStopId, 3) != 0) return false;
+  memcpy(vehicle.vehicleStopId, nextStop, 4);
+  vehicle.vehicleStopId[4] = '\0';
+  vehicle.status = VehicleStatus::InTransitTo;
+  return true;
+}
+
 void evaluateTrain(const RtTrain &t, uint32_t feedTimestamp,
                    const BuilderConfig &config, Observation &o) {
   memset(&o, 0, sizeof o);

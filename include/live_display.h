@@ -5,7 +5,6 @@ namespace brooklyn::display::live {
 bool begin();
 bool available();
 void publish(const Snapshot &snapshot);
-bool enable();
 void disable();
 bool enabled();
 OutputStats stats();

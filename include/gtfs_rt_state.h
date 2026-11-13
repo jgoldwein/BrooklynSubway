@@ -38,6 +38,11 @@ enum class Category : uint8_t {
 // True for route-specific realtime-only operational stops (H19, H19N, H19S on
 // route H). They are absent from static GTFS and never mapped to an LED.
 bool isRealtimeOnlyOperationalStop(const char *routeId, const char *stopId);
+// MTA may keep STOPPED_AT at the last detected station. Use only a newer,
+// fresh prediction that advances to a unique adjacent stop in the same direction.
+bool applyVerifiedTripDeparture(RtTrain &vehicle, const char *nextStop,
+                                uint32_t arrival, uint32_t predictionTimestamp,
+                                uint32_t feedTimestamp, uint32_t nowUnix);
 
 enum class Reason : uint8_t {
   None,

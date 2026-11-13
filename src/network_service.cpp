@@ -734,6 +734,8 @@ void NetworkService::printStatus(const transport::CycleResult &r) const {
   Serial.printf("Motion timing: ETA candidates %u; departure candidates %u; prediction overflow %lu; poll wait %lu s\n",
                 etaCandidates, departureCandidates, static_cast<unsigned long>(p.predictionCapacityOverflow),
                 static_cast<unsigned long>(configuration_.pollSeconds()));
+  Serial.printf("Verified trip-update departures: %lu\n",
+                static_cast<unsigned long>(p.verifiedTripDepartures));
   Serial.printf("Representation: station %lu (approaching %lu), segment %lu, unrepresented %lu, insufficient %lu, unknown stop %lu, stale %lu\n",
                 static_cast<unsigned long>(p.resolvedStation),
                 static_cast<unsigned long>(p.approachingStation),
