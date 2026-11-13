@@ -145,3 +145,13 @@ between a successful address probe and the display commands. The graphics
 object now receives no GPIO pins; Wire retains ownership of manufactured GPIO8/9.
 Try requested 7-bit address 0x38 first, falling back to the known ESPHome 0x3C.
 Serial output records each probe result and the first transfer error code.
+
+### Configurable OLED address (0.2.25)
+
+Sign in and use OLED -> I2C address -> Save OLED address. Enter a 7-bit hex
+address such as 0x38 or 0x3C; nonreserved addresses 0x08 through 0x77 are accepted.
+The default is 0x38, confirmed working by the user. The setting is stored in
+NVS and survives firmware updates/reboots. Reboot Device after changing it.
+Until reboot, the running OLED worker retains its prior address. On the next
+boot it tries only the saved address; there is no automatic fallback. Invalid
+or missing stored data falls back to default 0x38. GPIO8/9 and 100 kHz are fixed.

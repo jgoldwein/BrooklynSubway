@@ -28,7 +28,7 @@ extern const uint8_t rootca_crt_bundle_start[]
 namespace brooklyn::web {
 namespace {
 
-constexpr size_t kPageCapacity = 12288;
+constexpr size_t kPageCapacity = 16384; // Room for the OLED form and escaped status text.
 constexpr size_t kJsonCapacity = 2048;
 constexpr size_t kNetworkDiagnosticsJsonCapacity = 1536;
 #ifndef BROOKLYN_RELEASE_CHECK_INTERVAL_MS
@@ -207,6 +207,7 @@ void LanWebUi::registerRoutes() {
              [this]() { handleRunNetworkDiagnostics(); });
   server_.on("/config/brightness", HTTP_POST,
              [this]() { handleBrightness(); });
+  server_.on("/config/oled", HTTP_POST, [this]() { handleOledAddress(); });
   server_.on("/config/poll", HTTP_POST, [this]() { handlePollInterval(); });
   server_.on("/config/dns", HTTP_POST, [this]() { handleDnsSettings(); });
   server_.on("/config/routes", HTTP_POST, [this]() { handleRoutes(); });
@@ -386,6 +387,26 @@ void LanWebUi::handleRunNetworkDiagnostics() {
   networkDiagnosticsRequested_ = true;
   server_.sendHeader("Cache-Control", "no-store");
   server_.send(202, "application/json", "{\"state\":\"accepted\"}");
+}
+
+void LanWebUi::handleOledAddress() {
+  if (!authorizeRequest(true)) return;
+  bool addressSeen = false, csrfSeen = false;
+  for (int i = 0; i < server_.args(); ++i) {
+    const String name = server_.argName(i);
+    if (name == "address" && !addressSeen) addressSeen = true;
+    else if (name == "csrf" && !csrfSeen) csrfSeen = true;
+    else { server_.send(400, "text/plain", "Invalid OLED settings"); return; }
+  }
+  const String text = server_.arg("address");
+  uint8_t address = 0;
+  if (server_.args() != 2 || !addressSeen || !csrfSeen || !hasNoEmbeddedNull(text) ||
+      !config::parseOledAddress(text.c_str(), address)) {
+    server_.send(400, "text/plain", "Use a 7-bit hex address from 0x08 to 0x77"); return;
+  }
+  if (!configuration_.setOledAddress(address)) { server_.send(500, "text/plain", "Could not save OLED address"); return; }
+  Serial.printf("OLED clock: saved address 0x%02X; reboot to apply\n", address);
+  server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "OLED address saved; reboot to apply");
 }
 
 void LanWebUi::handlePollInterval() {
@@ -1695,6 +1716,7 @@ void LanWebUi::sendLoginFailure(admin::LoginResult::Code code) {
 
 void LanWebUi::updateAdminStatus(StatusSnapshot &status) {
   status.pollSeconds = configuration_.pollSeconds();
+  status.oledAddress = configuration_.oledAddress();
   const auto output = display::live::stats();
   status.physicalPowerPaused = output.powerCanResume;
   status.physicalFramesWritten = output.framesWritten;

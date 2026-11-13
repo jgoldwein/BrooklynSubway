@@ -11,6 +11,8 @@
 namespace brooklyn::config {
 
 constexpr uint8_t kDefaultBrightness = 5;
+constexpr uint8_t kDefaultOledAddress = 0x38;
+constexpr const char *kOledAddressKey = "oled_addr";
 constexpr uint32_t kDefaultRouteVisibilityMask =
     semantic::kAllRoutesVisibleMask;
 constexpr const char *kNvsNamespace = "bkmap_cfg";
@@ -29,6 +31,8 @@ struct Store {
   bool (*saveDnsOverride)(void *context, bool enabled, uint32_t ipv4);
   bool (*loadPollSeconds)(void *context, uint32_t &value);
   bool (*savePollSeconds)(void *context, uint32_t value);
+  bool (*loadOledAddress)(void *context, uint32_t &value);
+  bool (*saveOledAddress)(void *context, uint32_t value);
 };
 
 class DeviceConfiguration {
@@ -38,6 +42,8 @@ class DeviceConfiguration {
   bool load();
   bool setBrightness(uint8_t brightness);
   bool setPollSeconds(uint32_t seconds);
+  bool setOledAddress(uint8_t address);
+  uint8_t oledAddress() const { return oledAddress_; }
   uint32_t pollSeconds() const { return pollSeconds_; }
   bool setRouteVisibilityMask(uint32_t mask);
   bool setDnsOverride(bool enabled, uint32_t ipv4);
@@ -48,6 +54,7 @@ class DeviceConfiguration {
 
  private:
   Store store_;
+  uint8_t oledAddress_ = kDefaultOledAddress;
   uint32_t pollSeconds_ = 15;
   uint8_t brightness_ = kDefaultBrightness;
   uint32_t routeVisibilityMask_ = kDefaultRouteVisibilityMask;
@@ -56,6 +63,8 @@ class DeviceConfiguration {
 };
 
 bool parseDnsIpv4(const char *text, uint32_t &ipv4);
+bool validOledAddress(uint32_t address);
+bool parseOledAddress(const char *text, uint8_t &address);
 bool parsePollSeconds(const char *text, uint32_t &seconds);
 bool validDnsIpv4(uint32_t ipv4);
 size_t formatDnsIpv4(uint32_t ipv4, char *out, size_t capacity);

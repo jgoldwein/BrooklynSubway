@@ -9,6 +9,7 @@ namespace brooklyn::config {
 
 bool DeviceConfiguration::load() {
   pollSeconds_ = 15;
+  oledAddress_ = kDefaultOledAddress;
   brightness_ = kDefaultBrightness;
   routeVisibilityMask_ = kDefaultRouteVisibilityMask;
   dnsOverrideEnabled_ = false;
@@ -16,6 +17,9 @@ bool DeviceConfiguration::load() {
   bool loaded = false;
 
   uint32_t stored = 0;
+  if (store_.loadOledAddress && store_.loadOledAddress(store_.context, stored) && validOledAddress(stored)) {
+    oledAddress_ = static_cast<uint8_t>(stored); loaded = true;
+  }
   if (store_.loadPollSeconds && store_.loadPollSeconds(store_.context, stored) &&
       stored >= 15 && stored <= 120) { pollSeconds_ = stored; loaded = true; }
   if (store_.loadBrightness != nullptr &&
@@ -39,6 +43,27 @@ bool DeviceConfiguration::load() {
     loaded = true;
   }
   return loaded;
+}
+
+bool validOledAddress(uint32_t address) { return address >= 0x08 && address <= 0x77; }
+bool DeviceConfiguration::setOledAddress(uint8_t address) {
+  if (!validOledAddress(address) || !store_.saveOledAddress ||
+      !store_.saveOledAddress(store_.context, address)) return false;
+  oledAddress_ = address;
+  return true;
+}
+bool parseOledAddress(const char *text, uint8_t &address) {
+  if (!text || text[0] != '0' || (text[1] != 'x' && text[1] != 'X')) return false;
+  uint32_t value = 0;
+  for (unsigned i = 2; i < 4; ++i) {
+    const char c = text[i];
+    const int digit = c >= '0' && c <= '9' ? c - '0' :
+        c >= 'a' && c <= 'f' ? c - 'a' + 10 : c >= 'A' && c <= 'F' ? c - 'A' + 10 : -1;
+    if (digit < 0) return false;
+    value = value * 16 + static_cast<unsigned>(digit);
+  }
+  if (text[4] || !validOledAddress(value)) return false;
+  address = static_cast<uint8_t>(value); return true;
 }
 
 bool DeviceConfiguration::setPollSeconds(uint32_t seconds) {

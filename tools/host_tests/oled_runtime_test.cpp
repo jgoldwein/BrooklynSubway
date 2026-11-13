@@ -31,15 +31,16 @@ uint8_t FakeWire::endTransmission(){OLED_CHECK(open);open=false;++ends;
 }
 size_t FakeWire::write(uint8_t *,size_t n){OLED_CHECK(open);return scenario==4?0:n;}
 int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
- brooklyn::oled::begin();OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
+ if(scenario==8){brooklyn::oled::begin(0x07); OLED_CHECK(!worker && starts==0); puts("OLED invalid address rejected PASS"); return 0;}
+ brooklyn::oled::begin(scenario==7?0x3c:0x38);OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
  if(scenario==6){OLED_CHECK(worker==nullptr);puts("OLED task allocation failure isolated PASS");return 0;}
- OLED_CHECK(worker);brooklyn::oled::begin();
+ OLED_CHECK(worker);brooklyn::oled::begin(scenario==7?0x3c:0x38);
  if(setjmp(iterationEnd)==0) worker(nullptr);
  OLED_CHECK(!open);
  if(scenario==0){OLED_CHECK(frames==2 && titles==2 && delays==1 && deletes==0);}
  if(scenario==7){OLED_CHECK(lastAddress==0x3c && frames==2 && titles==2 && delays==1);}
  if(scenario==1){OLED_CHECK(starts==0 && deletes==1);}
- if(scenario==2){OLED_CHECK(ends==2 && frames==0 && deletes==1);}
+ if(scenario==2){OLED_CHECK(ends==1 && frames==0 && deletes==1);}
  if(scenario==3 || scenario==4){OLED_CHECK(ends==2 && frames==0 && deletes==1);}
  if(scenario==5){OLED_CHECK(ends==18 && frames==1 && deletes==1);}
  printf("OLED runtime scenario %d PASS\n",scenario);

@@ -637,6 +637,14 @@ size_t renderHomePage(char *out, size_t capacity,
                   "<button>Save update interval</button></form>", static_cast<unsigned long>(status.pollSeconds));
   }
   writer.append("</section>");
+  writer.format("<section><h2>OLED</h2><p>Saved I2C address: 0x%02X. Default: 0x38. Reboot after changing.</p>", status.oledAddress);
+  if (status.adminSessionActive && csrfToken && csrfToken[0]) {
+    writer.append("<form method=\"post\" action=\"/config/oled\"><input type=\"hidden\" name=\"csrf\" value=\"");
+    writer.html(csrfToken);
+    writer.format("\"><label>I2C address <input name=\"address\" maxlength=\"4\" pattern=\"0[xX][0-9a-fA-F]{2}\" value=\"0x%02X\" required></label>"
+                  "<button>Save OLED address</button></form>", status.oledAddress);
+  }
+  writer.append("</section>");
   uint8_t visibleRoutes = 0;
   for (uint8_t route = 1; route <= semantic::kRouteCount; ++route) {
     if ((routeVisibilityMask & (uint32_t{1} << (route - 1))) != 0) {
@@ -813,6 +821,7 @@ size_t renderStatusJson(char *out, size_t capacity,
   writer.append(",\"completeAgeSeconds\":");
   appendNullableAge(writer, status.hasCompleteAge, status.completeAgeSeconds);
   writer.format(",\"approachingTrains\":%lu", static_cast<unsigned long>(status.approachingTrains));
+  writer.format(",\"oledAddress\":%u", status.oledAddress);
   writer.format(",\"pollSeconds\":%lu", static_cast<unsigned long>(status.pollSeconds));
   writer.format(",\"physicalFramesWritten\":%lu,\"physicalMapChanges\":%lu,"
                 "\"physicalBlinkingLeds\":%u,\"physicalPowerPaused\":%s",

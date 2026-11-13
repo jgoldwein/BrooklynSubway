@@ -21,6 +21,19 @@ bool loadBrightness(void *, uint32_t &value) {
   return value != UINT32_MAX;
 }
 
+bool loadOledAddress(void *, uint32_t &value) {
+  Preferences prefs;
+  if (!prefs.begin(kNvsNamespace, true)) return false;
+  value = prefs.getUInt(kOledAddressKey, UINT32_MAX); prefs.end();
+  return value != UINT32_MAX;
+}
+bool saveOledAddress(void *, uint32_t value) {
+  Preferences prefs;
+  if (!prefs.begin(kNvsNamespace, false)) return false;
+  const size_t written = prefs.putUInt(kOledAddressKey, value); prefs.end();
+  return written == sizeof(value);
+}
+
 bool loadPollSeconds(void *, uint32_t &value) {
   Preferences prefs;
   if (!prefs.begin(kNvsNamespace, true)) return false;
@@ -103,7 +116,7 @@ bool saveDnsOverride(void *, bool enabled, uint32_t ipv4) {
 
 Store nvsStore() {
   return {nullptr, loadBrightness, saveBrightness, loadRouteVisibilityMask,
-          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPollSeconds, savePollSeconds};
+          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPollSeconds, savePollSeconds, loadOledAddress, saveOledAddress};
 }
 
 }  // namespace brooklyn::config
@@ -116,6 +129,8 @@ namespace {
 
 bool loadBrightness(void *, uint32_t &) { return false; }
 bool saveBrightness(void *, uint8_t) { return false; }
+bool loadOledAddress(void *, uint32_t &) { return false; }
+bool saveOledAddress(void *, uint32_t) { return false; }
 bool loadPollSeconds(void *, uint32_t &) { return false; }
 bool savePollSeconds(void *, uint32_t) { return false; }
 bool loadRouteVisibilityMask(void *, uint32_t &) { return false; }
@@ -127,7 +142,7 @@ bool saveDnsOverride(void *, bool, uint32_t) { return false; }
 
 Store nvsStore() {
   return {nullptr, loadBrightness, saveBrightness, loadRouteVisibilityMask,
-          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPollSeconds, savePollSeconds};
+          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPollSeconds, savePollSeconds, loadOledAddress, saveOledAddress};
 }
 
 }  // namespace brooklyn::config

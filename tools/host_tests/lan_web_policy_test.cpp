@@ -45,6 +45,7 @@ struct MemoryStore {
   uint32_t dnsOverrideIpv4 = 0;
   uint32_t saves = 0;
   uint32_t pollSeconds = 0;
+  uint32_t oledAddress = 0;
 };
 
 bool loadBrightness(void *context, uint32_t &out) {
@@ -107,9 +108,17 @@ bool savePoll(void *context, uint32_t value) {
   memory.pollSeconds = value;
   return true;
 }
+bool loadOled(void *context, uint32_t &value) {
+  value = static_cast<MemoryStore *>(context)->oledAddress; return value != 0;
+}
+bool saveOled(void *context, uint32_t value) {
+  auto &memory = *static_cast<MemoryStore *>(context);
+  if (memory.failSave) return false;
+  memory.oledAddress = value; return true;
+}
 brooklyn::config::Store configStore(MemoryStore &memory) {
   return {&memory, loadBrightness, saveBrightness, loadRouteVisibilityMask,
-          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPoll, savePoll};
+          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPoll, savePoll, loadOled, saveOled};
 }
 
 void testBrightnessParsing() {
@@ -434,6 +443,16 @@ void testPageEscapingAndRequiredContent() {
       brooklyn::semantic::kAllRoutesVisibleMask, csrfToken);
   CHECK(authenticatedPageSize > 0);
   CHECK(authenticatedPageSize < sizeof(page));
+  {
+    static char expanded[16384];
+    auto longStatus = status;
+    memset(longStatus.ssid, '&', sizeof(longStatus.ssid)-1);
+    memset(longStatus.deviceName, '&', sizeof(longStatus.deviceName)-1);
+    memset(longStatus.target, '&', sizeof(longStatus.target)-1);
+    memset(longStatus.availableVersion, '&', sizeof(longStatus.availableVersion)-1);
+    CHECK(brooklyn::web::renderHomePage(expanded, sizeof(expanded), longStatus, 64,
+        brooklyn::semantic::kAllRoutesVisibleMask, csrfToken) > 0);
+  }
   printf("Authenticated status page: %lu B\n",
          static_cast<unsigned long>(authenticatedPageSize));
   CHECK(strstr(page, "TestNetwork") != nullptr);
@@ -472,7 +491,10 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "Run Network Diagnostics") != nullptr);
   CHECK(strstr(page, "method=\"post\" action=\"/network-diagnostics/run\"") !=
         nullptr);
-  CHECK(countSubstring(page, csrfToken) == 9);
+  CHECK(countSubstring(page, csrfToken) == 10);
+  CHECK(strstr(page, "action=\"/config/oled\"") != nullptr);
+  CHECK(strstr(page, "Saved I2C address: 0x38") != nullptr);
+  CHECK(strstr(page, "Reboot after changing") != nullptr);
   CHECK(strstr(page, "MTA TCP 443") != nullptr);
   CHECK(strstr(page, "Diagnostic run</dt><dd>complete</dd>") != nullptr);
   CHECK(strstr(page, "succeeded (198.51.100.10)") != nullptr);
@@ -566,6 +588,7 @@ void testInlineLoginOnStatusPage() {
             page, sizeof(page), status, 64,
             brooklyn::semantic::kAllRoutesVisibleMask, token) > 0);
   CHECK(strstr(page, "action=\"/login\"") != nullptr);
+  CHECK(strstr(page, "action=\"/config/oled\"") == nullptr);
   CHECK(strstr(page, token) != nullptr);
   CHECK(strstr(page, "type=\"password\"") != nullptr);
   CHECK(strstr(page, "http-equiv=\"refresh\"") == nullptr);
@@ -786,6 +809,20 @@ int main() {
     CHECK(!brooklyn::config::parsePollSeconds(nullptr, seconds));
   }
   testBrightnessParsing();
+  {
+    uint8_t a = 0;
+    CHECK(brooklyn::config::parseOledAddress("0x38", a) && a == 0x38);
+    CHECK(brooklyn::config::parseOledAddress("0X3c", a) && a == 0x3c);
+    const char *bad[] = {"", "0", "0x", "0x3", "0x380", "38", "0x07", "0x78", "0xff", "0xgg", " 0x38"};
+    for (const char *v : bad) CHECK(!brooklyn::config::parseOledAddress(v, a));
+    MemoryStore m; brooklyn::config::DeviceConfiguration c(configStore(m));
+    c.load(); CHECK(c.oledAddress() == 0x38);
+    CHECK(c.setOledAddress(0x3c));
+    brooklyn::config::DeviceConfiguration restored(configStore(m)); restored.load(); CHECK(restored.oledAddress() == 0x3c);
+    m.failSave = true; CHECK(!c.setOledAddress(0x3d) && c.oledAddress() == 0x3c);
+    CHECK(!c.setOledAddress(0x07) && !c.setOledAddress(0x78));
+    m.oledAddress = 0x138; restored.load(); CHECK(restored.oledAddress() == 0x38);
+  }
   testPersistentConfiguration();
   testDnsConfigurationAndValidation();
   testDnsSettingsFormParsing();

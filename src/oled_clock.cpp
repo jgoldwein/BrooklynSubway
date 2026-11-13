@@ -11,7 +11,7 @@ namespace {
 // Our byte callback reuses Wire, so U8g2 must not initialize any GPIO pins.
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C screen(U8G2_R0, U8X8_PIN_NONE);
 TaskHandle_t clockTask = nullptr;
-uint8_t address = 0; // Try requested 0x38 first, then the working ESPHome address 0x3C.
+uint8_t address = 0; // Set once from validated saved configuration before the worker starts.
 void draw(const char *clock) {
   screen.clearBuffer();
   screen.setFont(u8g2_font_6x12_tf);
@@ -59,15 +59,11 @@ void run(void *) {
     Serial.println("OLED clock: SDA/SCL held LOW; OLED skipped, map continues");
     vTaskDelete(nullptr); return;
   }
-  const uint8_t candidates[] = {0x38, 0x3c};
-  for (uint8_t candidate : candidates) {
-    Wire.beginTransmission(candidate);
-    const uint8_t error = Wire.endTransmission();
-    Serial.printf("OLED clock: probe 0x%02X -> %u (0=ACK, 2=NACK, 5=timeout)\n", candidate, error);
-    if (error == 0) { address = candidate; break; }
-  }
-  if (!address) {
-    Serial.println("OLED clock: absent at 0x38/0x3C; map continues");
+  Wire.beginTransmission(address);
+  const uint8_t error = Wire.endTransmission();
+  Serial.printf("OLED clock: configured address 0x%02X -> %u (0=ACK, 2=NACK, 5=timeout)\n", address, error);
+  if (error != 0) {
+    Serial.println("OLED clock: configured address did not respond; map continues");
     vTaskDelete(nullptr); return;
   }
   Serial.printf("OLED clock: address 0x%02X acknowledged; initializing SSD1306 128x64\n", address);
@@ -96,13 +92,17 @@ void run(void *) {
   }
 }
 }
-void begin() {
+void begin(uint8_t configuredAddress) {
   if (clockTask) return;
+  if (configuredAddress < 0x08 || configuredAddress > 0x77) {
+    Serial.println("OLED clock: invalid configured address; skipped"); return;
+  }
+  address = configuredAddress;
   // No I2C or display initialization on the application startup/loop task.
   if (xTaskCreatePinnedToCore(run, "oled-clock", 4096, nullptr, 1, &clockTask, 1) != pdPASS)
     Serial.println("OLED clock: task allocation failed; map continues without OLED");
 }
 }
 #else
-namespace brooklyn::oled { void begin() {} }
+namespace brooklyn::oled { void begin(uint8_t) {} }
 #endif
