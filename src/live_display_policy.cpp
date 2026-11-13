@@ -10,6 +10,7 @@ void Controller::publish(const Snapshot &snapshot) {
        memcmp(snapshot_.frame.approachingOnly, snapshot.frame.approachingOnly,
               sizeof(snapshot.frame.approachingOnly)) != 0 ||
        memcmp(snapshot_.frame.uncertainOnly, snapshot.frame.uncertainOnly, sizeof(snapshot.frame.uncertainOnly)) != 0 ||
+       memcmp(snapshot_.frame.blueSecondsRemaining, snapshot.frame.blueSecondsRemaining, sizeof(snapshot.frame.blueSecondsRemaining)) != 0 ||
        memcmp(snapshot_.frame.timing, snapshot.frame.timing, sizeof(snapshot.frame.timing)) != 0) &&
       stats_.mapChanges != UINT32_MAX) ++stats_.mapChanges;
   snapshot_ = snapshot;

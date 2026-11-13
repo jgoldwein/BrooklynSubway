@@ -51,6 +51,7 @@ class NetworkService {
   bool forgetCredentials();
   uint8_t brightness() const;
   uint8_t oledAddress() const;
+  uint8_t oledContrast() const;
   uint32_t routeVisibilityMask() const;
 #if BROOKLYN_NETWORK_ENABLED
   void setWebStatus(const web::StatusSnapshot &status);

@@ -161,7 +161,9 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
     }
     // Keep uncertain reports visible without claiming a stop or animating
     // invented movement. Steady amber at half the configured intensity.
-    if (config.animateTraffic && isUncertainOnly(input, i)) color = Rgb{128, 48, 0};
+    if (config.animateTraffic && (isUncertainOnly(input, i) ||
+        (occupied && !isApproachingOnly(input, i) && input.blueSecondsRemaining[i] &&
+         elapsed >= input.blueSecondsRemaining[i]))) color = Rgb{128, 48, 0};
     output.pixels[i] = scaleBrightness(color, config.brightness);
     ++result.renderedLeds;
     if (semantic->role == Role::Station) ++result.stationLeds;

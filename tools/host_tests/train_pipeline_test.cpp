@@ -447,6 +447,37 @@ void testStationConfidence() {
   CHECK(sem::isUncertainOnly(gPipe.frame(), firstOccupied()));
 }
 
+TrainPipeline gTimed;
+void testBlueHoldAcrossPolls() {
+  auto &timed = gTimed;
+  auto report = [&](uint32_t now, const char *stop, uint16_t hold = 20) {
+    sem::RenderConfig config{}; config.blueHoldSeconds = hold;
+    timed.beginCycle(now, config);
+    Feed f(now); f.vehicle("HOLD_TRIP", "2", 1, stop, now);
+    f.add(predictionEntity("HOLD_TRIP", stop, now));
+    timed.processFeed(f.b.d, f.b.n); timed.finishCycle();
+  };
+  report(kNow, "233N");
+  uint16_t index = 0; while (!timed.frame().occupancy[index]) ++index;
+  CHECK(timed.frame().blueSecondsRemaining[index] == 20);
+  sem::RenderConfig render{}; render.animateTraffic = true; render.brightness = 255;
+  render.nowUnix = kNow + 19; sem::RgbFrame rgb{};
+  sem::renderTrainFrame(timed.frame(), rgb, render); CHECK(rgb.pixels[index].blue == 255);
+  render.nowUnix = kNow + 20;
+  sem::renderTrainFrame(timed.frame(), rgb, render);
+  CHECK(rgb.pixels[index].red == 128 && rgb.pixels[index].blue == 0);
+  report(kNow + 10, "233N"); CHECK(timed.frame().blueSecondsRemaining[index] == 10);
+  report(kNow + 20, "233N"); CHECK(sem::isUncertainOnly(timed.frame(), index));
+  report(kNow + 30, "233N"); CHECK(sem::isUncertainOnly(timed.frame(), index));
+  report(kNow + 31, "233N", 40); CHECK(timed.frame().blueSecondsRemaining[index] == 9);
+  timed.beginCycle(kNow + 32); timed.finishCycle(); // missing poll retains visit
+  report(kNow + 35, "233N"); CHECK(sem::isUncertainOnly(timed.frame(), index));
+  report(kNow + 40, "232N");
+  index = 0; while (!timed.frame().occupancy[index]) ++index;
+  CHECK(timed.frame().blueSecondsRemaining[index] == 20);
+  CHECK(!sem::isUncertainOnly(timed.frame(), index));
+}
+
 void testPredictionCapacity() {
   begin();
   rt::RtTrain train{};
@@ -1036,6 +1067,7 @@ int main(int argc, char **argv) {
   testUnknownUnrepresentedUnsupported();
   testApproachingRepresentation();
   testStationTimingPredictions();
+  testBlueHoldAcrossPolls();
   testStationConfidence();
   testPredictionCapacity();
   testVerifiedTripDeparture();

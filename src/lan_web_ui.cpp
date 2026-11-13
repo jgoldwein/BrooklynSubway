@@ -208,6 +208,8 @@ void LanWebUi::registerRoutes() {
   server_.on("/config/brightness", HTTP_POST,
              [this]() { handleBrightness(); });
   server_.on("/config/oled", HTTP_POST, [this]() { handleOledAddress(); });
+  server_.on("/config/oled-dimmer", HTTP_POST, [this]() { handleOledDimmer(); });
+  server_.on("/config/blue-hold", HTTP_POST, [this]() { handleBlueHold(); });
   server_.on("/config/poll", HTTP_POST, [this]() { handlePollInterval(); });
   server_.on("/config/dns", HTTP_POST, [this]() { handleDnsSettings(); });
   server_.on("/config/routes", HTTP_POST, [this]() { handleRoutes(); });
@@ -407,6 +409,50 @@ void LanWebUi::handleOledAddress() {
   if (!configuration_.setOledAddress(address)) { server_.send(500, "text/plain", "Could not save OLED address"); return; }
   Serial.printf("OLED clock: saved address 0x%02X; reboot to apply\n", address);
   server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "OLED address saved; reboot to apply");
+}
+
+void LanWebUi::handleOledDimmer() {
+  if (!authorizeRequest(true)) return;
+  bool contrastSeen = false, csrfSeen = false;
+  for (int i = 0; i < server_.args(); ++i) {
+    const String name = server_.argName(i);
+    if (name == "contrast" && !contrastSeen) contrastSeen = true;
+    else if (name == "csrf" && !csrfSeen) csrfSeen = true;
+    else { server_.send(400, "text/plain", "Invalid OLED dimmer settings"); return; }
+  }
+  const String text = server_.arg("contrast"); uint8_t contrast = 0;
+  if (!contrastSeen || !csrfSeen || server_.args() != 2 || !hasNoEmbeddedNull(text) ||
+      !parseBrightness(text.c_str(), contrast)) {
+    server_.send(400, "text/plain", "Choose OLED brightness 0 to 255"); return;
+  }
+  if (!configuration_.setOledContrast(contrast)) {
+    server_.send(500, "text/plain", "Could not save OLED brightness"); return;
+  }
+  oled::setContrast(contrast);
+  Serial.printf("OLED clock: saved contrast %u/255; worker applies within one second\n", contrast);
+  server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "OLED brightness saved");
+}
+
+void LanWebUi::handleBlueHold() {
+  if (!authorizeRequest(true)) return;
+  bool secondsSeen = false, csrfSeen = false;
+  for (int i = 0; i < server_.args(); ++i) {
+    const String name = server_.argName(i);
+    if (name == "seconds" && !secondsSeen) secondsSeen = true;
+    else if (name == "csrf" && !csrfSeen) csrfSeen = true;
+    else { server_.send(400, "text/plain", "Invalid blue hold settings"); return; }
+  }
+  const String text = server_.arg("seconds"); uint32_t seconds = 0;
+  if (!secondsSeen || !csrfSeen || server_.args() != 2 || !hasNoEmbeddedNull(text) ||
+      !config::parseBlueHoldSeconds(text.c_str(), seconds)) {
+    server_.send(400, "text/plain", "Choose 1 to 300 seconds"); return;
+  }
+  if (!configuration_.setBlueHoldSeconds(seconds)) {
+    server_.send(500, "text/plain", "Could not save blue hold time"); return;
+  }
+  Serial.printf("Station blue hold: %lu seconds; applies next poll, visit timers retained\n",
+                static_cast<unsigned long>(seconds));
+  server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "Blue hold saved; applies next poll");
 }
 
 void LanWebUi::handlePollInterval() {
@@ -1715,6 +1761,8 @@ void LanWebUi::sendLoginFailure(admin::LoginResult::Code code) {
 }
 
 void LanWebUi::updateAdminStatus(StatusSnapshot &status) {
+  status.oledContrast = configuration_.oledContrast();
+  status.blueHoldSeconds = configuration_.blueHoldSeconds();
   status.pollSeconds = configuration_.pollSeconds();
   status.oledAddress = configuration_.oledAddress();
   status.oledStatus = oled::status();

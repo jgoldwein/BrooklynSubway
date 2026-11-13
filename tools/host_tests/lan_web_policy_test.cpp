@@ -46,6 +46,8 @@ struct MemoryStore {
   uint32_t saves = 0;
   uint32_t pollSeconds = 0;
   uint32_t oledAddress = 0;
+  uint32_t blueHold = 0;
+  uint32_t oledContrast = UINT32_MAX;
 };
 
 bool loadBrightness(void *context, uint32_t &out) {
@@ -116,9 +118,51 @@ bool saveOled(void *context, uint32_t value) {
   if (memory.failSave) return false;
   memory.oledAddress = value; return true;
 }
+bool loadBlueHold(void *context, uint32_t &out) {
+  out = static_cast<MemoryStore *>(context)->blueHold; return out != 0;
+}
+bool saveBlueHold(void *context, uint32_t value) {
+  auto &memory = *static_cast<MemoryStore *>(context);
+  if (memory.failSave) return false;
+  memory.blueHold = value; return true;
+}
+bool loadContrast(void *context, uint32_t &out) {
+  out = static_cast<MemoryStore *>(context)->oledContrast; return out != UINT32_MAX;
+}
+bool saveContrast(void *context, uint32_t value) {
+  auto &memory = *static_cast<MemoryStore *>(context);
+  if (memory.failSave) return false;
+  memory.oledContrast = value; return true;
+}
 brooklyn::config::Store configStore(MemoryStore &memory) {
   return {&memory, loadBrightness, saveBrightness, loadRouteVisibilityMask,
-          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPoll, savePoll, loadOled, saveOled};
+          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPoll, savePoll, loadOled, saveOled, loadBlueHold, saveBlueHold, loadContrast, saveContrast};
+}
+
+void testBlueHoldConfiguration() {
+  using namespace brooklyn::config;
+  MemoryStore memory; DeviceConfiguration config(configStore(memory));
+  config.load(); CHECK(config.blueHoldSeconds() == 20);
+  CHECK(config.oledContrast() == 207);
+  CHECK(config.setOledContrast(0));
+  DeviceConfiguration dimmed(configStore(memory)); dimmed.load(); CHECK(dimmed.oledContrast() == 0);
+  CHECK(config.setOledContrast(255));
+  dimmed.load(); CHECK(dimmed.oledContrast() == 255);
+  memory.failSave = true; CHECK(!config.setOledContrast(64) && config.oledContrast() == 255);
+  memory.failSave = false; memory.oledContrast = 300; dimmed.load(); CHECK(dimmed.oledContrast() == 207);
+  uint32_t seconds = 0;
+  CHECK(parseBlueHoldSeconds("20", seconds) && seconds == 20);
+  CHECK(parseBlueHoldSeconds("1", seconds) && seconds == 1);
+  CHECK(parseBlueHoldSeconds("300", seconds) && seconds == 300);
+  const char *badValues[] = {"", "0", "301", "-1", "+20", "20x", " 20", "9999999999999"};
+  for (const char *bad : badValues)
+    CHECK(!parseBlueHoldSeconds(bad, seconds));
+  CHECK(!parseBlueHoldSeconds(nullptr, seconds));
+  CHECK(config.setBlueHoldSeconds(45));
+  DeviceConfiguration reload(configStore(memory)); reload.load(); CHECK(reload.blueHoldSeconds() == 45);
+  memory.failSave = true; CHECK(!config.setBlueHoldSeconds(60) && config.blueHoldSeconds() == 45);
+  CHECK(!config.setBlueHoldSeconds(0)); CHECK(!config.setBlueHoldSeconds(301));
+  memory.blueHold = 999; reload.load(); CHECK(reload.blueHoldSeconds() == 20);
 }
 
 void testBrightnessParsing() {
@@ -169,7 +213,7 @@ void testPersistentConfiguration() {
   CHECK(memory.brightnessValue == 256);
   CHECK(memory.saves == savesBeforeFailure);
   CHECK(brooklyn::led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP == 16);
-  CHECK(sizeof(brooklyn::config::DeviceConfiguration) <= sizeof(brooklyn::config::Store) + 24);
+  CHECK(sizeof(brooklyn::config::DeviceConfiguration) <= sizeof(brooklyn::config::Store) + 32);
 }
 
 void testDnsConfigurationAndValidation() {
@@ -491,7 +535,7 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "Run Network Diagnostics") != nullptr);
   CHECK(strstr(page, "method=\"post\" action=\"/network-diagnostics/run\"") !=
         nullptr);
-  CHECK(countSubstring(page, csrfToken) == 10);
+  CHECK(countSubstring(page, csrfToken) == 12);
   CHECK(strstr(page, "action=\"/config/oled\"") != nullptr);
   CHECK(strstr(page, "Saved I2C address: 0x38") != nullptr);
   CHECK(strstr(page, "Reboot after changing") != nullptr);
@@ -808,6 +852,7 @@ int main() {
     CHECK(!brooklyn::config::parsePollSeconds("9999999999999999999", seconds));
     CHECK(!brooklyn::config::parsePollSeconds(nullptr, seconds));
   }
+  testBlueHoldConfiguration();
   testBrightnessParsing();
   {
     uint8_t a = 0;
