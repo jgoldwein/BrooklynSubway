@@ -328,8 +328,7 @@ void testApproachingRepresentation() {
       sem::RenderConfig dark{}; dark.approachingLit = false;
       sem::RgbFrame rgb{};
       sem::renderTrainFrame(gPipe.frame(), rgb, dark);
-      CHECK(rgb.pixels[index].red == 0 && rgb.pixels[index].green == 0 &&
-            rgb.pixels[index].blue == 0);
+      CHECK(rgb.pixels[index].red || rgb.pixels[index].green || rgb.pixels[index].blue);
       checkInvariants();
     }
   }

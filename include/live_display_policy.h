@@ -56,7 +56,6 @@ class Controller {
   bool enabled_ = false;
   bool armed_ = false;
   bool dirty_ = true;
-  bool phase_ = true;
   uint32_t animationTick_ = UINT32_MAX;
   bool powerCanResume_ = false;
   bool automaticStartPending_ = false;

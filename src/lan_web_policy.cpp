@@ -319,7 +319,7 @@ size_t renderBlueSummary(char *out, size_t capacity, const pipeline::BlueReport 
   w.format("Compared %u prior stopped trips; history overflow %u.\n", report.comparedTrips, report.historyDropped);
   w.append("Old: last detected movement >90s. NextDiff: prediction names another stop.\n"
            "Future: predicted arrival at this stop is still ahead. NoETA: no usable prediction.\n"
-           "Shared: LEDs with multiple trains; stopped reports override blinking.\n"
+           "Shared: LEDs with multiple trains; recent matching stops take priority.\n"
            "Changed: same trip changed station since the prior poll while still STOPPED_AT.\n"
            "These are STOPPED_AT reports, not confirmed station dwell.\n");
   if (report.sampleCount) w.append("Examples to review (up to 8):\n");
@@ -560,9 +560,9 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<dt>Occupied LEDs</dt><dd data-status=\"occupiedLeds\">%u</dd>"
                 "<dt>Collision count</dt><dd data-status=\"collisionCount\">%u</dd></dl>"
                 "<p>Recent matching station report: blue until the configured hold expires, then dim amber. Uncertain station report: steady dim amber. Approaching: orange transitioning to cyan during the final 30 predicted seconds; "
-                "blinking speeds up (about 0.5 to 3 blinks/second). Departing: blue transitioning to magenta while fading out; "
-                "the trail slows and clears within 30 seconds. These are estimated movement cues, not measured distance. "
-                "Missing or stalled predictions use orange with a fixed blink. A stopped train sharing a light "
+                "No arrival/departure blinking. Departing: blue transitioning to magenta while fading out; "
+                "the trail fades continuously and clears within 30 seconds. These are estimated movement cues, not measured distance. "
+                "Missing or stalled predictions remain steady orange. A stopped train sharing a light "
                 "takes priority; extra indicators do not add trains or brightness.</p></section>"
                 "<section><h2>Network diagnostics</h2><dl>"
                 "<dt>Diagnostic run</dt><dd>%s</dd>"

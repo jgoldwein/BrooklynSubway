@@ -22,8 +22,8 @@
 // Policy: route-family colours in static mode; station-motion colours in live
 // animateTraffic mode. Segment pixels retain route colours. Occupancy never
 // adds brightness or mixes contributions from different trains.
-// Approaching-only station pixels use the caller's explicit blink phase;
-// a stopped train sharing the pixel stays steady. Empty/status pixels are black.
+// Arrival/departure indications use continuous color, with no blink phase;
+// a stopped train sharing the pixel takes priority. Empty/status pixels are black.
 namespace brooklyn::semantic {
 
 using Rgb = brooklyn::led::Rgb;  // existing generic POD; not hardware-coupled
@@ -43,7 +43,7 @@ struct RenderConfig {
   uint16_t blueHoldSeconds = 20;
   uint8_t brightness = kDefaultRenderBrightness;  // 0..255 global scale
   uint32_t routeVisibilityMask = kAllRoutesVisibleMask;
-  bool approachingLit = true;  // caller supplies 500 ms on / 500 ms off phase
+  bool approachingLit = true;  // legacy compatibility input; no longer gates visibility
   bool animateTraffic = false;
   uint32_t nowUnix = 0;
   uint32_t animationTimeMs = 0;

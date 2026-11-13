@@ -207,6 +207,14 @@ with "Authorization policy mismatch" before session/CSRF validation. Register
 both as protected POST mutation endpoints; retain all existing checks. The LAN
 page test now checks every generated POST form against the actual auth policy.
 
+From 0.2.33 the user explicitly requested color-only arrival/departure indications
+because constant blinking was irritating. Remove all traffic on/off phase gating:
+approach orange-to-cyan, departure blue-to-magenta with continuous fade to off by
+30 seconds, missing/stalled predictions steady orange. Preserve blue hold and
+steady dim amber, OLED settings, status/diagnostic sequences and power controls.
+The compatibility blinkingLeds statistic is zero. Do not reintroduce traffic
+blinking or add a blink configuration without a new user request.
+
 ## USB / programming
 
 - Native ESP32-S3 USB is wired to USB1: GPIO19 D-, GPIO20 D+.

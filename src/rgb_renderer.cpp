@@ -146,11 +146,7 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
       continue;
     }
     if (!routeVisible(config.routeVisibilityMask, semantic->route)) continue;
-    if (isApproachingOnly(input, i) || approachOverlay) {
-      const uint16_t period = approachPeriodMs(timing, elapsed);
-      const bool lit = timed ? config.animationTimeMs % period < period / 2 : config.approachingLit;
-      if (!lit) continue;
-    } else if (!occupied && departure && config.animationTimeMs % departure >= departure / 2) continue;
+    // Arrival/departure indication is continuous color only: no off phase.
 
     Rgb color = nominalRouteColor(semantic->route);
     if (config.animateTraffic && semantic->role == Role::Station) {

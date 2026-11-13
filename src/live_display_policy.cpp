@@ -118,14 +118,12 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
     armed_ = true;
     dirty_ = true;
   }
-  const bool phase = semantic::approachingPhaseLit(nowMs);
   const uint32_t tick = nowMs / 40;
   if (!dirty_ && tick == animationTick_) return;
   semantic::RenderConfig config{};
   config.brightness = snapshot_.brightness < led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP
       ? snapshot_.brightness : led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP;
   config.routeVisibilityMask = snapshot_.routeMask;
-  config.approachingLit = phase;
   config.animateTraffic = true;
   config.animationTimeMs = nowMs;
   config.nowUnix = snapshot_.clockUnix ? snapshot_.clockUnix +
@@ -149,25 +147,11 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
     disable(operations);
     return;
   }
-  phase_ = phase;
   animationTick_ = tick;
   dirty_ = false;
   if (stats_.framesWritten != UINT32_MAX) ++stats_.framesWritten;
   stats_.lastWriteAtMs = nowMs;
-  stats_.blinkingLeds = 0;
-  if (config.brightness != 0) {
-    for (uint16_t i = 0; i < semantic::kFrameLedCount; ++i) {
-      const auto *mapped = semantic::semanticForLed(i);
-      const bool timed = snapshot_.frame.animationEpochUnix && config.nowUnix >= snapshot_.frame.animationEpochUnix;
-      const uint32_t elapsed = timed ? config.nowUnix - snapshot_.frame.animationEpochUnix : 0;
-      const auto &timing = snapshot_.frame.timing[i];
-      const bool overlay = snapshot_.frame.occupancy[i] == 0 && timed &&
-          (timing.arrivalSecondsPlusOne ||
-           semantic::departurePeriodMs(timing, elapsed));
-      if (mapped && (semantic::isApproachingOnly(snapshot_.frame, i) || overlay) &&
-          semantic::routeVisible(config.routeVisibilityMask, mapped->route)) ++stats_.blinkingLeds;
-    }
-  }
+  stats_.blinkingLeds = 0; // Compatibility statistic: traffic no longer blinks.
 }
 
 }  // namespace brooklyn::display::live
