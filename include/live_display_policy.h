@@ -12,6 +12,8 @@ struct Snapshot {
   uint32_t routeMask = semantic::kAllRoutesVisibleMask;
   uint8_t brightness = semantic::kDefaultRenderBrightness;
   bool hasFrame = false;
+  uint32_t clockUnix = 0;
+  uint32_t clockAtMs = 0;
 };
 
 struct Operations {
@@ -47,6 +49,7 @@ class Controller {
   bool armed_ = false;
   bool dirty_ = true;
   bool phase_ = true;
+  uint32_t animationTick_ = UINT32_MAX;
   bool powerCanResume_ = false;
   bool buttonInitialized_ = false;
   bool buttonReading_ = false;

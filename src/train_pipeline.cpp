@@ -50,6 +50,9 @@ uint16_t packOutcome(Bucket b, uint16_t led) { return static_cast<uint16_t>((b <
 void visitor(void *context, const gtfsrt::RtTrain &train, uint32_t headerTimestamp) {
   static_cast<TrainPipeline *>(context)->onVehicle(train, headerTimestamp);
 }
+void predictionVisitor(void *context, const gtfsrt::RtTrain &train, uint32_t) {
+  static_cast<TrainPipeline *>(context)->onPrediction(train);
+}
 
 }  // namespace
 
@@ -57,8 +60,10 @@ void TrainPipeline::beginCycle(uint32_t nowUnix, const semantic::RenderConfig &c
   memset(&frame_, 0, sizeof frame_);
   memset(&rgb_, 0, sizeof rgb_);
   memset(trips_, 0, sizeof trips_);
+  memset(predictions_, 0, sizeof predictions_);
   memset(&counters_, 0, sizeof counters_);
   semantic::clearFrame(frame_);
+  frame_.animationEpochUnix = nowUnix;
   nowUnix_ = nowUnix;
   tracked_ = 0;
   config_ = config;
@@ -86,7 +91,29 @@ uint32_t tripHashSecondary(const char *s) {
   return h;
 }
 
-void TrainPipeline::record(const char *tripId, uint16_t outcome) {
+void TrainPipeline::onPrediction(const gtfsrt::RtTrain &train) {
+  const auto route = semantic::routeFromGtfsRouteId(train.routeId);
+  const uint32_t arrival = train.nextStopArrival ? train.nextStopArrival : train.nextStopDeparture;
+  if (route == semantic::Route::None || !arrival || strlen(train.nextStopId) != 4 || train.fieldTruncated) return;
+  const uint32_t h1 = tripHashPrimary(train.tripId), h2 = tripHashSecondary(train.tripId);
+  uint16_t slot = h1 & (kTripTableSlots - 1);
+  for (uint16_t probe = 0; probe < kTripTableSlots; ++probe) {
+    auto &entry = predictions_[slot];
+    if (!entry.h1) {
+      entry.h1 = h1; entry.h2 = h2; entry.arrival = arrival;
+      memcpy(entry.stop, train.nextStopId, 4); entry.route = route;
+      return;
+    }
+    if (entry.h1 == h1 && entry.h2 == h2) {
+      if (entry.arrival != arrival || entry.route != route || memcmp(entry.stop, train.nextStopId, 4)) entry.conflict = true;
+      return;
+    }
+    slot = (slot + 1) & (kTripTableSlots - 1);
+  }
+  bump(counters_.predictionCapacityOverflow);
+}
+
+void TrainPipeline::record(const char *tripId, uint16_t outcome, const MotionEvidence &motion) {
   const uint32_t h1 = tripHashPrimary(tripId);
   const uint32_t h2 = tripHashSecondary(tripId);
   uint16_t slot = static_cast<uint16_t>(h1 & (kTripTableSlots - 1));
@@ -102,6 +129,7 @@ void TrainPipeline::record(const char *tripId, uint16_t outcome) {
       e.h2 = h2;
       e.outcome = outcome;
       e.records = 1;
+      e.motion = motion;
       ++tracked_;
       if (collided) bump(counters_.tripIdentityCollision);
       return;
@@ -110,6 +138,7 @@ void TrainPipeline::record(const char *tripId, uint16_t outcome) {
       if (e.h2 == h2) {
         if (e.records < kMaxRecords) ++e.records;
         if ((e.outcome & kOutcomeMask) != outcome) e.outcome |= kConflictBit;
+        if (memcmp(&e.motion, &motion, sizeof motion) != 0) e.motion = {};
         return;
       }
       collided = true;
@@ -119,7 +148,21 @@ void TrainPipeline::record(const char *tripId, uint16_t outcome) {
   bump(counters_.tripCapacityOverflow);  // unreachable while kMaxTrackedTrips < kTripTableSlots
 }
 
-void TrainPipeline::onVehicle(const gtfsrt::RtTrain &t, uint32_t feedTimestamp) {
+void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimestamp) {
+  gtfsrt::RtTrain t = vehicle;
+  const uint32_t predictionH1 = tripHashPrimary(t.tripId), predictionH2 = tripHashSecondary(t.tripId);
+  uint16_t predictionSlot = predictionH1 & (kTripTableSlots - 1);
+  for (uint16_t probe = 0; probe < kTripTableSlots; ++probe) {
+    const auto &prediction = predictions_[predictionSlot];
+    if (!prediction.h1) break;
+    if (prediction.h1 == predictionH1 && prediction.h2 == predictionH2) {
+      if (!prediction.conflict && prediction.route == semantic::routeFromGtfsRouteId(t.routeId) &&
+          strlen(t.vehicleStopId) == 4 && memcmp(prediction.stop, t.vehicleStopId, 4) == 0)
+        t.nextStopArrival = prediction.arrival;
+      break;
+    }
+    predictionSlot = (predictionSlot + 1) & (kTripTableSlots - 1);
+  }
   bump(counters_.vehiclesSeen);
   const bool supported = semantic::routeFromGtfsRouteId(t.routeId) != semantic::Route::None;
   if (supported) bump(counters_.supportedVehicles);
@@ -161,7 +204,38 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &t, uint32_t feedTimestamp) 
   }
 
   if (supported) {
-    record(t.tripId, packOutcome(bucket, led));
+    MotionEvidence motion{};
+    if (!frame_.animationEpochUnix) frame_.animationEpochUnix = feedTimestamp;
+    const uint32_t reference = frame_.animationEpochUnix;
+    const uint32_t age = t.vehicleTimestamp && reference >= t.vehicleTimestamp
+        ? reference - t.vehicleTimestamp : UINT32_MAX;
+    motion.movementAgeSeconds = age < 255 ? age : 255;
+    if ((bucket == kApproaching || bucket == kSegment) && t.status != gtfsrt::VehicleStatus::StoppedAt) {
+      semantic::GtfsTrainState next{};
+      next.routeId = t.routeId; next.stopId = t.vehicleStopId;
+      next.status = semantic::GtfsVehicleStatus::StoppedAt;
+      uint16_t nextLed = 0;
+      if (semantic::validatedGlobalIndex(semantic::mapGtfsTrain(next), nextLed)) {
+        motion.approachLedPlusOne = nextLed + 1;
+        motion.arrivalSecondsPlusOne = UINT16_MAX;  // moving, ETA unavailable
+        if (age <= 90 && t.nextStopArrival >= reference && reference &&
+            t.nextStopArrival - reference <= 600)
+          motion.arrivalSecondsPlusOne = t.nextStopArrival - reference + 1;
+      }
+    }
+    if (t.status != gtfsrt::VehicleStatus::StoppedAt && age < 30 &&
+        o.previous.source != gtfsrt::PreviousSource::None &&
+        o.previous.source != gtfsrt::PreviousSource::StaticEquivalent) {
+      semantic::GtfsTrainState previous{};
+      previous.routeId = t.routeId; previous.stopId = o.previous.stopId;
+      previous.status = semantic::GtfsVehicleStatus::StoppedAt;
+      uint16_t previousLed = 0;
+      if (semantic::validatedGlobalIndex(semantic::mapGtfsTrain(previous), previousLed)) {
+        motion.departureLedPlusOne = previousLed + 1;
+        motion.departureAgePlusOne = age + 1;
+      }
+    }
+    record(t.tripId, packOutcome(bucket, led), motion);
   } else {
     bumpBucket(bucket);
   }
@@ -192,6 +266,9 @@ void TrainPipeline::bumpBucket(uint16_t bucket) {
 gtfsrt::DecodeStatus TrainPipeline::processFeed(const uint8_t *data, size_t length) {
   if (state_ != CycleState::Collecting) return gtfsrt::DecodeStatus::Empty;
   gtfsrt::FeedStats stats;
+  memset(predictions_, 0, sizeof predictions_);
+  gtfsrt::FeedStats predictionStats{};
+  (void)gtfsrt::visitTripUpdates(data, length, predictionVisitor, this, predictionStats);
   const gtfsrt::DecodeStatus status = gtfsrt::visitVehicles(data, length, visitor, this, stats);
   bump(counters_.feedsProcessed);
   if (status != gtfsrt::DecodeStatus::Ok) bump(counters_.feedDecodeFailures);
@@ -220,6 +297,19 @@ void TrainPipeline::finishCycle() {
       continue;
     }
     bumpBucket(bucket);
+    if (e.motion.approachLedPlusOne) {
+      auto &timing = frame_.timing[e.motion.approachLedPlusOne - 1];
+      if (e.motion.arrivalSecondsPlusOne && (!timing.arrivalSecondsPlusOne ||
+          e.motion.arrivalSecondsPlusOne < timing.arrivalSecondsPlusOne)) {
+        timing.arrivalSecondsPlusOne = e.motion.arrivalSecondsPlusOne;
+        timing.movementAgeSeconds = e.motion.movementAgeSeconds;
+      }
+    }
+    if ((bucket == kStation || bucket == kSegment || bucket == kApproaching) && e.motion.departureLedPlusOne) {
+      auto &timing = frame_.timing[e.motion.departureLedPlusOne - 1];
+      if (!timing.departureAgePlusOne || e.motion.departureAgePlusOne < timing.departureAgePlusOne)
+        timing.departureAgePlusOne = e.motion.departureAgePlusOne;
+    }
   }
   const semantic::RenderResult r = semantic::renderTrainFrame(frame_, rgb_, config_);
   counters_.resolvedTrains = frame_.resolvedTrains;

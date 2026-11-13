@@ -355,6 +355,66 @@ void testApproachingRepresentation() {
   CHECK(gPipe.counters().stale == 1 && gPipe.counters().approachingStation == 0);
 }
 
+Buf predictionEntity(const char *trip, const char *stop, uint32_t arrival) {
+  Buf event; event.vint(2, arrival);
+  Buf update; update.msg(2, event).str(4, stop);
+  Buf tu; tu.msg(1, tripDesc(trip, "2")).msg(2, update);
+  Buf entity; entity.str(1, "prediction").msg(3, tu);
+  return entity;
+}
+
+void testStationTimingPredictions() {
+  begin();
+  Feed f(kNow);
+  f.vehicle("ETA_2", "2", 2, "232N", kNow);
+  f.add(predictionEntity("ETA_2", "232N", kNow + 120)); // after vehicle: two-pass lookup
+  feed(f); gPipe.finishCycle();
+  const uint16_t station = firstOccupied();
+  CHECK(gPipe.frame().timing[station].arrivalSecondsPlusOne == 121);
+  CHECK(gPipe.frame().timing[station].movementAgeSeconds == 0);
+  unsigned departures = 0;
+  for (uint16_t i = 0; i < 306; ++i) {
+    if (!gPipe.frame().timing[i].departureAgePlusOne) continue;
+    CHECK(sem::semanticForLed(i) && i != station);
+    CHECK(gPipe.frame().timing[i].departureAgePlusOne == 1);
+    ++departures;
+  }
+  CHECK(departures == 1);
+  CHECK(gPipe.frame().resolvedTrains == 1); // overlays never invent extra trains
+  begin();
+  Feed mismatch(kNow);
+  mismatch.add(predictionEntity("ETA_2", "233N", kNow + 5));
+  mismatch.vehicle("ETA_2", "2", 2, "232N", kNow);
+  feed(mismatch); gPipe.finishCycle();
+  CHECK(gPipe.frame().timing[firstOccupied()].arrivalSecondsPlusOne == UINT16_MAX);
+  begin();
+  Feed conflict(kNow);
+  conflict.add(predictionEntity("ETA_2", "232N", kNow + 5));
+  conflict.add(predictionEntity("ETA_2", "232N", kNow + 10));
+  conflict.vehicle("ETA_2", "2", 2, "232N", kNow);
+  feed(conflict); gPipe.finishCycle();
+  CHECK(gPipe.frame().timing[firstOccupied()].arrivalSecondsPlusOne == UINT16_MAX);
+  begin();
+  Feed stalled(kNow);
+  stalled.add(predictionEntity("ETA_2", "232N", kNow + 5));
+  stalled.vehicle("ETA_2", "2", 2, "232N", kNow - 91);
+  feed(stalled); gPipe.finishCycle();
+  CHECK(gPipe.frame().timing[firstOccupied()].arrivalSecondsPlusOne == UINT16_MAX);
+}
+
+void testPredictionCapacity() {
+  begin();
+  rt::RtTrain train{};
+  strcpy(train.routeId, "2"); strcpy(train.nextStopId, "232N");
+  train.nextStopArrival = kNow + 30;
+  for (unsigned i = 0; i <= kTripTableSlots; ++i) {
+    snprintf(train.tripId, sizeof train.tripId, "PRED%05u", i);
+    gPipe.onPrediction(train);
+  }
+  CHECK(gPipe.counters().predictionCapacityOverflow == 1);
+  CHECK(gPipe.counters().resolvedTrains == 0);
+}
+
 void testH19Operational() {
   begin();
   Feed f(kNow);
@@ -863,6 +923,8 @@ int main(int argc, char **argv) {
   testDSegmentWithKnownPreviousStop();
   testUnknownUnrepresentedUnsupported();
   testApproachingRepresentation();
+  testStationTimingPredictions();
+  testPredictionCapacity();
   testH19Operational();
   testPreviousStopAmbiguous();
   testStale();

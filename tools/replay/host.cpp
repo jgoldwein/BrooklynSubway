@@ -328,6 +328,9 @@ bool emitCycle(uint32_t cycleIndex, uint32_t replayUnix, uint32_t elapsedMs,
   renderConfig.brightness = static_cast<uint8_t>(brightness);
   renderConfig.routeVisibilityMask = routeMask;
   renderConfig.approachingLit = semantic::approachingPhaseLit(elapsedMs);
+  renderConfig.animateTraffic = true;
+  renderConfig.nowUnix = replayUnix;
+  renderConfig.animationTimeMs = elapsedMs;
   const semantic::RenderResult renderResult =
       semantic::renderTrainFrame(controller.frame(), rendered, renderConfig);
   display::StatusIndicators indicators{};
@@ -388,6 +391,12 @@ bool emitCycle(uint32_t cycleIndex, uint32_t replayUnix, uint32_t elapsedMs,
          renderResult.segmentLeds);
 
   const semantic::TrainFrame &displayed = controller.frame();
+  unsigned etaIndicators = 0, departureIndicators = 0;
+  for (uint16_t i = 0; i < semantic::kFrameLedCount; ++i) {
+    const auto &timing = displayed.timing[i];
+    if (timing.arrivalSecondsPlusOne && timing.arrivalSecondsPlusOne != UINT16_MAX) ++etaIndicators;
+    if (timing.departureAgePlusOne) ++departureIndicators;
+  }
   for (uint16_t i = 0; i < semantic::kFrameLedCount; ++i) {
     if (i != 0) putchar(',');
     printf("%u", displayed.occupancy[i]);
@@ -421,7 +430,8 @@ bool emitCycle(uint32_t cycleIndex, uint32_t replayUnix, uint32_t elapsedMs,
   appendTrainRecords(gDisplayedCount);
   printf("],\"observations\":[");
   appendObservationRecords();
-  printf("],\"trainFrame\":{\"occupancy\":[");
+  printf("],\"motionTiming\":{\"etaStationCandidates\":%u,\"departureCandidates\":%u,\"predictionOverflow\":%u},"
+         "\"trainFrame\":{\"occupancy\":[", etaIndicators, departureIndicators, counts.predictionCapacityOverflow);
   for (uint16_t i = 0; i < semantic::kFrameLedCount; ++i) {
     if (i != 0) putchar(',');
     printf("%u", displayed.occupancy[i]);

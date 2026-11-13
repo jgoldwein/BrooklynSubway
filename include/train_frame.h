@@ -27,12 +27,23 @@ namespace brooklyn::semantic {
 constexpr uint16_t kFrameLedCount = 306;      // == led::map::TOTAL_LED_COUNT
 constexpr uint8_t kOccupancyMax = 255;        // per-LED count saturates here
 
+// Relative to animationEpochUnix. Zero means no overlay. ETA stores seconds+1,
+// UINT16_MAX means moving with unknown ETA. Movement age 255 means unknown.
+// No geographic distance implied; overlays never add occupancy or train count.
+struct StationTiming {
+  uint16_t arrivalSecondsPlusOne;
+  uint8_t movementAgeSeconds;
+  uint8_t departureAgePlusOne;
+};
+static_assert(sizeof(StationTiming) == 4, "bounded station timing");
 struct TrainFrame {
   uint8_t occupancy[kFrameLedCount];  // trains on each global LED (saturating)
   // Bit set only when every contribution to a pixel is approaching.
   // A stopped train sharing the pixel always takes steady-display priority.
   uint8_t approachingOnly[(kFrameLedCount + 7) / 8];
   uint32_t approachingTrains;
+  uint32_t animationEpochUnix;
+  StationTiming timing[kFrameLedCount];
   uint32_t resolvedTrains;   // accepted trains (including saturated ones)
   uint32_t excessTrains;     // resolvedTrains - occupiedLeds
   uint16_t occupiedLeds;     // LEDs with occupancy >= 1

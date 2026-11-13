@@ -296,8 +296,8 @@ DecodeStatus decodeFeed(const uint8_t *data, size_t length, RtTrain *out,
   return result;
 }
 
-DecodeStatus visitVehicles(const uint8_t *data, size_t length, VehicleVisitor visitor,
-                           void *context, FeedStats &stats) {
+static DecodeStatus visitRecords(const uint8_t *data, size_t length, VehicleVisitor visitor,
+                                 void *context, FeedStats &stats, bool predictions) {
   memset(&stats, 0, sizeof stats);
   if (data == nullptr || length == 0) return DecodeStatus::Empty;
 
@@ -321,30 +321,39 @@ DecodeStatus visitVehicles(const uint8_t *data, size_t length, VehicleVisitor vi
     ++stats.entities;
     Cursor e = f.payload;
     Field ef;
-    bool ok = true, deleted = false, hasTu = false;
+    bool ok = true, deleted = false;
+    Cursor tuPayload{nullptr, nullptr};
     Cursor vehPayload{nullptr, nullptr};
     for (Next en; (en = nextField(e, ef)) != Next::End;) {
       if (en != Next::Ok) { ok = false; break; }
       if (ef.number == 2 && ef.wire == kVarint) deleted = ef.value != 0;
-      else if (ef.number == 3 && ef.wire == kLen) hasTu = true;
+      else if (ef.number == 3 && ef.wire == kLen) tuPayload = ef.payload;
       else if (ef.number == 4 && ef.wire == kLen) vehPayload = ef.payload;
       else if (ef.number == 5 && ef.wire == kLen) ++stats.alerts;
     }
     if (!ok) { ++stats.malformedEntities; continue; }
     if (deleted) { ++stats.deleted; continue; }
-    if (hasTu) ++stats.tripUpdates;
-    if (vehPayload.p == nullptr) continue;
-
-    ++stats.vehicles;
+    if (tuPayload.p != nullptr) ++stats.tripUpdates;
+    if (vehPayload.p != nullptr) ++stats.vehicles;
+    const Cursor payload = predictions ? tuPayload : vehPayload;
+    if (payload.p == nullptr) continue;
     RtTrain tmp;
     initTrain(tmp);
-    if (!parseVehicle(vehPayload, tmp) || tmp.tripId[0] == '\0') {
+    if (!(predictions ? parseTripUpdate(payload, tmp) : parseVehicle(payload, tmp)) || tmp.tripId[0] == '\0') {
       ++stats.malformedEntities;
       continue;
     }
     if (visitor != nullptr) visitor(context, tmp, stats.headerTimestamp);
   }
   return DecodeStatus::Ok;
+}
+DecodeStatus visitVehicles(const uint8_t *data, size_t length, VehicleVisitor visitor,
+                           void *context, FeedStats &stats) {
+  return visitRecords(data, length, visitor, context, stats, false);
+}
+DecodeStatus visitTripUpdates(const uint8_t *data, size_t length, VehicleVisitor visitor,
+                              void *context, FeedStats &stats) {
+  return visitRecords(data, length, visitor, context, stats, true);
 }
 char travelDirection(const RtTrain &t) {
   const char *const stops[2] = {t.vehicleStopId, t.nextStopId};

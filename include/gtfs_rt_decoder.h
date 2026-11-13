@@ -96,6 +96,9 @@ using VehicleVisitor = void (*)(void *context, const RtTrain &train,
                                 uint32_t headerTimestamp);
 DecodeStatus visitVehicles(const uint8_t *data, size_t length, VehicleVisitor visitor,
                            void *context, FeedStats &stats);
+// Bounded streaming prediction pass; no retained raw buffers or merged trip array.
+DecodeStatus visitTripUpdates(const uint8_t *data, size_t length, VehicleVisitor visitor,
+                              void *context, FeedStats &stats);
 
 // 'N', 'S', 'E', 'W' from (in order) the platform suffix of the vehicle or next
 // stop id, the NYCT direction, or the trip_id's ".N"/".S" marker; '?' if unknown.

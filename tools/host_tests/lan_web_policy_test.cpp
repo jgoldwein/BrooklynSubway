@@ -44,6 +44,7 @@ struct MemoryStore {
   uint32_t routeMaskValue = 0;
   uint32_t dnsOverrideIpv4 = 0;
   uint32_t saves = 0;
+  uint32_t pollSeconds = 0;
 };
 
 bool loadBrightness(void *context, uint32_t &out) {
@@ -96,9 +97,19 @@ bool saveDnsOverride(void *context, bool enabled, uint32_t ipv4) {
   return true;
 }
 
+bool loadPoll(void *context, uint32_t &value) {
+  value = static_cast<MemoryStore *>(context)->pollSeconds;
+  return value != 0;
+}
+bool savePoll(void *context, uint32_t value) {
+  auto &memory = *static_cast<MemoryStore *>(context);
+  if (memory.failSave) return false;
+  memory.pollSeconds = value;
+  return true;
+}
 brooklyn::config::Store configStore(MemoryStore &memory) {
   return {&memory, loadBrightness, saveBrightness, loadRouteVisibilityMask,
-          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride};
+          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPoll, savePoll};
 }
 
 void testBrightnessParsing() {
@@ -149,7 +160,7 @@ void testPersistentConfiguration() {
   CHECK(memory.brightnessValue == 256);
   CHECK(memory.saves == savesBeforeFailure);
   CHECK(brooklyn::led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP == 16);
-  CHECK(sizeof(brooklyn::config::DeviceConfiguration) <= sizeof(void *) * 9);
+  CHECK(sizeof(brooklyn::config::DeviceConfiguration) <= sizeof(brooklyn::config::Store) + 24);
 }
 
 void testDnsConfigurationAndValidation() {
@@ -461,7 +472,7 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "Run Network Diagnostics") != nullptr);
   CHECK(strstr(page, "method=\"post\" action=\"/network-diagnostics/run\"") !=
         nullptr);
-  CHECK(countSubstring(page, csrfToken) == 8);
+  CHECK(countSubstring(page, csrfToken) == 9);
   CHECK(strstr(page, "MTA TCP 443") != nullptr);
   CHECK(strstr(page, "Diagnostic run</dt><dd>complete</dd>") != nullptr);
   CHECK(strstr(page, "succeeded (198.51.100.10)") != nullptr);
@@ -754,6 +765,23 @@ void testServerOwnershipTransitions() {
 }  // namespace
 
 int main() {
+  {
+    MemoryStore memory;
+    brooklyn::config::DeviceConfiguration c(configStore(memory));
+    c.load(); CHECK(c.pollSeconds() == 15);
+    CHECK(c.setPollSeconds(30));
+    brooklyn::config::DeviceConfiguration restored(configStore(memory));
+    restored.load(); CHECK(restored.pollSeconds() == 30);
+    CHECK(!c.setPollSeconds(14) && !c.setPollSeconds(121));
+    memory.failSave = true; CHECK(!c.setPollSeconds(15) && c.pollSeconds() == 30);
+    uint32_t seconds = 0;
+    CHECK(brooklyn::config::parsePollSeconds("15", seconds) && seconds == 15);
+    CHECK(brooklyn::config::parsePollSeconds("120", seconds) && seconds == 120);
+    CHECK(!brooklyn::config::parsePollSeconds("15x", seconds));
+    CHECK(!brooklyn::config::parsePollSeconds("-15", seconds));
+    CHECK(!brooklyn::config::parsePollSeconds("9999999999999999999", seconds));
+    CHECK(!brooklyn::config::parsePollSeconds(nullptr, seconds));
+  }
   testBrightnessParsing();
   testPersistentConfiguration();
   testDnsConfigurationAndValidation();

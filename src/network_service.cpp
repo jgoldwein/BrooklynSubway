@@ -586,7 +586,7 @@ void NetworkService::begin() {
     Serial.println("LAN UI: station hostname configuration failed");
   }
   loadCredentials();
-  scheduler_.configure(kDefaultNetworkConfig.pollIntervalMs);
+  scheduler_.configure(configuration_.pollSeconds() * 1000);
   const bool fallback = !gActiveFromNvs && credentialsPresent();
   Serial.printf("Network: credentials source: %s\n",
                 gActiveFromNvs ? "NVS" : (fallback ? "secrets.h developer fallback" : "none"));
@@ -726,6 +726,14 @@ void NetworkService::printStatus(const transport::CycleResult &r) const {
   static const char *const kNames[] = {"COMPLETE", "PARTIAL", "NO FEEDS", "SKIPPED(buffer)",
                                        "SKIPPED(wifi)", "SKIPPED(time)"};
   const pipeline::Counters &p = pipeline_.counters();
+  unsigned etaCandidates = 0, departureCandidates = 0;
+  for (const auto &timing : pipeline_.frame().timing) {
+    if (timing.arrivalSecondsPlusOne && timing.arrivalSecondsPlusOne != UINT16_MAX) ++etaCandidates;
+    if (timing.departureAgePlusOne) ++departureCandidates;
+  }
+  Serial.printf("Motion timing: ETA candidates %u; departure candidates %u; prediction overflow %lu; poll wait %lu s\n",
+                etaCandidates, departureCandidates, static_cast<unsigned long>(p.predictionCapacityOverflow),
+                static_cast<unsigned long>(configuration_.pollSeconds()));
   Serial.printf("Representation: station %lu (approaching %lu), segment %lu, unrepresented %lu, insufficient %lu, unknown stop %lu, stale %lu\n",
                 static_cast<unsigned long>(p.resolvedStation),
                 static_cast<unsigned long>(p.approachingStation),
@@ -818,6 +826,7 @@ void NetworkService::update(uint32_t nowMs) {
       serviceTime(nowMs);
       return;
     case State::Ready:
+      scheduler_.configure(configuration_.pollSeconds() * 1000);
       if (WiFi.status() != WL_CONNECTED) {
         state_ = State::WifiConnecting;
         return;

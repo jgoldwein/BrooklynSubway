@@ -383,11 +383,16 @@ int main() {
     display::Controller controller;
     semantic::TrainFrame frame{};
     CHECK(semantic::addValidatedLed(frame, 0, true));
+    frame.animationEpochUnix = 1000;
+    frame.timing[0].arrivalSecondsPlusOne = 31;
     controller.completeCycle(frame, display::CycleQuality::Complete, 1000);
     CHECK(semantic::isApproachingOnly(controller.frame(), 0));
+    CHECK(controller.frame().timing[0].arrivalSecondsPlusOne == 31);
     controller.update(1000 + display::kHardStaleLimitMs);
     CHECK(controller.state() == display::State::NoData);
     CHECK(controller.frame().approachingTrains == 0);
+    CHECK(controller.frame().timing[0].arrivalSecondsPlusOne == 0);
+    CHECK(controller.frame().animationEpochUnix == 0);
     CHECK(!semantic::isApproachingOnly(controller.frame(), 0));
     controller.completeCycle(frame, display::CycleQuality::Partial, 302000);
     CHECK(semantic::isApproachingOnly(controller.frame(), 0));

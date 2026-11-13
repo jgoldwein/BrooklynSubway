@@ -453,6 +453,7 @@ bool isMutationEndpoint(const char *method, const char *path) {
     return false;
   }
   return strcmp(path, "/config/brightness") == 0 ||
+         strcmp(path, "/config/poll") == 0 ||
          strcmp(path, "/hardware-test/run") == 0 ||
          strcmp(path, "/live-display/set") == 0 ||
          strcmp(path, "/config/routes") == 0 ||
