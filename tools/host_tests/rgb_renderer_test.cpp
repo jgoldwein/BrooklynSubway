@@ -362,6 +362,31 @@ int main() {
     f.timing[index].arrivalSecondsPlusOne = 1;
     renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0, 5, 5}));
   }
+  {
+    TrainFrame f{}; clearFrame(f);
+    const auto index = firstLed(Role::Station);
+    RenderConfig c = cfg(5); c.animateTraffic = true;
+    RgbFrame r{};
+    CHECK(addUncertainLed(f, index));
+    CHECK(isUncertainOnly(f, index));
+    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{3, 1, 0}));
+    c.animationTimeMs = 1234;
+    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{3, 1, 0}));
+    CHECK(addValidatedLed(f, index, true));
+    CHECK(!isUncertainOnly(f, index) && isApproachingOnly(f, index));
+    CHECK(addUncertainLed(f, index));
+    CHECK(!isUncertainOnly(f, index) && isApproachingOnly(f, index));
+    CHECK(f.approachingTrains == 1 && f.resolvedTrains == 3);
+    CHECK(addValidatedLed(f, index));
+    CHECK(!isUncertainOnly(f, index) && !isApproachingOnly(f, index));
+    CHECK(addUncertainLed(f, index));
+    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0, 0, 5}));
+    clearFrame(f);
+    CHECK(addValidatedLed(f, index)); CHECK(addUncertainLed(f, index));
+    CHECK(!isUncertainOnly(f, index));
+    CHECK(!addUncertainLed(f, kFrameLedCount));
+    CHECK(!addUncertainLed(f, 30000));
+  }
   printf("Phase 4H RGB renderer host tests: %d checks, %d failures\n", checks, failures);
   return failures == 0 ? 0 : 1;
 }

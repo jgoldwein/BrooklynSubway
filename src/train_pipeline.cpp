@@ -115,11 +115,12 @@ void TrainPipeline::onPrediction(const gtfsrt::RtTrain &train, uint32_t feedTime
     if (!entry.h1) {
       entry.h1 = h1; entry.h2 = h2; entry.arrival = arrival;
       entry.timestamp = train.tripUpdateTimestamp ? train.tripUpdateTimestamp : feedTimestamp;
+      entry.hasArrival = train.nextStopArrival != 0;
       memcpy(entry.stop, train.nextStopId, 4); entry.route = route;
       return;
     }
     if (entry.h1 == h1 && entry.h2 == h2) {
-      if (entry.arrival != arrival || entry.route != route || memcmp(entry.stop, train.nextStopId, 4)) entry.conflict = true;
+      if (entry.arrival != arrival || entry.route != route || entry.hasArrival != (train.nextStopArrival != 0) || memcmp(entry.stop, train.nextStopId, 4)) entry.conflict = true;
       return;
     }
     slot = (slot + 1) & (kTripTableSlots - 1);
@@ -163,7 +164,9 @@ void TrainPipeline::record(const char *tripId, uint16_t outcome, const MotionEvi
         if ((e.outcome & kOutcomeMask) != outcome) e.outcome |= kConflictBit;
         if (memcmp(&e.motion, &motion, sizeof motion) != 0) e.motion = {};
         auto &saved = blueEvidence_[slot];
+        const bool recent = (saved.flags & RecentMatchingArrival) && (blue.flags & RecentMatchingArrival);
         saved.flags |= blue.flags;
+        if (!recent) saved.flags &= ~RecentMatchingArrival;
         if (blue.age > saved.age) saved.age = blue.age;
         if (memcmp(saved.nextStop, blue.nextStop, 4)) memset(saved.nextStop, 0, 4);
         return;
@@ -189,6 +192,15 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimes
         memcpy(blue.nextStop, prediction.stop, 4); blue.flags = 0;
         if (memcmp(prediction.stop, vehicle.vehicleStopId, 4)) blue.flags |= NextDifferent;
         else if (diagnosticTime && prediction.arrival > diagnosticTime) blue.flags |= FutureArrival;
+        // A matching, recent arrival supports the reported stop; it does not
+        // prove dwell. Contradictory/missing/old evidence must not look blue.
+        if (prediction.hasArrival && !(blue.flags & NextDifferent) && t.status == gtfsrt::VehicleStatus::StoppedAt &&
+            t.vehicleTimestamp && diagnosticTime >= t.vehicleTimestamp &&
+            diagnosticTime - t.vehicleTimestamp <= 90 && prediction.timestamp &&
+            diagnosticTime >= prediction.timestamp && diagnosticTime - prediction.timestamp <= 60 &&
+            prediction.arrival <= diagnosticTime && diagnosticTime - prediction.arrival <= 30 &&
+            feedTimestamp && diagnosticTime >= feedTimestamp && diagnosticTime - feedTimestamp <= 60)
+          blue.flags |= RecentMatchingArrival;
         char next[5]{}; memcpy(next, prediction.stop, 4);
         const bool inferred = gtfsrt::applyVerifiedTripDeparture(t, next, prediction.arrival,
             prediction.timestamp, feedTimestamp, nowUnix_);
@@ -336,9 +348,12 @@ void TrainPipeline::finishCycle() {
     }
     add(counters_.duplicateIdentical, static_cast<uint32_t>(e.records) - 1u);
     const uint16_t bucket = static_cast<uint16_t>(e.outcome >> 9);
+    const bool uncertain = bucket == kStation &&
+        !(blueEvidence_[i].flags & RecentMatchingArrival);
+    const uint16_t index = e.outcome & 0x1FF;
     if ((bucket == kStation || bucket == kSegment || bucket == kApproaching) &&
-        !semantic::addValidatedLed(frame_, static_cast<uint16_t>(e.outcome & 0x1FF),
-                                  bucket == kApproaching)) {
+        !(uncertain ? semantic::addUncertainLed(frame_, index) :
+          semantic::addValidatedLed(frame_, index, bucket == kApproaching))) {
       bump(counters_.frameRejected);
       continue;
     }
@@ -384,9 +399,11 @@ void TrainPipeline::finishCycle() {
     const auto *mapped = semantic::semanticForLed(led);
     auto &r = blueReport_.routes[static_cast<uint8_t>(mapped->route)];
     ++r.leds;
+    if (semantic::isUncertainOnly(frame_, led)) ++blueReport_.uncertainLeds;
+    else if (!semantic::isApproachingOnly(frame_, led)) ++blueReport_.steadyLeds;
     if (frame_.occupancy[led] > 1) ++r.shared;
     const auto &b = perLed[led];
-    if (blueReport_.sampleCount < kBlueSamples && (b.flags || b.age > 90)) {
+    if (blueReport_.sampleCount < kBlueSamples && ((b.flags & ~RecentMatchingArrival) || b.age > 90)) {
       auto &sample = blueReport_.samples[blueReport_.sampleCount++];
       sample.led = led; sample.age = b.age; sample.flags = b.flags;
       sample.trains = frame_.occupancy[led];

@@ -337,6 +337,10 @@ void testApproachingRepresentation() {
   Feed mixed(kNow);
   mixed.vehicle("APP_2", "2", 2, "232N", kNow);
   mixed.vehicle("STOP_2", "2", 1, "232N", kNow);
+  Buf event; event.vint(2, kNow);
+  Buf update; update.msg(2, event).str(4, "232N");
+  Buf tu; tu.msg(1, tripDesc("STOP_2", "2")).msg(2, update);
+  Buf entity; entity.str(1, "prediction").msg(3, tu); mixed.add(entity);
   feed(mixed); gPipe.finishCycle();
   CHECK(gPipe.counters().resolvedTrains == 2 && gPipe.counters().collisionLeds == 1);
   CHECK(!sem::isApproachingOnly(gPipe.frame(), firstOccupied()));
@@ -400,6 +404,47 @@ void testStationTimingPredictions() {
   stalled.vehicle("ETA_2", "2", 2, "232N", kNow - 91);
   feed(stalled); gPipe.finishCycle();
   CHECK(gPipe.frame().timing[firstOccupied()].arrivalSecondsPlusOne == UINT16_MAX);
+}
+
+void testStationConfidence() {
+  begin(); Feed f(kNow);
+  f.vehicle("MATCH", "2", 1, "233N", kNow - 10);
+  f.add(predictionEntity("MATCH", "233N", kNow - 10));
+  feed(f); gPipe.finishCycle();
+  CHECK(!sem::isUncertainOnly(gPipe.frame(), firstOccupied()));
+  CHECK(gPipe.blueReport().steadyLeds == 1 && gPipe.blueReport().uncertainLeds == 0);
+  begin(); Feed missing(kNow); missing.vehicle("MISSING", "2", 1, "233N", kNow);
+  feed(missing); gPipe.finishCycle();
+  CHECK(sem::isUncertainOnly(gPipe.frame(), firstOccupied()));
+  CHECK(gPipe.blueReport().uncertainLeds == 1);
+  begin(); Feed future(kNow); future.vehicle("FUTURE", "2", 1, "233N", kNow);
+  future.add(predictionEntity("FUTURE", "233N", kNow + 30));
+  feed(future); gPipe.finishCycle();
+  CHECK(sem::isUncertainOnly(gPipe.frame(), firstOccupied()));
+  begin(); Feed old(kNow); old.vehicle("OLD", "2", 1, "233N", kNow - 100);
+  old.add(predictionEntity("OLD", "233N", kNow - 10));
+  feed(old); gPipe.finishCycle();
+  CHECK(sem::isUncertainOnly(gPipe.frame(), firstOccupied()));
+  begin(); Feed different(kNow); different.vehicle("DIFF", "2", 1, "233N", kNow - 10);
+  different.add(predictionEntity("DIFF", "232N", kNow - 1));
+  feed(different); gPipe.finishCycle();
+  CHECK(sem::isUncertainOnly(gPipe.frame(), firstOccupied()));
+  CHECK(gPipe.counters().resolvedTrains == 1);
+  begin();
+  rt::RtTrain prediction{};
+  strcpy(prediction.tripId, "DEPARTURE_ONLY"); strcpy(prediction.routeId, "2");
+  strcpy(prediction.nextStopId, "233N"); prediction.nextStopDeparture = kNow - 5;
+  gPipe.onPrediction(prediction, kNow);
+  auto vehicle = prediction;
+  vehicle.hasVehicle = true; vehicle.status = rt::VehicleStatus::StoppedAt;
+  strcpy(vehicle.vehicleStopId, "233N"); vehicle.vehicleTimestamp = kNow - 5;
+  gPipe.onVehicle(vehicle, kNow); gPipe.finishCycle();
+  CHECK(sem::isUncertainOnly(gPipe.frame(), firstOccupied()));
+  begin();
+  prediction.nextStopDeparture = 0; prediction.nextStopArrival = kNow - 5;
+  prediction.tripUpdateTimestamp = kNow - 61;
+  gPipe.onPrediction(prediction, kNow); gPipe.onVehicle(vehicle, kNow); gPipe.finishCycle();
+  CHECK(sem::isUncertainOnly(gPipe.frame(), firstOccupied()));
 }
 
 void testPredictionCapacity() {
@@ -991,6 +1036,7 @@ int main(int argc, char **argv) {
   testUnknownUnrepresentedUnsupported();
   testApproachingRepresentation();
   testStationTimingPredictions();
+  testStationConfidence();
   testPredictionCapacity();
   testVerifiedTripDeparture();
   testBlueDiagnostics();
