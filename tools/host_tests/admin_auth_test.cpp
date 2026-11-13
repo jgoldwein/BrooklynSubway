@@ -330,6 +330,8 @@ void testCookieAndEndpointPolicy() {
   CHECK(!brooklyn::admin::isProtectedEndpoint("POST", "/live-display/set"));
   CHECK(!brooklyn::admin::isMutationEndpoint("POST", "/live-display/set"));
   CHECK(brooklyn::admin::isMutationEndpoint("POST", "/config/poll"));
+  CHECK(brooklyn::admin::isMutationEndpoint("POST", "/config/oled"));
+  CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/config/oled"));
   CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/live-display/set"));
   CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/hardware-test/run"));
   CHECK(brooklyn::admin::isProtectedEndpoint("GET", "/update/progress"));

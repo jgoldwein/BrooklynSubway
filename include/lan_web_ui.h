@@ -36,6 +36,7 @@ class LanWebUi {
   void handleNetworkDiagnostics();
   void handleBrightness();
   void handlePollInterval();
+  void handleOledAddress();
   void handleDnsSettings();
   void handleRoutes();
   void handleRunNetworkDiagnostics();

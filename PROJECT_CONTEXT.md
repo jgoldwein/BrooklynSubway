@@ -141,6 +141,8 @@ User subsequently supplied a working ESPHome configuration for the same display:
 SSD1306 128x64 at 0x3C, updating every second. From 0.2.23 firmware uses that
 proven initialization profile on GPIO8/9. From 0.2.24, probe user-requested
 0x38 first, with 0x3C fallback; Wire exclusively owns pin initialization.
+User reports the OLED working at 0x38. From 0.2.25, use the saved administrator
+OLED address (default 0x38); reboot to apply edits, with no address fallback.
 No separate reset pin is wired.
 
 ## USB / programming

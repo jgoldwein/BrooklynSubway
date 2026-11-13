@@ -503,6 +503,8 @@ NetworkService::NetworkService(pipeline::TrainPipeline &pipeline)
       lanWebUi_(configuration_), serverOwnership_{}, webStatus_{}, latestCycle_{},
       hasLatestCycle_(false), mdnsAttempted_(false), mdnsStarted_(false) {}
 
+uint8_t NetworkService::oledAddress() const { return configuration_.oledAddress(); }
+
 uint8_t NetworkService::brightness() const {
   return configuration_.brightness();
 }
@@ -1116,6 +1118,8 @@ NetworkService::NetworkService(pipeline::TrainPipeline &pipeline)
     : pipeline_(pipeline), counters_{}, buffer_{nullptr, 0}, scheduler_{},
       state_(State::Disabled), bufferTried_(false), wifiStarted_(false),
       timeStarted_(false), recoveryRequested_(false), lastWifiAttemptMs_(0), timeStartMs_(0) {}
+
+uint8_t NetworkService::oledAddress() const { return config::kDefaultOledAddress; }
 
 uint8_t NetworkService::brightness() const {
   return config::kDefaultBrightness;
