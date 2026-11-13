@@ -143,6 +143,8 @@ proven initialization profile on GPIO8/9. From 0.2.24, probe user-requested
 0x38 first, with 0x3C fallback; Wire exclusively owns pin initialization.
 User reports the OLED working at 0x38. From 0.2.25, use the saved administrator
 OLED address (default 0x38); reboot to apply edits, with no address fallback.
+From 0.2.29, the saved address is preferred, with fallback probing of
+0x38/0x3C/0x3D when needed. Web status reports the active address and I2C error.
 No separate reset pin is wired.
 
 ## USB / programming

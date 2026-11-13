@@ -29,7 +29,7 @@ def main():
             print(build.stderr, end="")
             return build.returncode
 
-        for scenario in range(9):
+        for scenario in range(12):
             run = subprocess.run([str(exe), str(scenario)], capture_output=True, text=True)
             print(run.stdout, end="")
             print(run.stderr, end="")

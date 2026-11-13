@@ -8,6 +8,7 @@
 #include "network_diagnostics.h"
 #include "normal_config.h"
 #include "blue_diagnostics.h"
+#include "oled_clock.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -37,6 +38,7 @@ struct StatusSnapshot {
   pipeline::BlueReport blueReport{};
   uint32_t pollSeconds = 15;
   uint8_t oledAddress = config::kDefaultOledAddress;
+  oled::Status oledStatus{};
   char deviceName[33] = {};
   char target[48] = {};
   char resetReason[24] = {};

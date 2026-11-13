@@ -1717,6 +1717,7 @@ void LanWebUi::sendLoginFailure(admin::LoginResult::Code code) {
 void LanWebUi::updateAdminStatus(StatusSnapshot &status) {
   status.pollSeconds = configuration_.pollSeconds();
   status.oledAddress = configuration_.oledAddress();
+  status.oledStatus = oled::status();
   const auto output = display::live::stats();
   status.physicalPowerPaused = output.powerCanResume;
   status.physicalFramesWritten = output.framesWritten;

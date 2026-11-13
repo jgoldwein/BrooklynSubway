@@ -10,3 +10,5 @@ int digitalRead(uint8_t);
 int xTaskCreatePinnedToCore(void (*)(void *), const char *, uint32_t, void *, int, TaskHandle_t *, int);
 void vTaskDelete(void *);
 void vTaskDelay(uint32_t);
+
+void delay(uint32_t);
