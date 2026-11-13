@@ -344,7 +344,15 @@ size_t renderHomePage(char *out, size_t capacity,
   writer.append("</dd><dt>Reset reason</dt><dd>");
   writer.html(status.resetReason);
   writer.append("</dd><dt>Physical LED output</dt><dd>");
-  writer.append(status.physicalLedOutputEnabled ? "ENABLED (cap 16/255)" : "DISABLED");
+  writer.append(status.physicalLedOutputEnabled ? "ENABLED (cap 16/255)" :
+                status.physicalPowerPaused ? "PAUSED (POWER resumes)" : "DISABLED");
+  writer.format("</dd><dt>Live frames sent</dt><dd>%lu</dd>"
+                "<dt>Map data changes received</dt><dd>%lu</dd>"
+                "<dt>Blinking station LEDs</dt><dd>%u</dd><dt>Last live frame sent</dt><dd>",
+                static_cast<unsigned long>(status.physicalFramesWritten),
+                static_cast<unsigned long>(status.physicalMapChanges), status.physicalBlinkingLeds);
+  if (status.physicalFramesWritten) writer.format("%lu seconds ago", static_cast<unsigned long>(status.physicalFrameAgeSeconds));
+  else writer.append("Not yet");
   writer.append("</dd></dl></section><section><h2>Administrator</h2><p>");
   if (!status.adminConfigured) {
     writer.append("Administrator setup is required through the local "
@@ -783,6 +791,11 @@ size_t renderStatusJson(char *out, size_t capacity,
   writer.append(",\"completeAgeSeconds\":");
   appendNullableAge(writer, status.hasCompleteAge, status.completeAgeSeconds);
   writer.format(",\"approachingTrains\":%lu", static_cast<unsigned long>(status.approachingTrains));
+  writer.format(",\"physicalFramesWritten\":%lu,\"physicalMapChanges\":%lu,"
+                "\"physicalBlinkingLeds\":%u,\"physicalPowerPaused\":%s",
+                static_cast<unsigned long>(status.physicalFramesWritten),
+                static_cast<unsigned long>(status.physicalMapChanges),
+                status.physicalBlinkingLeds, status.physicalPowerPaused ? "true" : "false");
   writer.format(",\"resolvedTrains\":%lu,\"occupiedLeds\":%u,"
                 "\"collisionCount\":%u,\"brightness\":%u,"
                 "\"routeVisibilityMask\":%lu,\"routeCount\":%u,"

@@ -107,9 +107,14 @@ void update() {
   const uint32_t now = millis();
   if (static_cast<uint32_t>(now - lastHeartbeatMs) >= 5000) {
     lastHeartbeatMs = now;
+    const auto output = display::live::stats();
     Serial.printf("Heartbeat: uptime %lu s; live LED output %s\n",
                   static_cast<unsigned long>(now / 1000),
                   display::live::enabled() ? "ENABLED (cap 16/255)" : "DISABLED");
+    Serial.printf("Live output: frames %lu; map changes %lu; blinking LEDs %u; POWER resume %s\n",
+                  static_cast<unsigned long>(output.framesWritten),
+                  static_cast<unsigned long>(output.mapChanges), output.blinkingLeds,
+                  output.powerCanResume ? "available" : "unavailable");
   }
 }
 

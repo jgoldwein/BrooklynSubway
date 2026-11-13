@@ -54,11 +54,25 @@ int main() {
   c.service(500, false, false, ops); CHECK(writes == 2 && !lit(0));
   c.service(1000, false, false, ops); CHECK(writes == 3 && lit(0));
   c.service(1020, true, false, ops);
+  CHECK(c.enabled());  // Debounce before toggling; a hold must not repeat.
+  c.service(1050, true, false, ops);
   CHECK(!c.enabled() && stops == 1);
-  c.service(1040, false, false, ops); CHECK(arms == 1);
-  CHECK(c.enable(1040)); c.service(1040, false, true, ops);
+  CHECK(c.stats().powerCanResume);
+  c.service(1100, true, false, ops); CHECK(arms == 1 && !c.enabled());
+  c.service(1120, false, false, ops);
+  c.service(1150, false, false, ops);
+  c.service(1170, true, false, ops);
+  c.service(1200, true, false, ops);
+  CHECK(c.enabled() && arms == 2 && !c.stats().powerCanResume);
+  c.service(1300, true, false, ops); CHECK(c.enabled() && arms == 2);
+  CHECK(c.stats().framesWritten == static_cast<uint32_t>(writes));
+  CHECK(c.stats().mapChanges == 1 && c.stats().blinkingLeds == 1);
+  c.publish(s); CHECK(c.stats().mapChanges == 1);
+  c.service(1320, false, false, ops);
+  CHECK(c.enable(1340)); c.service(1340, false, true, ops);
   CHECK(!c.enabled());
-  CHECK(c.enable(1040)); c.service(1040, false, false, ops);
+  CHECK(!c.stats().powerCanResume);
+  CHECK(c.enable(1360)); c.service(1360, false, false, ops);
   c.service(300000, false, false, ops); CHECK(!c.enabled());
   CHECK(!c.enable(300000));
   s = snapshot(400000); c.publish(s); CHECK(c.enable(400000));
@@ -72,6 +86,7 @@ int main() {
   s.status.displayState = display::State::Fresh; c.publish(s);
   armOk = false; CHECK(c.enable(400020));
   c.service(400020, false, false, ops); CHECK(!c.enabled());
+  CHECK(!c.stats().powerCanResume);
   armOk = true; writeOk = false; CHECK(c.enable(400020));
   c.service(400020, false, false, ops); CHECK(!c.enabled());
   writeOk = true;
@@ -87,5 +102,28 @@ int main() {
   CHECK(c.enabled());
   s.status.displayState = display::State::NoData; c.publish(s);
   c.service(20, false, false, ops); CHECK(!c.enabled());
-  puts("Live display: OFF at boot, explicit enable, independent blink during network stall, POWER/recovery stop, stale timeout, failure cleanup, brightness/current caps and rollover PASS");
+  {
+    live::Controller boot;
+    boot.publish(snapshot());
+    boot.service(0, true, false, ops);
+    boot.service(100, true, false, ops);
+    CHECK(!boot.enabled());
+    boot.service(120, false, false, ops);
+    boot.service(160, false, false, ops);
+    boot.service(180, true, false, ops);
+    boot.service(220, true, false, ops);
+    CHECK(!boot.enabled());  // POWER cannot bypass first web enable after boot.
+    CHECK(boot.enable(240));
+    boot.service(240, false, false, ops);
+    boot.service(280, false, false, ops);
+    boot.service(300, true, false, ops);
+    boot.service(310, false, false, ops);
+    boot.service(350, false, false, ops);
+    CHECK(boot.enabled());  // Short bounce does not toggle.
+    boot.disable(ops);
+    boot.service(400, true, false, ops);
+    boot.service(440, true, false, ops);
+    CHECK(!boot.enabled() && !boot.stats().powerCanResume);
+  }
+  puts("Live display: OFF at boot, explicit enable, independent blink, debounced POWER off/on, hold/bounce handling, maintenance/fault revocation, update counters, stale timeout, brightness/current caps and rollover PASS");
 }

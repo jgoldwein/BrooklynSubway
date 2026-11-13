@@ -54,6 +54,11 @@ struct StatusSnapshot {
   bool otaBootConfirmed = false;
   bool physicalLiveAvailable = false;
   bool physicalLedOutputEnabled = false;
+  bool physicalPowerPaused = false;
+  uint32_t physicalFramesWritten = 0;
+  uint32_t physicalMapChanges = 0;
+  uint32_t physicalFrameAgeSeconds = 0;
+  uint16_t physicalBlinkingLeds = 0;
   char availableVersion[33] = {};  // empty when no newer release is known
   int16_t rssi = -127;
   bool mdnsAvailable = false;

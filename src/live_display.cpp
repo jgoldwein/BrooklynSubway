@@ -33,7 +33,10 @@ void run(void *) {
     const bool wasEnabled = controller.enabled();
     controller.service(nowMs, digitalRead(pins::BUTTON_POWER) == LOW,
                        recoveryPending, operations);
-    if (wasEnabled && !controller.enabled()) Serial.println("Live display stopped; GPIO1 LOW; enable again explicitly");
+    if (wasEnabled && !controller.enabled()) Serial.println(controller.stats().powerCanResume
+        ? "Live display paused by POWER; press POWER again to resume"
+        : "Live display stopped; GPIO1 LOW; enable again from web");
+    if (!wasEnabled && controller.enabled()) Serial.println("Live display resumed by POWER");
     xSemaphoreGive(mutex);
     vTaskDelay(pdMS_TO_TICKS(20));
   }
@@ -90,6 +93,13 @@ bool consumeRecoveryRequest() {
   xSemaphoreGive(mutex);
   return result;
 }
+OutputStats stats() {
+  if (!available()) return {};
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  const auto result = controller.stats();
+  xSemaphoreGive(mutex);
+  return result;
+}
 }  // namespace brooklyn::display::live
 #else
 namespace brooklyn::display::live {
@@ -99,6 +109,7 @@ void publish(const Snapshot &) {}
 bool enable() { return false; }
 void disable() {}
 bool enabled() { return false; }
+OutputStats stats() { return {}; }
 bool consumeRecoveryRequest() { return false; }
 }
 #endif
