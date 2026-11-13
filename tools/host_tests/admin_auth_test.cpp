@@ -314,6 +314,7 @@ void testCookieAndEndpointPolicy() {
   CHECK(!brooklyn::admin::extractNamedCookie("x=1", "", token, sizeof(token)));
 
   const char *const mutations[] = {
+      "/config/oled-dimmer", "/config/blue-hold",
       "/config/brightness", "/config/routes", "/config/dns", "/wifi/setup",
       "/wifi/setup/confirm", "/reboot", "/update/check", "/update/install",
       "/update/reboot", "/update/auto", "/update/interval",
@@ -332,6 +333,8 @@ void testCookieAndEndpointPolicy() {
   CHECK(brooklyn::admin::isMutationEndpoint("POST", "/config/poll"));
   CHECK(brooklyn::admin::isMutationEndpoint("POST", "/config/oled"));
   CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/config/oled"));
+  CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/config/oled-dimmer"));
+  CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/config/blue-hold"));
   CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/live-display/set"));
   CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/hardware-test/run"));
   CHECK(brooklyn::admin::isProtectedEndpoint("GET", "/update/progress"));
