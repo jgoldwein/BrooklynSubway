@@ -19,8 +19,9 @@
 // a logical rendering scale; it has not been validated as a board power/current
 // limit.
 //
-// Policy: an occupied map LED shows its semantic route colour at the configured
-// global brightness. Occupancy never adds brightness or mixes colours.
+// Policy: route-family colours in static mode; station-motion colours in live
+// animateTraffic mode. Segment pixels retain route colours. Occupancy never
+// adds brightness or mixes contributions from different trains.
 // Approaching-only station pixels use the caller's explicit blink phase;
 // a stopped train sharing the pixel stays steady. Empty/status pixels are black.
 namespace brooklyn::semantic {
@@ -63,6 +64,10 @@ Rgb nominalRouteColor(Route route);
 Rgb scaleBrightness(Rgb color, uint8_t brightness);
 uint16_t approachPeriodMs(const StationTiming &timing, uint32_t elapsedSeconds);
 uint16_t departurePeriodMs(const StationTiming &timing, uint32_t elapsedSeconds);
+enum class StationMotion : uint8_t { Approaching, Stopped, Departing };
+// Nominal motion colour; brightness/current limiting is applied afterward.
+Rgb stationMotionColor(StationMotion motion, const StationTiming &timing,
+                       uint32_t elapsedSeconds);
 
 // Clears `output`, then paints every valid occupied, visible map LED. Hidden
 // routes remain in `input`; visibility affects only this final RGB rendering.

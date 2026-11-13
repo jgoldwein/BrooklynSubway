@@ -289,8 +289,16 @@ void setup() {
 
 void loop() {
   brooklyn::controls::update();
-  if (brooklyn::controls::consumeLedDiagnosticRequest()) {
-    (void)brooklyn::led::backend::runFirstLedDiagnostic();
+  const bool backgroundTest = brooklyn::display::live::consumeTestRequest();
+  if (brooklyn::controls::consumeLedDiagnosticRequest() || backgroundTest) {
+    const auto beforeTest = brooklyn::display::live::stats();
+    const bool resumeLive = brooklyn::display::live::enabled() || beforeTest.automaticStartPending;
+    const bool completed = brooklyn::led::backend::runAllRouteDiagnostics(
+        brooklyn::led::backend::RouteDiagnosticSpeed::Fast);
+    // A POWER/recovery abort must leave the display OFF. Successful tests may
+    // resume a prior live session only if the cached data is still healthy/fresh.
+    if (completed && (resumeLive || beforeTest.powerCanResume))
+      brooklyn::display::live::restoreAfterSuccessfulTest(resumeLive);
   }
 #if BROOKLYN_NETWORK_ENABLED
   brooklyn::ota::healthService(millis());

@@ -10,7 +10,11 @@
 
 FakeSerial Serial;
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
-namespace brooklyn::display::live { void disable() {} }
+namespace brooklyn::display::live {
+void disable() {}
+void beginDiagnostic() {}
+void endDiagnostic() {}
+}
 #endif
 bool failAllocation = false;
 int enable = LOW;
@@ -19,6 +23,7 @@ int coloredShows = 0;
 int delays = 0;
 int enableHighs = 0;
 bool routeMode = false;
+uint32_t expectedRouteDwell = 250;
 int routeSteps = 0;
 int routeFramePixels = 0;
 int routeSeen[306]{};
@@ -72,7 +77,7 @@ void observeStrip(uint8_t pin, const uint32_t *pixels, uint16_t count) {
   }
 }
 void delay(uint32_t milliseconds) {
-  if (routeMode) { CHECK(milliseconds == 250 && enable == HIGH); ++delays; return; }
+  if (routeMode) { CHECK(milliseconds == expectedRouteDwell && enable == HIGH); ++delays; return; }
   CHECK(milliseconds == (expectedPixels == 1 ? 2000u : 500u));
   CHECK(shows == (delays + 2) * 8 && coloredShows == delays + 1 && enable == HIGH);
   ++delays;
@@ -213,6 +218,16 @@ int main() {
   backend::setDiagnosticSystemReady(false);
   shows = 0;
   CHECK(!backend::runAllRouteDiagnostics() && shows == 0 && enable == LOW);
+  backend::setDiagnosticSystemReady(true);
+  recoveryRequested = false;
+  expectedRouteDwell = 25;
+  routeSteps = lastRoute = routeFramePixels = shows = delays = 0;
+  for (int &seen : routeSeen) seen = 0;
+  abortAfter = -1;
+  CHECK(backend::runAllRouteDiagnostics(backend::RouteDiagnosticSpeed::Fast));
+  CHECK(routeSteps == 906 && delays == 906 && enable == LOW);
+  for (int i = 0; i < 306; ++i)
+    CHECK(routeSeen[i] == (brooklyn::semantic::semanticForLed(i) ? 3 : 0));
   puts("Route diagnostic: all 18 lines, 302 map LEDs RGB, status exclusion, POWER/recovery abort and startup interlock PASS");
   puts("LED diagnostic: all 8 channel walks, exact counts/pins/order, CH8 status mapping, POWER abort, strict selection, startup interlock, black cleanup and normal-output lock PASS");
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1

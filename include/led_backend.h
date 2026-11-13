@@ -24,7 +24,8 @@ bool runChannelOneDiagnostic();
 // One selected manufactured channel, including CH8 status pixels.
 bool runChannelDiagnostic(PhysicalChannel channel);
 bool runAllChannelDiagnostics();
-bool runAllRouteDiagnostics();
+enum class RouteDiagnosticSpeed : uint8_t { Normal, Fast };
+bool runAllRouteDiagnostics(RouteDiagnosticSpeed speed = RouteDiagnosticSpeed::Normal);
 void setDiagnosticSystemReady(bool ready);
 // Dedicated live-service entry points. Normal arm/transmit APIs remain locked.
 bool armLiveOutput();

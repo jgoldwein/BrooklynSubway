@@ -9,5 +9,13 @@ bool enable();
 void disable();
 bool enabled();
 OutputStats stats();
+void restoreAfterSuccessfulTest(bool start);
+bool consumeTestRequest();
+void beginDiagnostic();
+void endDiagnostic();
+struct DiagnosticGuard {
+  DiagnosticGuard() { beginDiagnostic(); }
+  ~DiagnosticGuard() { endDiagnostic(); }
+};
 bool consumeRecoveryRequest();
 }

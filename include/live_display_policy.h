@@ -29,11 +29,16 @@ struct OutputStats {
   uint32_t mapChanges = 0;
   uint16_t blinkingLeds = 0;
   bool powerCanResume = false;
+  bool automaticStartPending = false;
 };
 
 // Called under the runtime mutex. Hardware operations have one owner at a time.
 class Controller {
  public:
+  explicit Controller(bool automaticStart = false) {
+    automaticStartPending_ = automaticStart;
+    powerCanResume_ = automaticStart;
+  }
   void publish(const Snapshot &snapshot);
   bool enable(uint32_t nowMs);
   void disable(const Operations &operations);
@@ -41,6 +46,8 @@ class Controller {
                const Operations &operations);
   bool enabled() const { return enabled_; }
   OutputStats stats() const;
+  void requestAutomaticStart() { automaticStartPending_ = true; powerCanResume_ = true; }
+  void allowPowerResume() { automaticStartPending_ = false; powerCanResume_ = true; }
  private:
   bool safe(uint32_t nowMs) const;
   bool powerPress(uint32_t nowMs, bool pressed);
@@ -51,6 +58,10 @@ class Controller {
   bool phase_ = true;
   uint32_t animationTick_ = UINT32_MAX;
   bool powerCanResume_ = false;
+  bool automaticStartPending_ = false;
+  bool hasSnapshot_ = false;
+  bool everHadFrame_ = false;
+  bool suppressPowerUntilRelease_ = false;
   bool buttonInitialized_ = false;
   bool buttonReading_ = false;
   bool buttonStable_ = false;
