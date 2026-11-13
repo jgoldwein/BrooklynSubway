@@ -6,6 +6,7 @@
 #include "gtfs_rt_decoder.h"
 #include "rgb_renderer.h"
 #include "train_frame.h"
+#include "blue_diagnostics.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -159,6 +160,7 @@ class TrainPipeline {
 
   CycleState state() const { return state_; }
   const Counters &counters() const { return counters_; }
+  const BlueReport &blueReport() const { return blueReport_; }
   const semantic::TrainFrame &frame() const { return frame_; }
   // Non-black pixels only after finishCycle(); all black before.
   const semantic::RgbFrame &rgb() const { return rgb_; }
@@ -168,13 +170,20 @@ class TrainPipeline {
   void onPrediction(const gtfsrt::RtTrain &train, uint32_t feedTimestamp = 0);
 
  private:
-  void record(const char *tripId, uint16_t outcome, const MotionEvidence &motion);
+  void record(const char *tripId, uint16_t outcome, const MotionEvidence &motion, const BlueEvidence &blue);
   void bumpBucket(uint16_t bucket);
 
   semantic::TrainFrame frame_;
   semantic::RgbFrame rgb_;
   TripEntry trips_[kTripTableSlots];
   PredictionEntry predictions_[kTripTableSlots];  // reused per feed, not per cycle
+  struct BlueHistory { uint32_t h1, h2; uint16_t led; };
+  static constexpr uint16_t kBlueHistoryCapacity = 256;
+  BlueHistory blueHistory_[kBlueHistoryCapacity];
+  uint16_t blueHistoryCount_ = 0, blueHistoryDropped_ = 0;
+  bool finishedForBlueHistory_ = false;
+  BlueEvidence blueEvidence_[kTripTableSlots];
+  BlueReport blueReport_;
   Counters counters_;
   uint32_t nowUnix_;
   uint16_t tracked_;

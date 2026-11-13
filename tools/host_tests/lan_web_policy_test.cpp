@@ -823,6 +823,24 @@ int main() {
     CHECK(!c.setOledAddress(0x07) && !c.setOledAddress(0x78));
     m.oledAddress = 0x138; restored.load(); CHECK(restored.oledAddress() == 0x38);
   }
+  {
+    auto status = sampleStatus();
+    status.blueReport.timestamp = 1794584704;
+    for (uint8_t i = 1; i <= brooklyn::semantic::kRouteCount; ++i) {
+      auto &r = status.blueReport.routes[i]; r.trains=10; r.leds=9; r.old=3; r.different=2; r.future=1; r.missing=4; r.shared=1;
+    }
+    status.blueReport.sampleCount = brooklyn::pipeline::kBlueSamples;
+    for (uint8_t i = 0; i < status.blueReport.sampleCount; ++i) {
+      auto &s = status.blueReport.samples[i]; s.led=brooklyn::semantic::kMapLeds[i].globalOrder;
+      s.age=100; s.flags=brooklyn::pipeline::NextDifferent; s.trains=2; strcpy(s.nextStop,"232N");
+    }
+    static char json[6144], page[16384];
+    CHECK(brooklyn::web::renderStatusJson(json,sizeof(json),status,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
+    CHECK(strstr(json,"\"blueSummary\":") != nullptr);
+    CHECK(strstr(json,"NextDiff") != nullptr && strstr(json,"232N (different)") != nullptr);
+    CHECK(brooklyn::web::renderHomePage(page,sizeof(page),status,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
+    CHECK(strstr(page,"Why blue?") != nullptr && strstr(page,"data-status=\"blueSummary\"") != nullptr);
+  }
   testPersistentConfiguration();
   testDnsConfigurationAndValidation();
   testDnsSettingsFormParsing();

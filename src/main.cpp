@@ -370,6 +370,7 @@ void loop() {
   webStatus.approachingTrains = operationalDisplay.frame().approachingTrains;
   webStatus.occupiedLeds = operationalDisplay.frame().occupiedLeds;
   webStatus.collisionCount = operationalDisplay.frame().collisionLeds;
+  webStatus.blueReport = trainPipeline.blueReport();
   networkService.setWebStatus(webStatus);
 #endif
 #if defined(BROOKLYN_TARGET_XIAO)

@@ -514,6 +514,7 @@ uint32_t NetworkService::routeVisibilityMask() const {
 }
 
 void NetworkService::setWebStatus(const web::StatusSnapshot &status) {
+  webStatus_.blueReport = status.blueReport;
   webStatus_.displayState = status.displayState;
   webStatus_.hasDataAge = status.hasDataAge;
   webStatus_.dataAgeSeconds = status.dataAgeSeconds;

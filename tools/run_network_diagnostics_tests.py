@@ -29,6 +29,8 @@ def main():
             str(h.ROOT / "src/network_diagnostics.cpp"),
             str(h.ROOT / "src/lan_web_policy.cpp"),
             str(h.ROOT / "src/normal_config.cpp"),
+            str(h.ROOT / "src/semantic_api.cpp"),
+            str(h.ROOT / "src/led_map.cpp"),
             str(h.ROOT / "src/generated/semantic_tables.cpp"),
             "-o",
             str(exe),

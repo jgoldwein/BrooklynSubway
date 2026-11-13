@@ -29,7 +29,7 @@ namespace brooklyn::web {
 namespace {
 
 constexpr size_t kPageCapacity = 16384; // Room for the OLED form and escaped status text.
-constexpr size_t kJsonCapacity = 2048;
+constexpr size_t kJsonCapacity = 6144; // Bounded blue-light diagnostic text.
 constexpr size_t kNetworkDiagnosticsJsonCapacity = 1536;
 #ifndef BROOKLYN_RELEASE_CHECK_INTERVAL_MS
 #define BROOKLYN_RELEASE_CHECK_INTERVAL_MS (6u * 60u * 60u * 1000u)  // bench tests may override

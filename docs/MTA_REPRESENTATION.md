@@ -105,3 +105,19 @@ Conflicting, canceled, stale, opposite-direction and ambiguous cases stay
 unchanged. This does not invent an arrival or add trains. Serial diagnostics
 report the number of verified input departures. Pipeline scratch storage is
 now 47,740 bytes; no new dependency or raw feed buffer is added.
+
+## Why blue? diagnostic (0.2.26)
+
+Expand Why blue? on the status page and copy the text when steady station lights
+look wrong. The text refreshes automatically. Counts cover visible station LEDs
+in the latest poll, not optical feedback or a held/paused display. Rows separate
+stopped trains, LEDs, shared LEDs, old movement evidence (>90 seconds), missing
+predictions, different next stops, future arrivals and changed stations despite
+STOPPED_AT. Up to eight examples include route/station, LED designator, age and
+next-stop ID. Same-trip duplicates count once; conflicting trips are omitted.
+
+The bounded comparison uses at most 256 prior stopped trips and a 120-second
+maximum gap. Coverage and dropped-history count are shown. Changed station is
+diagnostic evidence only; neither it nor any other flag changes live rendering.
+MTA's vehicle timestamp measures last detected movement; "old" does not prove
+that a train has departed. No station dwell is claimed as confirmed by this report.
