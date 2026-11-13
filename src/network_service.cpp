@@ -5,6 +5,7 @@
 // Not validated on hardware (ESP32-S3 not connected during Phase 4J).
 
 #include "network_service.h"
+#include "live_display.h"
 
 #include "diagnostics.h"
 #include "wifi_policy.h"
@@ -599,6 +600,7 @@ void NetworkService::begin() {
 }
 
 void NetworkService::startProvisioning(uint32_t nowMs) {
+  display::live::disable();
   stopLanWebUi();
   serverOwnership_.stop();
   dnsAssociationReady_ = false;

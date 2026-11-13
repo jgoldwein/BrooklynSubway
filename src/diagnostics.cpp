@@ -7,6 +7,7 @@
 #include "led_backend.h"
 #include "led_map.h"
 #include "led_power.h"
+#include "live_display.h"
 
 #include <Arduino.h>
 #include <esp_system.h>
@@ -106,8 +107,9 @@ void update() {
   const uint32_t now = millis();
   if (static_cast<uint32_t>(now - lastHeartbeatMs) >= 5000) {
     lastHeartbeatMs = now;
-    Serial.printf("Heartbeat: uptime %lu s; LED outputs DISABLED\n",
-                  static_cast<unsigned long>(now / 1000));
+    Serial.printf("Heartbeat: uptime %lu s; live LED output %s\n",
+                  static_cast<unsigned long>(now / 1000),
+                  display::live::enabled() ? "ENABLED (cap 16/255)" : "DISABLED");
   }
 }
 

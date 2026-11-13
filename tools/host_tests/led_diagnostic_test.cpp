@@ -9,6 +9,9 @@
 #include <stdlib.h>
 
 FakeSerial Serial;
+#if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+namespace brooklyn::display::live { void disable() {} }
+#endif
 bool failAllocation = false;
 int enable = LOW;
 int shows = 0;
@@ -212,4 +215,26 @@ int main() {
   CHECK(!backend::runAllRouteDiagnostics() && shows == 0 && enable == LOW);
   puts("Route diagnostic: all 18 lines, 302 map LEDs RGB, status exclusion, POWER/recovery abort and startup interlock PASS");
   puts("LED diagnostic: all 8 channel walks, exact counts/pins/order, CH8 status mapping, POWER abort, strict selection, startup interlock, black cleanup and normal-output lock PASS");
+#if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+  routeMode = false;
+  expectedPixels = 1;
+  expectedPin = 4;
+  shows = coloredShows = delays = 0;
+  backend::setDiagnosticSystemReady(true);
+  CHECK(backend::armLiveOutput());
+  CHECK(enable == HIGH && shows == 8 && coloredShows == 0);
+  brooklyn::led::DisplayState liveFrame[306]{};
+  liveFrame[0].color = {17, 0, 0};
+  CHECK(!backend::transmitLiveOutput(liveFrame, 306) && shows == 8);
+  liveFrame[0].color = {4, 0, 0};
+  CHECK(!backend::transmitLiveOutput(liveFrame, 305));
+  CHECK(backend::transmitLiveOutput(liveFrame, 306));
+  CHECK(coloredShows == 1 && enable == HIGH);
+  backend::stopLiveOutput();
+  CHECK(shows == 24 && enable == LOW && !backend::physicalLedOutputsArmed());
+  CHECK(!backend::armLedOutputs());
+  backend::setDiagnosticSystemReady(false);
+  CHECK(!backend::armLiveOutput() && enable == LOW);
+  puts("Live backend: black-first, cap rejection, frame validation, black-last shutdown, startup guard and normal API lock PASS");
+#endif
 }

@@ -21,16 +21,17 @@
   holds preserve it and hard stale clearing removes it with the occupancy.
   The existing 90-second partial grace and five-minute blanking limit apply.
 - The renderer accepts an explicit blink phase. Firmware uses monotonic time;
-  replay uses simulated elapsed time. Network polling still blocks the main
-  loop, so physical blink timing under polling load needs validation before
-  live physical output is enabled.
+  replay uses simulated elapsed time. From 0.2.16 the physical live service
+  renders a mutex-protected committed snapshot in a separate output task,
+  independently of blocking network polling. Actual timing under polling load
+  remains an on-board observation step.
 - Web status reports approaching trains as a subset of resolved trains.
   Serial diagnostics report station, approaching, segment, unrepresented,
   insufficient, unknown-stop and stale counts for each cycle.
 
-Normal physical map output remains disabled. These are logical renderer and
-state changes; GPIO, board files, brightness caps and diagnostic tests do not
-change. Publishing and on-board observation are separate steps.
+Physical live output starts OFF and can be enabled explicitly from the signed-in
+Live display page in 0.2.16. See LIVE_DISPLAY.md for limits and shutoff behavior.
+GPIO, board files and the existing brightness/current limits do not change.
 
 ## Validation
 

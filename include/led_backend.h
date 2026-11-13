@@ -26,5 +26,9 @@ bool runChannelDiagnostic(PhysicalChannel channel);
 bool runAllChannelDiagnostics();
 bool runAllRouteDiagnostics();
 void setDiagnosticSystemReady(bool ready);
+// Dedicated live-service entry points. Normal arm/transmit APIs remain locked.
+bool armLiveOutput();
+bool transmitLiveOutput(const DisplayState *frame, uint16_t count);
+void stopLiveOutput();
 
 }  // namespace brooklyn::led::backend

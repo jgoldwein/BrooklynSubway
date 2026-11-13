@@ -10,6 +10,7 @@
 #include "semantic_api.h"
 #include "led_power.h"
 #include "physical_output_safety.h"
+#include "live_display.h"
 
 #include <Arduino.h>
 
@@ -181,12 +182,18 @@ bool diagnosticSystemReady = false;
 
 void setDiagnosticSystemReady(bool ready) {
   diagnosticSystemReady = ready;
+#if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+  if (!ready) display::live::disable();
+#endif
   if (!ready) disarmLedOutputs();
 }
 
 namespace {
 bool runDiagnostic(PhysicalChannel channel, bool walkChannel) {
 #if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
+#if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+  display::live::disable();
+#endif
   const uint32_t durationMs = walkChannel ? 500 : 2000;
   const uint8_t channelNumber = static_cast<uint8_t>(channel);
   constexpr uint8_t kRed = 4;
@@ -293,6 +300,9 @@ bool runChannelOneDiagnostic() { return runChannelDiagnostic(PhysicalChannel::CH
 
 bool runAllChannelDiagnostics() {
 #if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
+#if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+  display::live::disable();
+#endif
   disarmLedOutputs();
   if (!diagnosticSystemReady) return false;
   Serial.println("LED diagnostic: all-channel sequence starting; POWER aborts entire sequence");
@@ -314,6 +324,9 @@ bool runAllChannelDiagnostics() {
 
 bool runAllRouteDiagnostics() {
 #if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
+#if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+  display::live::disable();
+#endif
   disarmLedOutputs();
   if (!diagnosticSystemReady || !semantic::selfCheck()) return false;
   DisplayState frame[map::TOTAL_LED_COUNT]{};
@@ -356,6 +369,42 @@ bool runAllRouteDiagnostics() {
   return ok;
 #else
   return false;
+#endif
+}
+
+bool armLiveOutput() {
+#if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+  return diagnosticSystemReady && semantic::selfCheck() && outputController.initialize(kOutputOperations, true) &&
+      outputController.arm(kOutputOperations, true);
+#else
+  return false;
+#endif
+}
+
+bool transmitLiveOutput(const DisplayState *frame, uint16_t count) {
+#if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+  if (!diagnosticSystemReady || !frame || count != map::TOTAL_LED_COUNT) return false;
+  // Reject any caller that bypasses the physical cap or total-current budget.
+  for (uint16_t i = 0; i < count; ++i) {
+    const auto color = frame[i].color;
+    if (color.red > power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP ||
+        color.green > power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP ||
+        color.blue > power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP) return false;
+  }
+  if (power::estimateFrameCurrentMa(frame, count, 255) > power::FIRMWARE_LED_CURRENT_BUDGET_MA) return false;
+  return outputController.transmit(kOutputOperations, true, frame, count);
+#else
+  (void)frame; (void)count;
+  return false;
+#endif
+}
+
+void stopLiveOutput() {
+#if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+  DisplayState black[map::TOTAL_LED_COUNT]{};
+  if (physicalLedOutputsArmed())
+    outputController.transmit(kOutputOperations, true, black, map::TOTAL_LED_COUNT);
+  disarmLedOutputs();
 #endif
 }
 

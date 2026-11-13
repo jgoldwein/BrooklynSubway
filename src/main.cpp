@@ -5,6 +5,7 @@
 #include "controls.h"
 #include "diagnostics.h"
 #include "display_output.h"
+#include "live_display.h"
 #include "hardware.h"
 #include "led_engine.h"
 #include "led_backend.h"
@@ -178,6 +179,16 @@ void updateLogicalDisplay(uint32_t nowMs) {
     Serial.println("Display: canonical status LED mapping failed");
   }
   if (statusApplied) {
+    if (changed) {
+      brooklyn::display::live::Snapshot snapshot{};
+      snapshot.frame = operationalDisplay.frame();
+      snapshot.status = status;
+      snapshot.frameAtMs = nowMs - operationalDisplay.dataAgeMs(nowMs);
+      snapshot.routeMask = routeVisibilityMask;
+      snapshot.brightness = brightness;
+      snapshot.hasFrame = operationalDisplay.hasFrame();
+      brooklyn::display::live::publish(snapshot);
+    }
     previousStatus = status;
     hasPreviousStatus = true;
     static bool outputPending = true;
@@ -264,6 +275,7 @@ void setup() {
     Serial.println("ERROR: I2C initialization failed; LED outputs remain disabled.");
   }
   brooklyn::hardware::indicateStartup(systemHealthy);
+  if (systemHealthy) (void)brooklyn::display::live::begin();
 #if defined(BROOKLYN_TARGET_XIAO)
   if (brooklyn::led::runSelfTest()) {
     brooklyn::led::runXiaoDemonstration();
@@ -280,7 +292,8 @@ void loop() {
 #if BROOKLYN_NETWORK_ENABLED
   brooklyn::ota::healthService(millis());
 #endif
-  if (brooklyn::controls::consumeWifiRecoveryRequest()) {
+  const bool liveRecovery = brooklyn::display::live::consumeRecoveryRequest();
+  if (brooklyn::controls::consumeWifiRecoveryRequest() || liveRecovery) {
     networkService.requestProvisioning();
   }
   brooklyn::diagnostics::update();

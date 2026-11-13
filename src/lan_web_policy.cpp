@@ -343,8 +343,9 @@ size_t renderHomePage(char *out, size_t capacity,
   writer.format("%lu seconds", static_cast<unsigned long>(status.uptimeSeconds));
   writer.append("</dd><dt>Reset reason</dt><dd>");
   writer.html(status.resetReason);
-  writer.append("</dd><dt>Physical LED output</dt><dd>DISABLED</dd></dl></section>"
-                "<section><h2>Administrator</h2><p>");
+  writer.append("</dd><dt>Physical LED output</dt><dd>");
+  writer.append(status.physicalLedOutputEnabled ? "ENABLED (cap 16/255)" : "DISABLED");
+  writer.append("</dd></dl></section><section><h2>Administrator</h2><p>");
   if (!status.adminConfigured) {
     writer.append("Administrator setup is required through the local "
                   "BrooklynMap-Avi provisioning network.");
@@ -372,6 +373,7 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.html(csrfToken);
     writer.append("\"><button type=\"submit\">Sign out</button></form>"
                   "<p><a href=\"/hardware-test\">Hardware diagnostics</a></p>"
+                  "<p><a href=\"/live-display\">Enable / disable live display</a></p>"
                   "<p><a href=\"/update\">Update firmware</a><br>Current: ");
     writer.html(status.firmwareVersion[0] != '\0' ? status.firmwareVersion : "unknown");
     writer.append(" | Available release: ");
@@ -615,8 +617,8 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.format("<p>Current setting: %u / 255 (%u%%).</p>", brightness,
                   static_cast<unsigned>(brightness) * 100 / 255);
   }
-  writer.append("<p class=\"muted\">Logical display setting. Physical output "
-                "remains disabled; the production power cap is separate."
+  writer.append("<p class=\"muted\">Logical display setting. Enable physical output "
+                "separately under Live display; its brightness cap is 16/255."
                 "</p></section>");
   uint8_t visibleRoutes = 0;
   for (uint8_t route = 1; route <= semantic::kRouteCount; ++route) {
@@ -784,7 +786,7 @@ size_t renderStatusJson(char *out, size_t capacity,
   writer.format(",\"resolvedTrains\":%lu,\"occupiedLeds\":%u,"
                 "\"collisionCount\":%u,\"brightness\":%u,"
                 "\"routeVisibilityMask\":%lu,\"routeCount\":%u,"
-                "\"physicalLedOutputEnabled\":false,"
+                "\"physicalLedOutputEnabled\":%s,"
                 "\"secureConnectFailures\":%lu,\"httpFailures\":%lu,"
                 "\"transportTimeouts\":%lu,\"bytesDownloaded\":%llu,"
                 "\"freeInternalHeap\":%lu,\"minimumInternalHeap\":%lu,"
@@ -794,6 +796,7 @@ size_t renderStatusJson(char *out, size_t capacity,
                 static_cast<unsigned long>(routeVisibilityMask &
                                            semantic::kAllRoutesVisibleMask),
                 semantic::kRouteCount,
+                status.physicalLedOutputEnabled ? "true" : "false",
                 static_cast<unsigned long>(
                     status.transportCounters.secureConnectFailures),
                 static_cast<unsigned long>(
