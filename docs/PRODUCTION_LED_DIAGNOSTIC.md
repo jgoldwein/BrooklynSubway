@@ -116,3 +116,20 @@ black/color/black order, exactly one low-level red pixel, 2000 ms dwell,
 final enable LOW, and normal-output APIs remaining locked. Walk tests also
 verify all 37 indexes in order, 500 ms per pixel, and clean POWER abort before
 the first pixel or partway through the chain.
+
+## Separate full subway-line RGB test
+
+The hardware diagnostics page now offers All subway lines in addition to the
+unchanged full channel test and individual channel tests. The route sequence is
+2, 3, 4, 5, A, B, C, D, F, G, J, L, M, N, Q, R, S, Z, using the generated
+semantic mapping across physical channels. Within each route, LEDs follow the
+stable physical-map order, not geographic station order.
+
+Each of the 302 map LEDs cycles red, green, blue at 4/255, 250 ms per color,
+one LED at a time. A black frame separates pixels; the four status LEDs are
+excluded. Allow about four minutes. Serial diagnostics name the line, designator,
+channel and index. Channel-number beeps remain exclusive to the channel test.
+POWER and rotary Wi-Fi recovery abort the route test; startup checks and semantic
+mapping validation must pass before output is enabled. Each route ends black with
+GPIO1 LOW. Normal live-map output stays locked. Firmware cannot verify the visual
+result. Feeds and HTTP servicing pause during this manual diagnostic.

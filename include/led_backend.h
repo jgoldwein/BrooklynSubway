@@ -24,6 +24,7 @@ bool runChannelOneDiagnostic();
 // One selected manufactured channel, including CH8 status pixels.
 bool runChannelDiagnostic(PhysicalChannel channel);
 bool runAllChannelDiagnostics();
+bool runAllRouteDiagnostics();
 void setDiagnosticSystemReady(bool ready);
 
 }  // namespace brooklyn::led::backend

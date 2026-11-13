@@ -18,7 +18,7 @@ bool recoveryRequested = false;
 namespace brooklyn::controls {
 bool pollWifiRecoveryDuringDiagnostic() { return recoveryRequested; }
 }
-constexpr uint32_t expectedHz[] = {2500, 3000, 3500, 4000, 1310, 1060};
+constexpr uint32_t expectedHz[] = {2500, 3000, 3500, 4000, 655, 530};
 constexpr uint32_t expectedMs[] = {80, 80, 100, 180, 600, 750};
 constexpr uint32_t expectedGaps[] = {45, 45, 45, 250, 90, 0};
 uint32_t soundMs = 0;

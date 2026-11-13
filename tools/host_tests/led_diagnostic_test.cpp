@@ -3,6 +3,7 @@
 #include "led_diagnostic_policy.h"
 #include "led_map.h"
 #include "hardware.h"
+#include "semantic_api.h"
 #include <Arduino.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -14,6 +15,11 @@ int shows = 0;
 int coloredShows = 0;
 int delays = 0;
 int enableHighs = 0;
+bool routeMode = false;
+int routeSteps = 0;
+int routeFramePixels = 0;
+int routeSeen[306]{};
+int lastRoute = 0;
 int expectedPixels = 1;
 int abortAfter = -1;
 uint8_t expectedPin = 4;
@@ -33,6 +39,22 @@ void observeStrip(uint8_t pin, const uint32_t *pixels, uint16_t count) {
   int colored = 0;
   for (uint16_t i = 0; i < count; ++i) {
     if (pixels[i]) {
+      if (routeMode) {
+        int channel = 0;
+        while (kExpectedPins[channel] != pin) ++channel;
+        int global = i;
+        for (int c = 0; c < channel; ++c) global += kExpectedCounts[c];
+        const auto *mapped = brooklyn::semantic::semanticForLed(global);
+        CHECK(mapped != nullptr);
+        CHECK(static_cast<int>(mapped->route) >= lastRoute);
+        lastRoute = static_cast<int>(mapped->route);
+        const uint32_t colors[] = {0x040000, 0x000400, 0x000004};
+        CHECK(pixels[i] == colors[routeSeen[global] % 3]);
+        ++routeSeen[global];
+        ++routeSteps;
+        ++routeFramePixels;
+        continue;
+      }
       CHECK(frame >= 1 && frame <= expectedPixels);
       CHECK(pin == expectedPin && i == frame - 1 && pixels[i] == 0x040000);
       ++colored;
@@ -41,8 +63,13 @@ void observeStrip(uint8_t pin, const uint32_t *pixels, uint16_t count) {
   CHECK(colored <= 1);
   coloredShows += colored;
   ++shows;
+  if (routeMode && shows % 8 == 0) {
+    CHECK(routeFramePixels <= 1);
+    routeFramePixels = 0;
+  }
 }
 void delay(uint32_t milliseconds) {
+  if (routeMode) { CHECK(milliseconds == 250 && enable == HIGH); ++delays; return; }
   CHECK(milliseconds == (expectedPixels == 1 ? 2000u : 500u));
   CHECK(shows == (delays + 2) * 8 && coloredShows == delays + 1 && enable == HIGH);
   ++delays;
@@ -166,5 +193,23 @@ int main() {
   resetWalk(-1);
   CHECK(!backend::runChannelDiagnostic(PhysicalChannel::CH1));
   CHECK(coloredShows == 0 && enable == LOW);
+  CHECK(parseSelection("routes", selection) && selection.kind == Kind::AllRoutes);
+  routeMode = true;
+  recoveryRequested = false;
+  resetWalk(-1);
+  CHECK(backend::runAllRouteDiagnostics());
+  CHECK(routeSteps == 302 * 3 && delays == 302 * 3 && enable == LOW);
+  for (int i = 0; i < 306; ++i)
+    CHECK(routeSeen[i] == (brooklyn::semantic::semanticForLed(i) ? 3 : 0));
+  resetWalk(3);
+  lastRoute = 0;
+  CHECK(!backend::runAllRouteDiagnostics() && delays == 3 && enable == LOW);
+  recoveryRequested = true;
+  resetWalk(-1);
+  CHECK(!backend::runAllRouteDiagnostics() && delays == 0 && enable == LOW);
+  backend::setDiagnosticSystemReady(false);
+  shows = 0;
+  CHECK(!backend::runAllRouteDiagnostics() && shows == 0 && enable == LOW);
+  puts("Route diagnostic: all 18 lines, 302 map LEDs RGB, status exclusion, POWER/recovery abort and startup interlock PASS");
   puts("LED diagnostic: all 8 channel walks, exact counts/pins/order, CH8 status mapping, POWER abort, strict selection, startup interlock, black cleanup and normal-output lock PASS");
 }

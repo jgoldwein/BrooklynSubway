@@ -29,11 +29,11 @@ void playStartupChime() {
     uint16_t gapAfterMs;
   };
   // Preserve the startup motif, then a subway-style descending pair.
-  // Reference recording is approximately 655/530 Hz; shift one octave up
-  // for this small piezo. These are approximated, not official MTA pitches.
+  // Lower the ending pair one octave from 1310/1060 Hz to 655/530 Hz.
+  // These are approximated reference pitches, not official MTA pitches.
   constexpr Note kNotes[] = {
       {2500, 80, 45}, {3000, 80, 45}, {3500, 100, 45}, {4000, 180, 250},
-      {1310, 600, 90}, {1060, 750, 0},
+      {655, 600, 90}, {530, 750, 0},
   };
   constexpr uint8_t kNoteCount = sizeof(kNotes) / sizeof(kNotes[0]);
   digitalWrite(pins::BUZZER, LOW);

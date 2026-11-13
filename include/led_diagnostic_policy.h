@@ -5,13 +5,17 @@
 #include <string.h>
 
 namespace brooklyn::led::diagnostic {
-enum class Kind : uint8_t { FirstLed, ChannelWalk, AllChannels };
+enum class Kind : uint8_t { FirstLed, ChannelWalk, AllChannels, AllRoutes };
 struct Selection {
   Kind kind = Kind::FirstLed;
   PhysicalChannel channel = PhysicalChannel::CH1;
 };
 inline bool parseSelection(const char *value, Selection &result) {
   if (value == nullptr) return false;
+  if (strcmp(value, "routes") == 0) {
+    result.kind = Kind::AllRoutes;
+    return true;
+  }
   if (strcmp(value, "first") == 0) {
     result.kind = Kind::FirstLed;
     result.channel = PhysicalChannel::CH1;
