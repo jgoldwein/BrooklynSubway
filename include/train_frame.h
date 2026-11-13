@@ -42,6 +42,8 @@ struct TrainFrame {
   // A stopped train sharing the pixel always takes steady-display priority.
   uint8_t approachingOnly[(kFrameLedCount + 7) / 8];
   uint8_t uncertainOnly[(kFrameLedCount + 7) / 8];
+  // Zero means no timed blue contribution. Otherwise seconds remaining at epoch.
+  uint16_t blueSecondsRemaining[kFrameLedCount];
   uint32_t approachingTrains;
   uint32_t animationEpochUnix;
   StationTiming timing[kFrameLedCount];

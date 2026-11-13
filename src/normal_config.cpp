@@ -8,6 +8,8 @@
 namespace brooklyn::config {
 
 bool DeviceConfiguration::load() {
+  oledContrast_ = kDefaultOledContrast;
+  blueHoldSeconds_ = kDefaultBlueHoldSeconds;
   pollSeconds_ = 15;
   oledAddress_ = kDefaultOledAddress;
   brightness_ = kDefaultBrightness;
@@ -17,6 +19,11 @@ bool DeviceConfiguration::load() {
   bool loaded = false;
 
   uint32_t stored = 0;
+  if (store_.loadOledContrast && store_.loadOledContrast(store_.context, stored) && stored <= 255) {
+    oledContrast_ = static_cast<uint8_t>(stored); loaded = true;
+  }
+  if (store_.loadBlueHoldSeconds && store_.loadBlueHoldSeconds(store_.context, stored) &&
+      stored >= 1 && stored <= kMaxBlueHoldSeconds) { blueHoldSeconds_ = stored; loaded = true; }
   if (store_.loadOledAddress && store_.loadOledAddress(store_.context, stored) && validOledAddress(stored)) {
     oledAddress_ = static_cast<uint8_t>(stored); loaded = true;
   }
@@ -64,6 +71,27 @@ bool parseOledAddress(const char *text, uint8_t &address) {
   }
   if (text[4] || !validOledAddress(value)) return false;
   address = static_cast<uint8_t>(value); return true;
+}
+
+bool DeviceConfiguration::setOledContrast(uint8_t contrast) {
+  if (!store_.saveOledContrast || !store_.saveOledContrast(store_.context, contrast)) return false;
+  oledContrast_ = contrast; return true;
+}
+
+bool DeviceConfiguration::setBlueHoldSeconds(uint32_t seconds) {
+  if (seconds < 1 || seconds > kMaxBlueHoldSeconds || !store_.saveBlueHoldSeconds ||
+      !store_.saveBlueHoldSeconds(store_.context, seconds)) return false;
+  blueHoldSeconds_ = seconds; return true;
+}
+bool parseBlueHoldSeconds(const char *text, uint32_t &seconds) {
+  if (!text || !*text) return false;
+  uint32_t value = 0;
+  for (const char *p = text; *p; ++p) {
+    if (*p < '0' || *p > '9' || value > kMaxBlueHoldSeconds) return false;
+    value = value * 10 + (*p - '0');
+  }
+  if (value < 1 || value > kMaxBlueHoldSeconds) return false;
+  seconds = value; return true;
 }
 
 bool DeviceConfiguration::setPollSeconds(uint32_t seconds) {

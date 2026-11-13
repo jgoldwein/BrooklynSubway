@@ -181,6 +181,26 @@ remained STOPPED_AT; replay still yields 16-20 blue and 1-3 amber map LEDs per
 snapshot. Do not promise that all blue lights should disappear. OLED and beeps
 are unchanged. See docs/RELEASE_0.2.30.md for scope and validation.
 
+## Configurable blue hold (0.2.31)
+
+The user requested a 20-second maximum blue indication per trip/station,
+configurable in the administrator UI. Station blue hold accepts 1-300 seconds,
+defaults to 20, persists in bkmap_cfg/blue_hold_sec and applies next poll.
+Visit history keys the trip hash pair plus the exact four-character logical
+stop ID, independently of physical LED identity. Refreshed feed timestamps do
+not restart it. Missing polls retain visits; entries unseen for 30 minutes may
+be reclaimed. Capacity exhaustion is amber. Verified movement clears the old
+visit. A blueSecondsRemaining frame field allows live expiration between polls.
+Shared LEDs use the longest remaining credible stop contribution. Reboot starts
+new visit history; genuine long dwells also become amber. OLED/beeps unchanged.
+See docs/RELEASE_0.2.31.md.
+
+The same revision adds independent OLED brightness (contrast) 0-255, default
+207 matching U8g2's SSD1306 initialization, saved in bkmap_cfg/oled_contrast.
+The administrator slider applies without reboot via an atomic request consumed
+by the existing OLED worker. No web-handler I2C access or display reinitialization.
+Zero is minimum contrast, not power off. Preserve address fallback and GPIO8/9.
+
 ## USB / programming
 
 - Native ESP32-S3 USB is wired to USB1: GPIO19 D-, GPIO20 D+.

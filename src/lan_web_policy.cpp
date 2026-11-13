@@ -306,7 +306,7 @@ size_t renderOledStatus(char *out, size_t capacity, const oled::Status &s) {
 size_t renderBlueSummary(char *out, size_t capacity, const pipeline::BlueReport &report) {
   Writer w(out, capacity);
   if (!report.timestamp) { w.append("Waiting for a completed poll."); return w.size(); }
-  w.format("Latest poll: %lu (Unix). Station LEDs, visible routes; held/paused display may differ.\n",
+  w.format("Latest poll: %lu (Unix). Station LEDs, visible routes; live timers or held/paused display may differ.\n",
            static_cast<unsigned long>(report.timestamp));
   w.format("Station indications: %u recent matching stop LEDs (blue), %u uncertain LEDs (steady dim amber).\n", report.steadyLeds, report.uncertainLeds);
   w.append("Reported STOPPED_AT candidates:\nRoute  LEDs Trains Old NextDiff Future NoETA Shared Changed\n");
@@ -559,7 +559,7 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<dt>Approaching trains (included above)</dt><dd data-status=\"approachingTrains\">%lu</dd>"
                 "<dt>Occupied LEDs</dt><dd data-status=\"occupiedLeds\">%u</dd>"
                 "<dt>Collision count</dt><dd data-status=\"collisionCount\">%u</dd></dl>"
-                "<p>Recent matching station report: steady blue. Uncertain station report: steady dim amber. Approaching: orange transitioning to cyan during the final 30 predicted seconds; "
+                "<p>Recent matching station report: blue until the configured hold expires, then dim amber. Uncertain station report: steady dim amber. Approaching: orange transitioning to cyan during the final 30 predicted seconds; "
                 "blinking speeds up (about 0.5 to 3 blinks/second). Departing: blue transitioning to magenta while fading out; "
                 "the trail slows and clears within 30 seconds. These are estimated movement cues, not measured distance. "
                 "Missing or stalled predictions use orange with a fixed blink. A stopped train sharing a light "
@@ -678,6 +678,17 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.html(length ? summary : "Diagnostic report unavailable");
     writer.append("</pre></details>");
   }
+  writer.format("<section><h2>Station blue hold</h2><p>Maximum blue time per train at the same station: %lu seconds. "
+                "Repeated reports do not restart the timer. Afterward, the indication becomes steady dim amber. "
+                "Changes apply at the next poll; long genuine stops can also turn amber.</p>",
+                static_cast<unsigned long>(status.blueHoldSeconds));
+  if (status.adminSessionActive && csrfToken && csrfToken[0]) {
+    writer.append("<form method=\"post\" action=\"/config/blue-hold\"><input type=\"hidden\" name=\"csrf\" value=\"");
+    writer.html(csrfToken);
+    writer.format("\"><label>Seconds <input type=\"number\" name=\"seconds\" min=\"1\" max=\"300\" value=\"%lu\" required></label>"
+                  "<button>Save blue hold time</button></form>", static_cast<unsigned long>(status.blueHoldSeconds));
+  }
+  writer.append("</section>");
   writer.format("<section><h2>MTA update interval</h2><p>Wait after each completed download cycle: %lu seconds. "
                 "Downloads add to the total interval. MTA feeds are typically generated about every 30 seconds; "
                 "faster checks can return identical data.</p>", static_cast<unsigned long>(status.pollSeconds));
@@ -686,6 +697,15 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.html(csrfToken);
     writer.format("\"><label>Seconds <input type=\"number\" name=\"seconds\" min=\"15\" max=\"120\" value=\"%lu\" required></label>"
                   "<button>Save update interval</button></form>", static_cast<unsigned long>(status.pollSeconds));
+  }
+  writer.append("</section>");
+  writer.format("<section><h2>OLED brightness</h2><p>Current: %u / 255. Independent of map brightness. "
+                "0 is the dimmest contrast setting, not power off.</p>", status.oledContrast);
+  if (status.adminSessionActive && csrfToken && csrfToken[0]) {
+    writer.append("<form method=\"post\" action=\"/config/oled-dimmer\"><input type=\"hidden\" name=\"csrf\" value=\"");
+    writer.html(csrfToken);
+    writer.format("\"><label>OLED brightness <input type=\"range\" name=\"contrast\" min=\"0\" max=\"255\" value=\"%u\"></label>"
+                  "<button>Save OLED brightness</button></form>", status.oledContrast);
   }
   writer.append("</section>");
   writer.format("<section><h2>OLED</h2><p>Saved I2C address: 0x%02X. Default: 0x38. Reboot after changing.</p>", status.oledAddress);
@@ -883,6 +903,8 @@ size_t renderStatusJson(char *out, size_t capacity,
     writer.append(",\"oledStatus\":\""); writer.json(text); writer.append("\"");
     writer.format(",\"oledActiveAddress\":%u,\"oledI2cError\":%u", status.oledStatus.activeAddress, status.oledStatus.error);
   }
+  writer.format(",\"oledContrast\":%u", status.oledContrast);
+  writer.format(",\"blueHoldSeconds\":%lu", static_cast<unsigned long>(status.blueHoldSeconds));
   writer.format(",\"pollSeconds\":%lu", static_cast<unsigned long>(status.pollSeconds));
   writer.format(",\"physicalFramesWritten\":%lu,\"physicalMapChanges\":%lu,"
                 "\"physicalBlinkingLeds\":%u,\"physicalPowerPaused\":%s",

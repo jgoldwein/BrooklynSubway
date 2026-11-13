@@ -10,6 +10,11 @@
 
 namespace brooklyn::config {
 
+constexpr uint8_t kDefaultOledContrast = 207; // U8g2 SSD1306 initialization default
+constexpr const char *kOledContrastKey = "oled_contrast";
+constexpr uint32_t kDefaultBlueHoldSeconds = 20;
+constexpr uint32_t kMaxBlueHoldSeconds = 300;
+constexpr const char *kBlueHoldKey = "blue_hold_sec";
 constexpr uint8_t kDefaultBrightness = 5;
 constexpr uint8_t kDefaultOledAddress = 0x38;
 constexpr const char *kOledAddressKey = "oled_addr";
@@ -33,6 +38,10 @@ struct Store {
   bool (*savePollSeconds)(void *context, uint32_t value);
   bool (*loadOledAddress)(void *context, uint32_t &value);
   bool (*saveOledAddress)(void *context, uint32_t value);
+  bool (*loadBlueHoldSeconds)(void *context, uint32_t &value);
+  bool (*saveBlueHoldSeconds)(void *context, uint32_t value);
+  bool (*loadOledContrast)(void *context, uint32_t &value);
+  bool (*saveOledContrast)(void *context, uint32_t value);
 };
 
 class DeviceConfiguration {
@@ -41,6 +50,10 @@ class DeviceConfiguration {
 
   bool load();
   bool setBrightness(uint8_t brightness);
+  bool setOledContrast(uint8_t contrast);
+  uint8_t oledContrast() const { return oledContrast_; }
+  bool setBlueHoldSeconds(uint32_t seconds);
+  uint32_t blueHoldSeconds() const { return blueHoldSeconds_; }
   bool setPollSeconds(uint32_t seconds);
   bool setOledAddress(uint8_t address);
   uint8_t oledAddress() const { return oledAddress_; }
@@ -54,7 +67,9 @@ class DeviceConfiguration {
 
  private:
   Store store_;
+  uint8_t oledContrast_ = kDefaultOledContrast;
   uint8_t oledAddress_ = kDefaultOledAddress;
+  uint32_t blueHoldSeconds_ = kDefaultBlueHoldSeconds;
   uint32_t pollSeconds_ = 15;
   uint8_t brightness_ = kDefaultBrightness;
   uint32_t routeVisibilityMask_ = kDefaultRouteVisibilityMask;
@@ -65,6 +80,7 @@ class DeviceConfiguration {
 bool parseDnsIpv4(const char *text, uint32_t &ipv4);
 bool validOledAddress(uint32_t address);
 bool parseOledAddress(const char *text, uint8_t &address);
+bool parseBlueHoldSeconds(const char *text, uint32_t &seconds);
 bool parsePollSeconds(const char *text, uint32_t &seconds);
 bool validDnsIpv4(uint32_t ipv4);
 size_t formatDnsIpv4(uint32_t ipv4, char *out, size_t capacity);

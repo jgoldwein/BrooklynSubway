@@ -284,7 +284,7 @@ void setup() {
   }
   brooklyn::hardware::indicateStartup(systemHealthy);
   if (systemHealthy) (void)brooklyn::display::live::begin();
-  if (hardwareReady) brooklyn::oled::begin(networkService.oledAddress());
+  if (hardwareReady) brooklyn::oled::begin(networkService.oledAddress(), networkService.oledContrast());
 #if defined(BROOKLYN_TARGET_XIAO)
   if (brooklyn::led::runSelfTest()) {
     brooklyn::led::runXiaoDemonstration();

@@ -504,6 +504,7 @@ NetworkService::NetworkService(pipeline::TrainPipeline &pipeline)
       hasLatestCycle_(false), mdnsAttempted_(false), mdnsStarted_(false) {}
 
 uint8_t NetworkService::oledAddress() const { return configuration_.oledAddress(); }
+uint8_t NetworkService::oledContrast() const { return configuration_.oledContrast(); }
 
 uint8_t NetworkService::brightness() const {
   return configuration_.brightness();
@@ -785,6 +786,7 @@ void NetworkService::pollNow(uint32_t nowMs) {
   FailureLogger logger(webStatus_);
   semantic::RenderConfig renderConfig{};
   renderConfig.brightness = configuration_.brightness();
+  renderConfig.blueHoldSeconds = configuration_.blueHoldSeconds();
   transport::PipelineSink sink(pipeline_, renderConfig);
   sink.setNow(static_cast<uint32_t>(time(nullptr)));
   const transport::PollPreconditions pre{WiFi.status() == WL_CONNECTED,
@@ -1121,6 +1123,7 @@ NetworkService::NetworkService(pipeline::TrainPipeline &pipeline)
       timeStarted_(false), recoveryRequested_(false), lastWifiAttemptMs_(0), timeStartMs_(0) {}
 
 uint8_t NetworkService::oledAddress() const { return config::kDefaultOledAddress; }
+uint8_t NetworkService::oledContrast() const { return config::kDefaultOledContrast; }
 
 uint8_t NetworkService::brightness() const {
   return config::kDefaultBrightness;

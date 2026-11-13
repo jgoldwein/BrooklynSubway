@@ -12,6 +12,7 @@ namespace {
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C screen(U8G2_R0, U8X8_PIN_NONE);
 TaskHandle_t clockTask = nullptr;
 uint8_t address = 0, requestedAddress = 0, transferError = 0;
+uint32_t requestedContrast = 207; // Accessed atomically; only the OLED worker touches I2C.
 uint32_t statusWord = 0; // Single atomic packed snapshot; no bus access by readers.
 void setStatus(State state, uint8_t error = 0) {
   __atomic_store_n(&statusWord, static_cast<uint32_t>(state) | (uint32_t(requestedAddress) << 8) |
@@ -93,6 +94,11 @@ void run(void *) {
   screen.setBusClock(100000);
   screen.getU8x8()->byte_cb = boundedI2c;
   screen.begin();
+  uint8_t appliedContrast = 207;
+  if (!transportFailed) {
+    const uint8_t desired = __atomic_load_n(&requestedContrast, __ATOMIC_RELAXED);
+    if (desired != appliedContrast) { screen.setContrast(desired); appliedContrast = desired; }
+  }
   if (!transportFailed) draw("Syncing time...");
   if (transportFailed) {
     setStatus(State::InitFailed, transferError);
@@ -107,7 +113,12 @@ void run(void *) {
     const bool valid = formatClock(time(nullptr), text, sizeof(text));
     if (valid && !synchronized) Serial.println("OLED clock: New York time synchronized (automatic DST)");
     synchronized = valid;
-    draw(text);
+    const uint8_t desired = __atomic_load_n(&requestedContrast, __ATOMIC_RELAXED);
+    if (desired != appliedContrast && !transportFailed) {
+      screen.setContrast(desired); appliedContrast = desired;
+      Serial.printf("OLED clock: contrast %u/255\n", desired);
+    }
+    if (!transportFailed) draw(text);
     if (transportFailed) {
       setStatus(State::TransferFailed, transferError);
       Serial.println("OLED clock: transfer failed; OLED stopped, map continues");
@@ -117,8 +128,10 @@ void run(void *) {
   }
 }
 }
-void begin(uint8_t configuredAddress) {
+void setContrast(uint8_t contrast) { __atomic_store_n(&requestedContrast, uint32_t(contrast), __ATOMIC_RELAXED); }
+void begin(uint8_t configuredAddress, uint8_t contrast) {
   if (clockTask) return;
+  setContrast(contrast);
   requestedAddress = configuredAddress;
   if (configuredAddress < 0x08 || configuredAddress > 0x77) {
     setStatus(State::InvalidAddress);
@@ -139,5 +152,5 @@ Status status() {
 }
 }
 #else
-namespace brooklyn::oled { void begin(uint8_t) {} Status status() { return {}; } }
+namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} Status status() { return {}; } }
 #endif

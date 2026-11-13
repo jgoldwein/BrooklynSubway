@@ -40,6 +40,7 @@ struct RgbFrame {
 };
 
 struct RenderConfig {
+  uint16_t blueHoldSeconds = 20;
   uint8_t brightness = kDefaultRenderBrightness;  // 0..255 global scale
   uint32_t routeVisibilityMask = kAllRoutesVisibleMask;
   bool approachingLit = true;  // caller supplies 500 ms on / 500 ms off phase
