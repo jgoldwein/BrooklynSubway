@@ -37,6 +37,64 @@ live::Snapshot snapshot(uint32_t at = 0) {
   return s;
 }
 int main() {
+  {
+    live::Controller automatic(true);
+    const int armsBefore = arms;
+    automatic.service(0, false, false, ops);
+    CHECK(!automatic.enabled() && arms == armsBefore);
+    live::Snapshot waiting{};
+    waiting.status.systemHealthy = true;
+    automatic.publish(waiting);
+    automatic.service(20, false, false, ops);
+    CHECK(!automatic.enabled() && arms == armsBefore);
+    automatic.publish(snapshot());
+    automatic.service(40, false, false, ops);
+    CHECK(automatic.enabled() && arms == armsBefore + 1);
+    automatic.service(60, true, false, ops);
+    automatic.service(100, true, false, ops);
+    CHECK(!automatic.enabled() && automatic.stats().powerCanResume);
+    automatic.service(120, false, false, ops);
+    automatic.service(160, false, false, ops);
+    automatic.service(180, true, false, ops);
+    automatic.service(220, true, false, ops);
+    CHECK(automatic.enabled());
+    automatic.disable(ops);
+    automatic.service(240, false, false, ops);
+    CHECK(!automatic.enabled());  // Maintenance disable never auto-restarts.
+    live::Controller held(true);
+    held.service(0, true, false, ops);
+    held.publish(snapshot());
+    held.service(40, true, false, ops);
+    CHECK(!held.enabled());
+    held.service(60, false, false, ops);
+    held.service(100, false, false, ops);
+    held.service(120, true, false, ops);
+    held.service(160, true, false, ops);
+    CHECK(held.enabled());
+    held.disable(ops);
+    held.allowPowerResume();
+    held.service(200, false, false, ops);
+    held.service(240, false, false, ops);
+    CHECK(!held.enabled() && held.stats().powerCanResume);
+    held.service(260, true, false, ops);
+    held.service(300, true, false, ops);
+    CHECK(held.enabled());
+    held.disable(ops);
+    arms = writes = stops = 0;
+    live::Controller latePress(true);
+    latePress.service(0, false, false, ops);
+    latePress.publish(snapshot());
+    latePress.service(20, true, false, ops);
+    latePress.service(60, true, false, ops);
+    CHECK(!latePress.enabled()); // cancelling auto-start cannot also toggle ON
+    latePress.service(80, false, false, ops);
+    latePress.service(120, false, false, ops);
+    latePress.service(140, true, false, ops);
+    latePress.service(180, true, false, ops);
+    CHECK(latePress.enabled());
+    latePress.disable(ops);
+    arms = writes = stops = 0;
+  }
   live::Controller c;
   CHECK(!c.enable(0));
   c.service(0, false, false, ops);
@@ -125,5 +183,5 @@ int main() {
     boot.service(440, true, false, ops);
     CHECK(!boot.enabled() && !boot.stats().powerCanResume);
   }
-  puts("Live display: OFF at boot, explicit enable, independent blink, debounced POWER off/on, hold/bounce handling, maintenance/fault revocation, update counters, stale timeout, brightness/current caps and rollover PASS");
+  puts("Live display: safe startup, automatic/manual enable, independent blink, POWER toggle, test restoration, maintenance/fault guards, stale timeout, brightness/current caps and rollover PASS");
 }

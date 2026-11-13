@@ -86,6 +86,30 @@ uint16_t departurePeriodMs(const StationTiming &timing, uint32_t elapsedSeconds)
   return age < 10 ? 500 : age < 20 ? 1000 : age < 30 ? 2000 : 0;
 }
 
+Rgb stationMotionColor(StationMotion motion, const StationTiming &timing,
+                       uint32_t elapsedSeconds) {
+  constexpr Rgb orange{255, 96, 0};
+  constexpr Rgb blue{0, 0, 255};
+  uint32_t blueWeight = 255;
+  if (motion == StationMotion::Approaching) {
+    // Unknown/stalled predictions stay orange instead of inventing progress.
+    if (!timing.arrivalSecondsPlusOne || timing.arrivalSecondsPlusOne == UINT16_MAX ||
+        timing.movementAgeSeconds + elapsedSeconds > 90) return orange;
+    const uint32_t eta = timing.arrivalSecondsPlusOne - 1;
+    uint32_t remaining = eta > elapsedSeconds ? eta - elapsedSeconds : 0;
+    if (remaining > 120) remaining = 120;
+    blueWeight = (120 - remaining) * 255 / 120;
+  } else if (motion == StationMotion::Departing) {
+    uint32_t age = timing.departureAgePlusOne ? timing.departureAgePlusOne - 1 + elapsedSeconds : 0;
+    if (age > 30) age = 30;
+    blueWeight = (30 - age) * 255 / 30;
+  }
+  const uint32_t orangeWeight = 255 - blueWeight;
+  return Rgb{static_cast<uint8_t>((orange.red * orangeWeight + blue.red * blueWeight + 127) / 255),
+             static_cast<uint8_t>((orange.green * orangeWeight + blue.green * blueWeight + 127) / 255),
+             static_cast<uint8_t>((orange.blue * orangeWeight + blue.blue * blueWeight + 127) / 255)};
+}
+
 RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
                               const RenderConfig &config) {
   memset(&output, 0, sizeof output);
@@ -118,7 +142,14 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
       if (!lit) continue;
     } else if (!occupied && departure && config.animationTimeMs % departure >= departure / 2) continue;
 
-    output.pixels[i] = scaleBrightness(nominalRouteColor(semantic->route), config.brightness);
+    Rgb color = nominalRouteColor(semantic->route);
+    if (config.animateTraffic && semantic->role == Role::Station) {
+      const auto motion = isApproachingOnly(input, i) || approachOverlay
+          ? StationMotion::Approaching : !occupied && departure
+          ? StationMotion::Departing : StationMotion::Stopped;
+      color = stationMotionColor(motion, timing, elapsed);
+    }
+    output.pixels[i] = scaleBrightness(color, config.brightness);
     ++result.renderedLeds;
     if (semantic->role == Role::Station) ++result.stationLeds;
     else ++result.segmentLeds;

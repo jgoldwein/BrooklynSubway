@@ -192,6 +192,7 @@ namespace {
 bool runDiagnostic(PhysicalChannel channel, bool walkChannel) {
 #if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+  display::live::DiagnosticGuard diagnosticGuard;
   display::live::disable();
 #endif
   const uint32_t durationMs = walkChannel ? 500 : 2000;
@@ -301,6 +302,7 @@ bool runChannelOneDiagnostic() { return runChannelDiagnostic(PhysicalChannel::CH
 bool runAllChannelDiagnostics() {
 #if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+  display::live::DiagnosticGuard diagnosticGuard;
   display::live::disable();
 #endif
   disarmLedOutputs();
@@ -322,20 +324,22 @@ bool runAllChannelDiagnostics() {
 #endif
 }
 
-bool runAllRouteDiagnostics() {
+bool runAllRouteDiagnostics(RouteDiagnosticSpeed speed) {
 #if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+  display::live::DiagnosticGuard diagnosticGuard;
   display::live::disable();
 #endif
   disarmLedOutputs();
   if (!diagnosticSystemReady || !semantic::selfCheck()) return false;
   DisplayState frame[map::TOTAL_LED_COUNT]{};
   constexpr Rgb colors[] = {{4, 0, 0}, {0, 4, 0}, {0, 0, 4}};
+  const uint16_t dwellMs = speed == RouteDiagnosticSpeed::Fast ? 25 : 250;
   bool ok = true;
   for (uint8_t number = 1; number <= semantic::kRouteCount && ok; ++number) {
     const auto route = static_cast<semantic::Route>(number);
-    Serial.printf("Route diagnostic: line %s; RGB 4/255; POWER aborts\n",
-                  semantic::routeName(route));
+    Serial.printf("Route diagnostic: line %s; RGB 4/255; %u ms per colour; POWER aborts\n",
+                  semantic::routeName(route), dwellMs);
     if (!outputController.initialize(kOutputOperations, true) ||
         !outputController.arm(kOutputOperations, true)) {
       disarmLedOutputs();
@@ -352,7 +356,7 @@ bool runAllRouteDiagnostics() {
             controls::pollWifiRecoveryDuringDiagnostic()) { ok = false; break; }
         frame[index].color = color;
         ok = outputController.transmit(kOutputOperations, true, frame, map::TOTAL_LED_COUNT);
-        if (ok) delay(250);
+        if (ok) delay(dwellMs);
         frame[index].color = {0, 0, 0};
         if (!ok) break;
       }
@@ -368,6 +372,7 @@ bool runAllRouteDiagnostics() {
                 ok ? "complete" : "stopped/failed");
   return ok;
 #else
+  (void)speed;
   return false;
 #endif
 }

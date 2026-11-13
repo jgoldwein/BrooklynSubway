@@ -12,12 +12,15 @@ void Controller::publish(const Snapshot &snapshot) {
        memcmp(snapshot_.frame.timing, snapshot.frame.timing, sizeof(snapshot.frame.timing)) != 0) &&
       stats_.mapChanges != UINT32_MAX) ++stats_.mapChanges;
   snapshot_ = snapshot;
+  hasSnapshot_ = true;
+  everHadFrame_ = everHadFrame_ || snapshot.hasFrame;
   dirty_ = true;
 }
 
 OutputStats Controller::stats() const {
   auto result = stats_;
-  result.powerCanResume = powerCanResume_ && !enabled_;
+  result.powerCanResume = powerCanResume_ && !enabled_ && !automaticStartPending_;
+  result.automaticStartPending = automaticStartPending_;
   if (!enabled_) result.blinkingLeds = 0;
   return result;
 }
@@ -54,6 +57,7 @@ bool Controller::enable(uint32_t nowMs) {
       (snapshot_.status.displayState != State::Fresh &&
                        snapshot_.status.displayState != State::DegradedPartial)) return false;
   enabled_ = true;
+  automaticStartPending_ = false;
   powerCanResume_ = true;
   dirty_ = true;
   return true;
@@ -61,6 +65,7 @@ bool Controller::enable(uint32_t nowMs) {
 
 void Controller::disable(const Operations &operations) {
   enabled_ = false;
+  automaticStartPending_ = false;
   powerCanResume_ = false;
   if (armed_ && operations.stop) operations.stop(operations.context);
   armed_ = false;
@@ -68,7 +73,19 @@ void Controller::disable(const Operations &operations) {
 
 void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
                          const Operations &operations) {
-  const bool toggle = powerPress(nowMs, powerPressed);
+  const bool pressedEvent = powerPress(nowMs, powerPressed);
+  if (!powerPressed) suppressPowerUntilRelease_ = false;
+  if (automaticStartPending_ && powerPressed) {
+    automaticStartPending_ = false;
+    suppressPowerUntilRelease_ = true;
+  }
+  const bool toggle = pressedEvent && !suppressPowerUntilRelease_;
+  if (!hasSnapshot_) return;
+  // Keep startup LOW while waiting for the first usable cycle. POWER can
+  // cancel automatic startup during this wait without enabling anything.
+  if (!everHadFrame_ && !snapshot_.hasFrame && snapshot_.status.systemHealthy && !recovery)
+    return;
+  if (automaticStartPending_ && !powerPressed && !recovery) (void)enable(nowMs);
   if (recovery || !safe(nowMs) || !operations.arm ||
       !operations.transmit || !operations.stop) {
     disable(operations);

@@ -59,8 +59,9 @@ after cycle completion, default 15 seconds. Download duration adds to the
 effective interval; cycles never overlap. Older settings migrate without
 changing Wi-Fi, routes, brightness or administrator credentials.
 
-Physical live output starts OFF and can be enabled explicitly from the signed-in
-Live display page in 0.2.16. See LIVE_DISPLAY.md for limits and shutoff behavior.
+From 0.2.19, physical live output starts automatically after healthy startup and
+fresh data; GPIO1 remains LOW while waiting. POWER toggles off/on. Web controls
+remain available. See LIVE_DISPLAY.md for limits and shutoff behavior.
 GPIO, board files and the existing brightness/current limits do not change.
 
 ## Validation

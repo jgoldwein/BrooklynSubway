@@ -10,7 +10,7 @@
 
 namespace brooklyn::config {
 
-constexpr uint8_t kDefaultBrightness = 64;
+constexpr uint8_t kDefaultBrightness = 5;
 constexpr uint32_t kDefaultRouteVisibilityMask =
     semantic::kAllRoutesVisibleMask;
 constexpr const char *kNvsNamespace = "bkmap_cfg";

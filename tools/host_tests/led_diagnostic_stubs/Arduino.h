@@ -13,3 +13,4 @@ void digitalWrite(uint8_t pin, int level);
 int digitalRead(uint8_t pin);
 void pinMode(uint8_t pin, int mode);
 void delay(uint32_t milliseconds);
+uint32_t millis();

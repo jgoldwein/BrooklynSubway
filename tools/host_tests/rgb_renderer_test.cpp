@@ -313,6 +313,55 @@ int main() {
     renderTrainFrame(f, r, c); CHECK(!black(r.pixels[index])); // stopped wins
     CHECK(f.resolvedTrains == 1);
   }
+  {
+    StationTiming t{};
+    t.arrivalSecondsPlusOne = 121;
+    CHECK(eq(stationMotionColor(StationMotion::Approaching, t, 0), Rgb{255, 96, 0}));
+    // Simulate a fresh prediction near arrival, rather than a stale extrapolation.
+    t.arrivalSecondsPlusOne = 1;
+    CHECK(eq(stationMotionColor(StationMotion::Approaching, t, 0), Rgb{0, 0, 255}));
+    CHECK(eq(stationMotionColor(StationMotion::Stopped, t, 0), Rgb{0, 0, 255}));
+    CHECK(eq(stationMotionColor(StationMotion::Approaching, t, 91), Rgb{255, 96, 0}));
+    t.arrivalSecondsPlusOne = UINT16_MAX;
+    CHECK(eq(stationMotionColor(StationMotion::Approaching, t, 0), Rgb{255, 96, 0}));
+    t.departureAgePlusOne = 1;
+    CHECK(eq(stationMotionColor(StationMotion::Departing, t, 0), Rgb{0, 0, 255}));
+    CHECK(eq(stationMotionColor(StationMotion::Departing, t, 30), Rgb{255, 96, 0}));
+    const auto middle = stationMotionColor(StationMotion::Departing, t, 15);
+    CHECK(middle.red > 0 && middle.blue > 0 && middle.red < 255 && middle.blue < 255);
+    TrainFrame f{}; clearFrame(f);
+    const auto index = firstLed(Role::Station);
+    CHECK(addValidatedLed(f, index));
+    RenderConfig c = cfg(5); c.animateTraffic = true;
+    RgbFrame r{}; renderTrainFrame(f, r, c);
+    CHECK(eq(r.pixels[index], Rgb{0, 0, 5}));
+    // A stopped train sharing an approach station stays steady blue.
+    CHECK(addValidatedLed(f, index, true));
+    f.timing[index].arrivalSecondsPlusOne = 121;
+    f.animationEpochUnix = 1000; c.nowUnix = 1000; c.animationTimeMs = 1500;
+    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0, 0, 5}));
+    uint8_t previousRed = 255, previousBlue = 0;
+    for (unsigned remaining = 120; ; --remaining) {
+      t.arrivalSecondsPlusOne = remaining + 1;
+      const auto color = stationMotionColor(StationMotion::Approaching, t, 0);
+      CHECK(color.red <= previousRed && color.blue >= previousBlue);
+      previousRed = color.red; previousBlue = color.blue;
+      if (!remaining) break;
+    }
+    previousRed = 0; previousBlue = 255;
+    for (unsigned age = 0; age <= 30; ++age) {
+      const auto color = stationMotionColor(StationMotion::Departing, t, age);
+      CHECK(color.red >= previousRed && color.blue <= previousBlue);
+      previousRed = color.red; previousBlue = color.blue;
+    }
+    clearFrame(f);
+    CHECK(addValidatedLed(f, index, true));
+    f.animationEpochUnix = 1000; f.timing[index].arrivalSecondsPlusOne = 121;
+    c.animationTimeMs = 0; renderTrainFrame(f, r, c);
+    CHECK(eq(r.pixels[index], Rgb{5, 2, 0}));
+    f.timing[index].arrivalSecondsPlusOne = 1;
+    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0, 0, 5}));
+  }
   printf("Phase 4H RGB renderer host tests: %d checks, %d failures\n", checks, failures);
   return failures == 0 ? 0 : 1;
 }

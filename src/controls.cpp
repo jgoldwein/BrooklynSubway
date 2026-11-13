@@ -81,6 +81,10 @@ void begin() {
 #if defined(BROOKLYN_TARGET_PCB)
   const uint32_t now = millis();
   for (Button &button : buttons) {
+    // The production live worker owns TEST sampling during blocking fetches.
+#if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+    if (button.pin == brooklyn::pins::BUTTON_TEST) continue;
+#endif
     const bool pressed = isPressed(button.pin);
     button.stablePressed = pressed;
     button.lastReadingPressed = pressed;
@@ -95,6 +99,9 @@ void update() {
 #if defined(BROOKLYN_TARGET_PCB)
   const uint32_t now = millis();
   for (Button &button : buttons) {
+#if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+    if (button.pin == brooklyn::pins::BUTTON_TEST) continue;
+#endif
     const bool pressed = isPressed(button.pin);
     if (pressed != button.lastReadingPressed) {
       button.lastReadingPressed = pressed;
@@ -109,10 +116,9 @@ void update() {
         Serial.printf("Control PRESS: %s\n", button.name);
       } else {
         const uint32_t heldMs = now - button.pressedAtMs;
-        if (button.pin == brooklyn::pins::BUTTON_TEST &&
-            button.pressedAtMs != 0 && heldMs >= 3000) {
+        if (button.pin == brooklyn::pins::BUTTON_TEST && button.pressedAtMs != 0) {
           ledDiagnosticRequested = true;
-          Serial.println("Control HOLD: TEST 3 s released -> LED42 diagnostic requested");
+          Serial.println("Control TEST released -> fast all-subway-lines diagnostic requested");
         }
         Serial.printf("Control RELEASE: %s (held %lu ms)\n", button.name,
                       static_cast<unsigned long>(heldMs));

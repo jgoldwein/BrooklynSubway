@@ -1,24 +1,26 @@
-# Manual live display (0.2.16)
+# Live display (0.2.19)
 
-1. Install the update and confirm version 0.2.16 on the status page.
-2. Connect the verified 5 V, 3 A center-positive barrel supply; the rail and
+1. Connect the verified 5 V, 3 A center-positive barrel supply; the rail and
    polarity checks must have passed. USB may remain connected for serial logs.
-3. Wait for fresh MTA data, sign in, and follow Enable / disable live display.
-4. Check the supply confirmation and select Enable live display.
-5. Observe route colours, steady stopped trains and pulsing approach/departure
-   stations through a feed poll. From 0.2.17, POWER toggles the lights off/on
-   within that boot's approved live session. Holding it toggles only once.
+2. Install the update and confirm version 0.2.19 on the status page.
+3. Live output starts automatically after healthy startup and fresh MTA data.
+4. POWER toggles the lights off/on. Holding it toggles only once. Holding POWER
+   at boot cancels automatic start; release and press again when data is fresh.
+5. A normal TEST press/release runs All subway lines quickly (about 35 seconds).
+   The web dropdown keeps the slower, roughly four-minute version. Web live
+   enable/disable controls remain available.
 
 Live output is capped at 16/255 brightness (about 6%), with the existing 2000 mA
 LED-load estimate budget. These are estimates, not measured current protection.
 The logical brightness setting can reduce brightness further; route selections
-apply. No enable setting is saved: every boot starts OFF. Enable requires a
+apply. GPIO1 stays LOW through startup checks and while awaiting data. Default
+startup intent is ON; no separate saved enable setting is used. Enable requires a
 healthy startup, fresh or usable partial data, a released POWER button and no
 pending recovery. It is unavailable on XIAO and non-network production builds.
 
 The service uses an 8192-byte-stack FreeRTOS task on core 1 at priority 2,
 serviced every 20 ms. It copies committed TrainFrame/status/settings snapshots
-under a mutex and renders the route colours at the physical cap. The output
+under a mutex and renders station-motion/segment-route colours at the physical cap. The output
 task owns live rendering; main-loop feed retrieval never owns its working
 frame. Blink phase comes from monotonic time, independent of new feed commits.
 Main-loop logical rendering remains separate. No new library dependency.
@@ -47,6 +49,15 @@ backend without the task touching it. These maintenance/fault stops revoke the
 POWER resume permission: re-enable from the web page. Only a POWER pause can be
 resumed with POWER; approval is never stored across a reboot.
 
+Exception: a successful physical TEST-button sequence restores its prior live
+intent once data is fresh. A previously POWER-paused display remains paused
+and retains POWER resume. Aborted/failed tests stay OFF; a later POWER press can
+request a fresh-data, driver-checked restart unless recovery is pending. TEST is sampled in the
+background task, queued for the main loop after an active feed cycle, and
+suppressed during diagnostics to avoid duplicate or overlapping tests. Fast mode
+uses 25 ms per colour, versus 250 ms for the web version. The same 302 map LEDs,
+RGB levels, black-first/last and POWER/recovery abort rules apply.
+
 From 0.2.17, status/JSON and the serial heartbeat report successful live frame
 transmissions, occupancy/approach-data change count, last live-frame age (HTML),
 and blink-eligible LEDs. Data-change counts exclude repeated identical snapshots
@@ -70,3 +81,13 @@ remain to be observed on the production board.
 
 The separate complete-line diagnostic ordering correction remains queued
 after the MTA representation work; this release preserves both full tests.
+
+From 0.2.19, station colours encode movement: orange (#FF6000) transitions to
+blue (#0000FF) during the final 120 predicted seconds before arrival. A stopped
+train is steady blue. The departure trail blends blue to orange over its bounded
+30-second lifetime. Missing/stalled predictions stay orange with the existing
+fixed blink; no colour progress is invented. Stopped occupancy wins. Route-family
+colours remain on mapped segment LEDs, and status/diagnostic colours are unchanged.
+Interpolation happens before brightness/current limiting. Low brightness such
+as 5/255 has only a few available channel levels, so visible steps are possible.
+The new unsaved brightness default is 5/255; existing NVS settings are retained.

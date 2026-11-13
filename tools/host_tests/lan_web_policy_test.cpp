@@ -134,7 +134,7 @@ void testPersistentConfiguration() {
   brooklyn::config::Store store = configStore(memory);
   brooklyn::config::DeviceConfiguration config(store);
   CHECK(!config.load());
-  CHECK(config.brightness() == 64);
+  CHECK(config.brightness() == 5);
   CHECK(config.routeVisibilityMask() ==
         brooklyn::semantic::kAllRoutesVisibleMask);
 
@@ -152,7 +152,7 @@ void testPersistentConfiguration() {
   memory.brightnessPresent = true;
   brooklyn::config::DeviceConfiguration corrupt(store);
   CHECK(!corrupt.load());
-  CHECK(corrupt.brightness() == 64);
+  CHECK(corrupt.brightness() == 5);
   memory.failSave = true;
   const uint32_t savesBeforeFailure = memory.saves;
   CHECK(!config.setBrightness(20));
