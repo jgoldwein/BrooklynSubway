@@ -21,7 +21,7 @@ void vTaskDelete(void *) {++deletes;}
 void vTaskDelay(uint32_t ms) { OLED_CHECK(ms==1000); ++delays; longjmp(iterationEnd,1); }
 void FakeWire::setTimeOut(uint16_t ms){OLED_CHECK(ms==50);}
 void FakeWire::setClock(uint32_t hz){OLED_CHECK(hz==100000);}
-void FakeWire::beginTransmission(uint8_t a){OLED_CHECK(!open); OLED_CHECK(a==0x3c||a==0x3d);open=true;++starts;}
+void FakeWire::beginTransmission(uint8_t a){OLED_CHECK(!open); OLED_CHECK(a==0x3c);open=true;++starts;}
 uint8_t FakeWire::endTransmission(){OLED_CHECK(open);open=false;++ends;
  if(scenario==2)return 2;
  if(scenario==3 && ends>=2)return 5;
@@ -37,7 +37,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  OLED_CHECK(!open);
  if(scenario==0){OLED_CHECK(frames==2 && titles==2 && delays==1 && deletes==0);}
  if(scenario==1){OLED_CHECK(starts==0 && deletes==1);}
- if(scenario==2){OLED_CHECK(ends==2 && frames==0 && deletes==1);}
+ if(scenario==2){OLED_CHECK(ends==1 && frames==0 && deletes==1);}
  if(scenario==3 || scenario==4){OLED_CHECK(ends==2 && frames==0 && deletes==1);}
  if(scenario==5){OLED_CHECK(ends==18 && frames==1 && deletes==1);}
  printf("OLED runtime scenario %d PASS\n",scenario);

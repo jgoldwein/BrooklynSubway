@@ -126,3 +126,13 @@ a latched error suppresses the remaining initialization/framebuffer writes.
 If upgrading from a board that stalls with the OLED connected, disconnect power,
 unplug the OLED, boot and install the update, then disconnect power before
 reconnecting the display. Serial output at 115200 identifies the failed stage.
+
+### Proven OLED initialization profile (0.2.23)
+
+The user supplied a working ESPHome configuration for this display using
+SSD1306 128x64 at 0x3C. Firmware now uses that initialization profile instead of
+the SSD1309 profile inferred from the product listing. The address is fixed to
+0x3C. Keep Wire controller 0, SDA GPIO8, SCL GPIO9, 100 kHz, the one-second clock,
+and all startup isolation and bounded-transfer behavior from 0.2.22. Physical
+image verification remains necessary; this change does not prove the cause of
+the previously reported startup stall.
