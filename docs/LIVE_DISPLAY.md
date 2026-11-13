@@ -97,3 +97,21 @@ fresh frame is available, data age is at most 90 seconds, networking is Ready,
 and startup checks are healthy. It clears during setup, stale/partial data,
 maintenance and OTA. Map POWER pause leaves this feed-health indication active.
 LEDC channel 4/timer 2 is separate from the buzzer channel 7/timer 3.
+
+## Status page live values
+
+From 0.2.21, the page updates MTA counts, cycle outcome, display state, data ages and
+uptime in place from `/api/status`, about every five seconds after each response.
+It preserves sign-in fields and unsaved settings, pauses requests in hidden tabs,
+and reports delayed refreshes rather than silently presenting old values as live.
+This browser refresh does not change the MTA polling interval.
+
+## OLED clock (0.2.21)
+
+The user-confirmed SSD1309 128x64 four-pin I2C module displays "Brooklyn Subway"
+and New York local time (hours, minutes, seconds, AM/PM), with US daylight saving.
+Before valid SNTP time it displays "Syncing time...". A separate low-priority
+4096-byte-stack task refreshes once per second, independently of feed polling.
+Only the OLED task uses I2C after initialization. U8g2 2.36.18 supplies the
+SSD1309 driver and fonts; the framebuffer is 1024 bytes. Missing hardware is
+logged and skipped; I2C uses the manufactured GPIO8 SDA / GPIO9 SCL pins.

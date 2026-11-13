@@ -300,13 +300,11 @@ size_t renderHomePage(char *out, size_t capacity,
                       const StatusSnapshot &status, uint8_t brightness,
                       uint32_t routeVisibilityMask, const char *csrfToken) {
   Writer writer(out, capacity);
-  // A signed-out page with an inline sign-in form must not auto-refresh, or it
-  // would clear the password field and rotate the one-time sign-in token.
+  // Refresh read-only values in place; never reload forms or rotate login tokens.
   const bool inlineLogin = status.adminConfigured && !status.adminSessionActive &&
                            csrfToken != nullptr && csrfToken[0] != '\0';
   writer.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
                 "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">");
-  if (!inlineLogin) writer.append("<meta http-equiv=\"refresh\" content=\"20\">");
   writer.append("<title>Brooklyn Active Subway Map</title><style>"
                 "body{font:16px system-ui,sans-serif;line-height:1.45;max-width:52rem;"
                 "margin:1rem auto;padding:0 1rem;color:#17212b}"
@@ -339,7 +337,7 @@ size_t renderHomePage(char *out, size_t capacity,
   }
   writer.append("</dd><dt>Target</dt><dd>");
   writer.html(status.target);
-  writer.append("</dd><dt>Uptime</dt><dd>");
+  writer.append("</dd><dt>Uptime</dt><dd data-status=\"uptimeSeconds\">");
   writer.format("%lu seconds", static_cast<unsigned long>(status.uptimeSeconds));
   writer.append("</dd><dt>Reset reason</dt><dd>");
   writer.html(status.resetReason);
@@ -368,8 +366,8 @@ size_t renderHomePage(char *out, size_t capacity,
                   "autocomplete=\"current-password\" required></label> ");
     writer.append(kPasswordVisibilityControl);
     writer.append("<button type=\"submit\">Sign in</button></form><p "
-                  "class=\"muted\">This page stops refreshing while the sign-in "
-                  "form is shown.");
+                  "class=\"muted\">Live data refreshes without clearing the sign-in "
+                  "form.");
   } else {
     writer.append("Settings are locked. <a href=\"/login\">Sign in</a>");
   }
@@ -491,32 +489,32 @@ size_t renderHomePage(char *out, size_t capacity,
   writer.append("<p class=\"muted\">Disabled by default. This changes only "
                 "the resolver; DHCP, Wi-Fi credentials, feeds, and TLS policy "
                 "are unchanged.</p></section>"
-                "<section><h2>MTA / data</h2><dl><dt>Last poll cycle</dt><dd>");
+                "<section><h2>MTA / data</h2><dl><dt>Last poll cycle</dt><dd data-status=\"feedCycleState\">");
   writer.append(status.hasCycle ? cycleStateName(status.cycleOutcome) : "Not run");
-  writer.append("</dd><dt>Feeds succeeded / total</dt><dd>");
+  writer.append("</dd><dt>Feeds succeeded / total</dt><dd data-status=\"feedSummary\">");
   if (status.hasCycle) {
     writer.format("%u / %u", status.feedsSucceeded, status.feedsTotal);
   } else {
     writer.append("Not available");
   }
-  writer.append("</dd><dt>Operational display</dt><dd>");
+  writer.append("</dd><dt>Operational display</dt><dd data-status=\"displayState\">");
   writer.append(displayStateName(status.displayState));
-  writer.append("</dd><dt>Last usable update age</dt><dd>");
+  writer.append("</dd><dt>Last usable update age</dt><dd data-status=\"dataAgeSeconds\">");
   if (status.hasDataAge) {
     writer.format("%lu seconds", static_cast<unsigned long>(status.dataAgeSeconds));
   } else {
     writer.append("Not available");
   }
-  writer.append("</dd><dt>Last complete update age</dt><dd>");
+  writer.append("</dd><dt>Last complete update age</dt><dd data-status=\"completeAgeSeconds\">");
   if (status.hasCompleteAge) {
     writer.format("%lu seconds", static_cast<unsigned long>(status.completeAgeSeconds));
   } else {
     writer.append("Not available");
   }
-  writer.format("</dd><dt>Resolved trains</dt><dd>%lu</dd>"
-                "<dt>Approaching trains (included above)</dt><dd>%lu</dd>"
-                "<dt>Occupied LEDs</dt><dd>%u</dd>"
-                "<dt>Collision count</dt><dd>%u</dd></dl>"
+  writer.format("</dd><dt>Resolved trains</dt><dd data-status=\"resolvedTrains\">%lu</dd>"
+                "<dt>Approaching trains (included above)</dt><dd data-status=\"approachingTrains\">%lu</dd>"
+                "<dt>Occupied LEDs</dt><dd data-status=\"occupiedLeds\">%u</dd>"
+                "<dt>Collision count</dt><dd data-status=\"collisionCount\">%u</dd></dl>"
                 "<p>At station: steady blue. Approaching: orange transitioning to cyan during the final 30 predicted seconds; "
                 "blinking speeds up (about 0.5 to 3 blinks/second). Departing: blue transitioning to magenta while fading out; "
                 "the trail slows and clears within 30 seconds. These are estimated movement cues, not measured distance. "
@@ -708,7 +706,20 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.append("\"><button type=\"submit\">Reboot Device</button></form>");
   }
   writer.append("<p class=\"muted\">A reboot retains Wi-Fi credentials and "
-                "configuration.</p></section></body></html>");
+                "configuration.</p></section>"
+                "<p id=\"live-refresh\" class=\"muted\" role=\"status\">Live values refresh automatically.</p>"
+                "<script>(()=>{const note=document.getElementById('live-refresh');"
+                "async function refresh(){let timer;try{if(!document.hidden){"
+                "const controller=new AbortController();timer=setTimeout(()=>controller.abort(),15000);"
+                "const r=await fetch('/api/status',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();"
+                "const s=await r.json();s.feedSummary=s.feedsSucceeded+' / '+s.feedsTotal;"
+                "document.querySelectorAll('[data-status]').forEach(e=>{const k=e.dataset.status;"
+                "if(!(k in s))return;const v=s[k];e.textContent=v===null?'Not available':"
+                "k.endsWith('Seconds')?v+' seconds':String(v);});"
+                "note.textContent='Live values updated '+new Date().toLocaleTimeString();"
+                "}}catch(e){note.textContent='Live refresh delayed; retrying. Displayed values may be old.';}"
+                "finally{clearTimeout(timer);setTimeout(refresh,5000);}}setTimeout(refresh,1000);})();</script>"
+                "</body></html>");
   return writer.size();
 }
 
