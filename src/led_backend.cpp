@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "led_backend.h"
+#include "hardware.h"
+#include "controls.h"
 
 #include "board_pins.h"
 #include "led_map.h"
@@ -242,8 +244,9 @@ bool runDiagnostic(PhysicalChannel channel, bool walkChannel) {
   }
   bool lit = true;
   for (uint8_t pixel = 0; pixel < pixelCount; ++pixel) {
-    if (walkChannel && digitalRead(brooklyn::pins::BUTTON_POWER) == LOW) {
-      Serial.println("LED diagnostic: aborted by POWER");
+    if (walkChannel && (digitalRead(brooklyn::pins::BUTTON_POWER) == LOW ||
+                        controls::pollWifiRecoveryDuringDiagnostic())) {
+      Serial.println("LED diagnostic: aborted by POWER/recovery");
       lit = false;
       break;
     }
@@ -286,6 +289,27 @@ bool runDiagnostic(PhysicalChannel channel, bool walkChannel) {
 bool runFirstLedDiagnostic() { return runDiagnostic(PhysicalChannel::CH1, false); }
 bool runChannelDiagnostic(PhysicalChannel channel) { return runDiagnostic(channel, true); }
 bool runChannelOneDiagnostic() { return runChannelDiagnostic(PhysicalChannel::CH1); }
+
+bool runAllChannelDiagnostics() {
+#if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
+  disarmLedOutputs();
+  if (!diagnosticSystemReady) return false;
+  Serial.println("LED diagnostic: all-channel sequence starting; POWER aborts entire sequence");
+  for (uint8_t number = 1; number <= map::CHANNEL_COUNT; ++number) {
+    const auto channel = static_cast<PhysicalChannel>(number);
+    if (!hardware::signalDiagnosticChannel(channel) || !runChannelDiagnostic(channel)) {
+      disarmLedOutputs();
+      Serial.printf("LED diagnostic: all-channel sequence stopped at CH%u; GPIO1 LOW\n", number);
+      return false;
+    }
+  }
+  disarmLedOutputs();
+  Serial.println("LED diagnostic: all eight channels complete; GPIO1 LOW; visual confirmation required");
+  return true;
+#else
+  return false;
+#endif
+}
 
 bool initializePhysicalLedBackend() {
 #if defined(BROOKLYN_TARGET_PCB)

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #pragma once
+#include "led_types.h"
 
 namespace brooklyn::hardware {
 
@@ -11,5 +12,7 @@ bool beginSafe();
 // Holding DIM at boot mutes the chime. Never indicates feed health.
 // Leaves the Avi-location output LOW for its normal runtime use.
 void indicateStartup(bool checksPassed);
+// Manual diagnostic cue: one to eight beeps; POWER aborts; leaves GPIO21 LOW.
+bool signalDiagnosticChannel(led::PhysicalChannel channel);
 
 }  // namespace brooklyn::hardware

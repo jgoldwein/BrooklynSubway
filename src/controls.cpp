@@ -45,6 +45,18 @@ bool ledDiagnosticRequested = false;
 
 namespace brooklyn::controls {
 
+bool pollWifiRecoveryDuringDiagnostic() {
+#if defined(BROOKLYN_TARGET_PCB)
+  if (rotaryHold.update(isPressed(brooklyn::pins::ROTARY_PUSH), millis())) {
+    wifiRecoveryRequested = true;
+    Serial.println("Control HOLD: ROTARY_PUSH 10 s during diagnostic -> stop and enter Wi-Fi setup");
+  }
+  return wifiRecoveryRequested;
+#else
+  return false;
+#endif
+}
+
 bool consumeLedDiagnosticRequest() {
 #if defined(BROOKLYN_TARGET_PCB)
   const bool requested = ledDiagnosticRequested;

@@ -963,7 +963,7 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
 
   if (lanWebUi_.consumeSetupRequest()) {
     Serial.println("LAN UI: user requested Wi-Fi setup; existing credentials kept");
-    startProvisioning(nowMs);
+    startProvisioning(millis());
     return;
   }
   if (lanWebUi_.consumeRebootRequest()) {

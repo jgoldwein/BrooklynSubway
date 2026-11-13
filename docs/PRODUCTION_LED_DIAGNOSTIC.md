@@ -1,5 +1,25 @@
 # Integrated guarded LED diagnostics
 
+## Optional full sequence added in 0.2.13
+
+Joel requested a manually started **All channels** option with channel-number
+beeps: CH1 gets one beep, CH2 two, through CH8 eight. The existing GPIO21
+piezo emits 4000 Hz / 50% PWM, 80 ms beeps with 80 ms gaps and a 300 ms
+pause before each channel walk. LEDs remain disabled during the cue. The
+selected channel then walks one red=4/255 pixel at a time at 500 ms per pixel,
+clears, and disables output before the next cue. Total is about 2 min 40 sec
+plus transmission overhead; allow about three minutes.
+
+The web page acknowledges the request immediately, then the sequence runs.
+It reopens diagnostics after three minutes and reports completion or stop;
+physical visual success still requires observation. Hold POWER to stop the
+entire sequence, including cues. Cue waits check POWER every 20 ms; pixel
+walks check between pixels. Startup DIM mute applies only to startup, not
+these explicitly requested identifying cues. No test starts automatically
+at boot, and normal live-map physical output remains locked.
+The manufactured 10-second rotary-push Wi-Fi recovery hold remains active:
+it stops the diagnostic, clears/disables LED outputs, then enters setup.
+
 ## All-channel walks added in 0.2.12
 
 After successful LED42/CH1 observations, Joel authorized the remaining
