@@ -12,7 +12,13 @@ int enable = LOW, indicator = LOW, buzzer = LOW, dim = HIGH;
 int setupCalls = 0, attachCalls = 0, detachCalls = 0, failSetupAt = -1;
 uint32_t frequency = 0, duty = 0;
 bool buzzerOutput = false;
-constexpr uint32_t expectedHz[] = {2500, 3000, 3500, 4000, 2620, 2120};
+bool cueMode = false;
+int beepStarts = 0, cueMs = 0, cueOnMs = 0, abortAtMs = -1;
+bool recoveryRequested = false;
+namespace brooklyn::controls {
+bool pollWifiRecoveryDuringDiagnostic() { return recoveryRequested; }
+}
+constexpr uint32_t expectedHz[] = {2500, 3000, 3500, 4000, 1310, 1060};
 constexpr uint32_t expectedMs[] = {80, 80, 100, 180, 600, 750};
 constexpr uint32_t expectedGaps[] = {45, 45, 45, 250, 90, 0};
 uint32_t soundMs = 0;
@@ -20,7 +26,13 @@ uint32_t soundMs = 0;
 void pinMode(uint8_t pin, int mode) {
   if (pin == brooklyn::pins::BUZZER) { CHECK(mode == OUTPUT); buzzerOutput = true; }
 }
-int digitalRead(uint8_t pin) { CHECK(pin == brooklyn::pins::BUTTON_DIM); return dim; }
+int digitalRead(uint8_t pin) {
+  if (pin == brooklyn::pins::BUTTON_POWER) {
+    CHECK(cueMode);
+    return abortAtMs >= 0 && cueMs >= abortAtMs ? LOW : HIGH;
+  }
+  CHECK(pin == brooklyn::pins::BUTTON_DIM); return dim;
+}
 void digitalWrite(uint8_t pin, int value) {
   CHECK(pin == brooklyn::pins::LED_ENABLE || pin == brooklyn::pins::AVI_LOCATION_LED || pin == brooklyn::pins::BUZZER);
   if (pin == brooklyn::pins::LED_ENABLE) { CHECK(value == LOW); enable = value; }
@@ -32,7 +44,8 @@ void digitalWrite(uint8_t pin, int value) {
 }
 uint32_t ledcSetup(uint8_t channel, uint32_t hz, uint8_t resolution) {
   CHECK(channel == 7 && resolution == 8 && duty == 0);
-  CHECK(setupCalls < 6 && hz == expectedHz[setupCalls]);
+  if (cueMode) { CHECK(setupCalls == 0 && hz == 4000); }
+  else { CHECK(setupCalls < 6 && hz == expectedHz[setupCalls]); }
   const bool fail = setupCalls++ == failSetupAt;
   frequency = hz;
   return fail ? 0 : hz;
@@ -43,6 +56,7 @@ void ledcAttachPin(uint8_t pin, uint8_t channel) {
 }
 void ledcWrite(uint8_t channel, uint32_t value) {
   CHECK(channel == 7 && (value == 0 || value == 128));
+  if (cueMode && value == 128) ++beepStarts;
   duty = value;
 }
 void ledcDetachPin(uint8_t pin) {
@@ -51,6 +65,12 @@ void ledcDetachPin(uint8_t pin) {
 }
 void delay(uint32_t ms) {
   CHECK(enable == LOW);
+  if (cueMode) {
+    CHECK(ms <= 20 && indicator == LOW);
+    cueMs += ms;
+    if (duty) cueOnMs += ms;
+    return;
+  }
   if (ms != 150) soundMs += ms;
   if (ms == 150) {
     CHECK(duty == 0 && indicator == (indicatorDelays % 2 == 0 ? HIGH : LOW));
@@ -66,6 +86,7 @@ void delay(uint32_t ms) {
   }
 }
 void reset(bool muted, int failAt = -1) {
+  cueMode = false;
   pulses = indicatorDelays = notes = gaps = 0;
   setupCalls = attachCalls = detachCalls = 0;
   duty = 0;
@@ -74,6 +95,12 @@ void reset(bool muted, int failAt = -1) {
   dim = muted ? LOW : HIGH;
   CHECK(brooklyn::hardware::beginSafe());
   CHECK(buzzerOutput && buzzer == LOW && enable == LOW);
+}
+void resetCue(bool muted = false, int abortAt = -1, int failAt = -1) {
+  reset(muted, failAt);
+  cueMode = true;
+  beepStarts = cueMs = cueOnMs = 0;
+  abortAtMs = abortAt;
 }
 int main() {
   reset(false);
@@ -91,5 +118,32 @@ int main() {
     CHECK(notes == failAt && duty == 0 && buzzer == LOW && enable == LOW);
     CHECK(attachCalls == (failAt > 0 ? 1 : 0) && detachCalls == attachCalls);
   }
+  for (int number = 1; number <= 8; ++number) {
+    resetCue();
+    CHECK(brooklyn::hardware::signalDiagnosticChannel(static_cast<brooklyn::led::PhysicalChannel>(number)));
+    CHECK(beepStarts == number && cueOnMs == number * 80);
+    CHECK(cueMs == number * 80 + (number - 1) * 80 + 300);
+    CHECK(duty == 0 && buzzer == LOW && enable == LOW && detachCalls == 1);
+  }
+  resetCue(true);
+  CHECK(brooklyn::hardware::signalDiagnosticChannel(brooklyn::led::PhysicalChannel::CH2));
+  CHECK(beepStarts == 2);
+  resetCue(false, 0);
+  CHECK(!brooklyn::hardware::signalDiagnosticChannel(brooklyn::led::PhysicalChannel::CH1));
+  CHECK(attachCalls == 0 && duty == 0);
+  resetCue(false, 40);
+  CHECK(!brooklyn::hardware::signalDiagnosticChannel(brooklyn::led::PhysicalChannel::CH8));
+  CHECK(beepStarts == 1 && cueOnMs == 40 && duty == 0 && buzzer == LOW && detachCalls == 1);
+  resetCue(false, -1, 0);
+  CHECK(!brooklyn::hardware::signalDiagnosticChannel(brooklyn::led::PhysicalChannel::CH1));
+  CHECK(attachCalls == 0 && duty == 0);
+  resetCue();
+  CHECK(!brooklyn::hardware::signalDiagnosticChannel(static_cast<brooklyn::led::PhysicalChannel>(0)));
+  CHECK(!brooklyn::hardware::signalDiagnosticChannel(static_cast<brooklyn::led::PhysicalChannel>(9)));
+  CHECK(setupCalls == 0 && duty == 0);
+  recoveryRequested = true;
+  resetCue();
+  CHECK(!brooklyn::hardware::signalDiagnosticChannel(brooklyn::led::PhysicalChannel::CH1));
+  CHECK(setupCalls == 0 && duty == 0);
   puts("Startup: U23 pulses, four rising notes plus descending pair, 2265 ms, 50%-duty PWM, DIM mute, failed-check silence, PWM failure cleanup, addressable outputs disabled PASS");
 }

@@ -4,6 +4,7 @@
 #include "hardware.h"
 
 #include "board_pins.h"
+#include "controls.h"
 
 #if defined(BROOKLYN_TARGET_PCB)
 #include <Wire.h>
@@ -28,11 +29,11 @@ void playStartupChime() {
     uint16_t gapAfterMs;
   };
   // Preserve the startup motif, then a subway-style descending pair.
-  // Reference recording is approximately 655/530 Hz; shift two octaves up
+  // Reference recording is approximately 655/530 Hz; shift one octave up
   // for this small piezo. These are approximated, not official MTA pitches.
   constexpr Note kNotes[] = {
       {2500, 80, 45}, {3000, 80, 45}, {3500, 100, 45}, {4000, 180, 250},
-      {2620, 600, 90}, {2120, 750, 0},
+      {1310, 600, 90}, {1060, 750, 0},
   };
   constexpr uint8_t kNoteCount = sizeof(kNotes) / sizeof(kNotes[0]);
   digitalWrite(pins::BUZZER, LOW);
@@ -69,6 +70,53 @@ void playStartupChime() {
 }
 }  // namespace
 #endif
+
+bool signalDiagnosticChannel(led::PhysicalChannel channel) {
+#if defined(BROOKLYN_TARGET_PCB)
+  constexpr uint8_t kChannel = 7;
+  constexpr uint32_t kBeepMs = 80;
+  constexpr uint32_t kGapMs = 80;
+  constexpr uint32_t kLeadInMs = 300;
+  const uint8_t number = static_cast<uint8_t>(channel);
+  digitalWrite(pins::BUZZER, LOW);
+  if (number < 1 || number > 8 || digitalRead(pins::BUTTON_POWER) == LOW ||
+      controls::pollWifiRecoveryDuringDiagnostic()) return false;
+  const auto wait = [](uint32_t ms) {
+    constexpr uint32_t kSliceMs = 20;
+    while (ms > 0) {
+      if (digitalRead(pins::BUTTON_POWER) == LOW ||
+          controls::pollWifiRecoveryDuringDiagnostic()) return false;
+      const uint32_t slice = ms < kSliceMs ? ms : kSliceMs;
+      delay(slice);
+      ms -= slice;
+    }
+    return digitalRead(pins::BUTTON_POWER) != LOW &&
+           !controls::pollWifiRecoveryDuringDiagnostic();
+  };
+  Serial.printf("Diagnostic buzzer: CH%u -> %u beep(s), GPIO21 4000 Hz\n", number, number);
+  if (ledcSetup(kChannel, 4000, 8) == 0) {
+    Serial.println("Diagnostic buzzer: PWM setup FAILED; GPIO21 LOW");
+    return false;
+  }
+  ledcAttachPin(pins::BUZZER, kChannel);
+  bool ok = true;
+  for (uint8_t beep = 0; beep < number && ok; ++beep) {
+    ledcWrite(kChannel, 128);
+    ok = wait(kBeepMs);
+    ledcWrite(kChannel, 0);
+    if (ok && beep + 1 < number) ok = wait(kGapMs);
+  }
+  if (ok) ok = wait(kLeadInMs);
+  ledcWrite(kChannel, 0);
+  ledcDetachPin(pins::BUZZER);
+  digitalWrite(pins::BUZZER, LOW);
+  Serial.printf("Diagnostic buzzer: %s; GPIO21 LOW\n", ok ? "cue complete" : "aborted by POWER/recovery");
+  return ok;
+#else
+  (void)channel;
+  return false;
+#endif
+}
 
 void indicateStartup(bool checksPassed) {
 #if defined(BROOKLYN_TARGET_PCB)

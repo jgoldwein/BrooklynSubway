@@ -2,6 +2,12 @@
 
 ## Limited authorization update — 2026-11-12
 
+Joel additionally authorized the manual All channels diagnostic in 0.2.13:
+walk CH1–CH8 in sequence, with 1–8 identifying beeps before each channel,
+only one dim red pixel lit at a time. POWER stops the full sequence. This
+supersedes the earlier prohibition on a combined manual diagnostic sweep,
+while preserving the prohibition on live full-map/high-load illumination.
+
 After successful CH1 tests, Joel authorized extending the same guarded walk
 to CH2–CH8, individually selected at low brightness. Firmware 0.2.12 adds
 these manual tests, including CH8's four status indicators. Their physical

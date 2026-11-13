@@ -3,6 +3,7 @@
 
 #include "lan_web_ui.h"
 #include "led_backend.h"
+#include "controls.h"
 #include "led_diagnostic_policy.h"
 #include "ota_progress_script.h"
 
@@ -228,6 +229,14 @@ void LanWebUi::service(const StatusSnapshot &status) {
   if (!active_) return;
   status_ = status;
   server_.handleClient();
+  if (allDiagnosticState_ == AllDiagnosticState::Pending) {
+    allDiagnosticState_ = led::backend::runAllChannelDiagnostics()
+                              ? AllDiagnosticState::Complete : AllDiagnosticState::Stopped;
+  }
+  if (controls::consumeWifiRecoveryRequest()) {
+    setupRequested_ = true;
+    return;
+  }
   serviceFirmwareUpdates(millis());
 }
 
@@ -251,8 +260,8 @@ void LanWebUi::sendNotice(int httpCode, const char *title, const char *message,
   char refresh[64] = {};
   if (refreshSeconds > 0) {
     snprintf(refresh, sizeof(refresh),
-             "<meta http-equiv=\"refresh\" content=\"%d;url=/update\">",
-             refreshSeconds);
+             "<meta http-equiv=\"refresh\" content=\"%d;url=%s\">",
+             refreshSeconds, backPath);
   }
   const int length = snprintf(
       gPage, kPageCapacity,
@@ -264,7 +273,7 @@ void LanWebUi::sendNotice(int httpCode, const char *title, const char *message,
       "<a href=\"/\">Status page</a></p></body></html>",
       refresh, title, kUpdateStyle, title,
       kind == 0 ? "ok" : (kind == 1 ? "warn" : "bad"), message,
-      refreshSeconds > 0 ? "<p class=\"muted\">Returning to the update page "
+      refreshSeconds > 0 ? "<p class=\"muted\">Returning "
                            "automatically&hellip;</p>"
                          : "", backPath, backLabel);
   if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
@@ -1484,9 +1493,15 @@ void LanWebUi::handleLedDiagnosticPage() {
     server_.send(403, "text/plain", "Sign in again");
     return;
   }
+  const char *allResult = allDiagnosticState_ == AllDiagnosticState::Complete
+      ? "Previous all-channel sequence completed and outputs disabled. Confirm the visual result."
+      : allDiagnosticState_ == AllDiagnosticState::Stopped
+      ? "Previous all-channel sequence stopped or failed; outputs disabled. Inspect serial diagnostics."
+      : "";
   const int length = snprintf(gPage, kPageCapacity,
       "<!doctype html><html lang=\"en\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
       "<title>Hardware diagnostics</title><h1>LED diagnostics</h1>"
+      "<p role=\"status\">%s</p>"
       "<p>Production PCB only. Normal map output stays locked. No test runs at startup.</p>"
       "<p>Startup gives two brief Avi-marker flashes, four rising notes, then a subway-style ding-dong. Hold DIM while powering on or resetting to mute that startup.</p>"
       "<p>Verify 5 V and 3.3 V rails and use the verified 5 V, 3 A center-positive supply. "
@@ -1497,6 +1512,7 @@ void LanWebUi::handleLedDiagnosticPage() {
       "<form method=\"post\" action=\"/hardware-test/run\">"
       "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
       "<label>Test <select name=\"test\"><option value=\"first\">LED42 only (2 seconds)</option>"
+      "<option value=\"all\">All channels: numbered beeps before each (about 3 minutes)</option>"
       "<option value=\"ch1\">CH1: 37 LEDs (about 19 seconds)</option>"
       "<option value=\"ch2\">CH2: 38 LEDs (about 19 seconds)</option>"
       "<option value=\"ch3\">CH3: 37 LEDs (about 19 seconds)</option>"
@@ -1508,8 +1524,10 @@ void LanWebUi::handleLedDiagnosticPage() {
       "<p>Each walk tests one channel, one dim red LED at a time, 0.5 seconds per LED. Feeds and this page pause during testing. "
       "Press POWER to abort the walk. Other channels stay dark; all LEDs are cleared afterward.</p>"
       "<p>CH8 starts with SYSTEM, NETWORK, MTA FEED, MODE, then its 36 map LEDs. Observe each channel separately before trying the next.</p>"
+      "<p>All channels runs CH1 through CH8 once: 1 beep before CH1, 2 before CH2, through 8 before CH8. "
+      "Only one LED is lit at a time. POWER stops the entire sequence, including beeps. Leave this page open until the result returns.</p>"
       "<label><input type=\"checkbox\" name=\"confirmed\" value=\"yes\" required>Rails, polarity and supply checked; ready to observe the selected test</label>"
-      "<button type=\"submit\">Run selected test</button></form><p><a href=\"/\">Status</a></p></html>", csrf);
+      "<button type=\"submit\">Run selected test</button></form><p><a href=\"/\">Status</a></p></html>", allResult, csrf);
   if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
     server_.send(500, "text/plain", "Diagnostic page unavailable");
     return;
@@ -1529,6 +1547,16 @@ void LanWebUi::handleLedDiagnosticRun() {
       !hasNoEmbeddedNull(test) ||
       !led::diagnostic::parseSelection(test.c_str(), selection)) {
     server_.send(400, "text/plain", "Confirm the electrical checks before testing");
+    return;
+  }
+  if (selection.kind == led::diagnostic::Kind::AllChannels) {
+    allDiagnosticState_ = AllDiagnosticState::Pending;
+    sendNotice(202, "All-channel test starting",
+               "Watch the board: 1 beep before CH1, 2 before CH2, through 8 before CH8. "
+               "The full sequence takes about 3 minutes; feeds and page servicing pause. "
+               "Hold POWER to stop the entire test. The diagnostics page will reopen after 3 minutes; "
+               "you can also return once the lights stop.",
+               1, 180, "/hardware-test", "Return to hardware diagnostics");
     return;
   }
   const bool ok = selection.kind == led::diagnostic::Kind::ChannelWalk

@@ -2,6 +2,7 @@
 #include "board_pins.h"
 #include "led_diagnostic_policy.h"
 #include "led_map.h"
+#include "hardware.h"
 #include <Arduino.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,6 +56,21 @@ void resetWalk(int abortAt, int channelIndex = 0) {
   expectedPixels = kExpectedCounts[channelIndex];
   expectedPin = kExpectedPins[channelIndex];
   abortAfter = abortAt;
+}
+int cueCalls = 0, accumulatedPixels = 0, stopChannel = 0, failCue = 0;
+bool recoveryRequested = false;
+namespace brooklyn::controls {
+bool pollWifiRecoveryDuringDiagnostic() { return recoveryRequested; }
+}
+namespace brooklyn::hardware {
+bool signalDiagnosticChannel(led::PhysicalChannel channel) {
+  const int number = static_cast<int>(channel);
+  CHECK(enable == LOW && number == cueCalls + 1);
+  if (cueCalls) accumulatedPixels += coloredShows;
+  ++cueCalls;
+  resetWalk(number == stopChannel ? 3 : -1, number - 1);
+  return number != failCue;
+}
 }
 int main() {
   CHECK(!backend::initializePhysicalLedBackend());
@@ -112,7 +128,7 @@ int main() {
       CHECK(!backend::transmitFrame(frame, 306));
     }
   }
-  const char *badValues[] = {"", "all", "ch0", "ch9", "ch10", "ch2x", "CH2", " ch2", "ch2 ", "ch-1"};
+  const char *badValues[] = {"", "allx", "ch0", "ch9", "ch10", "ch2x", "CH2", " ch2", "ch2 ", "ch-1"};
   for (const char *bad : badValues) {
     CHECK(!parseSelection(bad, selection));
   }
@@ -132,5 +148,23 @@ int main() {
     CHECK(physical.designator.value == kStatusDesignators[index]);
     CHECK(physical.role == brooklyn::led::LedRole::Status);
   }
+  CHECK(parseSelection("all", selection) && selection.kind == Kind::AllChannels);
+  backend::setDiagnosticSystemReady(false);
+  CHECK(!backend::runAllChannelDiagnostics() && cueCalls == 0);
+  backend::setDiagnosticSystemReady(true);
+  CHECK(backend::runAllChannelDiagnostics());
+  CHECK(cueCalls == 8 && accumulatedPixels + coloredShows == 306 && enable == LOW);
+  cueCalls = accumulatedPixels = 0;
+  stopChannel = 3;
+  CHECK(!backend::runAllChannelDiagnostics());
+  CHECK(cueCalls == 3 && accumulatedPixels + coloredShows == 78 && enable == LOW);
+  cueCalls = accumulatedPixels = stopChannel = 0;
+  failCue = 4;
+  CHECK(!backend::runAllChannelDiagnostics());
+  CHECK(cueCalls == 4 && accumulatedPixels == 112 && shows == 0 && enable == LOW);
+  recoveryRequested = true;
+  resetWalk(-1);
+  CHECK(!backend::runChannelDiagnostic(PhysicalChannel::CH1));
+  CHECK(coloredShows == 0 && enable == LOW);
   puts("LED diagnostic: all 8 channel walks, exact counts/pins/order, CH8 status mapping, POWER abort, strict selection, startup interlock, black cleanup and normal-output lock PASS");
 }

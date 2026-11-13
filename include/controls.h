@@ -11,5 +11,8 @@ void update();
 // always false on the XIAO). Requests Wi-Fi setup mode; never erases anything.
 bool consumeWifiRecoveryRequest();
 bool consumeLedDiagnosticRequest();
+// Keep the manufactured rotary-hold contract alive during bounded diagnostics.
+// Returns pending recovery without consuming it; the main loop enters setup.
+bool pollWifiRecoveryDuringDiagnostic();
 
 }  // namespace brooklyn::controls
