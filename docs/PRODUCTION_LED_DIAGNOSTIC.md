@@ -1,5 +1,24 @@
 # Integrated guarded LED diagnostics
 
+## All-channel walks added in 0.2.12
+
+After successful LED42/CH1 observations, Joel authorized the remaining
+channel tests. Use `/hardware-test` to select CH2, then CH3 through CH8,
+one test at a time. Counts are CH1 37, CH2 38, CH3 37, CH4 37, CH5 42,
+CH6 37, CH7 38, CH8 40. Every walk lights only one dim red pixel at a time
+for 500 ms, takes approximately 19–21 seconds, and ends with black plus
+GPIO1 LOW. Hold POWER to abort between pixels. Record visual results before
+moving to the next channel; software completion alone is not visual success.
+
+CH8 starts with four front status indicators: SYSTEM (LED252), NETWORK
+(LED251), MTA FEED (LED306), MODE (LED307), then 36 map pixels. Red during
+this diagnostic is a test color, not a live network/feed error indication.
+U23 remains a separate discrete indicator and is not part of this walk.
+
+The existing GPIO data paths are 4/5/6/7/10/11/12/13 through U14/U15 and
+R17–R24. No pin/current/brightness changes. No all-channels automatic sweep
+or full-map output is enabled. Full-map/load validation remains a later step.
+
 ## Observed results — 2026-11-12
 
 Joel reported both the LED42-only test and CH1 walk ran correctly. This is
@@ -38,7 +57,7 @@ or full-brightness tests. The CH1 extension above is separately authorized.
 
 Affected hardware: GPIO1 LED_ENABLE/Q1/U14/U15; GPIO4 CH1 data through U14/R17
 to LED42 (CH1 index 0). All eight existing data GPIOs and chains receive black
-frames; only the selected CH1 pixel receives nonzero data. No pin, topology,
+frames; only the selected test pixel receives nonzero data. No pin, topology,
 or PCB changes. POWER abort reads the existing active-low GPIO40 switch.
 
 Normal builds retain BROOKLYN_ALLOW_PHYSICAL_LED_OUTPUT=0. The production

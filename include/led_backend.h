@@ -21,6 +21,8 @@ bool transmitFrame(const DisplayState *frame, uint16_t count);
 bool runFirstLedDiagnostic();
 // CH1 only: 37 pixels, red=4, 500 ms each; POWER aborts between pixels.
 bool runChannelOneDiagnostic();
+// One selected manufactured channel, including CH8 status pixels.
+bool runChannelDiagnostic(PhysicalChannel channel);
 void setDiagnosticSystemReady(bool ready);
 
 }  // namespace brooklyn::led::backend
