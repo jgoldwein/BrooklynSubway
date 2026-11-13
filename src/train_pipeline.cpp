@@ -57,9 +57,22 @@ void predictionVisitor(void *context, const gtfsrt::RtTrain &train, uint32_t tim
 }  // namespace
 
 void TrainPipeline::beginCycle(uint32_t nowUnix, const semantic::RenderConfig &config) {
+  blueHistoryCount_ = blueHistoryDropped_ = 0;
+  if (finishedForBlueHistory_ && nowUnix > nowUnix_ && nowUnix - nowUnix_ <= 120) {
+    for (uint16_t i = 0; i < kTripTableSlots; ++i) {
+      const auto &e = trips_[i];
+      if (!e.h1 || (e.outcome & kConflictBit) || (e.outcome >> 9) != kStation) continue;
+      if (blueHistoryCount_ == kBlueHistoryCapacity) { ++blueHistoryDropped_; continue; }
+      auto &saved = blueHistory_[blueHistoryCount_++];
+      saved.h1=e.h1; saved.h2=e.h2; saved.led=e.outcome & 0x1FF;
+    }
+  }
+  finishedForBlueHistory_ = false;
   memset(&frame_, 0, sizeof frame_);
   memset(&rgb_, 0, sizeof rgb_);
   memset(trips_, 0, sizeof trips_);
+  memset(blueEvidence_, 0, sizeof blueEvidence_);
+  memset(&blueReport_, 0, sizeof blueReport_);
   memset(predictions_, 0, sizeof predictions_);
   memset(&counters_, 0, sizeof counters_);
   semantic::clearFrame(frame_);
@@ -114,7 +127,7 @@ void TrainPipeline::onPrediction(const gtfsrt::RtTrain &train, uint32_t feedTime
   bump(counters_.predictionCapacityOverflow);
 }
 
-void TrainPipeline::record(const char *tripId, uint16_t outcome, const MotionEvidence &motion) {
+void TrainPipeline::record(const char *tripId, uint16_t outcome, const MotionEvidence &motion, const BlueEvidence &blue) {
   const uint32_t h1 = tripHashPrimary(tripId);
   const uint32_t h2 = tripHashSecondary(tripId);
   uint16_t slot = static_cast<uint16_t>(h1 & (kTripTableSlots - 1));
@@ -131,6 +144,15 @@ void TrainPipeline::record(const char *tripId, uint16_t outcome, const MotionEvi
       e.outcome = outcome;
       e.records = 1;
       e.motion = motion;
+      blueEvidence_[slot] = blue;
+      if ((outcome >> 9) == kStation) {
+        for (uint16_t i = 0; i < blueHistoryCount_; ++i) {
+          const auto &previous = blueHistory_[i];
+          if (previous.h1 == h1 && previous.h2 == h2 && previous.led != (outcome & 0x1FF)) {
+            blueEvidence_[slot].flags |= StopChanged; break;
+          }
+        }
+      }
       ++tracked_;
       if (collided) bump(counters_.tripIdentityCollision);
       return;
@@ -140,6 +162,10 @@ void TrainPipeline::record(const char *tripId, uint16_t outcome, const MotionEvi
         if (e.records < kMaxRecords) ++e.records;
         if ((e.outcome & kOutcomeMask) != outcome) e.outcome |= kConflictBit;
         if (memcmp(&e.motion, &motion, sizeof motion) != 0) e.motion = {};
+        auto &saved = blueEvidence_[slot];
+        saved.flags |= blue.flags;
+        if (blue.age > saved.age) saved.age = blue.age;
+        if (memcmp(saved.nextStop, blue.nextStop, 4)) memset(saved.nextStop, 0, 4);
         return;
       }
       collided = true;
@@ -151,6 +177,8 @@ void TrainPipeline::record(const char *tripId, uint16_t outcome, const MotionEvi
 
 void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimestamp) {
   gtfsrt::RtTrain t = vehicle;
+  BlueEvidence blue{}; blue.flags = NoPrediction;
+  const uint32_t diagnosticTime = feedTimestamp > nowUnix_ ? feedTimestamp : nowUnix_;
   const uint32_t predictionH1 = tripHashPrimary(t.tripId), predictionH2 = tripHashSecondary(t.tripId);
   uint16_t predictionSlot = predictionH1 & (kTripTableSlots - 1);
   for (uint16_t probe = 0; probe < kTripTableSlots; ++probe) {
@@ -158,6 +186,9 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimes
     if (!prediction.h1) break;
     if (prediction.h1 == predictionH1 && prediction.h2 == predictionH2) {
       if (!prediction.conflict && prediction.route == semantic::routeFromGtfsRouteId(t.routeId)) {
+        memcpy(blue.nextStop, prediction.stop, 4); blue.flags = 0;
+        if (memcmp(prediction.stop, vehicle.vehicleStopId, 4)) blue.flags |= NextDifferent;
+        else if (diagnosticTime && prediction.arrival > diagnosticTime) blue.flags |= FutureArrival;
         char next[5]{}; memcpy(next, prediction.stop, 4);
         const bool inferred = gtfsrt::applyVerifiedTripDeparture(t, next, prediction.arrival,
             prediction.timestamp, feedTimestamp, nowUnix_);
@@ -216,6 +247,10 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimes
     const uint32_t age = t.vehicleTimestamp && reference >= t.vehicleTimestamp
         ? reference - t.vehicleTimestamp : UINT32_MAX;
     motion.movementAgeSeconds = age < 255 ? age : 255;
+    const uint32_t diagnosticAge = t.vehicleTimestamp && diagnosticTime >= t.vehicleTimestamp
+        ? diagnosticTime - t.vehicleTimestamp : UINT32_MAX;
+    blue.age = diagnosticAge < 255 ? diagnosticAge : 255;
+    if (diagnosticAge == UINT32_MAX) blue.flags |= UnknownAge;
     if ((bucket == kApproaching || bucket == kSegment) && t.status != gtfsrt::VehicleStatus::StoppedAt) {
       semantic::GtfsTrainState next{};
       next.routeId = t.routeId; next.stopId = t.vehicleStopId;
@@ -241,7 +276,7 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimes
         motion.departureAgePlusOne = age + 1;
       }
     }
-    record(t.tripId, packOutcome(bucket, led), motion);
+    record(t.tripId, packOutcome(bucket, led), motion, blue);
   } else {
     bumpBucket(bucket);
   }
@@ -286,6 +321,11 @@ gtfsrt::DecodeStatus TrainPipeline::processFeed(const uint8_t *data, size_t leng
 
 void TrainPipeline::finishCycle() {
   if (state_ != CycleState::Collecting) return;
+  BlueEvidence perLed[semantic::kFrameLedCount]{};
+  bool hasBlue[semantic::kFrameLedCount]{};
+  blueReport_.timestamp = nowUnix_ ? nowUnix_ : frame_.animationEpochUnix;
+  blueReport_.comparedTrips = blueHistoryCount_;
+  blueReport_.historyDropped = blueHistoryDropped_;
   for (uint16_t i = 0; i < kTripTableSlots; ++i) {
     const TripEntry &e = trips_[i];
     if (e.h1 == 0) continue;
@@ -303,6 +343,28 @@ void TrainPipeline::finishCycle() {
       continue;
     }
     bumpBucket(bucket);
+    if (bucket == kStation) {
+      const uint16_t led = e.outcome & 0x1FF;
+      const auto *mapped = semantic::semanticForLed(led);
+      if (mapped && semantic::routeVisible(config_.routeVisibilityMask, mapped->route)) {
+        auto &r = blueReport_.routes[static_cast<uint8_t>(mapped->route)];
+        const auto &b = blueEvidence_[i];
+        ++r.trains;
+        if (!(b.flags & UnknownAge) && b.age > 90) ++r.old;
+        if (b.flags & NextDifferent) ++r.different;
+        if (b.flags & FutureArrival) ++r.future;
+        if (b.flags & NoPrediction) ++r.missing;
+        if (b.flags & StopChanged) ++r.changed;
+        auto &saved = perLed[led];
+        if (!hasBlue[led]) saved = b;
+        else {
+          saved.flags |= b.flags;
+          if (b.age > saved.age) saved.age = b.age;
+          if (memcmp(saved.nextStop, b.nextStop, 4)) memset(saved.nextStop, 0, 4);
+        }
+        hasBlue[led] = true;
+      }
+    }
     if (e.motion.approachLedPlusOne) {
       auto &timing = frame_.timing[e.motion.approachLedPlusOne - 1];
       if (e.motion.arrivalSecondsPlusOne && (!timing.arrivalSecondsPlusOne ||
@@ -315,6 +377,20 @@ void TrainPipeline::finishCycle() {
       auto &timing = frame_.timing[e.motion.departureLedPlusOne - 1];
       if (!timing.departureAgePlusOne || e.motion.departureAgePlusOne < timing.departureAgePlusOne)
         timing.departureAgePlusOne = e.motion.departureAgePlusOne;
+    }
+  }
+  for (uint16_t led = 0; led < semantic::kFrameLedCount; ++led) {
+    if (!hasBlue[led]) continue;
+    const auto *mapped = semantic::semanticForLed(led);
+    auto &r = blueReport_.routes[static_cast<uint8_t>(mapped->route)];
+    ++r.leds;
+    if (frame_.occupancy[led] > 1) ++r.shared;
+    const auto &b = perLed[led];
+    if (blueReport_.sampleCount < kBlueSamples && (b.flags || b.age > 90)) {
+      auto &sample = blueReport_.samples[blueReport_.sampleCount++];
+      sample.led = led; sample.age = b.age; sample.flags = b.flags;
+      sample.trains = frame_.occupancy[led];
+      memcpy(sample.nextStop, b.nextStop, 4); sample.nextStop[4] = '\0';
     }
   }
   const semantic::RenderResult r = semantic::renderTrainFrame(frame_, rgb_, config_);
@@ -331,6 +407,7 @@ void TrainPipeline::finishCycle() {
     if (semantic::semanticForLed(i) == nullptr) ++counters_.statusNonBlackPixels;
   }
   state_ = CycleState::Finished;
+  finishedForBlueHistory_ = true;
 }
 
 bool selfCheckEmptyCycle(TrainPipeline &p) {

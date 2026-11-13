@@ -442,6 +442,46 @@ void testVerifiedTripDeparture() {
   CHECK(gPipe.counters().resolvedTrains == 1 && gPipe.counters().approachingStation == 1);
 }
 
+void testBlueDiagnostics() {
+  begin();
+  Feed f(kNow);
+  f.vehicle("BLUE_FUTURE", "2", 1, "233N", kNow - 10);
+  f.add(predictionEntity("BLUE_FUTURE", "233N", kNow + 30));
+  f.vehicle("BLUE_FUTURE", "2", 1, "233N", kNow - 10); // duplicate counted once
+  f.vehicle("BLUE_OLD", "2", 1, "233N", kNow - 100);
+  f.add(predictionEntity("BLUE_OLD", "232N", kNow + 30)); // too old for departure inference
+  f.vehicle("BLUE_NO_ETA", "2", 1, "233S", kNow - 5);
+  feed(f); gPipe.finishCycle();
+  const auto &r = gPipe.blueReport().routes[static_cast<uint8_t>(sem::Route::Route2)];
+  CHECK(r.trains == 3 && r.leds == 1 && r.shared == 1);
+  CHECK(r.old == 1 && r.different == 1 && r.future == 1 && r.missing == 1);
+  CHECK(gPipe.blueReport().sampleCount == 1 && gPipe.blueReport().timestamp == kNow);
+  CHECK(gPipe.counters().resolvedTrains == 3); // diagnostics never add trains
+  gPipe.finishCycle(); CHECK(r.trains == 3);
+  gPipe.beginCycle(kNow + 30);
+  Feed advanced(kNow + 30); advanced.vehicle("BLUE_FUTURE", "2", 1, "232N", kNow + 25);
+  feed(advanced); gPipe.finishCycle();
+  CHECK(gPipe.blueReport().comparedTrips == 3);
+  CHECK(gPipe.blueReport().routes[static_cast<uint8_t>(sem::Route::Route2)].changed == 1);
+  begin(); gPipe.finishCycle();
+  CHECK(gPipe.blueReport().routes[static_cast<uint8_t>(sem::Route::Route2)].trains == 0);
+  sem::RenderConfig hidden{}; hidden.routeVisibilityMask = 0;
+  gPipe.beginCycle(kNow, hidden); feed(f); gPipe.finishCycle();
+  CHECK(gPipe.blueReport().sampleCount == 0);
+  CHECK(gPipe.blueReport().routes[static_cast<uint8_t>(sem::Route::Route2)].trains == 0);
+  begin(); Feed delayed(kNow - 30);
+  delayed.vehicle("BLUE_EXPIRED_ETA", "2", 1, "233N", kNow - 31);
+  delayed.add(predictionEntity("BLUE_EXPIRED_ETA", "233N", kNow - 10));
+  feed(delayed); gPipe.finishCycle();
+  CHECK(gPipe.blueReport().routes[static_cast<uint8_t>(sem::Route::Route2)].future == 0);
+  begin(); Feed conflict(kNow);
+  conflict.vehicle("BLUE_CONFLICT", "2", 1, "233N", kNow);
+  conflict.vehicle("BLUE_CONFLICT", "2", 1, "232N", kNow);
+  feed(conflict); gPipe.finishCycle();
+  CHECK(gPipe.blueReport().routes[static_cast<uint8_t>(sem::Route::Route2)].trains == 0);
+
+}
+
 void testH19Operational() {
   begin();
   Feed f(kNow);
@@ -953,6 +993,7 @@ int main(int argc, char **argv) {
   testStationTimingPredictions();
   testPredictionCapacity();
   testVerifiedTripDeparture();
+  testBlueDiagnostics();
   testH19Operational();
   testPreviousStopAmbiguous();
   testStale();

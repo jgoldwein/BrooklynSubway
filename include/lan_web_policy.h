@@ -7,6 +7,7 @@
 #include "feed_transport.h"
 #include "network_diagnostics.h"
 #include "normal_config.h"
+#include "blue_diagnostics.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -33,6 +34,7 @@ class ServerOwnership {
 
 struct StatusSnapshot {
   uint32_t uptimeSeconds = 0;
+  pipeline::BlueReport blueReport{};
   uint32_t pollSeconds = 15;
   uint8_t oledAddress = config::kDefaultOledAddress;
   char deviceName[33] = {};

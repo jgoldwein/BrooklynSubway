@@ -296,6 +296,43 @@ bool parseRouteSelection(const RouteSelectionParam *parameters, size_t count,
   return true;
 }
 
+// Compact, read-only report: counts describe the latest poll, not optical feedback.
+size_t renderBlueSummary(char *out, size_t capacity, const pipeline::BlueReport &report) {
+  Writer w(out, capacity);
+  if (!report.timestamp) { w.append("Waiting for a completed poll."); return w.size(); }
+  w.format("Latest poll: %lu (Unix). Station LEDs, visible routes; held/paused display may differ.\n",
+           static_cast<unsigned long>(report.timestamp));
+  w.append("Route  LEDs Trains Old NextDiff Future NoETA Shared Changed\n");
+  for (uint8_t i = 1; i <= semantic::kRouteCount; ++i) {
+    const auto &r = report.routes[i];
+    if (!r.leds) continue;
+    w.format("%-5s %4u %6u %3u %8u %6u %5u %6u %7u\n", semantic::routeName(static_cast<semantic::Route>(i)),
+        r.leds, r.trains, r.old, r.different, r.future, r.missing, r.shared, r.changed);
+  }
+  w.format("Compared %u prior stopped trips; history overflow %u.\n", report.comparedTrips, report.historyDropped);
+  w.append("Old: last detected movement >90s. NextDiff: prediction names another stop.\n"
+           "Future: predicted arrival at this stop is still ahead. NoETA: no usable prediction.\n"
+           "Shared: LEDs with multiple trains; stopped reports override blinking.\n"
+           "Changed: same trip changed station since the prior poll while still STOPPED_AT.\n"
+           "These are STOPPED_AT reports, not confirmed station dwell.\n");
+  if (report.sampleCount) w.append("Examples to review (up to 8):\n");
+  for (uint8_t i = 0; i < report.sampleCount && i < pipeline::kBlueSamples; ++i) {
+    const auto &sample = report.samples[i];
+    const auto *m = semantic::semanticForLed(sample.led);
+    if (!m) continue;
+    const char *name = semantic::stationName(m->stationId);
+    w.format("%s %.28s [LED%u]: %u sharing, movement age ", semantic::routeName(m->route), name ? name : "?", m->designator, sample.trains);
+    if (sample.flags & pipeline::UnknownAge) w.append("unknown");
+    else w.format("%s%us", sample.age == 255 ? ">=" : "", sample.age);
+    w.format(", next %s%s%s%s%s\n", sample.nextStop[0] ? sample.nextStop : "mixed/none",
+        sample.flags & pipeline::NextDifferent ? " (different)" : "",
+        sample.flags & pipeline::FutureArrival ? " (future)" : "",
+        sample.flags & pipeline::NoPrediction ? " (no ETA)" : "",
+        sample.flags & pipeline::StopChanged ? " (stop changed)" : "");
+  }
+  return w.size();
+}
+
 size_t renderHomePage(char *out, size_t capacity,
                       const StatusSnapshot &status, uint8_t brightness,
                       uint32_t routeVisibilityMask, const char *csrfToken) {
@@ -627,6 +664,13 @@ size_t renderHomePage(char *out, size_t capacity,
   writer.append("<p class=\"muted\">Live output starts automatically with fresh data. POWER toggles off/on; "
                 "the physical brightness cap remains 16/255."
                 "</p></section>");
+  {
+    char summary[3072];
+    const size_t length = renderBlueSummary(summary, sizeof(summary), status.blueReport);
+    writer.append("<details><summary>Why blue?</summary><pre data-status=\"blueSummary\" style=\"overflow:auto\">");
+    writer.html(length ? summary : "Diagnostic report unavailable");
+    writer.append("</pre></details>");
+  }
   writer.format("<section><h2>MTA update interval</h2><p>Wait after each completed download cycle: %lu seconds. "
                 "Downloads add to the total interval. MTA feeds are typically generated about every 30 seconds; "
                 "faster checks can return identical data.</p>", static_cast<unsigned long>(status.pollSeconds));
@@ -872,6 +916,13 @@ size_t renderStatusJson(char *out, size_t capacity,
                       status.lastFeedFailureElapsedMs));
   } else {
     writer.append(",\"lastFeedFailure\":null");
+  }
+  {
+    char summary[3072];
+    const size_t length = renderBlueSummary(summary, sizeof(summary), status.blueReport);
+    writer.append(",\"blueSummary\":\"");
+    writer.json(length ? summary : "Diagnostic report unavailable");
+    writer.append("\"");
   }
   writer.append("}");
   return writer.size();
