@@ -15,7 +15,7 @@ const uint8_t u8g2_font_6x12_tf[]={0}, u8g2_font_8x13_tf[]={0};
 extern int frames, titles;
 struct U8G2_SSD1306_128X64_NONAME_F_HW_I2C {
  u8x8_t d;
- U8G2_SSD1306_128X64_NONAME_F_HW_I2C(const void *,uint8_t reset,uint8_t scl,uint8_t sda) { OLED_CHECK(reset==255 && scl==9 && sda==8); }
+ U8G2_SSD1306_128X64_NONAME_F_HW_I2C(const void *,uint8_t reset,uint8_t scl=255,uint8_t sda=255) { OLED_CHECK(reset==255 && scl==255 && sda==255); }
  void clearBuffer() {} void setFont(const uint8_t *) {}
  int getStrWidth(const char *s) {return strlen(s)*8;}
  void drawStr(int,int,const char *s) {if(strcmp(s,"Brooklyn Subway")==0)++titles;}

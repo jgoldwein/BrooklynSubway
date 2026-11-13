@@ -6,10 +6,12 @@
 #include <U8g2lib.h>
 namespace brooklyn::oled {
 namespace {
-U8G2_SSD1306_128X64_NONAME_F_HW_I2C screen(U8G2_R0, U8X8_PIN_NONE,
-    pins::I2C_SCL, pins::I2C_SDA);
+// Wire already owns GPIO8/9. Passing those pins to U8g2 makes its GPIO
+// initializer call pinMode(OUTPUT), disrupting the active hardware I2C bus.
+// Our byte callback reuses Wire, so U8g2 must not initialize any GPIO pins.
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C screen(U8G2_R0, U8X8_PIN_NONE);
 TaskHandle_t clockTask = nullptr;
-constexpr uint8_t address = 0x3c; // Matches the working ESPHome configuration.
+uint8_t address = 0; // Try requested 0x38 first, then the working ESPHome address 0x3C.
 void draw(const char *clock) {
   screen.clearBuffer();
   screen.setFont(u8g2_font_6x12_tf);
@@ -32,11 +34,18 @@ uint8_t boundedI2c(u8x8_t *display, uint8_t message, uint8_t length, void *bytes
     case U8X8_MSG_BYTE_SEND:
       if (Wire.write(static_cast<uint8_t *>(bytes), length) != length) {
         (void)Wire.endTransmission(); // Release the Wire transaction before latching failure.
+        Serial.printf("OLED clock: short I2C write, requested %u bytes\n", length);
         transportFailed = true;
       }
       break;
     case U8X8_MSG_BYTE_END_TRANSFER:
-      if (Wire.endTransmission() != 0) transportFailed = true;
+      {
+        const uint8_t error = Wire.endTransmission();
+        if (error != 0) {
+          Serial.printf("OLED clock: I2C transfer error %u at 0x%02X (2=NACK, 4=other, 5=timeout)\n", error, address);
+          transportFailed = true;
+        }
+      }
       break;
     default: return 0;
   }
@@ -50,9 +59,15 @@ void run(void *) {
     Serial.println("OLED clock: SDA/SCL held LOW; OLED skipped, map continues");
     vTaskDelete(nullptr); return;
   }
-  Wire.beginTransmission(address);
-  if (Wire.endTransmission() != 0) {
-    Serial.println("OLED clock: absent at 0x3C; map continues");
+  const uint8_t candidates[] = {0x38, 0x3c};
+  for (uint8_t candidate : candidates) {
+    Wire.beginTransmission(candidate);
+    const uint8_t error = Wire.endTransmission();
+    Serial.printf("OLED clock: probe 0x%02X -> %u (0=ACK, 2=NACK, 5=timeout)\n", candidate, error);
+    if (error == 0) { address = candidate; break; }
+  }
+  if (!address) {
+    Serial.println("OLED clock: absent at 0x38/0x3C; map continues");
     vTaskDelete(nullptr); return;
   }
   Serial.printf("OLED clock: address 0x%02X acknowledged; initializing SSD1306 128x64\n", address);
