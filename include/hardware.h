@@ -15,6 +15,7 @@ void indicateStartup(bool checksPassed);
 // Manual diagnostic cue: one to eight beeps; POWER aborts; leaves GPIO21 LOW.
 bool signalDiagnosticChannel(led::PhysicalChannel channel);
 // U23/GPIO14: dim PWM feed-health indicator, independent of map POWER state.
+// First successful ON per boot emits a 100 ms GPIO21 beep unless DIM-muted.
 void setFeedIndicator(bool freshComplete);
 
 }  // namespace brooklyn::hardware

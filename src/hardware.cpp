@@ -19,6 +19,30 @@ bool startupMuted = false;
 bool feedIndicatorAttached = false;
 bool feedIndicatorOn = false;
 bool feedIndicatorUnavailable = false;
+bool feedReadyBeepAttempted = false;
+
+void beepFeedReadyOnce() {
+  if (feedReadyBeepAttempted) return;
+  feedReadyBeepAttempted = true;
+  if (startupMuted) {
+    Serial.println("Feed-ready buzzer: muted by DIM at boot"); return;
+  }
+  constexpr uint8_t kBuzzerChannel = 7; // Timer 3, independent of U23 timer 2.
+  constexpr uint16_t kFrequencyHz = 2000;
+  constexpr uint16_t kDurationMs = 100;
+  digitalWrite(pins::BUZZER, LOW);
+  if (ledcSetup(kBuzzerChannel, kFrequencyHz, 8) == 0) {
+    Serial.println("Feed-ready buzzer: PWM setup failed; GPIO21 LOW"); return;
+  }
+  ledcWrite(kBuzzerChannel, 0);
+  ledcAttachPin(pins::BUZZER, kBuzzerChannel);
+  ledcWrite(kBuzzerChannel, 128);
+  delay(kDurationMs);
+  ledcWrite(kBuzzerChannel, 0);
+  ledcDetachPin(pins::BUZZER);
+  digitalWrite(pins::BUZZER, LOW);
+  Serial.println("Feed-ready buzzer: U23 ON, GPIO21 2000 Hz / 100 ms; once per boot");
+}
 
 void playStartupChime() {
   // Reserve channel 7 (LEDC timer 3) for BUZZER3. No tone task is allocated.
@@ -167,6 +191,7 @@ void setFeedIndicator(bool freshComplete) {
   if (freshComplete != feedIndicatorOn) {
     Serial.println(freshComplete ? "Feed indicator: U23/GPIO14 dim ON, duty 8/255" : "Feed indicator: U23/GPIO14 OFF (feed not fresh/complete)");
     feedIndicatorOn = freshComplete;
+    if (freshComplete) beepFeedReadyOnce();
   }
 #else
   (void)freshComplete;
@@ -200,6 +225,7 @@ bool beginSafe() {
   }
   feedIndicatorOn = false;
   feedIndicatorUnavailable = false;
+  feedReadyBeepAttempted = false;
   pinMode(pins::AVI_LOCATION_LED, OUTPUT);
 
   digitalWrite(pins::BUZZER, LOW);

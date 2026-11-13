@@ -13,6 +13,8 @@ int setupCalls = 0, attachCalls = 0, detachCalls = 0, failSetupAt = -1;
 uint32_t frequency = 0, duty = 0;
 bool buzzerOutput = false;
 bool cueMode = false;
+bool feedReadyMode = false;
+int readyBeeps = 0;
 int beepStarts = 0, cueMs = 0, cueOnMs = 0, abortAtMs = -1;
 bool recoveryRequested = false;
 uint32_t feedDuty = 0;
@@ -51,7 +53,8 @@ uint32_t ledcSetup(uint8_t channel, uint32_t hz, uint8_t resolution) {
     ++feedSetups; return failFeedSetup ? 0 : hz;
   }
   CHECK(channel == 7 && resolution == 8 && duty == 0);
-  if (cueMode) { CHECK(setupCalls == 0 && hz == 4000); }
+  if (feedReadyMode) { CHECK(hz == 2000 && feedDuty == 8); }
+  else if (cueMode) { CHECK(setupCalls == 0 && hz == 4000); }
   else { CHECK(setupCalls < 6 && hz == expectedHz[setupCalls]); }
   const bool fail = setupCalls++ == failSetupAt;
   frequency = hz;
@@ -77,6 +80,7 @@ void ledcDetachPin(uint8_t pin) {
 }
 void delay(uint32_t ms) {
   CHECK(enable == LOW);
+  if (feedReadyMode) { CHECK(ms == 100 && duty == 128 && feedDuty == 8); ++readyBeeps; return; }
   if (cueMode) {
     CHECK(ms <= 20 && indicator == LOW);
     cueMs += ms;
@@ -99,6 +103,8 @@ void delay(uint32_t ms) {
 }
 void reset(bool muted, int failAt = -1) {
   cueMode = false;
+  feedReadyMode = false;
+  readyBeeps = 0;
   pulses = indicatorDelays = notes = gaps = 0;
   setupCalls = attachCalls = detachCalls = 0;
   duty = 0;
@@ -158,18 +164,35 @@ int main() {
   CHECK(!brooklyn::hardware::signalDiagnosticChannel(brooklyn::led::PhysicalChannel::CH1));
   CHECK(setupCalls == 0 && duty == 0);
   reset(false);
+  feedReadyMode = true;
   brooklyn::hardware::setFeedIndicator(false); CHECK(feedDuty == 0 && feedSetups == 0);
   brooklyn::hardware::setFeedIndicator(true);
   CHECK(feedSetups == 1 && feedAttaches == 1 && feedDuty == 8 && enable == LOW);
+  CHECK(readyBeeps == 1 && duty == 0 && buzzer == LOW && detachCalls == 1);
   brooklyn::hardware::setFeedIndicator(true); CHECK(feedSetups == 1);
   brooklyn::hardware::setFeedIndicator(false); CHECK(feedDuty == 0);
   brooklyn::hardware::setFeedIndicator(true); CHECK(feedDuty == 8 && feedSetups == 1);
+  CHECK(readyBeeps == 1); // No repeats for unchanged state or OFF/ON recovery.
   CHECK(brooklyn::hardware::beginSafe()); CHECK(feedDuty == 0 && feedDetaches == 1);
   failFeedSetup = true;
   brooklyn::hardware::setFeedIndicator(true);
   const int failedCalls = feedSetups;
   brooklyn::hardware::setFeedIndicator(true);
   CHECK(feedSetups == failedCalls && feedDuty == 0 && enable == LOW);
+  CHECK(readyBeeps == 1); // Failed indicator allocation cannot trigger a new beep.
+  failFeedSetup = false;
+  reset(true); feedReadyMode = true;
+  brooklyn::hardware::setFeedIndicator(true);
+  CHECK(feedDuty == 8 && readyBeeps == 0 && setupCalls == 0 && duty == 0);
+  reset(false, 0); feedReadyMode = true;
+  brooklyn::hardware::setFeedIndicator(true);
+  CHECK(feedDuty == 8 && readyBeeps == 0 && setupCalls == 1 && duty == 0 && attachCalls == 0);
+  brooklyn::hardware::setFeedIndicator(false); brooklyn::hardware::setFeedIndicator(true);
+  CHECK(setupCalls == 1); // Failed buzzer setup is not retried repeatedly.
+  reset(false); feedReadyMode = true;
+  brooklyn::hardware::setFeedIndicator(true);
+  CHECK(readyBeeps == 1 && feedDuty == 8 && duty == 0); // New boot rearms the cue.
+  puts("Feed-ready cue: U23 ON before 100 ms / 2000 Hz beep, once per boot, mute and failure cleanup PASS");
   puts("U23 feed indicator: GPIO14, dim duty 8/255, separate PWM timer, OFF/stale path, reboot and allocation failure cleanup PASS");
   puts("Startup: U23 pulses, four rising notes plus descending pair, 2265 ms, 50%-duty PWM, DIM mute, failed-check silence, PWM failure cleanup, addressable outputs disabled PASS");
 }
