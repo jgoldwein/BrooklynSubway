@@ -9,7 +9,7 @@
 jmp_buf iterationEnd;
 FakeSerial Serial; FakeWire Wire;
 int frames=0,titles=0,ends=0,starts=0,deletes=0,delays=0;
-int scenario=0; bool open=false;
+int scenario=0; bool open=false; uint8_t lastAddress=0;
 void (*worker)(void *)=nullptr;
 void FakeSerial::println(const char *) {}
 int digitalRead(uint8_t pin){OLED_CHECK(pin==8||pin==9); return scenario==1?LOW:HIGH;}
@@ -21,9 +21,10 @@ void vTaskDelete(void *) {++deletes;}
 void vTaskDelay(uint32_t ms) { OLED_CHECK(ms==1000); ++delays; longjmp(iterationEnd,1); }
 void FakeWire::setTimeOut(uint16_t ms){OLED_CHECK(ms==50);}
 void FakeWire::setClock(uint32_t hz){OLED_CHECK(hz==100000);}
-void FakeWire::beginTransmission(uint8_t a){OLED_CHECK(!open); OLED_CHECK(a==0x3c);open=true;++starts;}
+void FakeWire::beginTransmission(uint8_t a){OLED_CHECK(!open); OLED_CHECK(a==0x38||a==0x3c);lastAddress=a;open=true;++starts;}
 uint8_t FakeWire::endTransmission(){OLED_CHECK(open);open=false;++ends;
  if(scenario==2)return 2;
+ if(scenario==7 && lastAddress==0x38)return 2;
  if(scenario==3 && ends>=2)return 5;
  if(scenario==5 && ends>17)return 5;
  return 0;
@@ -36,8 +37,9 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(setjmp(iterationEnd)==0) worker(nullptr);
  OLED_CHECK(!open);
  if(scenario==0){OLED_CHECK(frames==2 && titles==2 && delays==1 && deletes==0);}
+ if(scenario==7){OLED_CHECK(lastAddress==0x3c && frames==2 && titles==2 && delays==1);}
  if(scenario==1){OLED_CHECK(starts==0 && deletes==1);}
- if(scenario==2){OLED_CHECK(ends==1 && frames==0 && deletes==1);}
+ if(scenario==2){OLED_CHECK(ends==2 && frames==0 && deletes==1);}
  if(scenario==3 || scenario==4){OLED_CHECK(ends==2 && frames==0 && deletes==1);}
  if(scenario==5){OLED_CHECK(ends==18 && frames==1 && deletes==1);}
  printf("OLED runtime scenario %d PASS\n",scenario);

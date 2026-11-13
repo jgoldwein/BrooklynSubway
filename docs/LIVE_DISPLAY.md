@@ -136,3 +136,12 @@ the SSD1309 profile inferred from the product listing. The address is fixed to
 and all startup isolation and bounded-transfer behavior from 0.2.22. Physical
 image verification remains necessary; this change does not prove the cause of
 the previously reported startup stall.
+
+### OLED bus ownership (0.2.24)
+
+U8g2's generic GPIO initialization sets its assigned I2C pins to OUTPUT. With
+our pre-initialized Wire bus and custom transport, this can disrupt communication
+between a successful address probe and the display commands. The graphics
+object now receives no GPIO pins; Wire retains ownership of manufactured GPIO8/9.
+Try requested 7-bit address 0x38 first, falling back to the known ESPHome 0x3C.
+Serial output records each probe result and the first transfer error code.
