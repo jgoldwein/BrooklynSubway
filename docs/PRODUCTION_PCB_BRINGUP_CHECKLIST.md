@@ -2,6 +2,11 @@
 
 ## Limited authorization update — 2026-11-12
 
+After successful CH1 tests, Joel authorized extending the same guarded walk
+to CH2–CH8, individually selected at low brightness. Firmware 0.2.12 adds
+these manual tests, including CH8's four status indicators. Their physical
+results are pending. This does not authorize full-map lighting or higher load.
+
 Result update: Joel reported both LED42-only and CH1 walk tests ran correctly.
 This establishes user-observed success for those limited tests. CH2–CH8 and
 full-map output remain unvalidated; no additional output permission is implied.

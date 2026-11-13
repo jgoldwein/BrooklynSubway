@@ -3,6 +3,7 @@
 
 #include "lan_web_ui.h"
 #include "led_backend.h"
+#include "led_diagnostic_policy.h"
 #include "ota_progress_script.h"
 
 #if BROOKLYN_NETWORK_ENABLED
@@ -245,7 +246,8 @@ void LanWebUi::sendHtml(const char *body, size_t length) {
 
 // kind: 0 = success, 1 = notice, 2 = problem. refreshSeconds > 0 returns to /update.
 void LanWebUi::sendNotice(int httpCode, const char *title, const char *message,
-                          int kind, int refreshSeconds) {
+                          int kind, int refreshSeconds,
+                          const char *backPath, const char *backLabel) {
   char refresh[64] = {};
   if (refreshSeconds > 0) {
     snprintf(refresh, sizeof(refresh),
@@ -258,13 +260,13 @@ void LanWebUi::sendNotice(int httpCode, const char *title, const char *message,
       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
       "%s<title>%s</title><style>%s</style></head><body><h1>%s</h1>"
       "<div class=\"card %s\" role=\"status\"><p>%s</p>%s</div>"
-      "<p><a href=\"/update\">Back to firmware update</a> &middot; "
+      "<p><a href=\"%s\">%s</a> &middot; "
       "<a href=\"/\">Status page</a></p></body></html>",
       refresh, title, kUpdateStyle, title,
       kind == 0 ? "ok" : (kind == 1 ? "warn" : "bad"), message,
       refreshSeconds > 0 ? "<p class=\"muted\">Returning to the update page "
                            "automatically&hellip;</p>"
-                         : "");
+                         : "", backPath, backLabel);
   if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
     server_.send(httpCode, "text/plain", message);
     return;
@@ -1495,9 +1497,17 @@ void LanWebUi::handleLedDiagnosticPage() {
       "<form method=\"post\" action=\"/hardware-test/run\">"
       "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
       "<label>Test <select name=\"test\"><option value=\"first\">LED42 only (2 seconds)</option>"
-      "<option value=\"ch1\">CH1 walk: 37 LEDs, one at a time (about 19 seconds)</option></select></label>"
-      "<p>CH1 walk uses the same dim red, 0.5 seconds per LED. Feeds and this page pause during testing. "
+      "<option value=\"ch1\">CH1: 37 LEDs (about 19 seconds)</option>"
+      "<option value=\"ch2\">CH2: 38 LEDs (about 19 seconds)</option>"
+      "<option value=\"ch3\">CH3: 37 LEDs (about 19 seconds)</option>"
+      "<option value=\"ch4\">CH4: 37 LEDs (about 19 seconds)</option>"
+      "<option value=\"ch5\">CH5: 42 LEDs (about 21 seconds)</option>"
+      "<option value=\"ch6\">CH6: 37 LEDs (about 19 seconds)</option>"
+      "<option value=\"ch7\">CH7: 38 LEDs (about 19 seconds)</option>"
+      "<option value=\"ch8\">CH8: 40 LEDs including 4 status lights (about 20 seconds)</option></select></label>"
+      "<p>Each walk tests one channel, one dim red LED at a time, 0.5 seconds per LED. Feeds and this page pause during testing. "
       "Press POWER to abort the walk. Other channels stay dark; all LEDs are cleared afterward.</p>"
+      "<p>CH8 starts with SYSTEM, NETWORK, MTA FEED, MODE, then its 36 map LEDs. Observe each channel separately before trying the next.</p>"
       "<label><input type=\"checkbox\" name=\"confirmed\" value=\"yes\" required>Rails, polarity and supply checked; ready to observe the selected test</label>"
       "<button type=\"submit\">Run selected test</button></form><p><a href=\"/\">Status</a></p></html>", csrf);
   if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
@@ -1514,17 +1524,20 @@ void LanWebUi::handleLedDiagnosticRun() {
     return;
   }
   const String test = server_.arg("test");
+  led::diagnostic::Selection selection{};
   if (server_.args() != 3 || server_.arg("confirmed") != "yes" ||
-      (test != "first" && test != "ch1")) {
+      !hasNoEmbeddedNull(test) ||
+      !led::diagnostic::parseSelection(test.c_str(), selection)) {
     server_.send(400, "text/plain", "Confirm the electrical checks before testing");
     return;
   }
-  const bool ok = test == "ch1" ? led::backend::runChannelOneDiagnostic()
-                                : led::backend::runFirstLedDiagnostic();
+  const bool ok = selection.kind == led::diagnostic::Kind::ChannelWalk
+                      ? led::backend::runChannelDiagnostic(selection.channel)
+                      : led::backend::runFirstLedDiagnostic();
   sendNotice(ok ? 200 : 503, "LED diagnostic",
              ok ? "Selected sequence completed; LEDs cleared and outputs disabled. Confirm the observed LED positions and count."
                 : "Test failed, was aborted, or unavailable; outputs disabled. Inspect serial diagnostics.",
-             ok ? 0 : 2, 0);
+             ok ? 0 : 2, 0, "/hardware-test", "Back to hardware diagnostics");
 }
 
 bool LanWebUi::authorizeRequest(bool requireCsrf) {

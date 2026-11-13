@@ -60,7 +60,9 @@ class LanWebUi {
   bool updateContentTypeAccepted();
   void sendHtml(const char *body, size_t length);
   void sendNotice(int httpCode, const char *title, const char *message,
-                  int kind, int refreshSeconds);
+                  int kind, int refreshSeconds,
+                  const char *backPath = "/update",
+                  const char *backLabel = "Back to firmware update");
   void handleUpdateProgress();
   bool authorizeRequest(bool requireCsrf);
   bool requestSession(char *csrfToken, size_t capacity);
