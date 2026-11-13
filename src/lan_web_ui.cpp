@@ -230,7 +230,8 @@ void LanWebUi::service(const StatusSnapshot &status) {
   status_ = status;
   server_.handleClient();
   if (allDiagnosticState_ == AllDiagnosticState::Pending) {
-    allDiagnosticState_ = led::backend::runAllChannelDiagnostics()
+    allDiagnosticState_ = (routeDiagnostic_ ? led::backend::runAllRouteDiagnostics()
+                                          : led::backend::runAllChannelDiagnostics())
                               ? AllDiagnosticState::Complete : AllDiagnosticState::Stopped;
   }
   if (controls::consumeWifiRecoveryRequest()) {
@@ -1494,9 +1495,9 @@ void LanWebUi::handleLedDiagnosticPage() {
     return;
   }
   const char *allResult = allDiagnosticState_ == AllDiagnosticState::Complete
-      ? "Previous all-channel sequence completed and outputs disabled. Confirm the visual result."
+      ? "Previous full sequence completed and outputs disabled. Confirm the visual result."
       : allDiagnosticState_ == AllDiagnosticState::Stopped
-      ? "Previous all-channel sequence stopped or failed; outputs disabled. Inspect serial diagnostics."
+      ? "Previous full sequence stopped or failed; outputs disabled. Inspect serial diagnostics."
       : "";
   const int length = snprintf(gPage, kPageCapacity,
       "<!doctype html><html lang=\"en\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
@@ -1513,6 +1514,7 @@ void LanWebUi::handleLedDiagnosticPage() {
       "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
       "<label>Test <select name=\"test\"><option value=\"first\">LED42 only (2 seconds)</option>"
       "<option value=\"all\">All channels: numbered beeps before each (about 3 minutes)</option>"
+      "<option value=\"routes\">All subway lines: dim red, green, blue (about 4 minutes)</option>"
       "<option value=\"ch1\">CH1: 37 LEDs (about 19 seconds)</option>"
       "<option value=\"ch2\">CH2: 38 LEDs (about 19 seconds)</option>"
       "<option value=\"ch3\">CH3: 37 LEDs (about 19 seconds)</option>"
@@ -1527,6 +1529,9 @@ void LanWebUi::handleLedDiagnosticPage() {
       "<p>All channels runs CH1 through CH8 once: 1 beep before CH1, 2 before CH2, through 8 before CH8. "
       "Only one LED is lit at a time. POWER stops the entire sequence, including beeps. Leave this page open until the result returns.</p>"
       "<label><input type=\"checkbox\" name=\"confirmed\" value=\"yes\" required>Rails, polarity and supply checked; ready to observe the selected test</label>"
+      "<p>All subway lines runs 2, 3, 4, 5, A, B, C, D, F, G, J, L, M, N, Q, R, S, Z. "
+      "Each mapped LED cycles red, green, blue at 4/255, 0.25 seconds each, one LED at a time. "
+      "Status lights are excluded. Serial output identifies each line and LED. Channel-number beeps apply only to the channel test. POWER aborts either full test.</p>"
       "<button type=\"submit\">Run selected test</button></form><p><a href=\"/\">Status</a></p></html>", allResult, csrf);
   if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
     server_.send(500, "text/plain", "Diagnostic page unavailable");
@@ -1549,7 +1554,18 @@ void LanWebUi::handleLedDiagnosticRun() {
     server_.send(400, "text/plain", "Confirm the electrical checks before testing");
     return;
   }
+  if (selection.kind == led::diagnostic::Kind::AllRoutes) {
+    routeDiagnostic_ = true;
+    allDiagnosticState_ = AllDiagnosticState::Pending;
+    sendNotice(202, "Subway-line test starting",
+               "Watch each subway line: one dim LED at a time, red then green then blue. "
+               "Allow about 4 minutes; feeds and page servicing pause. Hold POWER to stop. "
+               "The diagnostics page will reopen after the sequence.",
+               1, 250, "/hardware-test", "Return to hardware diagnostics");
+    return;
+  }
   if (selection.kind == led::diagnostic::Kind::AllChannels) {
+    routeDiagnostic_ = false;
     allDiagnosticState_ = AllDiagnosticState::Pending;
     sendNotice(202, "All-channel test starting",
                "Watch the board: 1 beep before CH1, 2 before CH2, through 8 before CH8. "

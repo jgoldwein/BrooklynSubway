@@ -7,6 +7,7 @@
 
 #include "board_pins.h"
 #include "led_map.h"
+#include "semantic_api.h"
 #include "led_power.h"
 #include "physical_output_safety.h"
 
@@ -306,6 +307,53 @@ bool runAllChannelDiagnostics() {
   disarmLedOutputs();
   Serial.println("LED diagnostic: all eight channels complete; GPIO1 LOW; visual confirmation required");
   return true;
+#else
+  return false;
+#endif
+}
+
+bool runAllRouteDiagnostics() {
+#if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
+  disarmLedOutputs();
+  if (!diagnosticSystemReady || !semantic::selfCheck()) return false;
+  DisplayState frame[map::TOTAL_LED_COUNT]{};
+  constexpr Rgb colors[] = {{4, 0, 0}, {0, 4, 0}, {0, 0, 4}};
+  bool ok = true;
+  for (uint8_t number = 1; number <= semantic::kRouteCount && ok; ++number) {
+    const auto route = static_cast<semantic::Route>(number);
+    Serial.printf("Route diagnostic: line %s; RGB 4/255; POWER aborts\n",
+                  semantic::routeName(route));
+    if (!outputController.initialize(kOutputOperations, true) ||
+        !outputController.arm(kOutputOperations, true)) {
+      disarmLedOutputs();
+      return false;
+    }
+    for (uint16_t index = 0; index < map::TOTAL_LED_COUNT && ok; ++index) {
+      const auto *mapped = semantic::semanticForLed(index);
+      if (!mapped || mapped->route != route) continue;
+      Serial.printf("Route diagnostic: line %s LED%u CH%u index %u\n",
+                    semantic::routeName(route), mapped->designator,
+                    mapped->channel, mapped->channelIndex);
+      for (const auto &color : colors) {
+        if (digitalRead(pins::BUTTON_POWER) == LOW ||
+            controls::pollWifiRecoveryDuringDiagnostic()) { ok = false; break; }
+        frame[index].color = color;
+        ok = outputController.transmit(kOutputOperations, true, frame, map::TOTAL_LED_COUNT);
+        if (ok) delay(250);
+        frame[index].color = {0, 0, 0};
+        if (!ok) break;
+      }
+      // Clear the previous physical LED before advancing across channels.
+      if (ok) ok = outputController.transmit(kOutputOperations, true, frame,
+                                             map::TOTAL_LED_COUNT);
+    }
+    const bool cleared = outputController.transmit(kOutputOperations, true, frame, map::TOTAL_LED_COUNT);
+    disarmLedOutputs();
+    ok = ok && cleared;
+  }
+  Serial.printf("Route diagnostic %s; GPIO1 LOW; visual confirmation required\n",
+                ok ? "complete" : "stopped/failed");
+  return ok;
 #else
   return false;
 #endif
