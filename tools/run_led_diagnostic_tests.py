@@ -48,7 +48,14 @@ def main():
         run = subprocess.run([str(exe)], capture_output=True, text=True)
         print(run.stdout, end="")
         print(run.stderr, end="")
-        return run.returncode
+        if run.returncode:
+            return run.returncode
+        command.append("-DBROOKLYN_ALLOW_LIVE_LED_OUTPUT=1")
+        build = subprocess.run(command, capture_output=True, text=True)
+        if build.returncode:
+            print(build.stdout + build.stderr, end="")
+            return build.returncode
+        return subprocess.call([str(exe)])
 
 
 if __name__ == "__main__":
