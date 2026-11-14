@@ -119,6 +119,20 @@ PreviousStopResult previousStopFromTopology(const char *routeId, const char *sto
   return r;
 }
 
+uint8_t uniqueForwardJourneyHops(const char *routeId, const char *from, const char *to) {
+  char origin[4], destination[4]; char fromDirection=0,toDirection=0;
+  if (!parseStop(from,origin,fromDirection) || !parseStop(to,destination,toDirection) ||
+      !fromDirection || fromDirection!=toDirection || strcmp(origin,destination)==0) return 0;
+  constexpr uint8_t kMaximumJourneyHops=12;
+  for(uint8_t hops=1;hops<=kMaximumJourneyHops;++hops) {
+    const auto previous=previousStopFromTopology(routeId,destination,toDirection);
+    if(previous.status!=PrevStatus::Match || previous.count!=1) return 0;
+    if(strcmp(previous.candidates[0],origin)==0) return hops;
+    memcpy(destination,previous.candidates[0],4);
+  }
+  return 0;
+}
+
 PreviousStopResult previousStopForRealtimeState(const char *routeId, const char *stopId,
                                                 char direction,
                                                 const char *realtimePrevStopId) {

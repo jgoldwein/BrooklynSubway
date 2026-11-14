@@ -54,6 +54,8 @@ PreviousStopResult previousStopForRealtimeState(const char *routeId, const char 
 PreviousStopResult previousStopFromTopology(const char *routeId, const char *stopId,
                                             char direction);
 
+// Count an unambiguous forward journey, at most 12 static edges; 0 rejects.
+uint8_t uniqueForwardJourneyHops(const char *routeId, const char *from, const char *to);
 const char *prevStatusName(PrevStatus s);
 
 }  // namespace brooklyn::gtfs_topology

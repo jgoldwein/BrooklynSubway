@@ -44,6 +44,10 @@ struct RtTrain {
   char vehicleStopId[kStopIdMax];  // VehiclePosition.stop_id
   char nextStopId[kStopIdMax];     // first TripUpdate.stop_time_update.stop_id
   char secondStopId[kStopIdMax];   // second stop_time_update.stop_id (Phase 4F)
+  // Internal reconciliation evidence, never read from protobuf.
+  char inferredPreviousStopId[kStopIdMax];
+  uint32_t inferredPredictionTimestamp;
+  bool nextStopUnavailable; // first update marked SKIPPED/NO_DATA/unknown relationship
   uint32_t vehicleTimestamp;       // 0 when absent
   uint32_t tripUpdateTimestamp;    // 0 when absent
   uint32_t nextStopArrival;        // first stop_time_update arrival.time, 0 if absent

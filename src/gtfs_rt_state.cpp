@@ -41,7 +41,7 @@ bool sameParent(const char *a, const char *b) {
 // vehicle is heading to. Never observed in the live MTA feeds (Phase 4F audit);
 // kept as a strictly-guarded direct-fact path.
 const char *realtimeEarlierStop(const RtTrain &t, const char *stopId) {
-  if (!t.hasTripUpdate || t.stopTimeUpdateCount < 2) return nullptr;
+  if (!t.hasTripUpdate || t.nextStopUnavailable || t.stopTimeUpdateCount < 2) return nullptr;
   if (!sameParent(t.secondStopId, stopId) || sameParent(t.nextStopId, stopId)) return nullptr;
   const uint32_t event = t.nextStopDeparture != 0 ? t.nextStopDeparture : t.nextStopArrival;
   const uint32_t ref = t.tripUpdateTimestamp != 0 ? t.tripUpdateTimestamp : t.vehicleTimestamp;
@@ -55,6 +55,10 @@ bool topologyPreviousStop(void *, const RtTrain &train, const char *stopId, Prev
   using gtfs_topology::PrevStatus;
   memset(&out, 0, sizeof out);
   out.failure = PreviousFailure::NoPrevious;
+  if (train.inferredPreviousStopId[0]) {
+    memcpy(out.stopId,train.inferredPreviousStopId,5);
+    out.source=PreviousSource::Realtime; return true;
+  }
   const gtfs_topology::PreviousStopResult r = gtfs_topology::previousStopForRealtimeState(
       train.routeId, stopId, travelDirection(train), realtimeEarlierStop(train, stopId));
   switch (r.status) {
@@ -83,7 +87,7 @@ bool applyVerifiedTripDeparture(RtTrain &vehicle, const char *nextStop,
                                 uint32_t arrival, uint32_t predictionTimestamp,
                                 uint32_t feedTimestamp, uint32_t nowUnix) {
   if (!vehicle.hasVehicle || vehicle.status != VehicleStatus::StoppedAt ||
-      vehicle.fieldTruncated || vehicle.scheduleRelationship == 3 || !nextStop || strlen(nextStop) != 4 ||
+      vehicle.fieldTruncated || vehicle.nextStopUnavailable || vehicle.scheduleRelationship == 3 || !nextStop || strlen(nextStop) != 4 ||
       strlen(vehicle.vehicleStopId) != 4 || !vehicle.vehicleTimestamp ||
       !feedTimestamp || !predictionTimestamp) return false;
   const uint32_t reference = nowUnix ? nowUnix : feedTimestamp;
@@ -91,16 +95,21 @@ bool applyVerifiedTripDeparture(RtTrain &vehicle, const char *nextStop,
   if (feedTimestamp > reference && feedTimestamp - reference > 30) return false;
   if (reference > feedTimestamp && reference - feedTimestamp > 60) return false;
   if (predictionTimestamp <= vehicle.vehicleTimestamp || predictionTimestamp > feedTimestamp ||
-      observedNow < vehicle.vehicleTimestamp || observedNow - vehicle.vehicleTimestamp > 90 ||
+      observedNow < vehicle.vehicleTimestamp || observedNow - vehicle.vehicleTimestamp > kDefaultMaxVehicleAgeSec ||
+      observedNow < predictionTimestamp || observedNow - predictionTimestamp > 60 ||
       arrival <= observedNow || arrival - observedNow > 600) return false;
   const char direction = vehicle.vehicleStopId[3];
   if ((vehicle.nyctDirection == NyctDirection::North && direction != 'N') ||
       (vehicle.nyctDirection == NyctDirection::South && direction != 'S')) return false;
   if ((direction != 'N' && direction != 'S') || nextStop[3] != direction ||
       strncmp(nextStop, vehicle.vehicleStopId, 3) == 0) return false;
-  const auto previous = gtfs_topology::previousStopFromTopology(vehicle.routeId, nextStop, direction);
-  if (previous.status != gtfs_topology::PrevStatus::Match || previous.count != 1 ||
-      strncmp(previous.candidates[0], vehicle.vehicleStopId, 3) != 0) return false;
+  const uint8_t hops=gtfs_topology::uniqueForwardJourneyHops(vehicle.routeId,vehicle.vehicleStopId,nextStop);
+  if (!hops || (hops==1 && observedNow-vehicle.vehicleTimestamp>90)) return false;
+  // The original detected stop is the actual departure endpoint, including
+  // skipped stations. Never substitute an unvisited static local predecessor.
+  memcpy(vehicle.inferredPreviousStopId,vehicle.vehicleStopId,5);
+  vehicle.inferredPredictionTimestamp=predictionTimestamp;
+  vehicle.nextStopArrival=arrival;
   memcpy(vehicle.vehicleStopId, nextStop, 4);
   vehicle.vehicleStopId[4] = '\0';
   vehicle.status = VehicleStatus::InTransitTo;
@@ -140,6 +149,13 @@ void evaluateTrain(const RtTrain &t, uint32_t feedTimestamp,
   s.stopId = t.vehicleStopId;
   s.previousStopId = nullptr;
   s.progress = semantic::kProgressUnknown;
+  // Bounded timing estimate only on a verified journey. It can select an
+  // existing segment pixel, but never manufactures intermediate station stops.
+  if (t.inferredPreviousStopId[0] && t.nextStopArrival>now && now>=t.vehicleTimestamp) {
+    const uint32_t duration=t.nextStopArrival-t.vehicleTimestamp;
+    if (duration && duration<=900)
+      s.progress=static_cast<uint16_t>((uint64_t(now-t.vehicleTimestamp)*semantic::kProgressMax)/duration);
+  }
 
   if (t.status == VehicleStatus::StoppedAt) {
     s.status = GtfsVehicleStatus::StoppedAt;

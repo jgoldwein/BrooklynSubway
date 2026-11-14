@@ -12,11 +12,12 @@
 // Phase 4D adapter -> Phase 4C resolver. Pure software: no networking, no
 // GPIO, no LED output.
 //
-// Policy (direct GTFS facts only; nothing is estimated):
+// Raw-report policy (before guarded trip-prediction reconciliation):
 //   STOPPED_AT                -> StoppedAt at VehiclePosition.stop_id
 //   INCOMING_AT/IN_TRANSIT_TO -> segment previous->VehiclePosition.stop_id,
 //     progress = kProgressUnknown; if no segment is represented, a mapped next
-//     station may be returned with approachingStation=true (blink, not arrival).
+//     station may be returned with approachingStation=true (approaching color).
+// Verified departure reconciliation below may supply bounded timing estimates.
 // The realtime feed carries no past stops, so the previous stop comes from a
 // caller-supplied PreviousStopProvider (static schedule data). If it cannot
 // supply one the train is Skipped(NoPreviousStop); it is never guessed.
@@ -39,7 +40,9 @@ enum class Category : uint8_t {
 // route H). They are absent from static GTFS and never mapped to an LED.
 bool isRealtimeOnlyOperationalStop(const char *routeId, const char *stopId);
 // MTA may keep STOPPED_AT at the last detected station. Use only a newer,
-// fresh prediction that advances to a unique adjacent stop in the same direction.
+// fresh prediction on one unambiguous forward journey in the same direction.
+// Skipped-stop paths are bounded to 12 static edges and 300 s vehicle age;
+// adjacent-stop inference retains its tighter 90 s vehicle-age bound.
 bool applyVerifiedTripDeparture(RtTrain &vehicle, const char *nextStop,
                                 uint32_t arrival, uint32_t predictionTimestamp,
                                 uint32_t feedTimestamp, uint32_t nowUnix);

@@ -117,11 +117,12 @@ void TrainPipeline::onPrediction(const gtfsrt::RtTrain &train, uint32_t feedTime
       entry.h1 = h1; entry.h2 = h2; entry.arrival = arrival;
       entry.timestamp = train.tripUpdateTimestamp ? train.tripUpdateTimestamp : feedTimestamp;
       entry.hasArrival = train.nextStopArrival != 0;
+      entry.unavailable = train.nextStopUnavailable;
       memcpy(entry.stop, train.nextStopId, 4); entry.route = route;
       return;
     }
     if (entry.h1 == h1 && entry.h2 == h2) {
-      if (entry.arrival != arrival || entry.route != route || entry.hasArrival != (train.nextStopArrival != 0) || memcmp(entry.stop, train.nextStopId, 4)) entry.conflict = true;
+      if (entry.arrival != arrival || entry.route != route || entry.hasArrival != (train.nextStopArrival != 0) || entry.unavailable != train.nextStopUnavailable || memcmp(entry.stop, train.nextStopId, 4)) entry.conflict = true;
       return;
     }
     slot = (slot + 1) & (kTripTableSlots - 1);
@@ -191,7 +192,7 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimes
     const auto &prediction = predictions_[predictionSlot];
     if (!prediction.h1) break;
     if (prediction.h1 == predictionH1 && prediction.h2 == predictionH2) {
-      if (!prediction.conflict && prediction.route == semantic::routeFromGtfsRouteId(t.routeId)) {
+      if (!prediction.conflict && !prediction.unavailable && prediction.route == semantic::routeFromGtfsRouteId(t.routeId)) {
         memcpy(blue.nextStop, prediction.stop, 4); blue.flags = 0;
         if (memcmp(prediction.stop, vehicle.vehicleStopId, 4)) blue.flags |= NextDifferent;
         else if (diagnosticTime && prediction.arrival > diagnosticTime) blue.flags |= FutureArrival;
@@ -261,7 +262,13 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimes
     const uint32_t reference = frame_.animationEpochUnix;
     const uint32_t age = t.vehicleTimestamp && reference >= t.vehicleTimestamp
         ? reference - t.vehicleTimestamp : UINT32_MAX;
-    motion.movementAgeSeconds = age < 255 ? age : 255;
+    const uint32_t timingTimestamp=t.inferredPredictionTimestamp ? t.inferredPredictionTimestamp : t.vehicleTimestamp;
+    // A feed can advance a few seconds while this synchronous cycle downloads.
+    // Reconciliation already bounds that lead to 30 s; do not turn its fresh
+    // prediction into "unknown" merely because the cycle epoch is earlier.
+    const uint32_t timingAge=timingTimestamp && reference>=timingTimestamp ? reference-timingTimestamp :
+        t.inferredPredictionTimestamp && timingTimestamp>reference && timingTimestamp-reference<=30 ? 0 : UINT32_MAX;
+    motion.movementAgeSeconds = timingAge < 255 ? timingAge : 255;
     const uint32_t diagnosticAge = t.vehicleTimestamp && diagnosticTime >= t.vehicleTimestamp
         ? diagnosticTime - t.vehicleTimestamp : UINT32_MAX;
     blue.age = diagnosticAge < 255 ? diagnosticAge : 255;
@@ -274,7 +281,8 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimes
       if (semantic::validatedGlobalIndex(semantic::mapGtfsTrain(next), nextLed)) {
         motion.approachLedPlusOne = nextLed + 1;
         motion.arrivalSecondsPlusOne = UINT16_MAX;  // moving, ETA unavailable
-        if (age <= 90 && t.nextStopArrival >= reference && reference &&
+        const bool freshEta = timingAge <= 90;
+        if (freshEta && t.nextStopArrival >= reference && reference &&
             t.nextStopArrival - reference <= 600)
           motion.arrivalSecondsPlusOne = t.nextStopArrival - reference + 1;
       }
@@ -362,7 +370,9 @@ void TrainPipeline::rememberLocation(const TripEntry &trip,uint16_t led,bool unk
   if (!now) return;
   const auto &evidence=blueEvidence_[&trip-trips_];
   if (!evidence.stopKey) { forgetLocation(trip.h1,trip.h2); return; }
-  if (evidence.age>90 || (evidence.flags & UnknownAge)) return;
+  const bool freshApproach=trip.motion.approachLedPlusOne && trip.motion.movementAgeSeconds<=90 &&
+      trip.motion.arrivalSecondsPlusOne && trip.motion.arrivalSecondsPlusOne!=UINT16_MAX;
+  if ((evidence.age>90 || (evidence.flags & UnknownAge)) && !freshApproach) return;
   LocationHistory *empty=nullptr;
   for (auto &location : locations_) {
     if (location.h1 && now>=location.lastSeen && now-location.lastSeen>1800) location={};

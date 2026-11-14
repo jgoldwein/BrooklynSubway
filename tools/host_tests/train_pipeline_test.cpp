@@ -358,10 +358,10 @@ void testApproachingRepresentation() {
   CHECK(gPipe.counters().stale == 1 && gPipe.counters().approachingStation == 0);
 }
 
-Buf predictionEntity(const char *trip, const char *stop, uint32_t arrival) {
+Buf predictionEntity(const char *trip, const char *stop, uint32_t arrival, const char *route = "2", uint8_t relationship = 0) {
   Buf event; event.vint(2, arrival);
-  Buf update; update.msg(2, event).str(4, stop);
-  Buf tu; tu.msg(1, tripDesc(trip, "2")).msg(2, update);
+  Buf update; update.msg(2, event).str(4, stop).vint(5, relationship);
+  Buf tu; tu.msg(1, tripDesc(trip, route)).msg(2, update);
   Buf entity; entity.str(1, "prediction").msg(3, tu);
   return entity;
 }
@@ -558,6 +558,76 @@ void testVerifiedTripDeparture() {
   feed(f); gPipe.finishCycle();
   CHECK(gPipe.counters().verifiedTripDepartures == 1);
   CHECK(gPipe.counters().resolvedTrains == 1 && gPipe.counters().approachingStation == 1);
+}
+
+void testSkippedStopJourneys() {
+  rt::RtTrain vehicle{};
+  vehicle.hasVehicle=true; vehicle.status=rt::VehicleStatus::StoppedAt;
+  strcpy(vehicle.routeId,"F"); strcpy(vehicle.vehicleStopId,"F24S");
+  vehicle.vehicleTimestamp=kNow-140;
+  auto express=vehicle;
+  CHECK(rt::applyVerifiedTripDeparture(express,"F27S",kNow+60,kNow,kNow,kNow));
+  CHECK(strcmp(express.inferredPreviousStopId,"F24S")==0);
+  CHECK(express.vehicleTimestamp==kNow-140); // Never rejuvenate the raw observation.
+  rt::BuilderConfig cfg{};cfg.now=kNow;cfg.maxVehicleAgeSec=300;cfg.previousStop=rt::topologyPreviousStop;
+  rt::Observation result{};rt::evaluateTrain(express,kNow,cfg,result);
+  CHECK(result.category==rt::Category::ResolvedStation && result.approachingStation);
+  CHECK(strcmp(result.previous.stopId,"F24S")==0 && result.previous.source==rt::PreviousSource::Realtime);
+  // Existing two-pixel bridge segment: timing picks different real pixels,
+  // without creating a stop at either intermediate point.
+  for(unsigned phase=0;phase<2;++phase) {
+    rt::RtTrain bridge{}; bridge.hasVehicle=true;bridge.status=rt::VehicleStatus::StoppedAt;
+    strcpy(bridge.routeId,"B");strcpy(bridge.vehicleStopId,"D22S");
+    bridge.vehicleTimestamp=kNow-(phase?80:10);
+    CHECK(rt::applyVerifiedTripDeparture(bridge,"R30S",kNow+(phase?20:90),kNow,kNow,kNow));
+    rt::Observation segment{};rt::evaluateTrain(bridge,kNow,cfg,segment);
+    uint16_t index=0;CHECK(segment.category==rt::Category::ResolvedSegment && sem::validatedGlobalIndex(segment.result,index));
+    CHECK(sem::semanticForLed(index)->designator==(phase?309:285));
+  }
+  auto reverse=vehicle;CHECK(!rt::applyVerifiedTripDeparture(reverse,"F22S",kNow+60,kNow,kNow,kNow));
+  auto wrongDirection=vehicle;CHECK(!rt::applyVerifiedTripDeparture(wrongDirection,"F27N",kNow+60,kNow,kNow,kNow));
+  auto stale=vehicle;stale.vehicleTimestamp=kNow-301;
+  CHECK(!rt::applyVerifiedTripDeparture(stale,"F27S",kNow+60,kNow,kNow,kNow));
+  auto expiredPrediction=vehicle;
+  CHECK(!rt::applyVerifiedTripDeparture(expiredPrediction,"F27S",kNow+60,kNow-61,kNow,kNow));
+  auto distant=vehicle;CHECK(!rt::applyVerifiedTripDeparture(distant,"F27S",kNow+601,kNow,kNow,kNow));
+  auto unknown=vehicle;CHECK(!rt::applyVerifiedTripDeparture(unknown,"ZZZS",kNow+60,kNow,kNow,kNow));
+  auto skipped=vehicle;skipped.nextStopUnavailable=true;
+  CHECK(!rt::applyVerifiedTripDeparture(skipped,"F27S",kNow+60,kNow,kNow,kNow));
+  begin();Feed feedExpress(kNow);
+  feedExpress.vehicle("F_EXPRESS","F",1,"F24S",kNow-140);
+  feedExpress.add(predictionEntity("F_EXPRESS","F27S",kNow+60,"F"));
+  feed(feedExpress);gPipe.finishCycle();
+  CHECK(gPipe.counters().verifiedTripDepartures==1 && gPipe.counters().resolvedTrains==1);
+  CHECK(gPipe.counters().approachingStation==1);
+  CHECK(gPipe.frame().timing[firstOccupied()].arrivalSecondsPlusOne==61);
+  CHECK(gPipe.frame().timing[firstOccupied()].movementAgeSeconds==0);
+  CHECK(!sem::isUncertainOnly(gPipe.frame(),firstOccupied()));
+  CHECK(gPipe.frame().timing[firstOccupied()].departureAgePlusOne==0);
+  begin();Feed advancingFeed(kNow+5);
+  advancingFeed.vehicle("F_FRESH_CLOCK","F",1,"F24S",kNow-10);
+  advancingFeed.add(predictionEntity("F_FRESH_CLOCK","F27S",kNow+60,"F"));
+  feed(advancingFeed);gPipe.finishCycle();
+  CHECK(gPipe.counters().verifiedTripDepartures==1);
+  CHECK(gPipe.frame().timing[firstOccupied()].movementAgeSeconds==0);
+  CHECK(gPipe.frame().timing[firstOccupied()].arrivalSecondsPlusOne==61);
+  for(uint8_t relationship=1;relationship<=2;++relationship) {
+    begin();Feed unavailable(kNow);
+    unavailable.vehicle("F_SKIP","F",1,"F24S",kNow-10);
+    unavailable.add(predictionEntity("F_SKIP","F27S",kNow+60,"F",relationship));
+    feed(unavailable);gPipe.finishCycle();CHECK(gPipe.counters().verifiedTripDepartures==0);
+  }
+  begin();Feed conflicting(kNow);
+  conflicting.vehicle("F_CONFLICT","F",1,"F24S",kNow-10);
+  conflicting.add(predictionEntity("F_CONFLICT","F27S",kNow+60,"F"));
+  conflicting.add(predictionEntity("F_CONFLICT","F30S",kNow+90,"F"));
+  feed(conflicting);gPipe.finishCycle();CHECK(gPipe.counters().verifiedTripDepartures==0);
+  begin();Feed trail(kNow);
+  trail.vehicle("F_TRAIL","F",1,"F30S",kNow-10);
+  trail.add(predictionEntity("F_TRAIL","F35S",kNow+60,"F"));feed(trail);gPipe.finishCycle();
+  CHECK(gPipe.counters().verifiedTripDepartures==1);
+  for(uint16_t led=0;led<sem::kFrameLedCount;++led) if(gPipe.frame().timing[led].departureAgePlusOne)
+    CHECK(sem::semanticForLed(led)->designator==42); // 18 Av, not the skipped Avenue P.
 }
 
 void testBlueDiagnostics() {
@@ -1114,6 +1184,7 @@ int main(int argc, char **argv) {
   testStationConfidence();
   testPredictionCapacity();
   testVerifiedTripDeparture();
+  testSkippedStopJourneys();
   testBlueDiagnostics();
   testH19Operational();
   testPreviousStopAmbiguous();

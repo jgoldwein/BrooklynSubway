@@ -139,6 +139,8 @@ bool parseStopTimeUpdate(Cursor c, RtTrain &t, bool first, bool second) {
     } else if (f.number == 4 && f.wire == kLen) {
       if (first) copyString(t.nextStopId, sizeof t.nextStopId, f.payload, t.fieldTruncated);
       if (second) copyString(t.secondStopId, sizeof t.secondStopId, f.payload, t.fieldTruncated);
+    } else if (f.number == 5 && f.wire == kVarint && first) {
+      t.nextStopUnavailable = f.value != 0;
     }
   }
   return true;
@@ -220,6 +222,7 @@ void mergeInto(RtTrain &dst, const RtTrain &src, FeedStats &stats) {
     dst.nextStopArrival = src.nextStopArrival;
     dst.nextStopDeparture = src.nextStopDeparture;
     dst.stopTimeUpdateCount = src.stopTimeUpdateCount;
+    dst.nextStopUnavailable = src.nextStopUnavailable;
     memcpy(dst.nextStopId, src.nextStopId, sizeof dst.nextStopId);
     memcpy(dst.secondStopId, src.secondStopId, sizeof dst.secondStopId);
   }

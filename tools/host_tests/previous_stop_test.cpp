@@ -305,6 +305,15 @@ void testAgainstStaticPatterns(const hostidx::Index &idx, StaticStats &st) {
 
 int main(int argc, char **argv) {
   testApi();
+  CHECK(brooklyn::gtfs_topology::uniqueForwardJourneyHops("F","F24S","F27S")==3);
+  CHECK(brooklyn::gtfs_topology::uniqueForwardJourneyHops("F","F30S","F35S")==5);
+  CHECK(brooklyn::gtfs_topology::uniqueForwardJourneyHops("F","F27S","F24S")==0);
+  CHECK(brooklyn::gtfs_topology::uniqueForwardJourneyHops("F","F24S","F27N")==0);
+  CHECK(brooklyn::gtfs_topology::uniqueForwardJourneyHops("F","F24S","F24S")==0);
+  CHECK(brooklyn::gtfs_topology::uniqueForwardJourneyHops("F","F24","F27S")==0);
+  CHECK(brooklyn::gtfs_topology::uniqueForwardJourneyHops("F","F01S","F35S")==0);
+  CHECK(brooklyn::gtfs_topology::uniqueForwardJourneyHops("?","F24S","F27S")==0);
+  CHECK(brooklyn::gtfs_topology::uniqueForwardJourneyHops("A","A49N","A48N")==0);
   unsigned uniqueSeg = 0, equivalent = 0, differing = 0, unknownDest = 0;
   testBuilder(uniqueSeg, equivalent, differing, unknownDest);
   CHECK(uniqueSeg > 0);
