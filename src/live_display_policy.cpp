@@ -123,6 +123,8 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
   semantic::RenderConfig config{};
   config.brightness = snapshot_.brightness < led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP
       ? snapshot_.brightness : led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP;
+  config.showUnknownTiming = (snapshot_.unknownTiming & 256) != 0;
+  config.unknownTimingBrightness = snapshot_.unknownTiming & 255;
   config.routeVisibilityMask = snapshot_.routeMask;
   config.animateTraffic = true;
   config.animationTimeMs = nowMs;

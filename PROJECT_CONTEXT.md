@@ -215,6 +215,18 @@ steady dim amber, OLED settings, status/diagnostic sequences and power controls.
 The compatibility blinkingLeds statistic is zero. Do not reintroduce traffic
 blinking or add a blink configuration without a new user request.
 
+0.2.34 adds saved show/hide plus brightness ceiling for unknown-timing orange
+and uncertain/expired-hold amber. Default shown/no extra dimming (255 ceiling),
+range 0-255; 1 is faint, zero dark. Always limit by normal map brightness and
+physical caps. NVS unknown_timing packs enabled in bit 8 and brightness in the
+low byte; both are saved atomically as one UInt. Applies through live snapshots
+without reboot/resetting visits. Known motion and counts are unchanged.
+
+User UI preference: simple enough for a 13-year-old to understand and navigate.
+Use plain labels and short explanations, with key status first and advanced
+diagnostics behind more details. A broader visual/navigation redesign was
+discussed as a separate future change, not implemented in this controls release.
+
 ## USB / programming
 
 - Native ESP32-S3 USB is wired to USB1: GPIO19 D-, GPIO20 D+.

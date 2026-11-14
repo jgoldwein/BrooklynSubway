@@ -155,12 +155,19 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
           ? StationMotion::Departing : StationMotion::Stopped;
       color = stationMotionColor(motion, timing, elapsed);
     }
-    // Keep uncertain reports visible without claiming a stop or animating
-    // invented movement. Steady amber at half the configured intensity.
-    if (config.animateTraffic && (isUncertainOnly(input, i) ||
+    const bool uncertain = isUncertainOnly(input, i) ||
         (occupied && !isApproachingOnly(input, i) && input.blueSecondsRemaining[i] &&
-         elapsed >= input.blueSecondsRemaining[i]))) color = Rgb{128, 48, 0};
-    output.pixels[i] = scaleBrightness(color, config.brightness);
+         elapsed >= input.blueSecondsRemaining[i]);
+    const bool unknownApproach = (isApproachingOnly(input, i) || approachOverlay) &&
+        (!timing.arrivalSecondsPlusOne || timing.arrivalSecondsPlusOne == UINT16_MAX ||
+         timing.movementAgeSeconds + elapsed > 90);
+    const bool unknown = config.animateTraffic && semantic->role == Role::Station &&
+        (uncertain || unknownApproach);
+    if (unknown && !config.showUnknownTiming) continue;
+    if (config.animateTraffic && uncertain) color = Rgb{128, 48, 0};
+    const uint8_t brightness = unknown && config.unknownTimingBrightness < config.brightness
+        ? config.unknownTimingBrightness : config.brightness;
+    output.pixels[i] = scaleBrightness(color, brightness);
     ++result.renderedLeds;
     if (semantic->role == Role::Station) ++result.stationLeds;
     else ++result.segmentLeds;

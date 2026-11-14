@@ -10,6 +10,8 @@
 
 namespace brooklyn::config {
 
+constexpr uint16_t kDefaultUnknownTiming = 511; // bit 8 enabled, low byte brightness ceiling
+constexpr const char *kUnknownTimingKey = "unknown_timing";
 constexpr uint8_t kDefaultOledContrast = 207; // U8g2 SSD1306 initialization default
 constexpr const char *kOledContrastKey = "oled_contrast";
 constexpr uint32_t kDefaultBlueHoldSeconds = 20;
@@ -42,6 +44,8 @@ struct Store {
   bool (*saveBlueHoldSeconds)(void *context, uint32_t value);
   bool (*loadOledContrast)(void *context, uint32_t &value);
   bool (*saveOledContrast)(void *context, uint32_t value);
+  bool (*loadUnknownTiming)(void *context, uint32_t &value);
+  bool (*saveUnknownTiming)(void *context, uint32_t value);
 };
 
 class DeviceConfiguration {
@@ -50,6 +54,8 @@ class DeviceConfiguration {
 
   bool load();
   bool setBrightness(uint8_t brightness);
+  bool setUnknownTiming(uint16_t setting);
+  uint16_t unknownTiming() const { return unknownTiming_; }
   bool setOledContrast(uint8_t contrast);
   uint8_t oledContrast() const { return oledContrast_; }
   bool setBlueHoldSeconds(uint32_t seconds);
@@ -67,6 +73,7 @@ class DeviceConfiguration {
 
  private:
   Store store_;
+  uint16_t unknownTiming_ = kDefaultUnknownTiming;
   uint8_t oledContrast_ = kDefaultOledContrast;
   uint8_t oledAddress_ = kDefaultOledAddress;
   uint32_t blueHoldSeconds_ = kDefaultBlueHoldSeconds;
