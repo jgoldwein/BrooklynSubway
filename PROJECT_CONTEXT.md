@@ -248,6 +248,17 @@ above bit 9; a zero fade field decodes as legacy default 60. Validate mode and
 duration before saving/loading. White fades at very low brightness have steps.
 Keep traffic blink-free and preserve OLED/power behavior.
 
+0.2.37 redesigns the embedded main/sign-in UI for the user's 13-year-old clarity
+goal. Navigation: Overview, Train lights, Screen, Wi-Fi, Advanced (explicitly
+not More). Responsive cards, colored line badges, local assets, large controls,
+live slider readouts, collapsed diagnostics, and session-only area memory after
+normal saves. CSS/navigation are served read-only from flash at /ui.css and
+/ui.js; bump the versioned URLs when changing assets. No external dependencies.
+Preserve existing forms/actions, CSRF/auth, text-only live refresh, settings and
+MTA/OLED/hardware behavior. Keep the 24 KiB shared page buffer; assets are not
+embedded into it. See docs/WEB_UI.md and docs/RELEASE_0.2.37.md for maintenance
+and browser-validation coverage.
+
 ## USB / programming
 
 - Native ESP32-S3 USB is wired to USB1: GPIO19 D-, GPIO20 D+.
