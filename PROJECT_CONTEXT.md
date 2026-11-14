@@ -345,3 +345,7 @@ Do not combine MTA route semantics with physical LED numbering. The logical mode
 ## Pending 0.2.38 POWER controls
 
 GPIO40 POWER short-release cycles both on, LED-off/OLED-on, LED-on/OLED-off, both off. Default both on; selections are volatile. GPIO1 startup/fault guards remain. U23 GPIO14 follows LED selection through a serialized gate; its once-per-boot beep is retained. OLED U22 GPIO8/9 uses power-save commands in its own worker (up to one-second response), without changing address or contrast. Three-second debounced hold requests reboot once; main loop performs it at a safe boundary after any active feed/update operation. Held-at-boot input is ignored until release. No PCB changes.
+
+## 0.2.39 administrator sign-in navigation
+
+All expired/missing administrator-session responses now redirect with HTTP 303 to the existing /login form instead of showing a plain-text sign-in-required error. This includes protected actions, diagnostics, update-page session-token expiry and denied package uploads. The package uploader recognizes its redirected login response and navigates the browser to /login. Login still obtains a fresh login CSRF token; authorization and mutation CSRF checks remain unchanged. Failed actions are not replayed after sign-in; the user returns to the map and retries. The selected settings area remains remembered by the existing UI. No hardware changes.

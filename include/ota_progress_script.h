@@ -31,7 +31,7 @@ function probe(){get('/api/status?ota='+Date.now(),function(x){
  if(!waitingForRestart&&d.adminSessionActive===true)later(poll);else later(probe);
 })}
 function poll(){get('/update/progress',function(x){
- if(x.status===401||x.status===403){waitingForRestart=true;probe();return;}
+ if(x.status===401||x.status===403||(x.responseURL&&new URL(x.responseURL).pathname==="/login")){waitingForRestart=true;probe();return;}
  if(x.status!==200){later(probe);return;}
  var d;try{d=JSON.parse(x.responseText)}catch(e){later(probe);return;}
  if(d.phase===3){title.textContent='Installation failed';text.textContent='The update was not completed. Open the update page for details.';return;}

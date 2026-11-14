@@ -681,7 +681,7 @@ void LanWebUi::handleSetupConfirmation() {
   }
   char csrfToken[admin::kTokenSize * 2 + 1] = {};
   if (!requestSession(csrfToken, sizeof(csrfToken))) {
-    server_.send(401, "text/plain", "Administrator sign in is required");
+    sendSignInRequired();
     return;
   }
   const int written = snprintf(
@@ -944,7 +944,7 @@ void LanWebUi::handleUpdatePage() {
   if (!authorizeRequest(false)) return;
   char csrf[96];
   if (!requestSession(csrf, sizeof(csrf))) {
-    server_.send(401, "text/plain", "Administrator sign-in is required");
+    sendSignInRequired();
     return;
   }
   for (const char *c = csrf; *c != '\0'; ++c) {
@@ -1086,6 +1086,7 @@ void LanWebUi::handleUpdatePage() {
       "\"Content-Type\",\"application/octet-stream\");x.upload.onprogress="
       "function(e){var p=Math.round(100*e.loaded/e.total);u.value=p;"
       "s.textContent=\"Uploading \"+p+\"%%\"};x.onload=function(){"
+      "if(x.responseURL&&new URL(x.responseURL).pathname===\"/login\"){location.assign(\"/login\");return}"
       "s.textContent=x.status==200?x.responseText:\"Rejected (\"+x.status+\"): \"+"
       "x.responseText;if(x.status==200){setTimeout(function(){location.reload()}"
       ",2500)}};x.onerror=function(){s.textContent=\"Connection lost\"};"
@@ -1603,7 +1604,7 @@ void LanWebUi::handleUpdateComplete() {
     return;
   }
   if (denied == 401) {
-    server_.send(401, "text/plain", "Administrator sign-in is required");
+    sendSignInRequired();
     return;
   }
   if (denied == 409) {
@@ -1753,7 +1754,7 @@ bool LanWebUi::authorizeRequest(bool requireCsrf) {
       auth_.hasSession(cookieHeader.c_str(), millis());
   if (!sessionActive) {
     eraseString(cookieHeader);
-    server_.send(401, "text/plain", "Administrator sign-in is required");
+    sendSignInRequired();
     return false;
   }
   if (requireCsrf) {
@@ -1790,6 +1791,13 @@ bool LanWebUi::requestSession(char *csrfToken, size_t capacity) {
       auth_.csrfForSession(cookieHeader.c_str(), millis(), csrfToken, capacity);
   eraseString(cookieHeader);
   return success;
+}
+
+void LanWebUi::sendSignInRequired() {
+  // A denied POST becomes a GET: never replay an action after signing in.
+  server_.sendHeader("Cache-Control", "no-store");
+  server_.sendHeader("Location", "/login", true);
+  server_.send(303, "text/plain", "");
 }
 
 void LanWebUi::sendLoginRedirect() {
