@@ -44,6 +44,8 @@ struct TrainFrame {
   uint8_t uncertainOnly[(kFrameLedCount + 7) / 8];
   // Zero means no timed blue contribution. Otherwise seconds remaining at epoch.
   uint16_t blueSecondsRemaining[kFrameLedCount];
+  // Rendering-only hint: when a last-reported location starts fading.
+  uint32_t lastReportedFadeStartUnix[kFrameLedCount];
   uint32_t approachingTrains;
   uint32_t animationEpochUnix;
   StationTiming timing[kFrameLedCount];

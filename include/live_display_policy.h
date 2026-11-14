@@ -10,7 +10,7 @@ struct Snapshot {
   StatusIndicators status{};
   uint32_t frameAtMs = 0;
   uint32_t routeMask = semantic::kAllRoutesVisibleMask;
-  uint16_t unknownTiming = 511;
+  uint32_t unknownTiming = 511;
   uint8_t brightness = semantic::kDefaultRenderBrightness;
   bool hasFrame = false;
   uint32_t clockUnix = 0;

@@ -477,6 +477,49 @@ void testBlueHoldAcrossPolls() {
   CHECK(!sem::isUncertainOnly(timed.frame(), index));
 }
 
+TrainPipeline gLocations;
+void testLastReportedLocations() {
+  auto &p=gLocations;
+  auto report=[&](uint32_t now,const char *stop,bool credible=false) {
+    p.beginCycle(now); Feed f(now);
+    f.vehicle("LOCATION_TRIP","2",1,stop,now);
+    if (credible) f.add(predictionEntity("LOCATION_TRIP",stop,now));
+    p.processFeed(f.b.d,f.b.n); p.finishCycle();
+  };
+  sem::RenderConfig c{}; c.animateTraffic=true; c.unknownTimingMode=sem::UnknownTimingMode::LastReported;
+  c.brightness=5; sem::RgbFrame rgb{};
+  report(kNow,"233N"); uint16_t old=0; while (!p.frame().occupancy[old]) ++old;
+  CHECK(p.frame().lastReportedFadeStartUnix[old]==kNow);
+  c.nowUnix=kNow; sem::renderTrainFrame(p.frame(),rgb,c); CHECK(rgb.pixels[old].red==2 && rgb.pixels[old].blue==2);
+  report(kNow+30,"233N"); CHECK(p.frame().lastReportedFadeStartUnix[old]==kNow);
+  c.nowUnix=kNow+30; sem::renderTrainFrame(p.frame(),rgb,c); CHECK(rgb.pixels[old].red==1 && rgb.pixels[old].blue==1);
+  p.beginCycle(kNow+40); p.finishCycle();
+  CHECK(p.frame().resolvedTrains==0 && p.frame().occupancy[old]==0);
+  CHECK(p.frame().lastReportedFadeStartUnix[old]==kNow);
+  c.nowUnix=kNow+59; sem::renderTrainFrame(p.frame(),rgb,c); CHECK(rgb.pixels[old].red==1);
+  c.nowUnix=kNow+60; sem::renderTrainFrame(p.frame(),rgb,c); CHECK(rgb.pixels[old].red==0);
+  c.lastReportedFadeSeconds=120; sem::renderTrainFrame(p.frame(),rgb,c); CHECK(rgb.pixels[old].red==1);
+  report(kNow+70,"232N",true); uint16_t next=0; while (!p.frame().occupancy[next]) ++next;
+  CHECK(next!=old && p.frame().lastReportedFadeStartUnix[old]==0);
+  CHECK(p.frame().lastReportedFadeStartUnix[next]==kNow+90);
+  c.lastReportedFadeSeconds=60; c.nowUnix=kNow+89; sem::renderTrainFrame(p.frame(),rgb,c);
+  CHECK(rgb.pixels[next].red==0 && rgb.pixels[next].blue==5);
+  c.nowUnix=kNow+90; sem::renderTrainFrame(p.frame(),rgb,c);
+  CHECK(rgb.pixels[next].red==2 && rgb.pixels[next].green==2);
+  report(kNow+100,"232N",true); CHECK(p.frame().lastReportedFadeStartUnix[next]==kNow+90);
+  p.beginCycle(kNow+110); Feed conflict(kNow+110);
+  conflict.vehicle("LOCATION_TRIP","2",1,"233N",kNow+110);
+  conflict.vehicle("LOCATION_TRIP","2",1,"232N",kNow+110);
+  p.processFeed(conflict.b.d,conflict.b.n); p.finishCycle();
+  CHECK(p.frame().lastReportedFadeStartUnix[next]==0 && p.frame().resolvedTrains==0);
+  report(kNow+200,"233N");
+  p.beginCycle(kNow+220); Feed missingPosition(kNow+220);
+  missingPosition.vehicle("LOCATION_TRIP","2",1,nullptr,kNow+220);
+  p.processFeed(missingPosition.b.d,missingPosition.b.n); p.finishCycle();
+  CHECK(p.frame().resolvedTrains==0 && p.frame().lastReportedFadeStartUnix[old]==kNow+200);
+
+}
+
 void testPredictionCapacity() {
   begin();
   rt::RtTrain train{};
@@ -1066,6 +1109,7 @@ int main(int argc, char **argv) {
   testUnknownUnrepresentedUnsupported();
   testApproachingRepresentation();
   testStationTimingPredictions();
+  testLastReportedLocations();
   testBlueHoldAcrossPolls();
   testStationConfidence();
   testPredictionCapacity();

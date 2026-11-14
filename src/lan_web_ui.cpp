@@ -414,25 +414,29 @@ void LanWebUi::handleOledAddress() {
 
 void LanWebUi::handleUnknownTiming() {
   if (!authorizeRequest(true)) return;
-  bool brightnessSeen = false, csrfSeen = false, enabledSeen = false;
-  for (int i = 0; i < server_.args(); ++i) {
-    const String name = server_.argName(i);
-    if (name == "brightness" && !brightnessSeen) brightnessSeen = true;
-    else if (name == "csrf" && !csrfSeen) csrfSeen = true;
-    else if (name == "enabled" && !enabledSeen) enabledSeen = true;
-    else { server_.send(400, "text/plain", "Invalid unknown timing settings"); return; }
+  bool brightnessSeen=false,csrfSeen=false,modeSeen=false,fadeSeen=false;
+  for (int i=0;i<server_.args();++i) {
+    const String name=server_.argName(i);
+    if (name=="brightness" && !brightnessSeen) brightnessSeen=true;
+    else if (name=="csrf" && !csrfSeen) csrfSeen=true;
+    else if (name=="mode" && !modeSeen) modeSeen=true;
+    else if (name=="fade" && !fadeSeen) fadeSeen=true;
+    else { server_.send(400,"text/plain","Invalid uncertain train settings"); return; }
   }
-  const String text = server_.arg("brightness"); uint8_t brightness = 0;
-  if (!brightnessSeen || !csrfSeen || !hasNoEmbeddedNull(text) ||
-      !parseBrightness(text.c_str(), brightness) || (enabledSeen && server_.arg("enabled") != "1")) {
-    server_.send(400, "text/plain", "Choose brightness 0 to 255"); return;
+  const String text=server_.arg("brightness"),fadeText=server_.arg("fade"),mode=server_.arg("mode");
+  uint8_t brightness=0; uint32_t seconds=0;
+  if (!brightnessSeen || !csrfSeen || !modeSeen || !fadeSeen || !hasNoEmbeddedNull(text) ||
+      !hasNoEmbeddedNull(fadeText) || !parseBrightness(text.c_str(),brightness) ||
+      !config::parseBlueHoldSeconds(fadeText.c_str(),seconds) || (mode!="hide" && mode!="last" && mode!="orange")) {
+    server_.send(400,"text/plain","Choose a display style, brightness 0-255 and fade time 1-300 seconds"); return;
   }
-  const uint16_t setting = (enabledSeen ? 256 : 0) | brightness;
+  const uint32_t style=mode=="last"?2:mode=="orange"?1:0;
+  const uint32_t setting=(seconds<<10)|(style<<8)|brightness;
   if (!configuration_.setUnknownTiming(setting)) {
-    server_.send(500, "text/plain", "Could not save unknown timing settings"); return;
+    server_.send(500,"text/plain","Could not save uncertain train settings"); return;
   }
-  Serial.printf("Unknown timing: %s, brightness ceiling %u/255\n", enabledSeen ? "shown" : "hidden", brightness);
-  server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "Unknown timing settings saved");
+  Serial.printf("Uncertain trains: style %s, brightness %u/255, fade %lu seconds\n",mode.c_str(),brightness,static_cast<unsigned long>(seconds));
+  server_.sendHeader("Location","/"); server_.send(303,"text/plain","Uncertain train settings saved");
 }
 
 void LanWebUi::handleOledDimmer() {

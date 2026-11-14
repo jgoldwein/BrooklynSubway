@@ -57,6 +57,7 @@ void predictionVisitor(void *context, const gtfsrt::RtTrain &train, uint32_t tim
 }  // namespace
 
 void TrainPipeline::beginCycle(uint32_t nowUnix, const semantic::RenderConfig &config) {
+  for (auto &location : locations_) location.seen = false;
   blueHistoryCount_ = blueHistoryDropped_ = 0;
   if (finishedForBlueHistory_ && nowUnix > nowUnix_ && nowUnix - nowUnix_ <= 120) {
     for (uint16_t i = 0; i < kTripTableSlots; ++i) {
@@ -290,6 +291,7 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimes
         motion.departureAgePlusOne = age + 1;
       }
     }
+    if (strlen(t.vehicleStopId)==4) memcpy(&blue.stopKey,t.vehicleStopId,4);
     record(t.tripId, packOutcome(bucket, led), motion, blue);
   } else {
     bumpBucket(bucket);
@@ -352,6 +354,34 @@ uint16_t TrainPipeline::blueRemaining(uint32_t h1, uint32_t h2, uint32_t stopKey
   return config_.blueHoldSeconds;
 }
 
+void TrainPipeline::forgetLocation(uint32_t h1,uint32_t h2) {
+  for (auto &location : locations_) if (location.h1==h1 && location.h2==h2) location={};
+}
+void TrainPipeline::rememberLocation(const TripEntry &trip,uint16_t led,bool unknown,uint32_t nextUnknownAt) {
+  const uint32_t now=frame_.animationEpochUnix;
+  if (!now) return;
+  const auto &evidence=blueEvidence_[&trip-trips_];
+  if (!evidence.stopKey) { forgetLocation(trip.h1,trip.h2); return; }
+  if (evidence.age>90 || (evidence.flags & UnknownAge)) return;
+  LocationHistory *empty=nullptr;
+  for (auto &location : locations_) {
+    if (location.h1 && now>=location.lastSeen && now-location.lastSeen>1800) location={};
+    if (!location.h1) { if (!empty) empty=&location; continue; }
+    if (location.h1!=trip.h1 || location.h2!=trip.h2) continue;
+    if (now<location.lastSeen) { location={}; return; }
+    if (location.stopKey!=evidence.stopKey || location.led!=led) {
+      location.stopKey=evidence.stopKey; location.led=led; location.unknownSince=0; location.fadeStart=now;
+    }
+    if (unknown && !location.unknownSince)
+      location.unknownSince=location.fadeStart && location.fadeStart<now ? location.fadeStart : now;
+    if (!unknown) location.unknownSince=0;
+    location.lastSeen=now; location.seen=true;
+    location.fadeStart=unknown ? location.unknownSince : nextUnknownAt;
+    return;
+  }
+  if (empty) *empty={trip.h1,trip.h2,evidence.stopKey,now,unknown?now:0,unknown?now:nextUnknownAt,led,true};
+}
+
 void TrainPipeline::finishCycle() {
   if (state_ != CycleState::Collecting) return;
   BlueEvidence perLed[semantic::kFrameLedCount]{};
@@ -363,6 +393,7 @@ void TrainPipeline::finishCycle() {
     const TripEntry &e = trips_[i];
     if (e.h1 == 0) continue;
     if ((e.outcome & kConflictBit) != 0) {
+      forgetLocation(e.h1,e.h2);
       bump(counters_.conflictedTrips);
       add(counters_.duplicateConflict, e.records);
       continue;
@@ -382,6 +413,18 @@ void TrainPipeline::finishCycle() {
           semantic::addValidatedLed(frame_, index, bucket == kApproaching))) {
       bump(counters_.frameRejected);
       continue;
+    }
+    if (bucket==kStation || bucket==kApproaching || bucket==kSegment) {
+      const bool movingUnknown=bucket==kApproaching &&
+          (!e.motion.arrivalSecondsPlusOne || e.motion.arrivalSecondsPlusOne==UINT16_MAX || e.motion.movementAgeSeconds>90);
+      const uint32_t now=frame_.animationEpochUnix;
+      const uint32_t nextUnknownAt=bucket==kStation ? now+remaining :
+          bucket==kApproaching ? now+(e.motion.movementAgeSeconds<=90 ? 91-e.motion.movementAgeSeconds : 0) :
+          now+(blueEvidence_[i].age<=90 ? 91-blueEvidence_[i].age : 0);
+      rememberLocation(e,index,uncertain||movingUnknown,nextUnknownAt);
+    } else if (bucket!=kStale && bucket!=kInvalid && bucket!=kInsufficient) {
+      // Explicit removal/conflict or a changed unmapped stop must not leave a ghost.
+      forgetLocation(e.h1,e.h2);
     }
     if (bucket == kStation && !uncertain && remaining > frame_.blueSecondsRemaining[index])
       frame_.blueSecondsRemaining[index] = remaining;
@@ -437,6 +480,14 @@ void TrainPipeline::finishCycle() {
       sample.trains = frame_.occupancy[led];
       memcpy(sample.nextStop, b.nextStop, 4); sample.nextStop[4] = '\0';
     }
+  }
+  for (const auto &location : locations_) {
+    if (!location.h1 || location.led>=semantic::kFrameLedCount) continue;
+    const uint32_t start=location.seen ? location.fadeStart :
+        location.unknownSince ? location.unknownSince : location.lastSeen;
+    if (!start) continue;
+    auto &saved=frame_.lastReportedFadeStartUnix[location.led];
+    if (!saved || start>saved) saved=start;
   }
   const semantic::RenderResult r = semantic::renderTrainFrame(frame_, rgb_, config_);
   counters_.resolvedTrains = frame_.resolvedTrains;

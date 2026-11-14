@@ -135,8 +135,8 @@ void publishTelemetrySnapshot(uint32_t nowMs) {
 void updateLogicalDisplay(uint32_t nowMs) {
   bool changed = false;
   const uint8_t brightness = networkService.brightness();
-  const uint16_t unknownTiming = networkService.unknownTiming();
-  static uint16_t renderedUnknownTiming = UINT16_MAX;
+  const uint32_t unknownTiming = networkService.unknownTiming();
+  static uint32_t renderedUnknownTiming = UINT32_MAX;
   const uint32_t routeVisibilityMask = networkService.routeVisibilityMask();
   const bool approachingLit = brooklyn::semantic::approachingPhaseLit(nowMs);
   if (renderedFrameRevision != operationalDisplay.frameRevision() ||

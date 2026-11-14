@@ -133,7 +133,10 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
     const auto &timing = input.timing[i];
     const bool approachOverlay = timed && !occupied && timing.arrivalSecondsPlusOne;
     const uint16_t departure = timed && !occupied ? departurePeriodMs(timing, elapsed) : 0;
-    if (!occupied && !approachOverlay && !departure) continue;
+    const bool lastMode=config.showUnknownTiming && config.unknownTimingMode==UnknownTimingMode::LastReported;
+    const uint32_t hintStart=input.lastReportedFadeStartUnix[i];
+    const bool hintOverlay=timed && lastMode && !occupied && !approachOverlay && !departure && hintStart && config.nowUnix>=hintStart;
+    if (!occupied && !approachOverlay && !departure && !hintOverlay) continue;
 
     const MapLed *semantic = nullptr;
     if (!mapIdentityValid(i, semantic)) {
@@ -161,13 +164,23 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
     const bool unknownApproach = (isApproachingOnly(input, i) || approachOverlay) &&
         (!timing.arrivalSecondsPlusOne || timing.arrivalSecondsPlusOne == UINT16_MAX ||
          timing.movementAgeSeconds + elapsed > 90);
-    const bool unknown = config.animateTraffic && semantic->role == Role::Station &&
-        (uncertain || unknownApproach);
-    if (unknown && !config.showUnknownTiming) continue;
+    const bool staleSegment=lastMode && timed && occupied && semantic->role==Role::Segment &&
+        (hintStart ? config.nowUnix>=hintStart : elapsed>90);
+    const bool unknown = hintOverlay || staleSegment || (config.animateTraffic && semantic->role == Role::Station &&
+        (uncertain || unknownApproach));
+    if (unknown && (!config.showUnknownTiming || config.unknownTimingMode==UnknownTimingMode::Hidden)) continue;
     if (config.animateTraffic && uncertain) color = Rgb{128, 48, 0};
     const uint8_t brightness = unknown && config.unknownTimingBrightness < config.brightness
         ? config.unknownTimingBrightness : config.brightness;
-    output.pixels[i] = scaleBrightness(color, brightness);
+    if (unknown && lastMode) {
+      if (!timed || !hintStart || config.nowUnix<hintStart || !config.lastReportedFadeSeconds) continue;
+      const uint32_t age=config.nowUnix-hintStart;
+      if (age>=config.lastReportedFadeSeconds) continue;
+      const uint8_t limit=brightness<2 ? brightness : 2; // Faint neutral marker, still subject to all output caps.
+      const uint32_t remaining=config.lastReportedFadeSeconds-age;
+      const uint8_t level=(uint32_t(limit)*remaining+config.lastReportedFadeSeconds-1)/config.lastReportedFadeSeconds;
+      output.pixels[i]=Rgb{level,level,level};
+    } else output.pixels[i] = scaleBrightness(color, brightness);
     ++result.renderedLeds;
     if (semantic->role == Role::Station) ++result.stationLeds;
     else ++result.segmentLeds;
