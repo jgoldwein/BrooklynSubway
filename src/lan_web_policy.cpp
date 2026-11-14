@@ -671,6 +671,9 @@ size_t renderHomePage(char *out, size_t capacity,
   writer.append("<p class=\"muted\">Live output starts automatically with fresh data. POWER toggles off/on; "
                 "the physical brightness cap remains 16/255."
                 "</p></section>");
+  writer.append("<p data-status=\"uncertaintyNotice\">");
+  if (status.blueReport.uncertainLeds) writer.append("Some train movements are uncertain.");
+  writer.append("</p>");
   {
     char summary[3072];
     const size_t length = renderBlueSummary(summary, sizeof(summary), status.blueReport);
@@ -678,20 +681,29 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.html(length ? summary : "Diagnostic report unavailable");
     writer.append("</pre></details>");
   }
-  writer.format("<section><h2>Unknown train timing</h2><p>Orange lights: %s. Brightness limit: %u / 255. "
-                "When we cannot tell if a train is moving or waiting, its light can stay orange. "
-                "Show or hide these lights, or choose a lower number to dim them. Try 1 for a faint light. "
-                "They never become brighter than the map. Other train lights keep their normal brightness.</p>",
-                status.unknownTiming & 256 ? "shown" : "hidden", status.unknownTiming & 255);
+  const auto uncertainMode=semantic::unknownTimingMode(status.unknownTiming);
+  writer.append("<section><h2>When train movement is uncertain</h2><p>Choose what to show when we cannot tell if a train is moving or waiting. "
+                "A faint white light marks its last reported place, then fades away. It does not mean the train is still there. "
+                "Fresh, usable train reports take priority. Other train lights keep their normal brightness.</p>");
+  writer.format("<p>Current choice: %s. Fade time: %u seconds. Brightness limit: %u / 255.</p>",
+      uncertainMode==semantic::UnknownTimingMode::LastReported?"Last reported location":
+      uncertainMode==semantic::UnknownTimingMode::Orange?"Orange":"Hide",
+      semantic::lastReportedFadeSeconds(status.unknownTiming),status.unknownTiming&255);
   if (status.adminSessionActive && csrfToken && csrfToken[0]) {
     writer.append("<form method=\"post\" action=\"/config/unknown-timing\"><input type=\"hidden\" name=\"csrf\" value=\"");
     writer.html(csrfToken);
-    writer.format("\"><label><input type=\"checkbox\" name=\"enabled\" value=\"1\"%s> Show lights when train timing is unknown</label> "
-                  "<label>Orange light brightness <input type=\"number\" name=\"brightness\" min=\"0\" max=\"255\" value=\"%u\" required></label>"
-                  "<button>Save orange light settings</button></form>",
-                  status.unknownTiming & 256 ? " checked" : "", status.unknownTiming & 255);
+    writer.format("\"><label>Uncertain trains <select name=\"mode\">"
+                  "<option value=\"hide\"%s>Hide</option><option value=\"last\"%s>Show last reported location</option>"
+                  "<option value=\"orange\"%s>Show orange</option></select></label> "
+                  "<label>Dim light brightness <input type=\"number\" name=\"brightness\" min=\"0\" max=\"255\" value=\"%u\" required></label> "
+                  "<label>Fade out after (seconds) <input type=\"number\" name=\"fade\" min=\"1\" max=\"300\" value=\"%u\" required></label>"
+                  "<button>Save train display settings</button></form>",
+                  uncertainMode==semantic::UnknownTimingMode::Hidden?" selected":"",
+                  uncertainMode==semantic::UnknownTimingMode::LastReported?" selected":"",
+                  uncertainMode==semantic::UnknownTimingMode::Orange?" selected":"",
+                  status.unknownTiming&255,semantic::lastReportedFadeSeconds(status.unknownTiming));
   }
-  writer.append("</section>");
+  writer.append("<p>White lights stay faint. Fade time applies to the white markers. Brightness 0 hides uncertain lights.</p></section>");
   writer.format("<section><h2>Station blue hold</h2><p>Maximum blue time per train at the same station: %lu seconds. "
                 "Repeated reports do not restart the timer. Afterward, the indication becomes steady dim amber. "
                 "Changes apply at the next poll; long genuine stops can also turn amber.</p>",
@@ -917,7 +929,10 @@ size_t renderStatusJson(char *out, size_t capacity,
     writer.append(",\"oledStatus\":\""); writer.json(text); writer.append("\"");
     writer.format(",\"oledActiveAddress\":%u,\"oledI2cError\":%u", status.oledStatus.activeAddress, status.oledStatus.error);
   }
-  writer.format(",\"unknownTimingEnabled\":%s,\"unknownTimingBrightness\":%u", status.unknownTiming & 256 ? "true" : "false", status.unknownTiming & 255);
+  writer.format(",\"uncertaintyNotice\":\"%s\"",status.blueReport.uncertainLeds?"Some train movements are uncertain.":"");
+  writer.format(",\"unknownTimingEnabled\":%s,\"unknownTimingBrightness\":%u,\"unknownTimingMode\":\"%s\",\"lastReportedFadeSeconds\":%u",
+      semantic::unknownTimingMode(status.unknownTiming)!=semantic::UnknownTimingMode::Hidden?"true":"false",status.unknownTiming&255,
+      semantic::unknownTimingModeName(semantic::unknownTimingMode(status.unknownTiming)),semantic::lastReportedFadeSeconds(status.unknownTiming));
   writer.format(",\"oledContrast\":%u", status.oledContrast);
   writer.format(",\"blueHoldSeconds\":%lu", static_cast<unsigned long>(status.blueHoldSeconds));
   writer.format(",\"pollSeconds\":%lu", static_cast<unsigned long>(status.pollSeconds));

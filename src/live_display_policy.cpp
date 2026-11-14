@@ -11,6 +11,7 @@ void Controller::publish(const Snapshot &snapshot) {
               sizeof(snapshot.frame.approachingOnly)) != 0 ||
        memcmp(snapshot_.frame.uncertainOnly, snapshot.frame.uncertainOnly, sizeof(snapshot.frame.uncertainOnly)) != 0 ||
        memcmp(snapshot_.frame.blueSecondsRemaining, snapshot.frame.blueSecondsRemaining, sizeof(snapshot.frame.blueSecondsRemaining)) != 0 ||
+       memcmp(snapshot_.frame.lastReportedFadeStartUnix, snapshot.frame.lastReportedFadeStartUnix, sizeof(snapshot.frame.lastReportedFadeStartUnix)) != 0 ||
        memcmp(snapshot_.frame.timing, snapshot.frame.timing, sizeof(snapshot.frame.timing)) != 0) &&
       stats_.mapChanges != UINT32_MAX) ++stats_.mapChanges;
   snapshot_ = snapshot;
@@ -123,7 +124,9 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
   semantic::RenderConfig config{};
   config.brightness = snapshot_.brightness < led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP
       ? snapshot_.brightness : led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP;
-  config.showUnknownTiming = (snapshot_.unknownTiming & 256) != 0;
+  config.unknownTimingMode = semantic::unknownTimingMode(snapshot_.unknownTiming);
+  config.showUnknownTiming = config.unknownTimingMode != semantic::UnknownTimingMode::Hidden;
+  config.lastReportedFadeSeconds = semantic::lastReportedFadeSeconds(snapshot_.unknownTiming);
   config.unknownTimingBrightness = snapshot_.unknownTiming & 255;
   config.routeVisibilityMask = snapshot_.routeMask;
   config.animateTraffic = true;

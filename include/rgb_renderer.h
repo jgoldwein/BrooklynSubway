@@ -6,6 +6,7 @@
 #include "led_types.h"
 #include "semantic_api.h"
 #include "train_frame.h"
+#include "unknown_timing.h"
 
 #include <stdint.h>
 
@@ -47,6 +48,8 @@ struct RenderConfig {
   uint32_t nowUnix = 0;
   uint32_t animationTimeMs = 0;
   uint16_t blueHoldSeconds = 20;
+  UnknownTimingMode unknownTimingMode = UnknownTimingMode::Orange;
+  uint16_t lastReportedFadeSeconds = kDefaultLastReportedFadeSeconds;
   bool showUnknownTiming = true;
   uint8_t unknownTimingBrightness = 255; // ceiling, never exceeds normal map brightness
 };

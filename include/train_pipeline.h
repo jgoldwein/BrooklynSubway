@@ -177,6 +177,15 @@ class TrainPipeline {
   struct StopVisit { uint32_t h1, h2, stopKey, firstSeen, lastSeen; };
   static constexpr uint16_t kStopVisitCapacity = 256;
   StopVisit stopVisits_[kStopVisitCapacity]{};
+  struct LocationHistory {
+    uint32_t h1,h2,stopKey,lastSeen,unknownSince,fadeStart;
+    uint16_t led;
+    bool seen;
+  };
+  static constexpr uint16_t kLocationHistoryCapacity=256;
+  LocationHistory locations_[kLocationHistoryCapacity]{};
+  void rememberLocation(const TripEntry &trip, uint16_t led, bool unknown, uint32_t nextUnknownAt);
+  void forgetLocation(uint32_t h1, uint32_t h2);
 
   semantic::TrainFrame frame_;
   semantic::RgbFrame rgb_;

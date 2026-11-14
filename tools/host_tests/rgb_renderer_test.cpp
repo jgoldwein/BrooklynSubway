@@ -435,6 +435,39 @@ int main() {
     renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0,0,5}));
     c.nowUnix = 1020; renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
   }
+  {
+    TrainFrame f{}; clearFrame(f); const auto index=firstLed(Role::Station);
+    f.animationEpochUnix=1000; f.lastReportedFadeStartUnix[index]=1000;
+    RenderConfig c=cfg(5); c.animateTraffic=true; c.unknownTimingMode=UnknownTimingMode::LastReported;
+    RgbFrame r{};
+    uint8_t previous=255;
+    for (uint32_t age=0;age<60;++age) {
+      c.nowUnix=1000+age; renderTrainFrame(f,r,c);
+      CHECK(r.pixels[index].red>0 && r.pixels[index].red<=previous);
+      CHECK(eq(r.pixels[index],Rgb{r.pixels[index].red,r.pixels[index].red,r.pixels[index].red}));
+      previous=r.pixels[index].red;
+    }
+    c.nowUnix=1060; renderTrainFrame(f,r,c); CHECK(black(r.pixels[index]));
+    c.nowUnix=1000; c.routeVisibilityMask=0; renderTrainFrame(f,r,c); CHECK(black(r.pixels[index]));
+    c.routeVisibilityMask=kAllRoutesVisibleMask; c.unknownTimingBrightness=1;
+    renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{1,1,1}));
+    c.unknownTimingBrightness=0; renderTrainFrame(f,r,c); CHECK(black(r.pixels[index]));
+    c.unknownTimingBrightness=255; c.unknownTimingMode=UnknownTimingMode::Hidden;
+    renderTrainFrame(f,r,c); CHECK(black(r.pixels[index]));
+    c.unknownTimingMode=UnknownTimingMode::Orange; renderTrainFrame(f,r,c); CHECK(black(r.pixels[index]));
+    CHECK(f.resolvedTrains==0 && f.occupiedLeds==0);
+    // A real station contribution overrides a retained neutral marker.
+    CHECK(addValidatedLed(f,index)); c.unknownTimingMode=UnknownTimingMode::LastReported;
+    renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{0,0,5}));
+  }
+  {
+    TrainFrame f{}; clearFrame(f); const auto index=firstLed(Role::Segment);
+    CHECK(addValidatedLed(f,index)); f.animationEpochUnix=1000; f.lastReportedFadeStartUnix[index]=1005;
+    RenderConfig c=cfg(5); c.animateTraffic=true; c.unknownTimingMode=UnknownTimingMode::LastReported;
+    c.nowUnix=1004; RgbFrame r{}; renderTrainFrame(f,r,c); CHECK(!black(r.pixels[index]));
+    c.nowUnix=1005; renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{2,2,2}));
+    c.nowUnix=1065; renderTrainFrame(f,r,c); CHECK(black(r.pixels[index]));
+  }
   printf("Phase 4H RGB renderer host tests: %d checks, %d failures\n", checks, failures);
   return failures == 0 ? 0 : 1;
 }

@@ -20,8 +20,8 @@ bool DeviceConfiguration::load() {
   bool loaded = false;
 
   uint32_t stored = 0;
-  if (store_.loadUnknownTiming && store_.loadUnknownTiming(store_.context, stored) && stored <= 511) {
-    unknownTiming_ = static_cast<uint16_t>(stored); loaded = true;
+  if (store_.loadUnknownTiming && store_.loadUnknownTiming(store_.context, stored) && semantic::validUnknownTiming(stored)) {
+    unknownTiming_ = stored; loaded = true;
   }
   if (store_.loadOledContrast && store_.loadOledContrast(store_.context, stored) && stored <= 255) {
     oledContrast_ = static_cast<uint8_t>(stored); loaded = true;
@@ -77,8 +77,8 @@ bool parseOledAddress(const char *text, uint8_t &address) {
   address = static_cast<uint8_t>(value); return true;
 }
 
-bool DeviceConfiguration::setUnknownTiming(uint16_t setting) {
-  if (setting > 511 || !store_.saveUnknownTiming || !store_.saveUnknownTiming(store_.context, setting)) return false;
+bool DeviceConfiguration::setUnknownTiming(uint32_t setting) {
+  if (!semantic::validUnknownTiming(setting) || !store_.saveUnknownTiming || !store_.saveUnknownTiming(store_.context, setting)) return false;
   unknownTiming_ = setting; return true;
 }
 

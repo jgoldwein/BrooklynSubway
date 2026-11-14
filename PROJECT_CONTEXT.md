@@ -234,6 +234,20 @@ Regression includes all 18 routes and eight station samples (16,956 bytes), plus
 long escaped fields (17,797 bytes). The separate /update page remains available
 for installing this fix while the old home page fails. No display-rule changes.
 
+0.2.36 adds Last reported location as a third uncertain-train mode. Use faint
+neutral white capped at 2/255 and existing brightness limits, fading for 1-300
+seconds (default 60). Repeated timestamps at an unchanged uncertain location do
+not reset the fade. Missing reports/position fields may retain rendering-only
+hints; stale input cannot refresh them. New useful locations replace old ones,
+conflicts/removals clear hints, and no extra train/occupancy counts are created.
+Bounded location history is 256 trips, independent of blue-visit timers, and
+is not persisted. New configuration defaults to Last reported; preserve saved
+legacy Hide/Orange choices. The UInt unknown_timing now packs mode in bits 8-9
+(0 hide, 1 orange, 2 last-reported), brightness in bits 0-7, and fade seconds
+above bit 9; a zero fade field decodes as legacy default 60. Validate mode and
+duration before saving/loading. White fades at very low brightness have steps.
+Keep traffic blink-free and preserve OLED/power behavior.
+
 ## USB / programming
 
 - Native ESP32-S3 USB is wired to USB1: GPIO19 D-, GPIO20 D+.

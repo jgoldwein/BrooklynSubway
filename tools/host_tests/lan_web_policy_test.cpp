@@ -153,14 +153,23 @@ void testBlueHoldConfiguration() {
   using namespace brooklyn::config;
   MemoryStore memory; DeviceConfiguration config(configStore(memory));
   config.load(); CHECK(config.blueHoldSeconds() == 20);
-  CHECK(config.unknownTiming() == 511);
+  CHECK(config.unknownTiming() == brooklyn::config::kDefaultUnknownTiming);
+  CHECK(brooklyn::semantic::unknownTimingMode(config.unknownTiming())==brooklyn::semantic::UnknownTimingMode::LastReported);
+  CHECK(brooklyn::semantic::lastReportedFadeSeconds(config.unknownTiming())==60);
+  CHECK(config.setUnknownTiming((120u<<10)|512u|1u));
+  DeviceConfiguration modeReload(configStore(memory)); modeReload.load();
+  CHECK(modeReload.unknownTiming()==((120u<<10)|512u|1u));
+  CHECK(!config.setUnknownTiming((301u<<10)|512u));
+  CHECK(config.setUnknownTiming(511)); // Legacy saved orange setting still reads correctly.
+  CHECK(brooklyn::semantic::unknownTimingMode(config.unknownTiming())==brooklyn::semantic::UnknownTimingMode::Orange);
+  CHECK(brooklyn::semantic::lastReportedFadeSeconds(config.unknownTiming())==60);
   CHECK(config.setUnknownTiming(257));
   DeviceConfiguration uncertain(configStore(memory)); uncertain.load(); CHECK(uncertain.unknownTiming() == 257);
   CHECK(config.setUnknownTiming(0)); uncertain.load(); CHECK(uncertain.unknownTiming() == 0);
   CHECK(config.setUnknownTiming(1)); uncertain.load(); CHECK(uncertain.unknownTiming() == 1);
   memory.failSave = true; CHECK(!config.setUnknownTiming(511) && config.unknownTiming() == 1);
-  memory.failSave = false; CHECK(!config.setUnknownTiming(512));
-  memory.unknownTiming = 1000; uncertain.load(); CHECK(uncertain.unknownTiming() == 511);
+  memory.failSave = false; CHECK(!config.setUnknownTiming(768));
+  memory.unknownTiming = 1000; uncertain.load(); CHECK(uncertain.unknownTiming() == brooklyn::config::kDefaultUnknownTiming);
   CHECK(config.oledContrast() == 207);
   CHECK(config.setOledContrast(0));
   DeviceConfiguration dimmed(configStore(memory)); dimmed.load(); CHECK(dimmed.oledContrast() == 0);
@@ -513,7 +522,7 @@ void testFullProductionPageCapacity() {
   CHECK(brooklyn::web::renderHomePage(oldCapacity,sizeof(oldCapacity),status,5,brooklyn::semantic::kAllRoutesVisibleMask,csrf)==0);
   const size_t size=brooklyn::web::renderHomePage(expanded,sizeof(expanded),status,5,brooklyn::semantic::kAllRoutesVisibleMask,csrf);
   CHECK(size>0); CHECK(size>16384); CHECK(strstr(expanded,"Reported STOPPED_AT candidates")!=nullptr);
-  CHECK(strstr(expanded,"Save orange light settings")!=nullptr);
+  CHECK(strstr(expanded,"Save train display settings")!=nullptr);
   printf("Full production status page: %zu B\n",size);
   memset(status.ssid,'&',sizeof(status.ssid)-1);
   memset(status.deviceName,'&',sizeof(status.deviceName)-1);
@@ -521,7 +530,7 @@ void testFullProductionPageCapacity() {
   memset(status.availableVersion,'&',sizeof(status.availableVersion)-1);
   const size_t escaped=brooklyn::web::renderHomePage(expanded,sizeof(expanded),status,255,brooklyn::semantic::kAllRoutesVisibleMask,csrf);
   CHECK(escaped>size && escaped<sizeof(expanded));
-  CHECK(strstr(expanded,"Save orange light settings")!=nullptr);
+  CHECK(strstr(expanded,"Save train display settings")!=nullptr);
   printf("Full escaped production status page: %zu B\n",escaped);
 }
 
@@ -975,7 +984,7 @@ int main() {
   testRouteVisibilityApiMasks();
   testRouteSelectionParsing();
   testServerOwnershipTransitions();
-  char page[8192];
+  static char page[brooklyn::web::kStatusPageCapacity];
   char json[2048];
   const brooklyn::web::StatusSnapshot status = sampleStatus();
   printf("Sample generated response sizes: HTML %lu B, status JSON %lu B\n",
