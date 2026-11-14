@@ -129,6 +129,12 @@ def compare(args):
 
         routes={route:dict(coveredTrips=0,matchedTrips=0,webPositionAvailable=0,estimatedDepartures=0,approaching=0,reportedStopDiffersFromWebNext=0,webNextMatchesAfter=0,stale=0,unmatched=0,examples=[]) for route in ['2','3','4','5','A','B','C','D','F','G','J','L','M','N','Q','R','S','Z']}
 
+        for name,values in routes.items():
+            services=[]
+            for reference in (['FS','H'] if name=='S' else [name]):
+                info=web['routes'].get(reference)
+                if info:services.append(dict(route=reference,status=info.get('status'),scheduled=info.get('scheduled')))
+            values['referenceServices']=services
         for feed in current['feeds']:
 
             for trip in feed['trips']:

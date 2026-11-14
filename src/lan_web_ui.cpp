@@ -212,6 +212,21 @@ void LanWebUi::registerRoutes() {
   server_.on("/admin/password", HTTP_POST,
              [this]() { handlePasswordChange(); });
   server_.on("/api/status", HTTP_GET, [this]() { handleStatus(); });
+  server_.on("/monitor", HTTP_GET, [this]() {
+    StatusSnapshot current=status_; updateAdminStatus(current);
+    current.physicalLedOutputEnabled=display::live::enabled();
+    const size_t length=renderTrainMonitorPage(gPage,sizeof(gPage),current);
+    if (!length) { server_.send(500,"text/plain","Unable to render train monitor"); return; }
+    sendHtml(gPage,length);
+  });
+  server_.on("/api/monitor", HTTP_GET, [this]() {
+    StatusSnapshot current=status_; updateAdminStatus(current);
+    current.physicalLedOutputEnabled=display::live::enabled();
+    const size_t length=renderTrainMonitorJson(gJson,sizeof(gJson),current);
+    if (!length) { server_.send(500,"text/plain","Unable to render train monitor data"); return; }
+    server_.sendHeader("Cache-Control","no-store");server_.sendHeader("X-Content-Type-Options","nosniff");
+    server_.send(200,"application/json",gJson);
+  });
   server_.on("/api/network-diagnostics", HTTP_GET,
              [this]() { handleNetworkDiagnostics(); });
   server_.on("/network-diagnostics/run", HTTP_POST,
@@ -1845,6 +1860,7 @@ void LanWebUi::sendLoginFailure(admin::LoginResult::Code code) {
 
 void LanWebUi::updateAdminStatus(StatusSnapshot &status) {
   status.trainColors=configuration_.trainColors();
+  status.routeVisibilityMask=configuration_.routeVisibilityMask();
   status.unknownTiming = configuration_.unknownTiming();
   status.oledContrast = configuration_.oledContrast();
   status.blueHoldSeconds = configuration_.blueHoldSeconds();
@@ -1856,6 +1872,8 @@ void LanWebUi::updateAdminStatus(StatusSnapshot &status) {
   status.physicalFramesWritten = output.framesWritten;
   status.physicalMapChanges = output.mapChanges;
   status.physicalBlinkingLeds = output.blinkingLeds;
+  status.visibleMapLeds = output.visibleMapLeds;
+  status.darkOccupiedMapLeds = output.darkOccupiedMapLeds;
   status.physicalFrameAgeSeconds = (millis() - output.lastWriteAtMs) / 1000;
   status.adminConfigured = auth_.configured();
   String cookieHeader = server_.header("Cookie");

@@ -64,6 +64,7 @@ void run(void *) {
       ++brightnessCount;
     }
     hardware::setFeedIndicatorAllowed(controller.ledsRequested());
+    oled::setVisibleMapLights(controller.stats().visibleMapLeds);
     oled::setEnabled(controller.screenEnabled());
     xSemaphoreGive(mutex);
     vTaskDelay(pdMS_TO_TICKS(20));

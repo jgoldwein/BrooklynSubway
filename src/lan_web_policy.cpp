@@ -373,12 +373,14 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<span>Feeds working</span></div><div class=\"metric\"><strong data-status=\"dataAgeSeconds\">",
                 static_cast<unsigned long>(status.resolvedTrains),status.feedsSucceeded,status.feedsTotal);
   if (status.hasDataAge) writer.format("%lu seconds",static_cast<unsigned long>(status.dataAgeSeconds)); else writer.append("Waiting");
-  writer.append("</strong><span>Latest update</span></div></div><p class=\"hint\">POWER cycles: all on, LEDs off, screen off, all off. Hold 3 seconds to reboot. BRIGHT/DIM adjust the display that is on by itself.</p>"
+  writer.append("</strong><span>Latest update</span></div></div><p class=\"hint\"><strong data-status=\"visibleMapLeds\">");
+  writer.format("%u</strong> lit map LEDs. Several trains can share one light; uncertain markers may fade. <a href=\"/monitor\">Train monitor</a></p>",status.visibleMapLeds);
+  writer.append("<p class=\"hint\">POWER cycles: all on, LEDs off, screen off, all off. Hold 3 seconds to reboot. BRIGHT/DIM adjust the display that is on by itself.</p>"
                 "<div class=\"actions\"><a class=\"button\" href=\"#lights\">Adjust train lights</a>"
                 "<a class=\"button secondary\" href=\"#screen\">Screen brightness</a></div></section>"
                 "<section class=\"wide\" data-view=\"advanced\" id=\"advanced\"><p class=\"kicker\">Tools &amp; help</p><h2>Keep your map running</h2>"
                 "<p>Check for updates or test the lights. You may need to sign in first.</p><div class=\"actions\">"
-                "<a class=\"button\" href=\"/update\">Firmware updates</a><a class=\"button secondary\" href=\"/hardware-test\">Test the lights</a></div></section>"
+                "<a class=\"button\" href=\"/update\">Firmware updates</a><a class=\"button secondary\" href=\"/hardware-test\">Test the lights</a><a class=\"button secondary\" href=\"/monitor\">Train monitor</a></div></section>"
                 "<details class=\"card wide\" data-view=\"advanced\"><summary>Device information</summary><dl><dt>Device name</dt><dd>");
   writer.html(status.deviceName);
   writer.append("</dd><dt>Firmware</dt><dd>");
@@ -918,6 +920,101 @@ size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken, const 
   return writer.size();
 }
 
+
+namespace {
+void monitorString(Writer &w,const char *value) { w.append("\"");w.json(value);w.append("\""); }
+uint32_t monitorLatestCount(const StatusSnapshot &s) {
+  uint32_t count=0;for(uint8_t route=1;route<=semantic::kRouteCount;++route)count+=s.blueReport.monitoring[route].mapped;return count;
+}
+uint16_t monitorFeedMask(const char *name) {
+  for (uint8_t i=0;i<network::kFeedCount;++i) if(strcmp(network::kFeeds[i].name,name)==0) return uint16_t(1u<<i);
+  return 0;
+}
+const char *monitorFeedState(const StatusSnapshot &s,semantic::Route route) {
+  if(!s.hasCycle)return "Waiting";
+  using R=semantic::Route;uint16_t required=0;
+  switch(route) {
+    case R::Route2: case R::Route3: case R::Route4: case R::Route5: required=monitorFeedMask("1-7,S");break;
+    case R::RouteA: case R::RouteC: required=monitorFeedMask("ACE");break;
+    case R::RouteB: case R::RouteD: case R::RouteF: case R::RouteM: required=monitorFeedMask("BDFM");break;
+    case R::RouteG: required=monitorFeedMask("G");break;
+    case R::RouteJ: case R::RouteZ: required=monitorFeedMask("JZ");break;
+    case R::RouteL: required=monitorFeedMask("L");break;
+    case R::RouteN: case R::RouteQ: case R::RouteR: required=monitorFeedMask("NQRW");break;
+    case R::RouteS: required=monitorFeedMask("ACE")|monitorFeedMask("G");break;
+    default: return "Unknown";
+  }
+  const uint16_t received=s.processedFeedMask & required;
+  return received==required?"Received":received?"Partial":"Missing";
+}
+const char *monitorHealth(const StatusSnapshot &s) {
+  if (!s.blueReport.timestamp) return "Waiting for the first train poll.";
+  if (s.hasCycle && s.feedsSucceeded<s.feedsTotal) return "Some feeds are missing or unreadable. The map may hold an older update.";
+  if (!s.unixTime) return "Waiting for clock sync; source age is unavailable.";
+  if (s.blueReport.newestFeedTimestamp>s.unixTime && s.blueReport.newestFeedTimestamp-s.unixTime>30)
+    return "A source timestamp is ahead of the clock. Source age needs review.";
+  if (s.blueReport.capacityDrops) return "Some reports could not be processed. Review the counts below.";
+  if (s.unixTime && s.blueReport.oldestFeedTimestamp && s.unixTime>s.blueReport.oldestFeedTimestamp && s.unixTime-s.blueReport.oldestFeedTimestamp>90)
+    return "A source feed is over 90 seconds old, even if its download succeeded.";
+  return "Latest poll received. Estimated and uncertain reports are listed separately.";
+}
+void monitorAge(Writer &w,uint32_t now,uint32_t then) {
+  if (!now || !then || (then>now && then-now>30)) w.append("null");
+  else w.format("%lu",static_cast<unsigned long>(now>=then?now-then:0));
+}
+void monitorRows(Writer &w,const StatusSnapshot &s) {
+  for(uint8_t route=1;route<=semantic::kRouteCount;++route) {
+    const auto id=static_cast<semantic::Route>(route);const auto &r=s.blueReport.monitoring[route];
+    w.append("<tr><th scope=\"row\">");w.html(semantic::routeName(id));
+    if(!semantic::routeVisible(s.routeVisibilityMask,id))w.append(" (hidden)");
+    w.format("</th><td>%u</td><td>%u</td><td>%u</td><td>%u</td><td>%s</td></tr>",r.mapped,r.moving,r.estimated,r.uncertain,monitorFeedState(s,id));
+  }
+}
+}
+size_t renderTrainMonitorJson(char *out,size_t capacity,const StatusSnapshot &s) {
+  Writer w(out,capacity);const auto &r=s.blueReport;
+  w.format("{\"reportTimestamp\":%lu,\"mappedTrains\":%lu,\"occupiedMapLeds\":%u,\"visibleMapLeds\":%u,\"darkOccupiedMapLeds\":%u,\"outputEnabled\":%s,\"feedsSucceeded\":%u,\"feedsTotal\":%u,\"sourceOldestUnix\":%lu,\"sourceNewestUnix\":%lu,\"sourceAgeSeconds\":",
+      static_cast<unsigned long>(r.timestamp),static_cast<unsigned long>(s.resolvedTrains),s.occupiedLeds,s.visibleMapLeds,s.darkOccupiedMapLeds,s.physicalLedOutputEnabled?"true":"false",s.feedsSucceeded,s.feedsTotal,static_cast<unsigned long>(r.oldestFeedTimestamp),static_cast<unsigned long>(r.newestFeedTimestamp));
+  monitorAge(w,s.unixTime,r.oldestFeedTimestamp);
+  w.format(",\"latestPollMappedTrains\":%lu",static_cast<unsigned long>(monitorLatestCount(s)));w.append(",\"reportAgeSeconds\":");monitorAge(w,s.unixTime,r.timestamp);
+  w.append(",\"mapAgeSeconds\":");if(s.hasDataAge)w.format("%lu",static_cast<unsigned long>(s.dataAgeSeconds));else w.append("null");
+  w.append(",\"health\":");monitorString(w,monitorHealth(s));
+  w.format(",\"staleVehicles\":%lu,\"unmappedPositions\":%lu,\"conflictedTrips\":%lu,\"predictionConflicts\":%lu,\"capacityDrops\":%lu,\"uncertainMode\":",
+      static_cast<unsigned long>(r.staleVehicles),static_cast<unsigned long>(r.unmappedPositions),static_cast<unsigned long>(r.conflictedTrips),static_cast<unsigned long>(r.predictionConflicts),static_cast<unsigned long>(r.capacityDrops));
+  const auto mode=semantic::unknownTimingMode(s.unknownTiming);
+  monitorString(w,mode==semantic::UnknownTimingMode::LastReported?"Last reported":mode==semantic::UnknownTimingMode::Hidden?"Hidden":"Steady color");
+  w.format(",\"fadeSeconds\":%u,\"uncertainBrightness\":%u,\"routes\":[",semantic::lastReportedFadeSeconds(s.unknownTiming),unsigned(s.unknownTiming&255));
+  for(uint8_t route=1;route<=semantic::kRouteCount;++route) {
+    if(route>1)w.append(",");const auto id=static_cast<semantic::Route>(route);const auto &q=r.monitoring[route];
+    w.append("{\"line\":");monitorString(w,semantic::routeName(id));
+    w.format(",\"shown\":%s,\"mapped\":%u,\"moving\":%u,\"estimated\":%u,\"uncertain\":%u,\"feedState\":\"%s\"}",semantic::routeVisible(s.routeVisibilityMask,id)?"true":"false",q.mapped,q.moving,q.estimated,q.uncertain,monitorFeedState(s,id));
+  }
+  w.format("],\"decodeFailures\":%lu,\"lastFeedFailure\":",static_cast<unsigned long>(r.decodeFailures));
+  if(s.hasLastFeedFailure) {w.append("{\"feed\":");monitorString(w,s.lastFeedFailureName);w.append(",\"reason\":");monitorString(w,s.lastFeedFailureCategory);w.append("}");}else w.append("null");
+  w.append("}");return w.size();
+}
+size_t renderTrainMonitorPage(char *out,size_t capacity,const StatusSnapshot &s) {
+  Writer w(out,capacity);
+  w.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Brooklyn Subway</title><link rel=\"stylesheet\" href=\"/ui.css?v=038\"><style>td,th{padding:6px;text-align:left;border-bottom:1px solid #dce4ef}table{width:100%;border-collapse:collapse}dl{max-width:42rem}@media(max-width:600px){td,th{padding:6px 2px;font-size:13px}}</style></head><body><header><div><h1>Brooklyn Subway</h1><p class=\"subtitle\">Specially Designed for Avi Yao</p></div><a href=\"/\">Back to map</a></header><main style=\"display:block\"><section><h2>Train monitor</h2><p id=\"health\" role=\"status\">");
+  w.html(monitorHealth(s));
+  w.format("</p><p><strong id=\"mapped\">%lu</strong> mapped trains &middot; <strong id=\"lit\">%u</strong> lit map LEDs</p>",static_cast<unsigned long>(s.resolvedTrains),s.visibleMapLeds);
+  w.append("<p class=\"hint\">Several trains can share one light. Uncertain reports can fade or be hidden. Very faint lights may be hard to see. Lit counts nonzero colors sent to map LEDs, excluding status lights.</p><dl><dt>Occupied map positions</dt><dd id=\"occupied\">");
+  w.format("%u</dd><dt>Occupied positions now dark</dt><dd id=\"dark\">%u</dd><dt>Feeds received</dt><dd id=\"feeds\">%u / %u</dd>",s.occupiedLeds,s.darkOccupiedMapLeds,s.feedsSucceeded,s.feedsTotal);
+  w.append("<dt>Last usable map update</dt><dd id=\"mapAge\">");if(s.hasDataAge)w.format("%lu seconds",static_cast<unsigned long>(s.dataAgeSeconds));else w.append("Waiting");
+  w.append("</dd><dt>Oldest source feed age</dt><dd id=\"sourceAge\">Refresh pending</dd><dt>Latest poll age</dt><dd id=\"reportAge\">Refresh pending</dd><dt>Uncertain-light setting</dt><dd id=\"policy\">");
+  const auto mode=semantic::unknownTimingMode(s.unknownTiming);
+  if(mode==semantic::UnknownTimingMode::LastReported)w.format("Last reported: fades after %u seconds, at most 2/255 brightness",semantic::lastReportedFadeSeconds(s.unknownTiming));
+  else w.append(mode==semantic::UnknownTimingMode::Hidden?"Hidden":"Steady color");
+  w.format("</dd><dt>Old vehicle reports ignored</dt><dd id=\"stale\">%lu</dd><dt>Positions outside map or unresolved</dt><dd id=\"unmapped\">%lu</dd><dt>Conflicting trips ignored</dt><dd id=\"conflicts\">%lu</dd><dt>Conflicting prediction sets</dt><dd id=\"predictions\">%lu</dd><dt>Processing capacity problems</dt><dd id=\"capacity\">%lu</dd><dt>Unreadable feeds</dt><dd id=\"decode\">%lu</dd><dt>Last recorded feed error</dt><dd id=\"failure\">",static_cast<unsigned long>(s.blueReport.staleVehicles),static_cast<unsigned long>(s.blueReport.unmappedPositions),static_cast<unsigned long>(s.blueReport.conflictedTrips),static_cast<unsigned long>(s.blueReport.predictionConflicts),static_cast<unsigned long>(s.blueReport.capacityDrops),static_cast<unsigned long>(s.blueReport.decodeFailures));
+  if(s.hasLastFeedFailure){w.html(s.lastFeedFailureName);w.append(": ");w.html(s.lastFeedFailureCategory);}else w.append("None recorded");
+  w.append("</dd></dl><p><a href=\"/#lights\">Change uncertain-light settings</a> &middot; <a href=\"/api/monitor\" download=\"brooklyn-train-monitor.json\">Download report</a></p><h3>Latest poll, by line</h3><p>Latest poll total: <strong id=\"pollCount\">");
+  w.format("%lu</strong> mapped train reports.</p>",static_cast<unsigned long>(monitorLatestCount(s)));
+  w.append("<p class=\"hint\">Counts are before fading and route filters. Est. means an estimated departure; Unsure means an unclear report. Columns overlap. The map may hold an older update. Zero does not prove no trains are running: check Feed. Missing or Partial means some data was unavailable.</p><div style=\"overflow:auto\"><table><thead><tr><th scope=\"col\">Line</th><th scope=\"col\">Trains</th><th scope=\"col\">Moving</th><th scope=\"col\"><abbr title=\"Estimated departures\">Est.</abbr></th><th scope=\"col\">Unsure</th><th scope=\"col\">Feed</th></tr></thead><tbody id=\"lines\">");
+  monitorRows(w,s);
+  w.append("</tbody></table></div><p id=\"refresh\" class=\"hint\">Live values refresh automatically.</p></section></main><script>(function(){const by=id=>document.getElementById(id);function text(id,v){by(id).textContent=v}const age=v=>v===null?'Not available':v+' seconds';async function refresh(){let timer;try{const controller=new AbortController();timer=setTimeout(()=>controller.abort(),15000);const r=await fetch('/api/monitor',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();const s=await r.json();text('health',s.health);text('mapped',s.mappedTrains);text('pollCount',s.latestPollMappedTrains);text('lit',s.visibleMapLeds);text('occupied',s.occupiedMapLeds);text('dark',s.outputEnabled?s.darkOccupiedMapLeds:'Map lights are off');text('feeds',s.feedsSucceeded+' / '+s.feedsTotal);text('mapAge',age(s.mapAgeSeconds));text('sourceAge',age(s.sourceAgeSeconds));text('reportAge',age(s.reportAgeSeconds));text('policy',s.uncertainMode==='Last reported'?'Last reported: fades after '+s.fadeSeconds+' seconds, at most 2/255 brightness':s.uncertainMode+' (ceiling '+s.uncertainBrightness+'/255)');text('stale',s.staleVehicles);text('unmapped',s.unmappedPositions);text('conflicts',s.conflictedTrips);text('predictions',s.predictionConflicts);text('capacity',s.capacityDrops);text('decode',s.decodeFailures);text('failure',s.lastFeedFailure?s.lastFeedFailure.feed+': '+s.lastFeedFailure.reason:'None recorded');const rows=document.createDocumentFragment();s.routes.forEach(q=>{const tr=document.createElement('tr');[q.line+(q.shown?'':' (hidden)'),q.mapped,q.moving,q.estimated,q.uncertain,q.feedState].forEach((v,i)=>{const cell=document.createElement(i?'td':'th');if(!i)cell.scope='row';cell.textContent=v;tr.append(cell)});rows.append(tr)});by('lines').replaceChildren(rows);text('refresh','Updated '+new Date().toLocaleTimeString());}catch(e){text('refresh','Refresh delayed; values may be old. Retrying...')}finally{clearTimeout(timer);setTimeout(refresh,5000)}}setTimeout(refresh,500)})();</script></body></html>");
+  return w.size();
+}
+
 size_t renderStatusJson(char *out, size_t capacity,
                         const StatusSnapshot &status, uint8_t brightness,
                         uint32_t routeVisibilityMask) {
@@ -1010,6 +1107,7 @@ size_t renderStatusJson(char *out, size_t capacity,
                 static_cast<unsigned long>(status.physicalFramesWritten),
                 static_cast<unsigned long>(status.physicalMapChanges),
                 status.physicalBlinkingLeds, status.physicalPowerPaused ? "true" : "false");
+  writer.format(",\"visibleMapLeds\":%u,\"darkOccupiedMapLeds\":%u",status.visibleMapLeds,status.darkOccupiedMapLeds);
   writer.format(",\"resolvedTrains\":%lu,\"occupiedLeds\":%u,"
                 "\"collisionCount\":%u,\"brightness\":%u,"
                 "\"routeVisibilityMask\":%lu,\"routeCount\":%u,"

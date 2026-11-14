@@ -187,5 +187,22 @@ int main() {
   CHECK(c.enabled());
   s.status.displayState = display::State::NoData; c.publish(s);
   c.service(20, false, false, ops); CHECK(!c.enabled());
+  {
+    live::Controller counts;auto frame=snapshot();counts.publish(frame);CHECK(counts.enable(0));
+    counts.service(0,false,false,ops);CHECK(counts.stats().visibleMapLeds==1);
+    frame.brightness=0;counts.publish(frame);counts.service(40,false,false,ops);
+    CHECK(counts.stats().visibleMapLeds==0 && counts.stats().darkOccupiedMapLeds==1);
+    frame.brightness=5;frame.routeMask=0;counts.publish(frame);counts.service(80,false,false,ops);
+    CHECK(counts.stats().visibleMapLeds==0 && counts.stats().darkOccupiedMapLeds==1);
+    frame=snapshot();CHECK(semantic::addValidatedLed(frame.frame,0)); // Two trains share one LED.
+    counts.publish(frame);counts.service(120,false,false,ops);
+    CHECK(frame.frame.resolvedTrains==2 && counts.stats().visibleMapLeds==1);
+    semantic::clearFrame(frame.frame);CHECK(semantic::addUncertainLed(frame.frame,0));
+    frame.frame.animationEpochUnix=1;frame.frame.lastReportedFadeStartUnix[0]=1;
+    frame.clockUnix=30;frame.clockAtMs=0;frame.unknownTiming=(20u<<10)|(2u<<8)|5;
+    counts.publish(frame);counts.service(160,false,false,ops);
+    CHECK(counts.stats().visibleMapLeds==0 && counts.stats().darkOccupiedMapLeds==1);
+    counts.disable(ops);CHECK(counts.stats().visibleMapLeds==0);
+  }
   puts("Live display: safe startup, automatic/manual enable, continuous color, four POWER modes, release debounce, 3-second reboot once, boot-held suppression, test restoration, maintenance/fault guards, stale timeout, brightness/current caps and rollover PASS");
 }

@@ -30,6 +30,8 @@ struct OutputStats {
   uint32_t lastWriteAtMs = 0;
   uint32_t mapChanges = 0;
   uint16_t blinkingLeds = 0;
+  uint16_t visibleMapLeds = 0;
+  uint16_t darkOccupiedMapLeds = 0;
   bool powerCanResume = false;
   bool automaticStartPending = false;
   uint8_t powerMode = 0;

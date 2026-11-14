@@ -630,6 +630,36 @@ void testSkippedStopJourneys() {
     CHECK(sem::semanticForLed(led)->designator==42); // 18 Av, not the skipped Avenue P.
 }
 
+void testMonitoringReport() {
+  begin();Feed f(kNow);
+  f.vehicle("M_F","F",1,"F24S",kNow-140);
+  f.vehicle("M_F","F",1,"F24S",kNow-140); // One train, repeated record.
+  f.add(predictionEntity("M_F","F27S",kNow+60,"F"));
+  f.vehicle("M_OLD","F",1,"F24S",kNow-301);
+  f.vehicle("M_UNKNOWN","F",1,"ZZZS",kNow);
+  f.vehicle("M_CONFLICT","F",1,"F24S",kNow);
+  f.vehicle("M_CONFLICT","F",1,"F30S",kNow);
+  feed(f);gPipe.finishCycle();
+  const auto &r=gPipe.blueReport();
+  const auto &line=r.monitoring[static_cast<unsigned>(sem::Route::RouteF)];
+  CHECK(line.mapped==1 && line.moving==1 && line.estimated==1 && line.uncertain==0);
+  CHECK(r.staleVehicles==1 && r.unmappedPositions==1 && r.conflictedTrips==1);
+  CHECK(r.oldestFeedTimestamp==kNow && r.newestFeedTimestamp==kNow && r.capacityDrops==0);
+  unsigned sum=0;for(unsigned i=1;i<=sem::kRouteCount;++i)sum+=r.monitoring[i].mapped;
+  CHECK(sum==gPipe.frame().resolvedTrains);
+  begin();Feed conflict(kNow);
+  conflict.vehicle("M_PRED","F",1,"F24S",kNow-10);
+  conflict.add(predictionEntity("M_PRED","F27S",kNow+60,"F"));
+  conflict.add(predictionEntity("M_PRED","F35S",kNow+90,"F"));
+  conflict.add(predictionEntity("M_PRED","F35S",kNow+90,"F"));
+  feed(conflict);gPipe.finishCycle();CHECK(gPipe.blueReport().predictionConflicts==1);
+  CHECK(gPipe.blueReport().monitoring[static_cast<unsigned>(sem::Route::RouteF)].uncertain==1);
+  begin();Feed older(kNow-5),newer(kNow);
+  feed(older);feed(newer);gPipe.finishCycle();
+  CHECK(gPipe.blueReport().oldestFeedTimestamp==kNow-5 && gPipe.blueReport().newestFeedTimestamp==kNow);
+  CHECK(gPipe.blueReport().predictionConflicts==0); // Per-cycle, not lifetime.
+}
+
 void testBlueDiagnostics() {
   begin();
   Feed f(kNow);
@@ -1185,6 +1215,7 @@ int main(int argc, char **argv) {
   testPredictionCapacity();
   testVerifiedTripDeparture();
   testSkippedStopJourneys();
+  testMonitoringReport();
   testBlueDiagnostics();
   testH19Operational();
   testPreviousStopAmbiguous();

@@ -51,6 +51,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==21) brooklyn::oled::setTrackedTrains(132,true);
  if(scenario==22) brooklyn::oled::setTrackedTrains(0,true);
  if(scenario==23) {brooklyn::oled::setTrackedTrains(132,true);brooklyn::oled::setTrackedTrains(132,false);}
+ if(scenario==24) {brooklyn::oled::setTrackedTrains(80,true);brooklyn::oled::setVisibleMapLights(12);}
  const uint8_t preferred=scenario==11?0x3c:0x38;
  brooklyn::oled::begin(preferred,scenario==12||scenario==13?32:207);OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
  if(scenario==6){OLED_CHECK(worker==nullptr);puts("OLED task allocation failure isolated PASS");return 0;}
@@ -76,8 +77,9 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==20) OLED_CHECK(powerCommands==1 && frames==2 && titles==1 && delays==2);
  if(scenario==15) OLED_CHECK(powerCommands==1 && frames==1 && deletes==0);
  if(scenario==16) OLED_CHECK(powerCommands==2 && frames==2 && deletes==0);
- if(scenario==0||scenario==23) OLED_CHECK(strcmp(lastTrainText,"Trains: --")==0);
- if(scenario==21) OLED_CHECK(strcmp(lastTrainText,"Trains: 132")==0);
- if(scenario==22) OLED_CHECK(strcmp(lastTrainText,"Trains: 0")==0);
+ if(scenario==0||scenario==23) OLED_CHECK(strcmp(lastTrainText,"Trains:-- Lit:0")==0);
+ if(scenario==21) OLED_CHECK(strcmp(lastTrainText,"Trains:132 Lit:0")==0);
+ if(scenario==22) OLED_CHECK(strcmp(lastTrainText,"Trains:0 Lit:0")==0);
+ if(scenario==24) OLED_CHECK(strcmp(lastTrainText,"Trains:80 Lit:12")==0);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

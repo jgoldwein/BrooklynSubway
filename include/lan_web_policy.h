@@ -73,6 +73,9 @@ struct StatusSnapshot {
   uint32_t physicalMapChanges = 0;
   uint32_t physicalFrameAgeSeconds = 0;
   uint16_t physicalBlinkingLeds = 0;
+  uint16_t visibleMapLeds = 0;
+  uint16_t darkOccupiedMapLeds = 0;
+  uint32_t routeVisibilityMask = semantic::kAllRoutesVisibleMask;
   char availableVersion[33] = {};  // empty when no newer release is known
   int16_t rssi = -127;
   bool mdnsAvailable = false;
@@ -81,6 +84,7 @@ struct StatusSnapshot {
   display::State displayState = display::State::WaitingForData;
   bool hasCycle = false;
   transport::CycleOutcome cycleOutcome = transport::CycleOutcome::NoFeeds;
+  uint16_t processedFeedMask = 0;
   uint8_t feedsSucceeded = 0;
   uint8_t feedsTotal = 0;
   bool hasDataAge = false;
@@ -126,6 +130,8 @@ size_t renderHomePage(char *out, size_t capacity,
 const char *loginReturnPath(const char *target);
 const char *loginTargetForRequest(const char *path);
 size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken, const char *target = "");
+size_t renderTrainMonitorPage(char *out, size_t capacity, const StatusSnapshot &status);
+size_t renderTrainMonitorJson(char *out, size_t capacity, const StatusSnapshot &status);
 size_t renderStatusJson(char *out, size_t capacity,
                         const StatusSnapshot &status, uint8_t brightness,
                         uint32_t routeVisibilityMask);

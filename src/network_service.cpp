@@ -743,6 +743,14 @@ void NetworkService::printStatus(const transport::CycleResult &r) const {
   Serial.printf("Motion timing: ETA candidates %u; departure candidates %u; prediction overflow %lu; poll wait %lu s\n",
                 etaCandidates, departureCandidates, static_cast<unsigned long>(p.predictionCapacityOverflow),
                 static_cast<unsigned long>(configuration_.pollSeconds()));
+  const auto &monitor=pipeline_.blueReport();
+  unsigned mapped=0,moving=0,estimated=0,uncertain=0;
+  for(uint8_t route=1;route<=semantic::kRouteCount;++route) {
+    const auto &line=monitor.monitoring[route];mapped+=line.mapped;moving+=line.moving;
+    estimated+=line.estimated;uncertain+=line.uncertain;
+  }
+  Serial.printf("Train monitor (latest poll): mapped %u moving %u estimated %u uncertain %u; prediction conflicts %lu, capacity problems %lu\n",
+      mapped,moving,estimated,uncertain,static_cast<unsigned long>(monitor.predictionConflicts),static_cast<unsigned long>(monitor.capacityDrops));
   Serial.printf("Trip-update departures (estimated): %lu\n",
                 static_cast<unsigned long>(p.verifiedTripDepartures));
   Serial.printf("Representation: station %lu (approaching %lu), segment %lu, unrepresented %lu, insufficient %lu, unknown stop %lu, stale %lu\n",
@@ -949,7 +957,8 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
   webStatus_.hasCycle = hasLatestCycle_;
   if (hasLatestCycle_) {
     webStatus_.cycleOutcome = latestCycle_.outcome;
-    webStatus_.feedsTotal = latestCycle_.attempted;
+    webStatus_.processedFeedMask = latestCycle_.processedMask;
+    webStatus_.feedsTotal = static_cast<uint8_t>(kFeedCount);
     if (latestCycle_.outcome == transport::CycleOutcome::Complete ||
         latestCycle_.outcome == transport::CycleOutcome::Partial ||
         latestCycle_.outcome == transport::CycleOutcome::NoFeeds) {

@@ -14,6 +14,7 @@ U8G2_SSD1306_128X64_NONAME_F_HW_I2C screen(U8G2_R0, U8X8_PIN_NONE);
 TaskHandle_t clockTask = nullptr;
 uint8_t address = 0, requestedAddress = 0, transferError = 0;
 uint32_t trackedTrainsWord = 0;
+uint32_t visibleMapLights = 0;
 uint32_t requestedEnabled = 1;
 uint32_t feedbackWord = 0, feedbackSequence = 0;
 uint32_t requestedContrast = 207; // Accessed atomically; only the OLED worker touches I2C.
@@ -28,8 +29,8 @@ void draw(const char *clock) {
   screen.drawStr((128 - screen.getStrWidth("Brooklyn Subway")) / 2, 16, "Brooklyn Subway");
   const uint32_t trains = __atomic_load_n(&trackedTrainsWord, __ATOMIC_RELAXED);
   char count[24];
-  if (trains & 0x80000000u) snprintf(count, sizeof(count), "Trains: %lu", static_cast<unsigned long>(trains & 0x7fffffffu));
-  else snprintf(count, sizeof(count), "Trains: --");
+  if (trains & 0x80000000u) snprintf(count, sizeof(count), "Trains:%lu Lit:%u", static_cast<unsigned long>(trains & 0x7fffffffu), unsigned(__atomic_load_n(&visibleMapLights,__ATOMIC_RELAXED)));
+  else snprintf(count, sizeof(count), "Trains:-- Lit:%u", unsigned(__atomic_load_n(&visibleMapLights,__ATOMIC_RELAXED)));
   screen.drawStr((128 - screen.getStrWidth(count)) / 2, 34, count);
   screen.setFont(u8g2_font_8x13_tf);
   screen.drawStr((128 - screen.getStrWidth(clock)) / 2, 55, clock);
@@ -160,6 +161,7 @@ void run(void *) {
   }
 }
 }
+void setVisibleMapLights(uint16_t count) { __atomic_store_n(&visibleMapLights,uint32_t(count),__ATOMIC_RELAXED); }
 void setTrackedTrains(uint32_t count, bool available) {
   const uint32_t value = available ? (0x80000000u | (count & 0x7fffffffu)) : 0;
   const uint32_t previous = __atomic_exchange_n(&trackedTrainsWord, value, __ATOMIC_RELAXED);
@@ -199,5 +201,5 @@ Status status() {
 }
 }
 #else
-namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} void setTrackedTrains(uint32_t, bool) {} Status status() { return {}; } }
+namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} void setTrackedTrains(uint32_t, bool) {} void setVisibleMapLights(uint16_t) {} Status status() { return {}; } }
 #endif

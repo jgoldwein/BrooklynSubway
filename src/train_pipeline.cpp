@@ -122,7 +122,10 @@ void TrainPipeline::onPrediction(const gtfsrt::RtTrain &train, uint32_t feedTime
       return;
     }
     if (entry.h1 == h1 && entry.h2 == h2) {
-      if (entry.arrival != arrival || entry.route != route || entry.hasArrival != (train.nextStopArrival != 0) || entry.unavailable != train.nextStopUnavailable || memcmp(entry.stop, train.nextStopId, 4)) entry.conflict = true;
+      if (entry.arrival != arrival || entry.route != route || entry.hasArrival != (train.nextStopArrival != 0) || entry.unavailable != train.nextStopUnavailable || memcmp(entry.stop, train.nextStopId, 4)) {
+        if (!entry.conflict) ++blueReport_.predictionConflicts;
+        entry.conflict = true;
+      }
       return;
     }
     slot = (slot + 1) & (kTripTableSlots - 1);
@@ -208,7 +211,7 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimes
         char next[5]{}; memcpy(next, prediction.stop, 4);
         const bool inferred = gtfsrt::applyVerifiedTripDeparture(t, next, prediction.arrival,
             prediction.timestamp, feedTimestamp, nowUnix_);
-        if (inferred) bump(counters_.verifiedTripDepartures);
+        if (inferred) { bump(counters_.verifiedTripDepartures); blue.flags |= EstimatedDeparture; }
         if (strlen(t.vehicleStopId) == 4 && memcmp(prediction.stop, t.vehicleStopId, 4) == 0)
           t.nextStopArrival = prediction.arrival;
       }
@@ -335,6 +338,11 @@ gtfsrt::DecodeStatus TrainPipeline::processFeed(const uint8_t *data, size_t leng
   gtfsrt::FeedStats predictionStats{};
   (void)gtfsrt::visitTripUpdates(data, length, predictionVisitor, this, predictionStats);
   const gtfsrt::DecodeStatus status = gtfsrt::visitVehicles(data, length, visitor, this, stats);
+  if (stats.headerTimestamp) {
+    if (!blueReport_.oldestFeedTimestamp || stats.headerTimestamp < blueReport_.oldestFeedTimestamp)
+      blueReport_.oldestFeedTimestamp = stats.headerTimestamp;
+    if (stats.headerTimestamp > blueReport_.newestFeedTimestamp) blueReport_.newestFeedTimestamp = stats.headerTimestamp;
+  }
   bump(counters_.feedsProcessed);
   if (status != gtfsrt::DecodeStatus::Ok) bump(counters_.feedDecodeFailures);
   add(counters_.entitiesSeen, stats.entities);
@@ -427,6 +435,14 @@ void TrainPipeline::finishCycle() {
     if (bucket==kStation || bucket==kApproaching || bucket==kSegment) {
       const bool movingUnknown=bucket==kApproaching &&
           (!e.motion.arrivalSecondsPlusOne || e.motion.arrivalSecondsPlusOne==UINT16_MAX || e.motion.movementAgeSeconds>90);
+      const auto *mapped=semantic::semanticForLed(index);
+      if (mapped) {
+        auto &quality=blueReport_.monitoring[static_cast<uint8_t>(mapped->route)];
+        ++quality.mapped;
+        if (bucket==kApproaching || bucket==kSegment) ++quality.moving;
+        if (blueEvidence_[i].flags & EstimatedDeparture) ++quality.estimated;
+        if (uncertain || movingUnknown) ++quality.uncertain;
+      }
       const uint32_t now=frame_.animationEpochUnix;
       const uint32_t nextUnknownAt=bucket==kStation ? now+remaining :
           bucket==kApproaching ? now+(e.motion.movementAgeSeconds<=90 ? 91-e.motion.movementAgeSeconds : 0) :
@@ -512,6 +528,11 @@ void TrainPipeline::finishCycle() {
     ++counters_.nonBlackPixels;
     if (semantic::semanticForLed(i) == nullptr) ++counters_.statusNonBlackPixels;
   }
+  blueReport_.decodeFailures=counters_.feedDecodeFailures;
+  blueReport_.staleVehicles=counters_.stale;
+  blueReport_.unmappedPositions=counters_.unrepresented+counters_.unknownStop+counters_.insufficientPosition+counters_.previousStopAmbiguous;
+  blueReport_.conflictedTrips=counters_.conflictedTrips;
+  blueReport_.capacityDrops=counters_.tripCapacityOverflow+counters_.predictionCapacityOverflow+counters_.frameRejected+counters_.rendererRejected;
   state_ = CycleState::Finished;
   finishedForBlueHistory_ = true;
 }

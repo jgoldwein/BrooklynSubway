@@ -471,6 +471,7 @@ brooklyn::web::StatusSnapshot sampleStatus() {
   status.displayState = brooklyn::display::State::Fresh;
   status.hasCycle = true;
   status.cycleOutcome = brooklyn::transport::CycleOutcome::Complete;
+  status.processedFeedMask = 255;
   status.feedsSucceeded = 8;
   status.feedsTotal = 8;
   status.hasDataAge = true;
@@ -796,6 +797,37 @@ void testLoginPageCsrfRendering() {
 
 }
 
+void testTrainMonitor() {
+  auto status=sampleStatus();status.blueReport.timestamp=1000;status.unixTime=1015;
+  status.visibleMapLeds=12;status.resolvedTrains=80;
+  status.blueReport.oldestFeedTimestamp=995;status.blueReport.newestFeedTimestamp=1000;
+  status.blueReport.monitoring[static_cast<unsigned>(brooklyn::semantic::Route::RouteF)]={8,3,2,4};
+  char json[6144],html[24576];
+  CHECK(brooklyn::web::renderTrainMonitorJson(json,sizeof(json),status)>0);
+  CHECK(strstr(json,"\"visibleMapLeds\":12") && strstr(json,"\"mappedTrains\":80"));
+  CHECK(strstr(json,"\"line\":\"F\"") && strstr(json,"\"health\":\""));
+  CHECK(strstr(json,"\"latestPollMappedTrains\":8"));
+  CHECK(strstr(json,"\"sourceAgeSeconds\":20") && strstr(json,"\"reportAgeSeconds\":15"));
+  CHECK(strstr(json,"\"mapped\":8,\"moving\":3,\"estimated\":2,\"uncertain\":4"));
+  unsigned lines=0;for(const char *p=json;(p=strstr(p,"\"line\":"));p+=7)++lines;CHECK(lines==18);
+  CHECK(brooklyn::web::renderTrainMonitorPage(html,sizeof(html),status)>0);
+  CHECK(strstr(html,"Train monitor") && strstr(html,"Download report"));
+  CHECK(brooklyn::web::renderTrainMonitorPage(html,40,status)==0);
+  CHECK(brooklyn::web::renderTrainMonitorJson(json,40,status)==0);
+  status.hasCycle=true;status.feedsSucceeded=7;status.feedsTotal=8;
+  CHECK(brooklyn::web::renderTrainMonitorJson(json,sizeof(json),status)>0);
+  CHECK(strstr(json,"Some feeds are missing"));
+  status.processedFeedMask=254;
+  CHECK(brooklyn::web::renderTrainMonitorJson(json,sizeof(json),status)>0);
+  CHECK(strstr(json,"\"feedState\":\"Missing\""));
+  status.processedFeedMask=2;
+  CHECK(brooklyn::web::renderTrainMonitorJson(json,sizeof(json),status)>0);
+  CHECK(strstr(json,"\"feedState\":\"Partial\""));
+  status.hasLastFeedFailure=true;strcpy(status.lastFeedFailureCategory,"<script>");
+  CHECK(brooklyn::web::renderTrainMonitorPage(html,sizeof(html),status)>0);
+  CHECK(strstr(html,"&lt;script&gt;") && !strstr(html,"<dd id=\"failure\"><script>"));
+}
+
 void testJsonStatusIsEscapedAndSecretFree() {
   char json[2048];
   brooklyn::web::StatusSnapshot status = sampleStatus();
@@ -1037,7 +1069,8 @@ int main() {
   testFullProductionPageCapacity();
   testPageEscapingAndRequiredContent();
   testInlineLoginOnStatusPage();
-  testLoginPageCsrfRendering();  testJsonStatusIsEscapedAndSecretFree();
+  testLoginPageCsrfRendering();
+  testTrainMonitor();  testJsonStatusIsEscapedAndSecretFree();
   testRouteVisibilityApiMasks();
   testRouteSelectionParsing();
   testServerOwnershipTransitions();

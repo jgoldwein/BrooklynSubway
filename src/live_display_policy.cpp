@@ -31,7 +31,7 @@ OutputStats Controller::stats() const {
   result.powerCanResume = powerCanResume_ && !enabled_ && !automaticStartPending_;
   result.automaticStartPending = automaticStartPending_;
   result.powerMode = powerMode_;
-  if (!enabled_) result.blinkingLeds = 0;
+  if (!enabled_) { result.blinkingLeds = 0; result.visibleMapLeds = 0; result.darkOccupiedMapLeds = 0; }
   return result;
 }
 
@@ -158,6 +158,13 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
   if (!operations.transmit(operations.context, limited, semantic::kFrameLedCount)) {
     disable(operations);
     return;
+  }
+  stats_.visibleMapLeds = stats_.darkOccupiedMapLeds = 0;
+  for (uint16_t i=0;i<semantic::kFrameLedCount;++i) {
+    if (!semantic::semanticForLed(i)) continue; // Exclude the four status LEDs.
+    const auto &color=limited[i].color;
+    if (color.red || color.green || color.blue) ++stats_.visibleMapLeds;
+    else if (snapshot_.frame.occupancy[i]) ++stats_.darkOccupiedMapLeds;
   }
   animationTick_ = tick;
   dirty_ = false;

@@ -20,7 +20,7 @@ struct U8G2_SSD1306_128X64_NONAME_F_HW_I2C {
  U8G2_SSD1306_128X64_NONAME_F_HW_I2C(const void *,uint8_t reset,uint8_t scl=255,uint8_t sda=255) { OLED_CHECK(reset==255 && scl==255 && sda==255); }
  void clearBuffer() {} void setFont(const uint8_t *) {}
  int getStrWidth(const char *s) {return strlen(s)*8;}
- void drawStr(int,int,const char *s) {if(strcmp(s,"Brooklyn Subway")==0)++titles; if(strncmp(s,"Trains: ",8)==0) {strncpy(lastTrainText,s,23);lastTrainText[23]=0;}}
+ void drawStr(int,int,const char *s) {if(strcmp(s,"Brooklyn Subway")==0)++titles; if(strncmp(s,"Trains:",7)==0) {strncpy(lastTrainText,s,23);lastTrainText[23]=0;}}
  void transfer() { uint8_t b=0; d.byte_cb(&d,2,0,nullptr); d.byte_cb(&d,3,1,&b); d.byte_cb(&d,4,0,nullptr); }
  void sendBuffer() { ++frames; for(int i=0;i<16;++i)transfer(); }
  void setI2CAddress(uint8_t a) {d.address=a;}
