@@ -477,6 +477,33 @@ void testBlueHoldAcrossPolls() {
   CHECK(!sem::isUncertainOnly(timed.frame(), index));
 }
 
+TrainPipeline gQualifiedHold;
+void testStoppedHoldStartsOnQualifiedReport() {
+  auto &p=gQualifiedHold;
+  auto report=[&](uint32_t now,bool credible,const char *stop="233N") {
+    p.beginCycle(now);Feed f(now);
+    f.vehicle("QUALIFY_HOLD","2",1,stop,now);
+    if(credible)f.add(predictionEntity("QUALIFY_HOLD",stop,now));
+    p.processFeed(f.b.d,f.b.n);p.finishCycle();
+  };
+  report(kNow,false);uint16_t index=0;while(!p.frame().occupancy[index])++index;
+  CHECK(sem::isUncertainOnly(p.frame(),index));
+  report(kNow+19,true);
+  CHECK(p.frame().blueSecondsRemaining[index]==20); // A late qualification gets its full window.
+  CHECK(!sem::isUncertainOnly(p.frame(),index));
+  sem::RenderConfig render{};render.animateTraffic=true;render.brightness=255;
+  render.nowUnix=kNow+38;sem::RgbFrame rgb{};
+  sem::renderTrainFrame(p.frame(),rgb,render);CHECK(rgb.pixels[index].red==255);
+  render.nowUnix=kNow+39;sem::renderTrainFrame(p.frame(),rgb,render);
+  CHECK(rgb.pixels[index].red==0 && rgb.pixels[index].blue>0);
+  report(kNow+25,false);CHECK(sem::isUncertainOnly(p.frame(),index));
+  report(kNow+30,true);CHECK(p.frame().blueSecondsRemaining[index]==9); // No restart after noisy evidence.
+  report(kNow+40,true);CHECK(sem::isUncertainOnly(p.frame(),index));
+  report(kNow+41,false,"232N");
+  report(kNow+60,true,"232N");index=0;while(!p.frame().occupancy[index])++index;
+  CHECK(p.frame().blueSecondsRemaining[index]==20); // New station, qualified later.
+}
+
 TrainPipeline gLocations;
 void testLastReportedLocations() {
   auto &p=gLocations;
@@ -1211,6 +1238,7 @@ int main(int argc, char **argv) {
   testStationTimingPredictions();
   testLastReportedLocations();
   testBlueHoldAcrossPolls();
+  testStoppedHoldStartsOnQualifiedReport();
   testStationConfidence();
   testPredictionCapacity();
   testVerifiedTripDeparture();

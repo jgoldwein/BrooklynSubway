@@ -351,7 +351,7 @@ gtfsrt::DecodeStatus TrainPipeline::processFeed(const uint8_t *data, size_t leng
   return status;
 }
 
-uint16_t TrainPipeline::blueRemaining(uint32_t h1, uint32_t h2, uint32_t stopKey, uint32_t now) {
+uint16_t TrainPipeline::blueRemaining(uint32_t h1, uint32_t h2, uint32_t stopKey, uint32_t now, bool qualified) {
   if (!now || !stopKey) return 0;
   // Retain visits through missing polls. Reclaim only entries unseen for 30 min.
   StopVisit *empty = nullptr;
@@ -359,15 +359,19 @@ uint16_t TrainPipeline::blueRemaining(uint32_t h1, uint32_t h2, uint32_t stopKey
     if (visit.h1 && now >= visit.lastSeen && now - visit.lastSeen > 1800) visit = {};
     if (!visit.h1) { if (!empty) empty = &visit; continue; }
     if (visit.h1 != h1 || visit.h2 != h2) continue;
-    if (visit.stopKey != stopKey) { visit.stopKey = stopKey; visit.firstSeen = now; }
+    if (visit.stopKey != stopKey) { visit.stopKey = stopKey; visit.firstSeen = 0; }
     visit.lastSeen = now;
+    // Observe uncertain reports without consuming the stopped-color window.
+    // Once qualified, the same visit never restarts on repeated reports.
+    if (!qualified) return 0;
+    if (!visit.firstSeen) visit.firstSeen = now;
     if (now < visit.firstSeen) return 0; // clock rollback never grants extra blue
     const uint32_t age = now - visit.firstSeen;
     return age < config_.blueHoldSeconds ? config_.blueHoldSeconds - age : 0;
   }
   if (!empty) return 0; // capacity uncertainty must not restart an existing timer
-  *empty = {h1, h2, stopKey, now, now};
-  return config_.blueHoldSeconds;
+  *empty = {h1, h2, stopKey, qualified ? now : 0, now};
+  return qualified ? config_.blueHoldSeconds : 0;
 }
 
 void TrainPipeline::forgetLocation(uint32_t h1,uint32_t h2) {
@@ -419,7 +423,8 @@ void TrainPipeline::finishCycle() {
     add(counters_.duplicateIdentical, static_cast<uint32_t>(e.records) - 1u);
     const uint16_t bucket = static_cast<uint16_t>(e.outcome >> 9);
     const uint16_t remaining = bucket == kStation ? blueRemaining(e.h1, e.h2,
-        blueEvidence_[i].stopKey, frame_.animationEpochUnix) : 0;
+        blueEvidence_[i].stopKey, frame_.animationEpochUnix,
+        (blueEvidence_[i].flags & RecentMatchingArrival) != 0) : 0;
     if (bucket == kApproaching || bucket == kSegment) {
       for (auto &visit : stopVisits_) if (visit.h1 == e.h1 && visit.h2 == e.h2) visit = {};
     }

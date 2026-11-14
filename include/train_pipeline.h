@@ -174,7 +174,8 @@ class TrainPipeline {
  private:
   void record(const char *tripId, uint16_t outcome, const MotionEvidence &motion, const BlueEvidence &blue);
   void bumpBucket(uint16_t bucket);
-  uint16_t blueRemaining(uint32_t h1, uint32_t h2, uint32_t stopKey, uint32_t now);
+  uint16_t blueRemaining(uint32_t h1, uint32_t h2, uint32_t stopKey, uint32_t now, bool qualified);
+  // firstSeen is 0 until the first supported stop report of this visit.
   struct StopVisit { uint32_t h1, h2, stopKey, firstSeen, lastSeen; };
   static constexpr uint16_t kStopVisitCapacity = 256;
   StopVisit stopVisits_[kStopVisitCapacity]{};

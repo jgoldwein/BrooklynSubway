@@ -740,7 +740,7 @@ size_t renderHomePage(char *out, size_t capacity,
                   status.unknownTiming&255,semantic::lastReportedFadeSeconds(status.unknownTiming));
   }
   writer.append("<p>Faint lights stay faint. Fade time applies to the fading markers. Brightness 0 hides uncertain lights.</p></section>");
-  writer.format("<section class=\"blue-hold\" data-view=\"lights\"><h2>How long should the stopped color stay on?</h2><p>The stopped color means a train was reported stopped. Keep it on for up to %lu seconds. "
+  writer.format("<section class=\"blue-hold\" data-view=\"lights\"><h2>How long should the stopped color stay on?</h2><p>The stopped color means a recent stop report is supported by arrival data. Its timer starts when that report first qualifies. Keep it on for up to %lu seconds. "
                 "After that, use your choice for uncertain movement. "
                 "Changes take effect with the next train update. Long stops can also become uncertain.</p>",
                 static_cast<unsigned long>(status.blueHoldSeconds));
