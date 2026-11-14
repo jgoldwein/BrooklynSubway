@@ -350,12 +350,11 @@ size_t renderHomePage(char *out, size_t capacity,
                            csrfToken != nullptr && csrfToken[0] != '\0';
   writer.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
                 "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-                "<title>Brooklyn Active Subway Map</title>");
+                "<title>Brooklyn Subway</title>");
   writer.append(kWebUiAssetHead);
   writer.append("</head><body><header><div class=\"brand\"><span class=\"brand-mark\" aria-hidden=\"true\">BK</span>"
                 "<div><h1>Brooklyn Subway</h1><p class=\"subtitle\">");
-  writer.html(status.deviceName);
-  writer.append(" &middot; Your live subway map</p></div></div>");
+  writer.append("Specially Designed for Avi Yao</p></div></div>");
   if (status.adminSessionActive) writer.append("<span class=\"account\">Settings unlocked</span>");
   else if (status.adminConfigured) writer.append("<a class=\"button secondary\" href=\"/login\">Sign in</a>");
   else writer.append("<a class=\"button secondary\" href=\"#advanced\">Set up</a>");
@@ -380,7 +379,9 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<section class=\"wide\" data-view=\"advanced\" id=\"advanced\"><p class=\"kicker\">Tools &amp; help</p><h2>Keep your map running</h2>"
                 "<p>Check for updates or test the lights. You may need to sign in first.</p><div class=\"actions\">"
                 "<a class=\"button\" href=\"/update\">Firmware updates</a><a class=\"button secondary\" href=\"/hardware-test\">Test the lights</a></div></section>"
-                "<details class=\"card wide\" data-view=\"advanced\"><summary>Device information</summary><dl><dt>Firmware</dt><dd>");
+                "<details class=\"card wide\" data-view=\"advanced\"><summary>Device information</summary><dl><dt>Device name</dt><dd>");
+  writer.html(status.deviceName);
+  writer.append("</dd><dt>Firmware</dt><dd>");
   writer.append(kFirmwareId);
   writer.append("</dd><dt>Firmware version</dt><dd>");
   writer.html(status.firmwareVersion[0] != '\0' ? status.firmwareVersion : "unknown");
@@ -871,10 +872,10 @@ size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken) {
   Writer writer(out, capacity);
   writer.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
                 "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-                "<meta name=\"referrer\" content=\"same-origin\"><title>Sign in - Brooklyn Subway</title>"
+                "<meta name=\"referrer\" content=\"same-origin\"><title>Brooklyn Subway</title>"
                 "<link rel=\"stylesheet\" href=\"/ui.css?v=038\"></head><body>"
                 "<header><div class=\"brand\"><span class=\"brand-mark\" aria-hidden=\"true\">BK</span>"
-                "<h1>Brooklyn Subway</h1></div><a href=\"/\">Back to map</a></header>"
+                "<div><h1>Brooklyn Subway</h1><p class=\"subtitle\">Specially Designed for Avi Yao</p></div></div><a href=\"/\">Back to map</a></header>"
                 "<main class=\"login-shell\"><section class=\"wide\"><p class=\"kicker\">Settings access</p><h2>Sign in</h2>"
                 "<p>Use your map's administrator password to change its settings.</p>"
                 "<form method=\"post\" action=\"/login\"><input type=\"hidden\" name=\"csrf\" value=\"");

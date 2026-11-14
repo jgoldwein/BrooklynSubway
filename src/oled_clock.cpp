@@ -13,6 +13,7 @@ namespace {
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C screen(U8G2_R0, U8X8_PIN_NONE);
 TaskHandle_t clockTask = nullptr;
 uint8_t address = 0, requestedAddress = 0, transferError = 0;
+uint32_t trackedTrainsWord = 0;
 uint32_t requestedEnabled = 1;
 uint32_t feedbackWord = 0, feedbackSequence = 0;
 uint32_t requestedContrast = 207; // Accessed atomically; only the OLED worker touches I2C.
@@ -24,9 +25,14 @@ void setStatus(State state, uint8_t error = 0) {
 void draw(const char *clock) {
   screen.clearBuffer();
   screen.setFont(u8g2_font_6x12_tf);
-  screen.drawStr((128 - screen.getStrWidth("Brooklyn Subway")) / 2, 22, "Brooklyn Subway");
+  screen.drawStr((128 - screen.getStrWidth("Brooklyn Subway")) / 2, 16, "Brooklyn Subway");
+  const uint32_t trains = __atomic_load_n(&trackedTrainsWord, __ATOMIC_RELAXED);
+  char count[24];
+  if (trains & 0x80000000u) snprintf(count, sizeof(count), "Trains: %lu", static_cast<unsigned long>(trains & 0x7fffffffu));
+  else snprintf(count, sizeof(count), "Trains: --");
+  screen.drawStr((128 - screen.getStrWidth(count)) / 2, 34, count);
   screen.setFont(u8g2_font_8x13_tf);
-  screen.drawStr((128 - screen.getStrWidth(clock)) / 2, 47, clock);
+  screen.drawStr((128 - screen.getStrWidth(clock)) / 2, 55, clock);
   screen.sendBuffer();
 }
 // The board initializes Wire once. Avoid U8g2's second Wire.begin() and
@@ -154,6 +160,14 @@ void run(void *) {
   }
 }
 }
+void setTrackedTrains(uint32_t count, bool available) {
+  const uint32_t value = available ? (0x80000000u | (count & 0x7fffffffu)) : 0;
+  const uint32_t previous = __atomic_exchange_n(&trackedTrainsWord, value, __ATOMIC_RELAXED);
+  if (previous != value) {
+    if (available) Serial.printf("OLED clock: tracked trains %lu\n", static_cast<unsigned long>(count));
+    else Serial.println("OLED clock: tracked count unavailable; waiting for current data");
+  }
+}
 void showBrightness(bool oled, uint8_t value, uint8_t maximum) {
   const uint32_t sequence = __atomic_add_fetch(&feedbackSequence, 1u, __ATOMIC_RELAXED);
   __atomic_store_n(&feedbackWord, (sequence << 18) | (1u << 17) | (uint32_t(oled) << 16) |
@@ -185,5 +199,5 @@ Status status() {
 }
 }
 #else
-namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} Status status() { return {}; } }
+namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} void setTrackedTrains(uint32_t, bool) {} Status status() { return {}; } }
 #endif

@@ -56,13 +56,13 @@ char gNetworkDiagnosticsJson[kNetworkDiagnosticsJsonCapacity];
 constexpr const char *kSetupStarting =
     "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
     "<meta http-equiv=\"refresh\" content=\"3;url=http://192.168.4.1/\">"
-    "<title>Wi-Fi setup starting</title></head><body>"
-    "<h1>Wi-Fi setup starting</h1><p>Join BrooklynMap-Avi, then open "
+    "<title>Brooklyn Subway</title></head><body>"
+    "<h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p><h2>Wi-Fi setup starting</h2><p>Join BrooklynMap-Avi, then open "
     "http://192.168.4.1/ if the setup page does not appear.</p></body></html>";
 
 constexpr const char *kRebooting =
     "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
-    "<title>Rebooting</title></head><body><h1>Rebooting</h1>"
+    "<title>Brooklyn Subway</title></head><body><h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p><h2>Rebooting</h2>"
     "<p>Configuration and Wi-Fi credentials are retained.</p></body></html>";
 
 constexpr const char *kUpdateStyle =
@@ -287,11 +287,11 @@ void LanWebUi::sendNotice(int httpCode, const char *title, const char *message,
       gPage, kPageCapacity,
       "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-      "%s<title>%s</title><style>%s</style></head><body><h1>%s</h1>"
+      "%s<title>Brooklyn Subway</title><style>%s</style></head><body><h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p><h2>%s</h2>"
       "<div class=\"card %s\" role=\"status\"><p>%s</p>%s</div>"
       "<p><a href=\"%s\">%s</a> &middot; "
       "<a href=\"/\">Status page</a></p></body></html>",
-      refresh, title, kUpdateStyle, title,
+      refresh, kUpdateStyle, title,
       kind == 0 ? "ok" : (kind == 1 ? "warn" : "bad"), message,
       refreshSeconds > 0 ? "<p class=\"muted\">Returning "
                            "automatically&hellip;</p>"
@@ -688,7 +688,7 @@ void LanWebUi::handleSetupConfirmation() {
       gPage, sizeof(gPage),
       "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-      "<title>Change Wi-Fi</title></head><body><h1>Change Wi-Fi</h1>"
+      "<title>Brooklyn Subway</title></head><body><h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p><h2>Change Wi-Fi</h2>"
       "<p>The setup network will start; existing credentials are retained. "
       "A replacement is saved only after it successfully connects.</p>"
       "<form method=\"post\" action=\"/wifi/setup/confirm\">"
@@ -1046,8 +1046,8 @@ void LanWebUi::handleUpdatePage() {
       gPage, kPageCapacity,
       "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-      "<title>Update firmware</title><style>%s</style></head><body>"
-      "<h1>Update firmware</h1>"
+      "<title>Brooklyn Subway</title><style>%s</style></head><body>"
+      "<h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p><h2>Update firmware</h2>"
       "<dl><dt>Running</dt><dd>%s</dd><dt>Target</dt><dd>%s</dd>"
       "<dt>Latest release</dt><dd>%s</dd></dl>"
       "%s"
@@ -1197,8 +1197,8 @@ void LanWebUi::handleUpdateReboot() {
       gPage, kPageCapacity,
       "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-      "<title>Restarting</title><style>%s</style></head><body>"
-      "<h1 id=\"oh\">Restarting</h1><div class=\"card\" role=\"status\">"
+      "<title>Brooklyn Subway</title><style>%s</style></head><body>"
+      "<h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p><h2 id=\"oh\">Restarting</h2><div class=\"card\" role=\"status\">"
       "<progress id=\"pg\" max=\"100\" value=\"99\" style=\"width:100%%\"></progress>"
       "<p id=\"pt\">Waiting for the new firmware to restart and confirm startup...</p>"
       "<p class=\"muted\">Keep power connected. You will need to sign in again.</p></div>"
@@ -1656,7 +1656,7 @@ void LanWebUi::handleLedDiagnosticPage() {
       : "";
   const int length = snprintf(gPage, kPageCapacity,
       "<!doctype html><html lang=\"en\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-      "<title>Hardware diagnostics</title><h1>LED diagnostics</h1>"
+      "<title>Brooklyn Subway</title><h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p><h2>LED diagnostics</h2>"
       "<p role=\"status\">%s</p>"
       "<p>Production PCB only. Diagnostics stop live output first. No test runs at startup.</p>"
       "<p>Startup gives two brief Avi-marker flashes, four rising notes, then a subway-style ding-dong. Hold DIM while powering on or resetting to mute that startup.</p>"
