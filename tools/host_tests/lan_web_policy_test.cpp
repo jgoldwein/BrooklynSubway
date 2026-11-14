@@ -778,6 +778,22 @@ void testLoginPageCsrfRendering() {
   CHECK(strstr(page, "type=\"password\"") != nullptr);
   CHECK(strstr(page, "value=\"password") == nullptr);
   CHECK(brooklyn::web::renderLoginPage(page, sizeof(page), nullptr) == 0);
+  CHECK(brooklyn::web::renderLoginPage(page,sizeof(page),csrf,"update")>0);
+  CHECK(strstr(page,"name=\"next\" value=\"update\"")!=nullptr);
+  CHECK(strcmp(brooklyn::web::loginReturnPath("update"),"/update")==0);
+  CHECK(strcmp(brooklyn::web::loginReturnPath("screen"),"/#screen")==0);
+  CHECK(strcmp(brooklyn::web::loginReturnPath("hardware-test"),"/hardware-test")==0);
+  CHECK(strcmp(brooklyn::web::loginReturnPath("wifi-setup"),"/wifi/setup")==0);
+  CHECK(brooklyn::web::loginReturnPath("https://example.com")==nullptr);
+  CHECK(brooklyn::web::loginReturnPath("//example.com")==nullptr);
+  CHECK(brooklyn::web::loginReturnPath("/reboot")==nullptr);
+  CHECK(brooklyn::web::loginReturnPath("update\r\nLocation: evil")==nullptr);
+  CHECK(brooklyn::web::renderLoginPage(page,sizeof(page),csrf,"<script>")==0);
+  const char *paths[]={"/update","/update/install","/update/reboot","/update/progress","/hardware-test/run","/wifi/setup/confirm","/config/oled-dimmer","/config/colors","/config/dns","/admin/password","/reboot"};
+  const char *destinations[]={"/update","/update","/update","/update","/hardware-test","/wifi/setup","/#screen","/#lights","/#wifi","/#advanced","/#advanced"};
+  for(unsigned i=0;i<sizeof(paths)/sizeof(paths[0]);++i)
+    CHECK(strcmp(brooklyn::web::loginReturnPath(brooklyn::web::loginTargetForRequest(paths[i])),destinations[i])==0);
+
 }
 
 void testJsonStatusIsEscapedAndSecretFree() {

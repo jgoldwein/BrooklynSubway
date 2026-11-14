@@ -867,7 +867,34 @@ size_t renderHomePage(char *out, size_t capacity,
   return writer.size();
 }
 
-size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken) {
+// Only fixed local GET pages are allowed; never redirect to submitted URLs or actions.
+const char *loginReturnPath(const char *target) {
+  if (!target || !target[0]) return "/";
+  if (strcmp(target,"update")==0) return "/update";
+  if (strcmp(target,"hardware-test")==0) return "/hardware-test";
+  if (strcmp(target,"wifi-setup")==0) return "/wifi/setup";
+  if (strcmp(target,"lights")==0) return "/#lights";
+  if (strcmp(target,"screen")==0) return "/#screen";
+  if (strcmp(target,"wifi")==0) return "/#wifi";
+  if (strcmp(target,"advanced")==0) return "/#advanced";
+  if (strcmp(target,"overview")==0) return "/#overview";
+  return nullptr;
+}
+const char *loginTargetForRequest(const char *path) {
+  if (!path) return "";
+  if (strcmp(path,"/update")==0 || strncmp(path,"/update/",8)==0) return "update";
+  if (strcmp(path,"/hardware-test")==0 || strcmp(path,"/hardware-test/run")==0) return "hardware-test";
+  if (strcmp(path,"/wifi/setup")==0 || strcmp(path,"/wifi/setup/confirm")==0) return "wifi-setup";
+  if (strcmp(path,"/config/oled")==0 || strcmp(path,"/config/oled-dimmer")==0) return "screen";
+  if (strcmp(path,"/config/dns")==0) return "wifi";
+  if (strcmp(path,"/config/poll")==0) return "advanced";
+  if (strncmp(path,"/config/",8)==0) return "lights";
+  if (strcmp(path,"/network-diagnostics/run")==0 || strcmp(path,"/admin/password")==0 || strcmp(path,"/reboot")==0) return "advanced";
+  return "overview";
+}
+
+size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken, const char *target) {
+  if (!loginReturnPath(target)) return 0;
   if (csrfToken == nullptr || csrfToken[0] == '\0') return 0;
   Writer writer(out, capacity);
   writer.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
@@ -883,7 +910,9 @@ size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken) {
   writer.append("\"><label>Password <input type=\"password\" name=\"password\" "
                 "autocomplete=\"current-password\" required></label>");
   writer.append(kPasswordVisibilityControl);
-  writer.append("<button type=\"submit\">Sign in</button></form>"
+  writer.append("<input type=\"hidden\" name=\"next\" value=\"");
+  writer.html(target ? target : "");
+  writer.append("\"><button type=\"submit\">Sign in</button></form>"
                 "<p class=\"hint\">Use only on Wi-Fi you trust. Passwords travel over unencrypted HTTP.</p>"
                 "</section></main></body></html>");
   return writer.size();

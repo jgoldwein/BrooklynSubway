@@ -123,7 +123,9 @@ size_t renderHomePage(char *out, size_t capacity,
                       const StatusSnapshot &status, uint8_t brightness,
                       uint32_t routeVisibilityMask,
                       const char *csrfToken = nullptr);
-size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken);
+const char *loginReturnPath(const char *target);
+const char *loginTargetForRequest(const char *path);
+size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken, const char *target = "");
 size_t renderStatusJson(char *out, size_t capacity,
                         const StatusSnapshot &status, uint8_t brightness,
                         uint32_t routeVisibilityMask);

@@ -727,6 +727,11 @@ void LanWebUi::handleReboot() {
 }
 
 void LanWebUi::handleLoginPage() {
+  const String target = server_.arg("next");
+  const char *destination = hasNoEmbeddedNull(target) ? loginReturnPath(target.c_str()) : nullptr;
+  if (!destination || server_.args() > 1 || (server_.args() == 1 && server_.argName(0) != "next")) {
+    server_.send(400, "text/plain", "Invalid sign-in destination"); return;
+  }
   if (!auth_.configured()) {
     server_.send(403, "text/plain",
                  "Administrator setup is available only through local provisioning");
@@ -735,7 +740,7 @@ void LanWebUi::handleLoginPage() {
   String existingCookie = server_.header("Cookie");
   if (auth_.hasSession(existingCookie.c_str(), millis())) {
     eraseString(existingCookie);
-    sendLoginRedirect();
+    sendLoginRedirect(destination);
     return;
   }
   eraseString(existingCookie);
@@ -747,7 +752,7 @@ void LanWebUi::handleLoginPage() {
     return;
   }
   const size_t length =
-      renderLoginPage(gPage, sizeof(gPage), csrfToken);
+      renderLoginPage(gPage, sizeof(gPage), csrfToken, target.c_str());
   if (length == 0) {
     eraseBytes(cookieToken, sizeof(cookieToken));
     eraseBytes(csrfToken, sizeof(csrfToken));
@@ -782,21 +787,25 @@ void LanWebUi::handleLogin() {
                  "Administrator setup is available only through local provisioning");
     return;
   }
-  int csrfCount = 0;
+  int csrfCount = 0, nextCount = 0;
   bool hasPassword = false;
   for (int i = 0; i < server_.args(); ++i) {
     const String name = server_.argName(i);
     if (name == "csrf") ++csrfCount;
     else if (name == "password") hasPassword = true;
+    else if (name == "next") ++nextCount;
     else {
       server_.send(400, "text/plain", "Invalid sign-in request");
       return;
     }
   }
-  if (csrfCount != 1 || !hasPassword || server_.args() != 2) {
+  if (csrfCount != 1 || !hasPassword || nextCount > 1 || server_.args() != 2 + nextCount) {
     server_.send(400, "text/plain", "Invalid sign-in request");
     return;
   }
+  const String target = server_.arg("next");
+  const char *destination = hasNoEmbeddedNull(target) ? loginReturnPath(target.c_str()) : nullptr;
+  if (!destination) { server_.send(400, "text/plain", "Invalid sign-in destination"); return; }
   String cookieHeader = server_.header("Cookie");
   String csrf = server_.arg("csrf");
   const bool csrfValid =
@@ -839,7 +848,7 @@ void LanWebUi::handleLogin() {
   }
   server_.sendHeader("Set-Cookie", cookie);
   eraseBytes(cookie, sizeof(cookie));
-  sendLoginRedirect();
+  sendLoginRedirect(destination);
 }
 
 void LanWebUi::handleLogout() {
@@ -1086,7 +1095,7 @@ void LanWebUi::handleUpdatePage() {
       "\"Content-Type\",\"application/octet-stream\");x.upload.onprogress="
       "function(e){var p=Math.round(100*e.loaded/e.total);u.value=p;"
       "s.textContent=\"Uploading \"+p+\"%%\"};x.onload=function(){"
-      "if(x.responseURL&&new URL(x.responseURL).pathname===\"/login\"){location.assign(\"/login\");return}"
+      "if(x.responseURL&&new URL(x.responseURL).pathname===\"/login\"){location.assign(\"/login?next=update\");return}"
       "s.textContent=x.status==200?x.responseText:\"Rejected (\"+x.status+\"): \"+"
       "x.responseText;if(x.status==200){setTimeout(function(){location.reload()}"
       ",2500)}};x.onerror=function(){s.textContent=\"Connection lost\"};"
@@ -1796,13 +1805,15 @@ bool LanWebUi::requestSession(char *csrfToken, size_t capacity) {
 void LanWebUi::sendSignInRequired() {
   // A denied POST becomes a GET: never replay an action after signing in.
   server_.sendHeader("Cache-Control", "no-store");
-  server_.sendHeader("Location", "/login", true);
+  String location = "/login?next=";
+  location += loginTargetForRequest(server_.uri().c_str());
+  server_.sendHeader("Location", location, true);
   server_.send(303, "text/plain", "");
 }
 
-void LanWebUi::sendLoginRedirect() {
+void LanWebUi::sendLoginRedirect(const char *destination) {
   server_.sendHeader("Cache-Control", "no-store");
-  server_.sendHeader("Location", "/", true);
+  server_.sendHeader("Location", destination, true);
   server_.send(303, "text/plain", "");
 }
 
