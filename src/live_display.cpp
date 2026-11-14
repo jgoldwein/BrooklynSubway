@@ -20,6 +20,10 @@ Controller controller(true);
 bool recoveryRequested = false;
 bool recoveryPending = false;
 controls::TestButton testButton;
+controls::BrightnessButtons brightnessButtons;
+constexpr uint8_t kBrightnessQueueSize = 8;
+controls::BrightnessRequest brightnessQueue[kBrightnessQueueSize];
+uint8_t brightnessHead = 0, brightnessCount = 0, previousPowerMode = 0;
 bool testRequested = false;
 uint16_t diagnosticDepth = 0;
 bool arm(void *) { return led::backend::armLiveOutput(); }
@@ -45,6 +49,20 @@ void run(void *) {
         ? "Live display paused by POWER; press POWER again to resume"
         : "Live display stopped; GPIO1 LOW; press POWER when fresh data returns");
     if (!wasEnabled && controller.enabled()) Serial.println("Live display started/resumed after checks");
+    const uint8_t powerMode = controller.stats().powerMode;
+    if (powerMode != previousPowerMode) {
+      previousPowerMode = powerMode;
+      brightnessCount = 0;
+      oled::clearBrightnessFeedback();
+    }
+    controls::BrightnessRequest request;
+    const bool brightnessReleased = brightnessButtons.update(
+        digitalRead(pins::BUTTON_BRIGHT) == LOW, digitalRead(pins::BUTTON_DIM) == LOW,
+        powerMode, nowMs, request);
+    if (brightnessReleased && !diagnosticDepth && !recoveryPending && brightnessCount < kBrightnessQueueSize) {
+      brightnessQueue[(brightnessHead + brightnessCount) % kBrightnessQueueSize] = request;
+      ++brightnessCount;
+    }
     hardware::setFeedIndicatorAllowed(controller.ledsRequested());
     oled::setEnabled(controller.screenEnabled());
     xSemaphoreGive(mutex);
@@ -127,10 +145,31 @@ bool consumeTestRequest() {
   xSemaphoreGive(mutex);
   return result;
 }
+bool consumeBrightnessRequest(controls::BrightnessRequest &request) {
+  if (!available()) return false;
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  const bool result = brightnessCount != 0;
+  if (result) {
+    request = brightnessQueue[brightnessHead];
+    brightnessHead = (brightnessHead + 1) % kBrightnessQueueSize;
+    --brightnessCount;
+  }
+  xSemaphoreGive(mutex);
+  return result;
+}
+bool showBrightnessFeedback(const controls::BrightnessRequest &request, uint8_t value) {
+  if (!available()) return false;
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  const bool allowed = !diagnosticDepth && !recoveryPending && controller.stats().powerMode == request.mode;
+  if (allowed) oled::showBrightness(request.mode == 1, value, request.mode == 1 ? 255 : 16);
+  xSemaphoreGive(mutex);
+  return allowed;
+}
 void beginDiagnostic() {
   if (!available()) return;
   xSemaphoreTake(mutex, portMAX_DELAY);
   ++diagnosticDepth;
+  brightnessCount = 0;
   testRequested = false;
   xSemaphoreGive(mutex);
 }
@@ -158,6 +197,8 @@ bool enabled() { return false; }
 OutputStats stats() { return {}; }
 void restoreAfterSuccessfulTest(bool) {}
 bool consumeTestRequest() { return false; }
+bool consumeBrightnessRequest(controls::BrightnessRequest &) { return false; }
+bool showBrightnessFeedback(const controls::BrightnessRequest &, uint8_t) { return false; }
 void beginDiagnostic() {}
 void endDiagnostic() {}
 bool consumeRecoveryRequest() { return false; }

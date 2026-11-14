@@ -1,4 +1,5 @@
 #include "live_display_policy.h"
+#include "brightness_button_policy.h"
 #include "led_power.h"
 #include "semantic_api.h"
 #include <stdio.h>
@@ -89,6 +90,49 @@ int main() {
     rollover.service(uint32_t(0xfffff828u+3000u),true,false,ops);
     CHECK(rollover.consumeRebootRequest());
     arms = writes = stops = 0;
+  }
+  {
+    using brooklyn::controls::BrightnessButtons;
+    using brooklyn::controls::BrightnessRequest;
+    using brooklyn::controls::steppedBrightness;
+    BrightnessButtons buttons; BrightnessRequest request;
+    CHECK(!buttons.update(false,false,0,0,request));
+    for(uint8_t mode=0;mode<4;++mode) {
+      const uint32_t t=100+mode*300;
+      CHECK(!buttons.update(false,false,mode,t,request));
+      CHECK(!buttons.update(true,false,mode,t+40,request));
+      CHECK(!buttons.update(true,false,mode,t+80,request));
+      CHECK(!buttons.update(false,false,mode,t+120,request));
+      const bool event=buttons.update(false,false,mode,t+160,request);
+      CHECK(event==(mode==1||mode==2));
+      if(event) CHECK(request.brighter && request.mode==mode);
+    }
+    BrightnessButtons held;
+    CHECK(!held.update(false,true,1,0,request));
+    CHECK(!held.update(false,true,1,100,request));
+    CHECK(!held.update(false,false,1,140,request));
+    CHECK(!held.update(false,false,1,180,request)); // Boot-held DIM ignored.
+    CHECK(!held.update(false,true,1,200,request));
+    CHECK(!held.update(false,true,1,240,request));
+    CHECK(!held.update(false,false,1,280,request));
+    CHECK(held.update(false,false,1,320,request) && !request.brighter);
+    CHECK(!held.update(true,false,1,400,request));
+    CHECK(!held.update(true,false,1,440,request));
+    CHECK(!held.update(true,false,2,480,request));
+    CHECK(!held.update(false,false,2,520,request));
+    CHECK(!held.update(false,false,2,560,request)); // No cross-mode release.
+    CHECK(!held.update(true,true,2,600,request));
+    CHECK(!held.update(true,true,2,640,request));
+    CHECK(!held.update(true,false,2,680,request));
+    CHECK(!held.update(true,false,2,720,request));
+    CHECK(!held.update(false,false,2,760,request));
+    CHECK(!held.update(false,false,2,800,request)); // Opposing buttons cancel.
+    CHECK(steppedBrightness(5,false,true)==6 && steppedBrightness(5,false,false)==4);
+    CHECK(steppedBrightness(1,false,false)==1 && steppedBrightness(16,false,true)==16);
+    CHECK(steppedBrightness(255,false,true)==16);
+    CHECK(steppedBrightness(0,false,true)==1 && steppedBrightness(0,false,false)==0);
+    CHECK(steppedBrightness(207,true,false)==191 && steppedBrightness(207,true,true)==223);
+    CHECK(steppedBrightness(1,true,false)==0 && steppedBrightness(255,true,true)==255);
   }
   live::Controller c;
   CHECK(!c.enable(0));
