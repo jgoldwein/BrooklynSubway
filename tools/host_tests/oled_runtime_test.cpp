@@ -9,16 +9,17 @@
 jmp_buf iterationEnd;
 FakeSerial Serial; FakeWire Wire;
 int frames=0,titles=0,ends=0,starts=0,deletes=0,delays=0;
+char lastTrainText[24]={};
 int powerCommands=0;
 int retryDelays=0, contrastCalls=0; uint8_t lastContrast=207;
 int scenario=0; bool open=false; uint8_t lastAddress=0;
 void (*worker)(void *)=nullptr;
 void FakeSerial::println(const char *text) {
- if(scenario>=17 && strcmp(text,"OLED clock: initialization and first frame complete")==0) {
+ if(scenario>=17 && scenario<=20 && strcmp(text,"OLED clock: initialization and first frame complete")==0) {
    brooklyn::oled::setEnabled(false);
    brooklyn::oled::showBrightness(scenario==18,5,scenario==18?255:16);
  }
- if (scenario>=15 && strcmp(text,"OLED clock: initialization and first frame complete")==0) brooklyn::oled::setEnabled(false);
+ if (scenario>=15 && scenario<=20 && strcmp(text,"OLED clock: initialization and first frame complete")==0) brooklyn::oled::setEnabled(false);
  if ((scenario==12 || scenario==14) && strcmp(text,"OLED clock: initialization and first frame complete")==0)
    brooklyn::oled::setContrast(5);
 }
@@ -47,6 +48,9 @@ uint8_t FakeWire::endTransmission(){OLED_CHECK(open);open=false;++ends;
 size_t FakeWire::write(uint8_t *,size_t n){OLED_CHECK(open);return scenario==4?0:n;}
 int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==8){brooklyn::oled::begin(0x07); OLED_CHECK(!worker && starts==0); puts("OLED invalid address rejected PASS"); return 0;}
+ if(scenario==21) brooklyn::oled::setTrackedTrains(132,true);
+ if(scenario==22) brooklyn::oled::setTrackedTrains(0,true);
+ if(scenario==23) {brooklyn::oled::setTrackedTrains(132,true);brooklyn::oled::setTrackedTrains(132,false);}
  const uint8_t preferred=scenario==11?0x3c:0x38;
  brooklyn::oled::begin(preferred,scenario==12||scenario==13?32:207);OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
  if(scenario==6){OLED_CHECK(worker==nullptr);puts("OLED task allocation failure isolated PASS");return 0;}
@@ -72,5 +76,8 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==20) OLED_CHECK(powerCommands==1 && frames==2 && titles==1 && delays==2);
  if(scenario==15) OLED_CHECK(powerCommands==1 && frames==1 && deletes==0);
  if(scenario==16) OLED_CHECK(powerCommands==2 && frames==2 && deletes==0);
+ if(scenario==0||scenario==23) OLED_CHECK(strcmp(lastTrainText,"Trains: --")==0);
+ if(scenario==21) OLED_CHECK(strcmp(lastTrainText,"Trains: 132")==0);
+ if(scenario==22) OLED_CHECK(strcmp(lastTrainText,"Trains: 0")==0);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

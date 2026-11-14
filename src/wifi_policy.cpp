@@ -171,11 +171,11 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
     o.put("<meta http-equiv=\"refresh\" content=\"2\">");
   }
   o.put("<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-        "<title>Brooklyn Active Subway Map</title>"
+        "<title>Brooklyn Subway</title>"
         "<style>body{font-family:sans-serif;max-width:30em;margin:1em auto;padding:0 1em}"
         "input,select,button{font-size:1em;width:100%;margin:.3em 0;padding:.4em}"
         ".s{padding:.5em;background:#eee}</style></head><body>"
-        "<h1>Brooklyn Active Subway Map</h1>"
+        "<h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p>"
         "<p class=\"s\"><b>Wi-Fi setup mode</b></p>"
         "<p>This map connects to <b>2.4 GHz</b> Wi-Fi only (5 GHz networks will not work).</p>");
 

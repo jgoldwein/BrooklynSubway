@@ -10,6 +10,7 @@ void setContrast(uint8_t contrast);
 void setEnabled(bool enabled);
 void showBrightness(bool oled, uint8_t value, uint8_t maximum);
 void clearBrightnessFeedback();
+void setTrackedTrains(uint32_t count, bool available);
 enum class State : uint8_t { NotStarted, Starting, BusLow, NoAck, InitFailed, Ready, TransferFailed, TaskFailed, InvalidAddress };
 struct Status { State state; uint8_t requestedAddress, activeAddress, error; };
 Status status();

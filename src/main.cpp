@@ -133,6 +133,10 @@ void publishTelemetrySnapshot(uint32_t nowMs) {
 }
 
 void updateLogicalDisplay(uint32_t nowMs) {
+  brooklyn::oled::setTrackedTrains(operationalDisplay.frame().resolvedTrains,
+      systemHealthy && operationalDisplay.hasFrame() &&
+      (operationalDisplay.state() == brooklyn::display::State::Fresh ||
+       operationalDisplay.state() == brooklyn::display::State::DegradedPartial));
   bool changed = false;
   const uint8_t brightness = networkService.brightness();
   const uint32_t unknownTiming = networkService.unknownTiming();
