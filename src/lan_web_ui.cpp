@@ -28,7 +28,7 @@ extern const uint8_t rootca_crt_bundle_start[]
 namespace brooklyn::web {
 namespace {
 
-constexpr size_t kPageCapacity = 16384; // Room for the OLED form and escaped status text.
+constexpr size_t kPageCapacity = kStatusPageCapacity;
 constexpr size_t kJsonCapacity = 6144; // Bounded blue-light diagnostic text.
 constexpr size_t kNetworkDiagnosticsJsonCapacity = 1536;
 #ifndef BROOKLYN_RELEASE_CHECK_INTERVAL_MS

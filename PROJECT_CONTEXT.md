@@ -227,6 +227,13 @@ Use plain labels and short explanations, with key status first and advanced
 diagnostics behind more details. A broader visual/navigation redesign was
 discussed as a separate future change, not implemented in this controls release.
 
+0.2.35 fixes home-page rendering failure: full signed-in production controls and
+live route/station diagnostics exceeded the old 16 KiB static gPage buffer.
+Use web::kStatusPageCapacity (24 KiB) as the shared firmware/test capacity.
+Regression includes all 18 routes and eight station samples (16,956 bytes), plus
+long escaped fields (17,797 bytes). The separate /update page remains available
+for installing this fix while the old home page fails. No display-rule changes.
+
 ## USB / programming
 
 - Native ESP32-S3 USB is wired to USB1: GPIO19 D-, GPIO20 D+.
