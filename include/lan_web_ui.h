@@ -73,6 +73,7 @@ class LanWebUi {
   bool authorizeRequest(bool requireCsrf);
   bool requestSession(char *csrfToken, size_t capacity);
   void sendLoginRedirect();
+  void sendSignInRequired();
   void sendLoginFailure(admin::LoginResult::Code code);
   void updateAdminStatus(StatusSnapshot &status);
 
