@@ -173,6 +173,9 @@ int main() {
   brooklyn::hardware::setFeedIndicator(false); CHECK(feedDuty == 0);
   brooklyn::hardware::setFeedIndicator(true); CHECK(feedDuty == 8 && feedSetups == 1);
   CHECK(readyBeeps == 1); // No repeats for unchanged state or OFF/ON recovery.
+  brooklyn::hardware::setFeedIndicatorAllowed(false); CHECK(feedDuty == 0);
+  brooklyn::hardware::setFeedIndicator(true); CHECK(feedDuty == 0);
+  brooklyn::hardware::setFeedIndicatorAllowed(true); CHECK(feedDuty == 8 && readyBeeps == 1);
   CHECK(brooklyn::hardware::beginSafe()); CHECK(feedDuty == 0 && feedDetaches == 1);
   failFeedSetup = true;
   brooklyn::hardware::setFeedIndicator(true);

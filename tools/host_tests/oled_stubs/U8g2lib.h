@@ -12,7 +12,7 @@
 struct u8x8_t { uint8_t (*byte_cb)(u8x8_t *, uint8_t, uint8_t, void *)=nullptr; uint8_t address=0; };
 inline uint8_t u8x8_GetI2CAddress(u8x8_t *s) { return s->address; }
 const uint8_t u8g2_font_6x12_tf[]={0}, u8g2_font_8x13_tf[]={0};
-extern int frames, titles, contrastCalls;
+extern int frames, titles, contrastCalls, powerCommands;
 extern uint8_t lastContrast;
 struct U8G2_SSD1306_128X64_NONAME_F_HW_I2C {
  u8x8_t d;
@@ -24,6 +24,7 @@ struct U8G2_SSD1306_128X64_NONAME_F_HW_I2C {
  void sendBuffer() { ++frames; for(int i=0;i<16;++i)transfer(); }
  void setI2CAddress(uint8_t a) {d.address=a;}
  void setBusClock(uint32_t) {}
+ void setPowerSave(uint8_t value) { OLED_CHECK(value<=1); ++powerCommands; transfer(); }
  void setContrast(uint8_t value) { ++contrastCalls; lastContrast=value; transfer(); }
  u8x8_t *getU8x8(){return &d;}
  void begin() { d.byte_cb(&d,0,0,nullptr); for(int i=0;i<16;++i)transfer(); }

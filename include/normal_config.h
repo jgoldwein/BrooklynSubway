@@ -5,6 +5,7 @@
 
 #include "semantic_api.h"
 #include "unknown_timing.h"
+#include "train_colors.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -12,6 +13,7 @@
 namespace brooklyn::config {
 
 constexpr uint32_t kDefaultUnknownTiming = (60u << 10) | (2u << 8) | 255u;
+constexpr const char *kTrainColorsKey = "train_colors";
 constexpr const char *kUnknownTimingKey = "unknown_timing";
 constexpr uint8_t kDefaultOledContrast = 207; // U8g2 SSD1306 initialization default
 constexpr const char *kOledContrastKey = "oled_contrast";
@@ -47,6 +49,8 @@ struct Store {
   bool (*saveOledContrast)(void *context, uint32_t value);
   bool (*loadUnknownTiming)(void *context, uint32_t &value);
   bool (*saveUnknownTiming)(void *context, uint32_t value);
+  bool (*loadTrainColors)(void *context, semantic::TrainColors &value);
+  bool (*saveTrainColors)(void *context, const semantic::TrainColors &value);
 };
 
 class DeviceConfiguration {
@@ -54,6 +58,8 @@ class DeviceConfiguration {
   explicit DeviceConfiguration(Store store = {}) : store_(store) {}
 
   bool load();
+  bool setTrainColors(const semantic::TrainColors &colors);
+  const semantic::TrainColors &trainColors() const { return trainColors_; }
   bool setBrightness(uint8_t brightness);
   bool setUnknownTiming(uint32_t setting);
   uint32_t unknownTiming() const { return unknownTiming_; }
@@ -74,6 +80,7 @@ class DeviceConfiguration {
 
  private:
   Store store_;
+  semantic::TrainColors trainColors_ = semantic::kDefaultTrainColors;
   uint32_t unknownTiming_ = kDefaultUnknownTiming;
   uint8_t oledContrast_ = kDefaultOledContrast;
   uint8_t oledAddress_ = kDefaultOledAddress;
@@ -85,6 +92,7 @@ class DeviceConfiguration {
   uint32_t dnsOverrideIpv4_ = 0;
 };
 
+bool parseTrainColor(const char *text, led::Rgb &color);
 bool parseDnsIpv4(const char *text, uint32_t &ipv4);
 bool validOledAddress(uint32_t address);
 bool parseOledAddress(const char *text, uint8_t &address);

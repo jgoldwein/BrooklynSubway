@@ -12,6 +12,7 @@ namespace {
 U8G2_SSD1306_128X64_NONAME_F_HW_I2C screen(U8G2_R0, U8X8_PIN_NONE);
 TaskHandle_t clockTask = nullptr;
 uint8_t address = 0, requestedAddress = 0, transferError = 0;
+uint32_t requestedEnabled = 1;
 uint32_t requestedContrast = 207; // Accessed atomically; only the OLED worker touches I2C.
 uint32_t statusWord = 0; // Single atomic packed snapshot; no bus access by readers.
 void setStatus(State state, uint8_t error = 0) {
@@ -108,6 +109,7 @@ void run(void *) {
   setStatus(State::Ready);
   Serial.println("OLED clock: initialization and first frame complete");
   bool synchronized = false;
+  bool awake = true;
   for (;;) {
     char text[24]{};
     const bool valid = formatClock(time(nullptr), text, sizeof(text));
@@ -118,7 +120,13 @@ void run(void *) {
       screen.setContrast(desired); appliedContrast = desired;
       Serial.printf("OLED clock: contrast %u/255\n", desired);
     }
-    if (!transportFailed) draw(text);
+    const bool desiredEnabled = __atomic_load_n(&requestedEnabled, __ATOMIC_RELAXED) != 0;
+    if (!transportFailed && desiredEnabled != awake) {
+      screen.setPowerSave(desiredEnabled ? 0 : 1);
+      awake = desiredEnabled;
+      Serial.println(awake ? "OLED clock: POWER display ON" : "OLED clock: POWER display OFF");
+    }
+    if (!transportFailed && awake) draw(text);
     if (transportFailed) {
       setStatus(State::TransferFailed, transferError);
       Serial.println("OLED clock: transfer failed; OLED stopped, map continues");
@@ -128,6 +136,7 @@ void run(void *) {
   }
 }
 }
+void setEnabled(bool enabled) { __atomic_store_n(&requestedEnabled, uint32_t(enabled), __ATOMIC_RELAXED); }
 void setContrast(uint8_t contrast) { __atomic_store_n(&requestedContrast, uint32_t(contrast), __ATOMIC_RELAXED); }
 void begin(uint8_t configuredAddress, uint8_t contrast) {
   if (clockTask) return;
@@ -152,5 +161,5 @@ Status status() {
 }
 }
 #else
-namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} Status status() { return {}; } }
+namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} Status status() { return {}; } }
 #endif

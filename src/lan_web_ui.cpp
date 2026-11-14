@@ -219,6 +219,7 @@ void LanWebUi::registerRoutes() {
   server_.on("/config/brightness", HTTP_POST,
              [this]() { handleBrightness(); });
   server_.on("/config/oled", HTTP_POST, [this]() { handleOledAddress(); });
+  server_.on("/config/colors", HTTP_POST, [this]() { handleTrainColors(); });
   server_.on("/config/unknown-timing", HTTP_POST, [this]() { handleUnknownTiming(); });
   server_.on("/config/oled-dimmer", HTTP_POST, [this]() { handleOledDimmer(); });
   server_.on("/config/blue-hold", HTTP_POST, [this]() { handleBlueHold(); });
@@ -421,6 +422,30 @@ void LanWebUi::handleOledAddress() {
   if (!configuration_.setOledAddress(address)) { server_.send(500, "text/plain", "Could not save OLED address"); return; }
   Serial.printf("OLED clock: saved address 0x%02X; reboot to apply\n", address);
   server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "OLED address saved; reboot to apply");
+}
+
+void LanWebUi::handleTrainColors() {
+  if (!authorizeRequest(true)) return;
+  uint8_t seen=0;
+  const char *names[]={"csrf","approaching","stopped","leaving","uncertain"};
+  for (int i=0;i<server_.args();++i) {
+    int field=-1;
+    for (unsigned j=0;j<5;++j) if (server_.argName(i)==names[j]) field=j;
+    if (field<0 || (seen & (1u<<field))) { server_.send(400,"text/plain","Invalid color settings"); return; }
+    seen|=1u<<field;
+  }
+  semantic::TrainColors colors{};
+  led::Rgb *values[]={&colors.approaching,&colors.stopped,&colors.leaving,&colors.uncertain};
+  if (seen!=31) { server_.send(400,"text/plain","Choose all four colors"); return; }
+  for (unsigned j=0;j<4;++j) {
+    const String text=server_.arg(names[j+1]);
+    if (!hasNoEmbeddedNull(text) || !config::parseTrainColor(text.c_str(),*values[j])) {
+      server_.send(400,"text/plain","Choose a valid color for each train state"); return;
+    }
+  }
+  if (!configuration_.setTrainColors(colors)) { server_.send(500,"text/plain","Could not save colors"); return; }
+  Serial.println("Train state colors saved; live display updates without restarting visit timers");
+  server_.sendHeader("Location","/"); server_.send(303,"text/plain","Train colors saved");
 }
 
 void LanWebUi::handleUnknownTiming() {
@@ -1800,6 +1825,7 @@ void LanWebUi::sendLoginFailure(admin::LoginResult::Code code) {
 }
 
 void LanWebUi::updateAdminStatus(StatusSnapshot &status) {
+  status.trainColors=configuration_.trainColors();
   status.unknownTiming = configuration_.unknownTiming();
   status.oledContrast = configuration_.oledContrast();
   status.blueHoldSeconds = configuration_.blueHoldSeconds();

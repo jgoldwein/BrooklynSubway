@@ -10,6 +10,7 @@ struct Snapshot {
   StatusIndicators status{};
   uint32_t frameAtMs = 0;
   uint32_t routeMask = semantic::kAllRoutesVisibleMask;
+  semantic::TrainColors colors=semantic::kDefaultTrainColors;
   uint32_t unknownTiming = 511;
   uint8_t brightness = semantic::kDefaultRenderBrightness;
   bool hasFrame = false;
@@ -31,6 +32,7 @@ struct OutputStats {
   uint16_t blinkingLeds = 0;
   bool powerCanResume = false;
   bool automaticStartPending = false;
+  uint8_t powerMode = 0;
 };
 
 // Called under the runtime mutex. Hardware operations have one owner at a time.
@@ -50,6 +52,9 @@ class Controller {
   OutputStats stats() const;
   void requestAutomaticStart() { automaticStartPending_ = true; powerCanResume_ = true; }
   void allowPowerResume() { automaticStartPending_ = false; powerCanResume_ = true; }
+  bool screenEnabled() const { return powerMode_ < 2; }
+  bool ledsRequested() const { return (powerMode_ & 1) == 0 && !rebootPending_; }
+  bool consumeRebootRequest() { const bool r = rebootRequested_; rebootRequested_ = false; return r; }
  private:
   bool safe(uint32_t nowMs) const;
   bool powerPress(uint32_t nowMs, bool pressed);
@@ -62,8 +67,11 @@ class Controller {
   bool automaticStartPending_ = false;
   bool hasSnapshot_ = false;
   bool everHadFrame_ = false;
-  bool suppressPowerUntilRelease_ = false;
   bool physicalPowerControl_ = false;
+  uint8_t powerMode_ = 0;
+  bool rebootRequested_ = false, rebootPending_ = false;
+  bool buttonArmed_ = false, longHandled_ = false;
+  uint32_t pressedAtMs_ = 0;
   bool buttonInitialized_ = false;
   bool buttonReading_ = false;
   bool buttonStable_ = false;

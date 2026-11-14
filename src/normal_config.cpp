@@ -8,6 +8,7 @@
 namespace brooklyn::config {
 
 bool DeviceConfiguration::load() {
+  trainColors_ = semantic::kDefaultTrainColors;
   unknownTiming_ = kDefaultUnknownTiming;
   oledContrast_ = kDefaultOledContrast;
   blueHoldSeconds_ = kDefaultBlueHoldSeconds;
@@ -19,6 +20,7 @@ bool DeviceConfiguration::load() {
   dnsOverrideIpv4_ = 0;
   bool loaded = false;
 
+  if (store_.loadTrainColors && store_.loadTrainColors(store_.context, trainColors_)) loaded = true;
   uint32_t stored = 0;
   if (store_.loadUnknownTiming && store_.loadUnknownTiming(store_.context, stored) && semantic::validUnknownTiming(stored)) {
     unknownTiming_ = stored; loaded = true;
@@ -75,6 +77,24 @@ bool parseOledAddress(const char *text, uint8_t &address) {
   }
   if (text[4] || !validOledAddress(value)) return false;
   address = static_cast<uint8_t>(value); return true;
+}
+
+bool DeviceConfiguration::setTrainColors(const semantic::TrainColors &colors) {
+  if (!store_.saveTrainColors || !store_.saveTrainColors(store_.context, colors)) return false;
+  trainColors_ = colors; return true;
+}
+bool parseTrainColor(const char *text, led::Rgb &color) {
+  if (!text || text[0]!='#') return false;
+  uint32_t value=0;
+  for (unsigned i=1;i<=6;++i) {
+    const char c=text[i];
+    const int digit=c>='0' && c<='9'?c-'0':c>='a' && c<='f'?c-'a'+10:c>='A' && c<='F'?c-'A'+10:-1;
+    if (digit<0) return false;
+    value=(value<<4)|static_cast<unsigned>(digit);
+  }
+  if (text[7]) return false;
+  color={static_cast<uint8_t>(value>>16),static_cast<uint8_t>(value>>8),static_cast<uint8_t>(value)};
+  return true;
 }
 
 bool DeviceConfiguration::setUnknownTiming(uint32_t setting) {

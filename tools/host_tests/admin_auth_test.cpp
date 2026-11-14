@@ -314,6 +314,7 @@ void testCookieAndEndpointPolicy() {
   CHECK(!brooklyn::admin::extractNamedCookie("x=1", "", token, sizeof(token)));
 
   const char *const mutations[] = {
+      "/config/colors",
       "/config/unknown-timing",
       "/config/oled-dimmer", "/config/blue-hold",
       "/config/brightness", "/config/routes", "/config/dns", "/wifi/setup",

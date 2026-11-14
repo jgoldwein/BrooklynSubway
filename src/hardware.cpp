@@ -168,7 +168,7 @@ void indicateStartup(bool checksPassed) {
 #endif
 }
 
-void setFeedIndicator(bool freshComplete) {
+void applyFeedIndicator(bool freshComplete) {
 #if defined(BROOKLYN_TARGET_PCB)
   // Channel 4 uses timer 2, separate from buzzer channel 7 / timer 3.
   constexpr uint8_t kIndicatorChannel = 4;
@@ -196,6 +196,27 @@ void setFeedIndicator(bool freshComplete) {
 #else
   (void)freshComplete;
 #endif
+}
+
+namespace {
+uint32_t indicatorLock = 0;
+bool indicatorRequested = false, indicatorAllowed = true;
+void lockIndicator() {
+  while (__atomic_exchange_n(&indicatorLock, 1u, __ATOMIC_ACQUIRE)) delay(1);
+}
+void unlockIndicator() { __atomic_store_n(&indicatorLock, 0u, __ATOMIC_RELEASE); }
+}
+void setFeedIndicator(bool freshComplete) {
+  lockIndicator();
+  indicatorRequested = freshComplete;
+  applyFeedIndicator(indicatorRequested && indicatorAllowed);
+  unlockIndicator();
+}
+void setFeedIndicatorAllowed(bool allowed) {
+  lockIndicator();
+  indicatorAllowed = allowed;
+  applyFeedIndicator(indicatorRequested && indicatorAllowed);
+  unlockIndicator();
 }
 
 bool beginSafe() {

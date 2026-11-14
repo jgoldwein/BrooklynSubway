@@ -39,67 +39,55 @@ live::Snapshot snapshot(uint32_t at = 0) {
 int main() {
   {
     live::Controller automatic(true);
-    const int armsBefore = arms;
     automatic.service(0, false, false, ops);
-    CHECK(!automatic.enabled() && arms == armsBefore);
-    live::Snapshot waiting{};
-    waiting.status.systemHealthy = true;
-    automatic.publish(waiting);
-    automatic.service(20, false, false, ops);
-    CHECK(!automatic.enabled() && arms == armsBefore);
+    CHECK(!automatic.enabled());
     automatic.publish(snapshot());
-    automatic.service(40, false, false, ops);
-    CHECK(automatic.enabled() && arms == armsBefore + 1);
-    automatic.service(60, true, false, ops);
-    automatic.service(100, true, false, ops);
-    CHECK(!automatic.enabled() && automatic.stats().powerCanResume);
-    automatic.service(120, false, false, ops);
-    automatic.service(160, false, false, ops);
-    automatic.service(180, true, false, ops);
-    automatic.service(220, true, false, ops);
-    CHECK(automatic.enabled());
-    automatic.disable(ops);
-    automatic.service(240, false, false, ops);
-    CHECK(!automatic.enabled());  // Maintenance disable never auto-restarts.
-    automatic.publish(snapshot(260));
-    automatic.service(280, false, false, ops);
-    CHECK(!automatic.enabled() && automatic.stats().powerCanResume);
-    automatic.service(300, true, false, ops);
-    automatic.service(340, true, false, ops);
-    CHECK(automatic.enabled()); // Fresh data permits a physical POWER retry only.
-    automatic.disable(ops);
+    automatic.service(20, false, false, ops);
+    CHECK(automatic.enabled() && automatic.screenEnabled());
+    uint32_t t = 100;
+    for (uint8_t mode = 1; mode <= 4; ++mode) {
+      automatic.service(t, true, false, ops);
+      automatic.service(t+40, true, false, ops);
+      CHECK(automatic.stats().powerMode == (mode-1)%4); // No action on press.
+      automatic.service(t+80, false, false, ops);
+      automatic.service(t+120, false, false, ops);
+      CHECK(automatic.stats().powerMode == mode%4);
+      CHECK(automatic.enabled() == ((mode%2)==0));
+      CHECK(automatic.screenEnabled() == ((mode%4)<2));
+      t += 200;
+    }
+    automatic.service(t, true, false, ops);
+    automatic.service(t+40, true, false, ops);
+    automatic.service(t+3039, true, false, ops);
+    CHECK(!automatic.consumeRebootRequest());
+    automatic.service(t+3040, true, false, ops);
+    CHECK(automatic.consumeRebootRequest() && !automatic.enabled());
+    automatic.service(t+6000, true, false, ops);
+    CHECK(!automatic.consumeRebootRequest());
+    automatic.service(t+6040, false, false, ops);
+    automatic.service(t+6080, false, false, ops);
+    CHECK(automatic.stats().powerMode==0 && !automatic.enabled());
     live::Controller held(true);
-    held.service(0, true, false, ops);
     held.publish(snapshot());
-    held.service(40, true, false, ops);
-    CHECK(!held.enabled());
-    held.service(60, false, false, ops);
-    held.service(100, false, false, ops);
-    held.service(120, true, false, ops);
-    held.service(160, true, false, ops);
-    CHECK(held.enabled());
+    held.service(0, true, false, ops);
+    held.service(4000, true, false, ops);
+    CHECK(!held.consumeRebootRequest() && !held.enabled());
+    held.service(4040, false, false, ops);
+    held.service(4080, false, false, ops);
+    CHECK(held.stats().powerMode==0 && held.enabled());
     held.disable(ops);
-    held.allowPowerResume();
-    held.service(200, false, false, ops);
-    held.service(240, false, false, ops);
-    CHECK(!held.enabled() && held.stats().powerCanResume);
-    held.service(260, true, false, ops);
-    held.service(300, true, false, ops);
-    CHECK(held.enabled());
-    held.disable(ops);
-    arms = writes = stops = 0;
-    live::Controller latePress(true);
-    latePress.service(0, false, false, ops);
-    latePress.publish(snapshot());
-    latePress.service(20, true, false, ops);
-    latePress.service(60, true, false, ops);
-    CHECK(!latePress.enabled()); // cancelling auto-start cannot also toggle ON
-    latePress.service(80, false, false, ops);
-    latePress.service(120, false, false, ops);
-    latePress.service(140, true, false, ops);
-    latePress.service(180, true, false, ops);
-    CHECK(latePress.enabled());
-    latePress.disable(ops);
+    live::Controller bounce(true);
+    bounce.service(0,false,false,ops);
+    bounce.service(100,true,false,ops);
+    bounce.service(110,false,false,ops);
+    bounce.service(150,false,false,ops);
+    CHECK(bounce.stats().powerMode==0);
+    live::Controller rollover;
+    rollover.service(0xfffff700u,false,false,ops);
+    rollover.service(0xfffff800u,true,false,ops);
+    rollover.service(0xfffff828u,true,false,ops);
+    rollover.service(uint32_t(0xfffff828u+3000u),true,false,ops);
+    CHECK(rollover.consumeRebootRequest());
     arms = writes = stops = 0;
   }
   live::Controller c;
@@ -118,18 +106,6 @@ int main() {
   c.service(499, false, false, ops); CHECK(writes == 2);
   c.service(520, false, false, ops); CHECK(writes == 3 && lit(0));
   c.service(1000, false, false, ops); CHECK(writes == 4 && lit(0));
-  c.service(1020, true, false, ops);
-  CHECK(c.enabled());  // Debounce before toggling; a hold must not repeat.
-  c.service(1050, true, false, ops);
-  CHECK(!c.enabled() && stops == 1);
-  CHECK(c.stats().powerCanResume);
-  c.service(1100, true, false, ops); CHECK(arms == 1 && !c.enabled());
-  c.service(1120, false, false, ops);
-  c.service(1150, false, false, ops);
-  c.service(1170, true, false, ops);
-  c.service(1200, true, false, ops);
-  CHECK(c.enabled() && arms == 2 && !c.stats().powerCanResume);
-  c.service(1300, true, false, ops); CHECK(c.enabled() && arms == 2);
   CHECK(c.stats().framesWritten == static_cast<uint32_t>(writes));
   CHECK(c.stats().mapChanges == 1 && c.stats().blinkingLeds == 0);
   c.publish(s); CHECK(c.stats().mapChanges == 1);
@@ -167,28 +143,5 @@ int main() {
   CHECK(c.enabled());
   s.status.displayState = display::State::NoData; c.publish(s);
   c.service(20, false, false, ops); CHECK(!c.enabled());
-  {
-    live::Controller boot;
-    boot.publish(snapshot());
-    boot.service(0, true, false, ops);
-    boot.service(100, true, false, ops);
-    CHECK(!boot.enabled());
-    boot.service(120, false, false, ops);
-    boot.service(160, false, false, ops);
-    boot.service(180, true, false, ops);
-    boot.service(220, true, false, ops);
-    CHECK(!boot.enabled());  // POWER cannot bypass first web enable after boot.
-    CHECK(boot.enable(240));
-    boot.service(240, false, false, ops);
-    boot.service(280, false, false, ops);
-    boot.service(300, true, false, ops);
-    boot.service(310, false, false, ops);
-    boot.service(350, false, false, ops);
-    CHECK(boot.enabled());  // Short bounce does not toggle.
-    boot.disable(ops);
-    boot.service(400, true, false, ops);
-    boot.service(440, true, false, ops);
-    CHECK(!boot.enabled() && !boot.stats().powerCanResume);
-  }
-  puts("Live display: safe startup, automatic/manual enable, continuous color, POWER toggle, test restoration, maintenance/fault guards, stale timeout, brightness/current caps and rollover PASS");
+  puts("Live display: safe startup, automatic/manual enable, continuous color, four POWER modes, release debounce, 3-second reboot once, boot-held suppression, test restoration, maintenance/fault guards, stale timeout, brightness/current caps and rollover PASS");
 }

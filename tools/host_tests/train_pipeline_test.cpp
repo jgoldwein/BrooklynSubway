@@ -461,10 +461,10 @@ void testBlueHoldAcrossPolls() {
   CHECK(timed.frame().blueSecondsRemaining[index] == 20);
   sem::RenderConfig render{}; render.animateTraffic = true; render.brightness = 255;
   render.nowUnix = kNow + 19; sem::RgbFrame rgb{};
-  sem::renderTrainFrame(timed.frame(), rgb, render); CHECK(rgb.pixels[index].blue == 255);
+  sem::renderTrainFrame(timed.frame(), rgb, render); CHECK(rgb.pixels[index].red == 255);
   render.nowUnix = kNow + 20;
   sem::renderTrainFrame(timed.frame(), rgb, render);
-  CHECK(rgb.pixels[index].red == 128 && rgb.pixels[index].blue == 0);
+  CHECK(rgb.pixels[index].red == 0 && rgb.pixels[index].blue == 128);
   report(kNow + 10, "233N"); CHECK(timed.frame().blueSecondsRemaining[index] == 10);
   report(kNow + 20, "233N"); CHECK(sem::isUncertainOnly(timed.frame(), index));
   report(kNow + 30, "233N"); CHECK(sem::isUncertainOnly(timed.frame(), index));
@@ -486,7 +486,7 @@ void testLastReportedLocations() {
     if (credible) f.add(predictionEntity("LOCATION_TRIP",stop,now));
     p.processFeed(f.b.d,f.b.n); p.finishCycle();
   };
-  sem::RenderConfig c{}; c.animateTraffic=true; c.unknownTimingMode=sem::UnknownTimingMode::LastReported;
+  sem::RenderConfig c{}; c.animateTraffic=true; c.unknownTimingMode=sem::UnknownTimingMode::LastReported; c.colors.uncertain={255,255,255};
   c.brightness=5; sem::RgbFrame rgb{};
   report(kNow,"233N"); uint16_t old=0; while (!p.frame().occupancy[old]) ++old;
   CHECK(p.frame().lastReportedFadeStartUnix[old]==kNow);
@@ -503,7 +503,7 @@ void testLastReportedLocations() {
   CHECK(next!=old && p.frame().lastReportedFadeStartUnix[old]==0);
   CHECK(p.frame().lastReportedFadeStartUnix[next]==kNow+90);
   c.lastReportedFadeSeconds=60; c.nowUnix=kNow+89; sem::renderTrainFrame(p.frame(),rgb,c);
-  CHECK(rgb.pixels[next].red==0 && rgb.pixels[next].blue==5);
+  CHECK(rgb.pixels[next].red==5 && rgb.pixels[next].blue==0);
   c.nowUnix=kNow+90; sem::renderTrainFrame(p.frame(),rgb,c);
   CHECK(rgb.pixels[next].red==2 && rgb.pixels[next].green==2);
   report(kNow+100,"232N",true); CHECK(p.frame().lastReportedFadeStartUnix[next]==kNow+90);

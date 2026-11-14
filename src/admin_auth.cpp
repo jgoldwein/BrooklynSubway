@@ -452,7 +452,8 @@ bool isMutationEndpoint(const char *method, const char *path) {
   if (method == nullptr || path == nullptr || strcmp(method, "POST") != 0) {
     return false;
   }
-  return strcmp(path, "/config/brightness") == 0 ||
+  return strcmp(path, "/config/colors") == 0 ||
+         strcmp(path, "/config/brightness") == 0 ||
          strcmp(path, "/config/poll") == 0 ||
          strcmp(path, "/config/oled") == 0 ||
          strcmp(path, "/config/oled-dimmer") == 0 ||
