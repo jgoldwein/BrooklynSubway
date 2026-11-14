@@ -14,6 +14,7 @@ uint32_t frequency = 0, duty = 0;
 bool buzzerOutput = false;
 bool cueMode = false;
 bool feedReadyMode = false;
+bool brightnessMode = false;
 int readyBeeps = 0;
 int beepStarts = 0, cueMs = 0, cueOnMs = 0, abortAtMs = -1;
 bool recoveryRequested = false;
@@ -53,7 +54,8 @@ uint32_t ledcSetup(uint8_t channel, uint32_t hz, uint8_t resolution) {
     ++feedSetups; return failFeedSetup ? 0 : hz;
   }
   CHECK(channel == 7 && resolution == 8 && duty == 0);
-  if (feedReadyMode) { CHECK(hz == 2000 && feedDuty == 8); }
+  if (brightnessMode) { CHECK(hz >= 800 && hz <= 3200); }
+  else if (feedReadyMode) { CHECK(hz == 2000 && feedDuty == 8); }
   else if (cueMode) { CHECK(setupCalls == 0 && hz == 4000); }
   else { CHECK(setupCalls < 6 && hz == expectedHz[setupCalls]); }
   const bool fail = setupCalls++ == failSetupAt;
@@ -80,6 +82,7 @@ void ledcDetachPin(uint8_t pin) {
 }
 void delay(uint32_t ms) {
   CHECK(enable == LOW);
+  if (brightnessMode) { CHECK(ms == 45 && duty == 128); return; }
   if (feedReadyMode) { CHECK(ms == 100 && duty == 128 && feedDuty == 8); ++readyBeeps; return; }
   if (cueMode) {
     CHECK(ms <= 20 && indicator == LOW);
@@ -102,6 +105,7 @@ void delay(uint32_t ms) {
   }
 }
 void reset(bool muted, int failAt = -1) {
+  brightnessMode = false;
   cueMode = false;
   feedReadyMode = false;
   readyBeeps = 0;
@@ -197,5 +201,15 @@ int main() {
   CHECK(readyBeeps == 1 && feedDuty == 8 && duty == 0); // New boot rearms the cue.
   puts("Feed-ready cue: U23 ON before 100 ms / 2000 Hz beep, once per boot, mute and failure cleanup PASS");
   puts("U23 feed indicator: GPIO14, dim duty 8/255, separate PWM timer, OFF/stale path, reboot and allocation failure cleanup PASS");
+  reset(false); brightnessMode = true;
+  brooklyn::hardware::signalBrightness(0,255);
+  CHECK(frequency==800 && duty==0 && buzzer==LOW && detachCalls==1);
+  brooklyn::hardware::signalBrightness(16,16);
+  CHECK(frequency==3200 && duty==0 && detachCalls==2);
+  brooklyn::hardware::signalBrightness(255,16); CHECK(frequency==3200 && duty==0);
+  reset(false,0); brightnessMode = true;
+  brooklyn::hardware::signalBrightness(5,16);
+  CHECK(attachCalls==0 && duty==0 && buzzer==LOW);
+  puts("Brightness cue: scaled pitch, bounded 45 ms tone, PWM cleanup and setup failure PASS");
   puts("Startup: U23 pulses, four rising notes plus descending pair, 2265 ms, 50%-duty PWM, DIM mute, failed-check silence, PWM failure cleanup, addressable outputs disabled PASS");
 }

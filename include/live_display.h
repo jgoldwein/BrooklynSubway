@@ -1,5 +1,6 @@
 #pragma once
 #include "live_display_policy.h"
+#include "brightness_button_policy.h"
 
 namespace brooklyn::display::live {
 bool begin();
@@ -10,6 +11,8 @@ bool enabled();
 OutputStats stats();
 void restoreAfterSuccessfulTest(bool start);
 bool consumeTestRequest();
+bool consumeBrightnessRequest(controls::BrightnessRequest &request);
+bool showBrightnessFeedback(const controls::BrightnessRequest &request, uint8_t value);
 void beginDiagnostic();
 void endDiagnostic();
 struct DiagnosticGuard {

@@ -219,6 +219,25 @@ void setFeedIndicatorAllowed(bool allowed) {
   unlockIndicator();
 }
 
+void signalBrightness(uint8_t value, uint8_t maximum) {
+#if defined(BROOKLYN_TARGET_PCB)
+  // Main-loop caller; serialize with the feed-ready cue on the same PWM timer.
+  lockIndicator();
+  constexpr uint8_t channel = 7;
+  const uint8_t bounded = value < maximum ? value : maximum;
+  const uint16_t frequency = 800 + (maximum ? uint32_t(bounded) * 2400 / maximum : 0);
+  if (ledcSetup(channel, frequency, 8) != 0) {
+    ledcWrite(channel, 0); ledcAttachPin(pins::BUZZER, channel);
+    ledcWrite(channel, 128); delay(45); ledcWrite(channel, 0);
+    ledcDetachPin(pins::BUZZER);
+  }
+  digitalWrite(pins::BUZZER, LOW);
+  unlockIndicator();
+#else
+  (void)value; (void)maximum;
+#endif
+}
+
 bool beginSafe() {
 #if defined(BROOKLYN_TARGET_PCB)
   digitalWrite(pins::LED_ENABLE, LOW);

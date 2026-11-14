@@ -14,6 +14,10 @@ int retryDelays=0, contrastCalls=0; uint8_t lastContrast=207;
 int scenario=0; bool open=false; uint8_t lastAddress=0;
 void (*worker)(void *)=nullptr;
 void FakeSerial::println(const char *text) {
+ if(scenario>=17 && strcmp(text,"OLED clock: initialization and first frame complete")==0) {
+   brooklyn::oled::setEnabled(false);
+   brooklyn::oled::showBrightness(scenario==18,5,scenario==18?255:16);
+ }
  if (scenario>=15 && strcmp(text,"OLED clock: initialization and first frame complete")==0) brooklyn::oled::setEnabled(false);
  if ((scenario==12 || scenario==14) && strcmp(text,"OLED clock: initialization and first frame complete")==0)
    brooklyn::oled::setContrast(5);
@@ -25,7 +29,7 @@ int xTaskCreatePinnedToCore(void (*f)(void *),const char *,uint32_t stack,void *
 }
 void delay(uint32_t ms){OLED_CHECK(ms==100);++retryDelays;}
 void vTaskDelete(void *) {++deletes;}
-void vTaskDelay(uint32_t ms) { OLED_CHECK(ms==1000); ++delays; if(scenario==16 && delays==1) { brooklyn::oled::setEnabled(true); return; } longjmp(iterationEnd,1); }
+void vTaskDelay(uint32_t ms) { OLED_CHECK(ms==1000); ++delays; if(scenario==19 && delays<5) return; if(scenario==20 && delays==1) { brooklyn::oled::clearBrightnessFeedback(); return; } if(scenario==16 && delays==1) { brooklyn::oled::setEnabled(true); return; } longjmp(iterationEnd,1); }
 void FakeWire::setTimeOut(uint16_t ms){OLED_CHECK(ms==50);}
 void FakeWire::setClock(uint32_t hz){OLED_CHECK(hz==100000);}
 void FakeWire::beginTransmission(uint8_t a){OLED_CHECK(!open); OLED_CHECK(a==0x38||a==0x3c||a==0x3d);lastAddress=a;open=true;++starts;}
@@ -63,6 +67,9 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==12){OLED_CHECK(contrastCalls==2 && lastContrast==5 && frames==2 && brooklyn::oled::status().state==brooklyn::oled::State::Ready);}
  if(scenario==13){OLED_CHECK(frames==0 && deletes==1 && brooklyn::oled::status().state==brooklyn::oled::State::InitFailed);}
  if(scenario==14){OLED_CHECK(frames==1 && deletes==1 && brooklyn::oled::status().state==brooklyn::oled::State::TransferFailed);}
+ if(scenario==17||scenario==18) OLED_CHECK(powerCommands==0 && frames==2 && titles==1);
+ if(scenario==19) OLED_CHECK(powerCommands==1 && frames==4 && titles==1 && delays==5);
+ if(scenario==20) OLED_CHECK(powerCommands==1 && frames==2 && titles==1 && delays==2);
  if(scenario==15) OLED_CHECK(powerCommands==1 && frames==1 && deletes==0);
  if(scenario==16) OLED_CHECK(powerCommands==2 && frames==2 && deletes==0);
  printf("OLED runtime scenario %d PASS\n",scenario);

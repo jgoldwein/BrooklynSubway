@@ -374,7 +374,7 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<span>Feeds working</span></div><div class=\"metric\"><strong data-status=\"dataAgeSeconds\">",
                 static_cast<unsigned long>(status.resolvedTrains),status.feedsSucceeded,status.feedsTotal);
   if (status.hasDataAge) writer.format("%lu seconds",static_cast<unsigned long>(status.dataAgeSeconds)); else writer.append("Waiting");
-  writer.append("</strong><span>Latest update</span></div></div><p class=\"hint\">POWER cycles: all on, LEDs off, screen off, all off. Hold 3 seconds to reboot.</p>"
+  writer.append("</strong><span>Latest update</span></div></div><p class=\"hint\">POWER cycles: all on, LEDs off, screen off, all off. Hold 3 seconds to reboot. BRIGHT/DIM adjust the display that is on by itself.</p>"
                 "<div class=\"actions\"><a class=\"button\" href=\"#lights\">Adjust train lights</a>"
                 "<a class=\"button secondary\" href=\"#screen\">Screen brightness</a></div></section>"
                 "<section class=\"wide\" data-view=\"advanced\" id=\"advanced\"><p class=\"kicker\">Tools &amp; help</p><h2>Keep your map running</h2>"

@@ -301,6 +301,29 @@ void setup() {
 #endif
 }
 
+namespace {
+void serviceBrightnessButtons() {
+  brooklyn::controls::BrightnessRequest request;
+  // Bounded queue; input is sampled by the live task during network fetches.
+  for (uint8_t count = 0; count < 8 && brooklyn::display::live::consumeBrightnessRequest(request); ++count) {
+    if (brooklyn::display::live::stats().powerMode != request.mode) continue;
+    const bool screen = request.mode == 1;
+    const uint8_t previous = screen ? networkService.oledContrast() : networkService.brightness();
+    const uint8_t value = brooklyn::controls::steppedBrightness(previous, screen, request.brighter);
+    if (value != previous && !networkService.setPhysicalBrightness(screen, value)) {
+      Serial.println("Brightness buttons: could not save setting; unchanged"); continue;
+    }
+    if (screen) brooklyn::oled::setContrast(value);
+    else updateLogicalDisplay(millis());
+    if (brooklyn::display::live::stats().powerMode != request.mode) continue;
+    if (!brooklyn::display::live::showBrightnessFeedback(request, value)) continue;
+    brooklyn::hardware::signalBrightness(value, screen ? 255 : 16);
+    Serial.printf("Brightness buttons: %s %u/%u%s\n", screen ? "OLED" : "LED", value,
+        screen ? 255 : 16, value == previous ? " (limit)" : " saved");
+  }
+}
+}
+
 void loop() {
   if (brooklyn::display::live::consumeRebootRequest()) {
     Serial.println("POWER: 3-second hold; rebooting");
@@ -309,6 +332,7 @@ void loop() {
     ESP.restart();
   }
   brooklyn::controls::update();
+  serviceBrightnessButtons();
   const bool backgroundTest = brooklyn::display::live::consumeTestRequest();
   if (brooklyn::controls::consumeLedDiagnosticRequest() || backgroundTest) {
     const auto beforeTest = brooklyn::display::live::stats();
@@ -329,6 +353,7 @@ void loop() {
   }
   brooklyn::diagnostics::update();
   networkService.update(millis());
+  serviceBrightnessButtons();
   brooklyn::transport::CycleResult completedCycle{};
   uint32_t completedAtMs = 0;
   if (networkService.consumeCompletedCycle(completedCycle, completedAtMs)) {
