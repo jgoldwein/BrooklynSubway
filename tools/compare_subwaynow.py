@@ -193,4 +193,3 @@ if __name__=='__main__':
     if args.command=='capture' and (not 1<=args.cycles<=100 or args.interval<0):parser.error('Use 1-100 cycles and a nonnegative interval')
 
     capture(args) if args.command=='capture' else compare(args)
-
