@@ -7,6 +7,7 @@
 #include "controls.h"
 #include "led_diagnostic_policy.h"
 #include "ota_progress_script.h"
+#include "web_ui_assets.h"
 
 #if BROOKLYN_NETWORK_ENABLED
 
@@ -193,6 +194,16 @@ void LanWebUi::registerRoutes() {
   server_.on("/update/interval", HTTP_POST,
              [this]() { handleUpdateInterval(); });
   server_.on("/", HTTP_GET, [this]() { handleHome(); });
+  server_.on("/ui.css", HTTP_GET, [this]() {
+    server_.sendHeader("Cache-Control", "public, max-age=3600");
+    server_.sendHeader("X-Content-Type-Options", "nosniff");
+    server_.send_P(200,"text/css; charset=utf-8",kWebUiCss);
+  });
+  server_.on("/ui.js", HTTP_GET, [this]() {
+    server_.sendHeader("Cache-Control", "public, max-age=3600");
+    server_.sendHeader("X-Content-Type-Options", "nosniff");
+    server_.send_P(200,"text/javascript; charset=utf-8",kWebUiNavigationScript);
+  });
   server_.on("/hardware-test", HTTP_GET, [this]() { handleLedDiagnosticPage(); });
   server_.on("/hardware-test/run", HTTP_POST, [this]() { handleLedDiagnosticRun(); });
   server_.on("/login", HTTP_GET, [this]() { handleLoginPage(); });

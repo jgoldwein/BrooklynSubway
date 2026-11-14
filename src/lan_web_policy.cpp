@@ -3,6 +3,7 @@
 
 #include "lan_web_policy.h"
 #include "password_visibility.h"
+#include "web_ui_assets.h"
 #include "normal_config.h"
 #include "semantic_api.h"
 
@@ -348,27 +349,38 @@ size_t renderHomePage(char *out, size_t capacity,
   const bool inlineLogin = status.adminConfigured && !status.adminSessionActive &&
                            csrfToken != nullptr && csrfToken[0] != '\0';
   writer.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
-                "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">");
-  writer.append("<title>Brooklyn Active Subway Map</title><style>"
-                "body{font:16px system-ui,sans-serif;line-height:1.45;max-width:52rem;"
-                "margin:1rem auto;padding:0 1rem;color:#17212b}"
-                "h1{font-size:1.65rem}.status{padding:.7rem;background:#eef3f6}"
-                "section{margin:1.3rem 0}dl{display:grid;grid-template-columns:"
-                "minmax(9rem,1fr) 2fr;gap:.35rem}dt{font-weight:600}"
-                "dd{margin:0;overflow-wrap:anywhere}input,button{font:inherit;"
-                "padding:.5rem}input[type=range]{width:100%}form{margin:.6rem 0}"
-                "button{cursor:pointer}.muted{color:#52616b}details{margin-top:1rem}"
-                ".route-list{display:grid;grid-template-columns:repeat(auto-fit,"
-                "minmax(7rem,1fr));gap:.35rem}.route-controls{display:flex;gap:.5rem;"
-                "flex-wrap:wrap}"
-                "</style></head><body><h1>Brooklyn Active Subway Map</h1>"
-                "<p class=\"status\">");
+                "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+                "<title>Brooklyn Active Subway Map</title>");
+  writer.append(kWebUiAssetHead);
+  writer.append("</head><body><header><div class=\"brand\"><span class=\"brand-mark\" aria-hidden=\"true\">BK</span>"
+                "<div><h1>Brooklyn Subway</h1><p class=\"subtitle\">");
   writer.html(status.deviceName);
-  writer.append(" - ");
-  writer.append(status.networkConnected ? "Connected to LAN" : "LAN disconnected");
-  writer.append(" | Display: ");
-  writer.append(displayStateName(status.displayState));
-  writer.append("</p><section><h2>Device</h2><dl><dt>Firmware</dt><dd>");
+  writer.append(" &middot; Your live subway map</p></div></div>");
+  if (status.adminSessionActive) writer.append("<span class=\"account\">Settings unlocked</span>");
+  else if (status.adminConfigured) writer.append("<a class=\"button secondary\" href=\"/login\">Sign in</a>");
+  else writer.append("<a class=\"button secondary\" href=\"#advanced\">Set up</a>");
+  writer.append("</header>"); writer.append(kWebUiNavigation);
+  writer.append("<main><section class=\"hero\" data-view=\"overview\" id=\"overview\"><p class=\"kicker\">Your map right now</p>"
+                "<h2 data-status=\"mapPower\">");
+  writer.append(status.physicalLedOutputEnabled?"Lights on":status.physicalPowerPaused?"Lights paused":"Lights off");
+  writer.append("</h2><p data-status=\"friendlyState\">");
+  writer.append(status.displayState==display::State::Fresh?"Train data is up to date":
+                status.displayState==display::State::WaitingForData?"Waiting for the first train update":
+                status.displayState==display::State::NoData?"No current train data":"Some train updates are delayed");
+  writer.append("</p><p><a class=\"hint\" href=\"#wifi\" data-status=\"connectionLabel\">");
+  writer.append(status.networkConnected?"Wi-Fi connected":"Wi-Fi disconnected");
+  writer.append("</a></p><div class=\"metrics\"><div class=\"metric\"><strong data-status=\"resolvedTrains\">");
+  writer.format("%lu</strong><span>Mapped trains</span></div><div class=\"metric\"><strong data-status=\"feedSummary\">%u / %u</strong>"
+                "<span>Feeds working</span></div><div class=\"metric\"><strong data-status=\"dataAgeSeconds\">",
+                static_cast<unsigned long>(status.resolvedTrains),status.feedsSucceeded,status.feedsTotal);
+  if (status.hasDataAge) writer.format("%lu seconds",static_cast<unsigned long>(status.dataAgeSeconds)); else writer.append("Waiting");
+  writer.append("</strong><span>Latest update</span></div></div><p class=\"hint\">Use the POWER button on your map to pause or resume its lights.</p>"
+                "<div class=\"actions\"><a class=\"button\" href=\"#lights\">Adjust train lights</a>"
+                "<a class=\"button secondary\" href=\"#screen\">Screen brightness</a></div></section>"
+                "<section class=\"wide\" data-view=\"advanced\" id=\"advanced\"><p class=\"kicker\">Tools &amp; help</p><h2>Keep your map running</h2>"
+                "<p>Check for updates or test the lights. You may need to sign in first.</p><div class=\"actions\">"
+                "<a class=\"button\" href=\"/update\">Firmware updates</a><a class=\"button secondary\" href=\"/hardware-test\">Test the lights</a></div></section>"
+                "<details class=\"card wide\" data-view=\"advanced\"><summary>Device information</summary><dl><dt>Firmware</dt><dd>");
   writer.append(kFirmwareId);
   writer.append("</dd><dt>Firmware version</dt><dd>");
   writer.html(status.firmwareVersion[0] != '\0' ? status.firmwareVersion : "unknown");
@@ -395,12 +407,14 @@ size_t renderHomePage(char *out, size_t capacity,
                 static_cast<unsigned long>(status.physicalMapChanges), status.physicalBlinkingLeds);
   if (status.physicalFramesWritten) writer.format("%lu seconds ago", static_cast<unsigned long>(status.physicalFrameAgeSeconds));
   else writer.append("Not yet");
-  writer.append("</dd></dl></section><section><h2>Administrator</h2><p>");
+  writer.append("</dd></dl></details><details class=\"card wide\" data-view=\"advanced\"");
+  if (!status.adminConfigured) writer.append(" open");
+  writer.append("><summary>Sign-in &amp; password</summary><p>");
   if (!status.adminConfigured) {
-    writer.append("Administrator setup is required through the local "
-                  "BrooklynMap-Avi provisioning network.");
+    writer.append("Set a password first. Hold the knob for 10 seconds, connect to "
+                  "BrooklynMap-Avi, then open 192.168.4.1.");
   } else if (status.adminSessionActive) {
-    writer.append("Signed in. Normal-LAN settings are unlocked.");
+    writer.append("You are signed in. You can change the map settings.");
   } else if (inlineLogin) {
     writer.append("Settings are locked. Sign in to change them.</p>"
                   "<form method=\"post\" action=\"/login\">"
@@ -429,7 +443,7 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.html(status.availableVersion[0] != '\0' ? status.availableVersion
                                                     : "none newer known");
     writer.append("</p>"
-                  "<h3>Change administrator password</h3>"
+                  "<details><summary>Change password</summary>"
                   "<form method=\"post\" action=\"/admin/password\">"
                   "<input type=\"hidden\" name=\"csrf\" value=\"");
     writer.html(csrfToken);
@@ -440,12 +454,14 @@ size_t renderHomePage(char *out, size_t capacity,
                   "name=\"confirmation\" minlength=\"8\" maxlength=\"128\" "
                   "autocomplete=\"new-password\" required></label> ");
     writer.append(kPasswordVisibilityControl);
-    writer.append("<button type=\"submit\">Change password</button></form>");
+    writer.append("<button type=\"submit\">Change password</button></form></details>");
   }
   writer.append("<p class=\"muted\">Normal-LAN access uses HTTP; passwords "
                 "and page contents are not encrypted in transit. Do not use "
-                "this interface on an untrusted network.</p></section>"
-                "<section><h2>Network</h2><dl><dt>Connection</dt><dd>");
+                "this interface on an untrusted network.</p></details>"
+                "<section class=\"wide\" data-view=\"wifi\" id=\"wifi\"><h2>Wi-Fi</h2><p>");
+  writer.append(status.networkConnected?"Connected to ":"Not connected to Wi-Fi. Last network: "); writer.html(status.ssid);
+  writer.append("</p><details><summary>Connection details</summary><dl><dt>Connection</dt><dd>");
   writer.append(status.networkConnected ? "Connected" : "Disconnected");
   writer.append("</dd><dt>SSID</dt><dd>");
   writer.html(status.ssid);
@@ -491,7 +507,7 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.append(kMdnsUrl);
     writer.append("</a></dd>");
   }
-  writer.append("</dl>");
+  writer.append("</dl></details>");
   if (status.adminSessionActive && csrfToken != nullptr &&
       csrfToken[0] != '\0') {
     writer.append("<form method=\"post\" action=\"/wifi/setup\">"
@@ -499,10 +515,9 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.html(csrfToken);
     writer.append("\"><button type=\"submit\">Change Wi-Fi</button></form>");
   }
-  writer.append("<p class=\"muted\">Setup uses the separate BrooklynMap-Avi "
-                "provisioning network and keeps existing credentials unless "
-                "a replacement successfully connects.</p></section>"
-                "<section><h2>DNS configuration</h2><dl>"
+  writer.append("<p class=\"muted\">Wi-Fi setup opens a separate network named BrooklynMap-Avi. "
+                "Your current Wi-Fi stays saved until a new network connects.</p></section>"
+                "<details class=\"card wide\" data-view=\"wifi\"><summary>Advanced Wi-Fi settings</summary><h3>DNS configuration</h3><dl>"
                 "<dt>Manual override</dt><dd>");
   writer.append(status.manualDnsEnabled ? "Enabled" : "Disabled");
   writer.append("</dd><dt>Override status</dt><dd>");
@@ -532,8 +547,8 @@ size_t renderHomePage(char *out, size_t capacity,
   }
   writer.append("<p class=\"muted\">Disabled by default. This changes only "
                 "the resolver; DHCP, Wi-Fi credentials, feeds, and TLS policy "
-                "are unchanged.</p></section>"
-                "<section><h2>MTA / data</h2><dl><dt>Last poll cycle</dt><dd data-status=\"feedCycleState\">");
+                "are unchanged.</p></details>"
+                "<section class=\"wide\" data-view=\"overview\"><h2>Train data &amp; colors</h2><details><summary>Train data details</summary><dl><dt>Last poll cycle</dt><dd data-status=\"feedCycleState\">");
   writer.append(status.hasCycle ? cycleStateName(status.cycleOutcome) : "Not run");
   writer.append("</dd><dt>Feeds succeeded / total</dt><dd data-status=\"feedSummary\">");
   if (status.hasCycle) {
@@ -559,12 +574,12 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<dt>Approaching trains (included above)</dt><dd data-status=\"approachingTrains\">%lu</dd>"
                 "<dt>Occupied LEDs</dt><dd data-status=\"occupiedLeds\">%u</dd>"
                 "<dt>Collision count</dt><dd data-status=\"collisionCount\">%u</dd></dl>"
-                "<p>Recent matching station report: blue until the configured hold expires, then dim amber. Uncertain station report: steady dim amber. Approaching: orange transitioning to cyan during the final 30 predicted seconds; "
-                "No arrival/departure blinking. Departing: blue transitioning to magenta while fading out; "
-                "the trail fades continuously and clears within 30 seconds. These are estimated movement cues, not measured distance. "
-                "Missing or stalled predictions remain steady orange. A stopped train sharing a light "
-                "takes priority; extra indicators do not add trains or brightness.</p></section>"
-                "<section><h2>Network diagnostics</h2><dl>"
+                "</details><div class=\"legend\"><span><i class=\"swatch blue\"></i>Blue: train reported stopped</span>"
+                "<span><i class=\"swatch cyan\"></i>Orange to cyan: approaching</span><span><i class=\"swatch pink\"></i>Blue to pink: departing</span>"
+                "<span><i class=\"swatch white\"></i>Faint white: last reported place</span></div>"
+                "<p class=\"hint\">Colors are estimates from train reports. White markers appear when that option is selected; "
+                "orange can also show uncertain movement. No traffic lights blink.</p></section>"
+                "<details class=\"card wide\" data-view=\"advanced\"><summary>Network diagnostics</summary><dl>"
                 "<dt>Diagnostic run</dt><dd>%s</dd>"
                 "<dt>NTP DNS</dt><dd>%s",
                 static_cast<unsigned long>(status.resolvedTrains),
@@ -646,46 +661,45 @@ size_t renderHomePage(char *out, size_t capacity,
                   "</form>");
   }
   writer.append("<p class=\"muted\">Read-only connectivity checks; raw TCP "
-                "success does not verify TLS or HTTPS.</p></section>"
-                "<section><h2>Display brightness</h2>");
+                "success does not verify TLS or HTTPS.</p></details>"
+                "<section class=\"map-brightness\" data-view=\"lights\" id=\"lights\"><h2>Map brightness</h2>");
   if (status.adminSessionActive && csrfToken != nullptr &&
       csrfToken[0] != '\0') {
     writer.append("<form method=\"post\" action=\"/config/brightness\">"
                   "<input type=\"hidden\" name=\"csrf\" value=\"");
     writer.html(csrfToken);
     writer.format(
-        "\"><label for=\"brightness\">Brightness: %u / 255 (%u%%)</label>"
+        "\"><label for=\"brightness\">Brightness: <output id=\"map-level\">%u</output> / 255</label>"
         "<input id=\"brightness\" name=\"brightness\" type=\"range\" "
         "min=\"0\" max=\"255\" value=\"%u\" "
-        "oninput=\"document.getElementById('brightness-value').value=this.value\">"
+        "oninput=\"document.getElementById('brightness-value').value=this.value;document.getElementById('map-level').textContent=this.value\">"
         "<input id=\"brightness-value\" aria-label=\"Brightness value\" "
         "type=\"number\" min=\"0\" max=\"255\" value=\"%u\" "
-        "oninput=\"document.getElementById('brightness').value=this.value\">"
+        "oninput=\"document.getElementById('brightness').value=this.value;document.getElementById('map-level').textContent=this.value\">"
         "<button type=\"submit\">Save brightness</button></form>",
-        brightness, static_cast<unsigned>(brightness) * 100 / 255, brightness,
-        brightness);
+        brightness, brightness, brightness);
   } else {
     writer.format("<p>Current setting: %u / 255 (%u%%).</p>", brightness,
                   static_cast<unsigned>(brightness) * 100 / 255);
   }
   writer.append("<p class=\"muted\">Live output starts automatically with fresh data. POWER toggles off/on; "
-                "the physical brightness cap remains 16/255."
+                "Your map keeps a safe maximum brightness, even if you choose a higher value."
                 "</p></section>");
-  writer.append("<p data-status=\"uncertaintyNotice\">");
+  writer.append("<p class=\"notice wide\" data-view=\"overview\" data-status=\"uncertaintyNotice\">");
   if (status.blueReport.uncertainLeds) writer.append("Some train movements are uncertain.");
   writer.append("</p>");
   {
     char summary[3072];
     const size_t length = renderBlueSummary(summary, sizeof(summary), status.blueReport);
-    writer.append("<details><summary>Why blue?</summary><pre data-status=\"blueSummary\" style=\"overflow:auto\">");
+    writer.append("<details class=\"card wide\" data-view=\"advanced\"><summary>Why blue?</summary><pre data-status=\"blueSummary\" style=\"overflow:auto\">");
     writer.html(length ? summary : "Diagnostic report unavailable");
     writer.append("</pre></details>");
   }
   const auto uncertainMode=semantic::unknownTimingMode(status.unknownTiming);
-  writer.append("<section><h2>When train movement is uncertain</h2><p>Choose what to show when we cannot tell if a train is moving or waiting. "
+  writer.append("<section class=\"uncertain-lights\" data-view=\"lights\"><h2>Uncertain train movement</h2><p>When train reports are unclear, choose what to show. "
                 "A faint white light marks its last reported place, then fades away. It does not mean the train is still there. "
-                "Fresh, usable train reports take priority. Other train lights keep their normal brightness.</p>");
-  writer.format("<p>Current choice: %s. Fade time: %u seconds. Brightness limit: %u / 255.</p>",
+                "Other train lights keep their normal brightness.</p>");
+  if (!status.adminSessionActive) writer.format("<p>Current choice: %s. Fade time: %u seconds. Brightness limit: %u / 255.</p>",
       uncertainMode==semantic::UnknownTimingMode::LastReported?"Last reported location":
       uncertainMode==semantic::UnknownTimingMode::Orange?"Orange":"Hide",
       semantic::lastReportedFadeSeconds(status.unknownTiming),status.unknownTiming&255);
@@ -704,9 +718,9 @@ size_t renderHomePage(char *out, size_t capacity,
                   status.unknownTiming&255,semantic::lastReportedFadeSeconds(status.unknownTiming));
   }
   writer.append("<p>White lights stay faint. Fade time applies to the white markers. Brightness 0 hides uncertain lights.</p></section>");
-  writer.format("<section><h2>Station blue hold</h2><p>Maximum blue time per train at the same station: %lu seconds. "
-                "Repeated reports do not restart the timer. Afterward, the indication becomes steady dim amber. "
-                "Changes apply at the next poll; long genuine stops can also turn amber.</p>",
+  writer.format("<section class=\"blue-hold\" data-view=\"lights\"><h2>How long should blue stay on?</h2><p>A blue light means a train was reported stopped. Keep it blue for up to %lu seconds. "
+                "After that, use your choice for uncertain movement. "
+                "Changes take effect with the next train update. Long stops can also become uncertain.</p>",
                 static_cast<unsigned long>(status.blueHoldSeconds));
   if (status.adminSessionActive && csrfToken && csrfToken[0]) {
     writer.append("<form method=\"post\" action=\"/config/blue-hold\"><input type=\"hidden\" name=\"csrf\" value=\"");
@@ -715,7 +729,7 @@ size_t renderHomePage(char *out, size_t capacity,
                   "<button>Save blue hold time</button></form>", static_cast<unsigned long>(status.blueHoldSeconds));
   }
   writer.append("</section>");
-  writer.format("<section><h2>MTA update interval</h2><p>Wait after each completed download cycle: %lu seconds. "
+  writer.format("<details class=\"card wide\" data-view=\"advanced\"><summary>Train update timing</summary><p>Wait after each completed download cycle: %lu seconds. "
                 "Downloads add to the total interval. MTA feeds are typically generated about every 30 seconds; "
                 "faster checks can return identical data.</p>", static_cast<unsigned long>(status.pollSeconds));
   if (status.adminSessionActive && csrfToken && csrfToken[0]) {
@@ -724,17 +738,17 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.format("\"><label>Seconds <input type=\"number\" name=\"seconds\" min=\"15\" max=\"120\" value=\"%lu\" required></label>"
                   "<button>Save update interval</button></form>", static_cast<unsigned long>(status.pollSeconds));
   }
-  writer.append("</section>");
-  writer.format("<section><h2>OLED brightness</h2><p>Current: %u / 255. Independent of map brightness. "
-                "0 is the dimmest contrast setting, not power off.</p>", status.oledContrast);
+  writer.append("</details>");
+  writer.format("<section data-view=\"screen\" id=\"screen\"><h2>Screen brightness</h2><p>Brightness: %u / 255. This changes only the small screen. "
+                "0 is the dimmest setting; it does not turn the screen off.</p>", status.oledContrast);
   if (status.adminSessionActive && csrfToken && csrfToken[0]) {
     writer.append("<form method=\"post\" action=\"/config/oled-dimmer\"><input type=\"hidden\" name=\"csrf\" value=\"");
     writer.html(csrfToken);
-    writer.format("\"><label>OLED brightness <input type=\"range\" name=\"contrast\" min=\"0\" max=\"255\" value=\"%u\"></label>"
-                  "<button>Save OLED brightness</button></form>", status.oledContrast);
+    writer.format("\"><label>Screen brightness <output id=\"screen-level\">%u</output> / 255<input type=\"range\" name=\"contrast\" min=\"0\" max=\"255\" value=\"%u\" oninput=\"document.getElementById('screen-level').textContent=this.value\"></label>"
+                  "<button>Save screen brightness</button></form>", status.oledContrast, status.oledContrast);
   }
   writer.append("</section>");
-  writer.format("<section><h2>OLED</h2><p>Saved I2C address: 0x%02X. Default: 0x38. Reboot after changing.</p>", status.oledAddress);
+  writer.format("<details class=\"card\" data-view=\"screen\"><summary>Screen connection details</summary><p>Saved I2C address: 0x%02X. Default: 0x38. Reboot after changing.</p>", status.oledAddress);
   {
     char text[160]; renderOledStatus(text, sizeof(text), status.oledStatus);
     writer.append("<p data-status=\"oledStatus\">"); writer.html(text); writer.append("</p>");
@@ -746,16 +760,15 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.format("\"><label>I2C address <input name=\"address\" maxlength=\"4\" pattern=\"0[xX][0-9a-fA-F]{2}\" value=\"0x%02X\" required></label>"
                   "<button>Save OLED address</button></form>", status.oledAddress);
   }
-  writer.append("</section>");
+  writer.append("</details>");
   uint8_t visibleRoutes = 0;
   for (uint8_t route = 1; route <= semantic::kRouteCount; ++route) {
     if ((routeVisibilityMask & (uint32_t{1} << (route - 1))) != 0) {
       ++visibleRoutes;
     }
   }
-  writer.format("<section><h2>Routes to display</h2><p>%u of %u routes enabled. "
-                "This affects map rendering only; feeds and status indicators "
-                "continue normally.</p>",
+  writer.format("<section class=\"wide\" data-view=\"lights\"><h2>Choose subway lines</h2><p>%u of %u lines shown. "
+                "Choose the subway lines you want to see. Hidden lines still receive updates.</p>",
                 visibleRoutes, semantic::kRouteCount);
   if (status.adminSessionActive && csrfToken != nullptr &&
       csrfToken[0] != '\0') {
@@ -779,15 +792,14 @@ size_t renderHomePage(char *out, size_t capacity,
       if ((routeVisibilityMask & (uint32_t{1} << (route - 1))) != 0) {
         writer.append(" checked");
       }
-      writer.append("> ");
+      writer.append("> <span class=\"route-badge r-"); writer.html(name); writer.append("\">");
       writer.html(name);
-      writer.append("</label>");
+      writer.append("</span></label>");
     }
-    writer.append("</div><button type=\"submit\">Save routes</button></form>");
+    writer.append("</div><button type=\"submit\">Save subway lines</button></form>");
   }
-  writer.append("<p class=\"muted\">All routes may be hidden. Status indicators "
-                "remain independent.</p></section>");
-  writer.append("<details><summary>Memory diagnostics</summary><dl>"
+  writer.append("<p class=\"muted\">You can hide every line. The small status lights keep working.</p></section>");
+  writer.append("<details class=\"card wide\" data-view=\"advanced\"><summary>Memory diagnostics</summary><dl>"
                 "<dt>Free internal heap</dt><dd>");
   writer.format("%lu B", static_cast<unsigned long>(status.freeInternalHeap));
   writer.append("</dd><dt>Minimum internal heap</dt><dd>");
@@ -806,23 +818,25 @@ size_t renderHomePage(char *out, size_t capacity,
   }
   writer.append("</dd><dt>PSRAM feed buffer</dt><dd>");
   writer.append(status.psramFeedBufferPresent ? "Present" : "Unavailable");
-  writer.append("</dd></dl></details><section><h2>Device actions</h2>");
+  writer.append("</dd></dl></details><section class=\"wide\" data-view=\"advanced\"><h2>Restart the map</h2>");
   if (status.adminSessionActive && csrfToken != nullptr &&
       csrfToken[0] != '\0') {
     writer.append("<form method=\"post\" action=\"/reboot\" "
                   "onsubmit=\"return confirm('Reboot the map? Settings are retained.')\">"
                   "<input type=\"hidden\" name=\"csrf\" value=\"");
     writer.html(csrfToken);
-    writer.append("\"><button type=\"submit\">Reboot Device</button></form>");
+    writer.append("\"><button type=\"submit\">Restart map</button></form>");
   }
   writer.append("<p class=\"muted\">A reboot retains Wi-Fi credentials and "
                 "configuration.</p></section>"
-                "<p id=\"live-refresh\" class=\"muted\" role=\"status\">Live values refresh automatically.</p>"
+                "</main><p id=\"live-refresh\" class=\"footer\" role=\"status\">Live values refresh automatically.</p>"
                 "<script>(()=>{const note=document.getElementById('live-refresh');"
                 "async function refresh(){let timer;try{if(!document.hidden){"
                 "const controller=new AbortController();timer=setTimeout(()=>controller.abort(),15000);"
                 "const r=await fetch('/api/status',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();"
-                "const s=await r.json();s.feedSummary=s.feedsSucceeded+' / '+s.feedsTotal;"
+                "const s=await r.json();s.feedSummary=s.feedsSucceeded+' / '+s.feedsTotal;s.connectionLabel=s.networkConnected?'Wi-Fi connected':'Wi-Fi disconnected';"
+                "s.mapPower=s.physicalLedOutputEnabled?'Lights on':s.physicalPowerPaused?'Lights paused':'Lights off';"
+                "s.friendlyState=s.displayState==='Fresh'?'Train data is up to date':s.displayState==='WaitingForData'?'Waiting for the first train update':s.displayState==='NoData'?'No current train data':'Some train updates are delayed';"
                 "document.querySelectorAll('[data-status]').forEach(e=>{const k=e.dataset.status;"
                 "if(!(k in s))return;const v=s[k];e.textContent=v===null?'Not available':"
                 "k.endsWith('Seconds')?v+' seconds':String(v);});"
@@ -838,19 +852,20 @@ size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken) {
   Writer writer(out, capacity);
   writer.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
                 "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-                "<meta name=\"referrer\" content=\"same-origin\">"
-                "<title>Administrator sign in</title></head><body>"
-                "<h1>Administrator sign in</h1>"
-                "<form method=\"post\" action=\"/login\">"
-                "<input type=\"hidden\" name=\"csrf\" value=\"");
+                "<meta name=\"referrer\" content=\"same-origin\"><title>Sign in - Brooklyn Subway</title>"
+                "<link rel=\"stylesheet\" href=\"/ui.css?v=037\"></head><body>"
+                "<header><div class=\"brand\"><span class=\"brand-mark\" aria-hidden=\"true\">BK</span>"
+                "<h1>Brooklyn Subway</h1></div><a href=\"/\">Back to map</a></header>"
+                "<main class=\"login-shell\"><section class=\"wide\"><p class=\"kicker\">Settings access</p><h2>Sign in</h2>"
+                "<p>Use your map's administrator password to change its settings.</p>"
+                "<form method=\"post\" action=\"/login\"><input type=\"hidden\" name=\"csrf\" value=\"");
   writer.html(csrfToken);
   writer.append("\"><label>Password <input type=\"password\" name=\"password\" "
-                "autocomplete=\"current-password\" required></label> ");
+                "autocomplete=\"current-password\" required></label>");
   writer.append(kPasswordVisibilityControl);
   writer.append("<button type=\"submit\">Sign in</button></form>"
-                "<p><a href=\"/\">Return to status</a></p>"
-                "<p>Normal-LAN access uses unencrypted HTTP.</p>"
-                "</body></html>");
+                "<p class=\"hint\">Use only on Wi-Fi you trust. Passwords travel over unencrypted HTTP.</p>"
+                "</section></main></body></html>");
   return writer.size();
 }
 

@@ -343,6 +343,10 @@ void testCookieAndEndpointPolicy() {
   CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/wifi/setup"));
   CHECK(!brooklyn::admin::isProtectedEndpoint("GET", "/"));
   CHECK(!brooklyn::admin::isProtectedEndpoint("GET", "/api/status"));
+  CHECK(!brooklyn::admin::isProtectedEndpoint("GET", "/ui.css"));
+  CHECK(!brooklyn::admin::isProtectedEndpoint("GET", "/ui.js"));
+  CHECK(!brooklyn::admin::isMutationEndpoint("POST", "/ui.css"));
+  CHECK(!brooklyn::admin::isMutationEndpoint("POST", "/ui.js"));
   CHECK(!brooklyn::admin::isProtectedEndpoint(
       "GET", "/api/network-diagnostics"));
   CHECK(!brooklyn::admin::isProtectedEndpoint("GET", "/login"));

@@ -535,7 +535,7 @@ void testFullProductionPageCapacity() {
 }
 
 void testPageEscapingAndRequiredContent() {
-  char page[16384];
+  char page[brooklyn::web::kStatusPageCapacity];
   brooklyn::web::StatusSnapshot status = sampleStatus();
   status.adminConfigured = true;
   status.adminSessionActive = true;
@@ -545,8 +545,20 @@ void testPageEscapingAndRequiredContent() {
       brooklyn::semantic::kAllRoutesVisibleMask, csrfToken);
   CHECK(authenticatedPageSize > 0);
   CHECK(authenticatedPageSize < sizeof(page));
+  const char *views[]={"overview","lights","screen","wifi","advanced"};
+  for (const char *view:views) {
+    char navigation[64],anchor[64];
+    snprintf(navigation,sizeof(navigation),"data-nav=\"%s\"",view);
+    snprintf(anchor,sizeof(anchor),"id=\"%s\"",view);
+    CHECK(countSubstring(page,navigation)==1); CHECK(strstr(page,anchor)!=nullptr);
+  }
+  CHECK(strstr(page,"aria-label=\"Map settings\"")!=nullptr);
+  CHECK(strstr(page,">Advanced</a>")!=nullptr && strstr(page,">More</a>")==nullptr);
+  CHECK(strstr(page,"<main>")!=nullptr && strstr(page,"</main>")!=nullptr);
+  CHECK(strstr(page,"<output id=\"screen-level\"")!=nullptr);
+
   {
-    static char expanded[16384];
+    static char expanded[brooklyn::web::kStatusPageCapacity];
     auto longStatus = status;
     memset(longStatus.ssid, '&', sizeof(longStatus.ssid)-1);
     memset(longStatus.deviceName, '&', sizeof(longStatus.deviceName)-1);
@@ -560,7 +572,7 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "TestNetwork") != nullptr);
   CHECK(strstr(page, "href=\"http://192.0.2.17/\"") != nullptr);
   CHECK(strstr(page, "http://brooklynmap.local/") != nullptr);
-  CHECK(strstr(page, "Brightness: 64 / 255") != nullptr);
+  CHECK(strstr(page, "id=\"map-level\">64</output>") != nullptr);
   CHECK(strstr(page, "<dt>Resolved trains</dt><dd data-status=\"resolvedTrains\">57</dd>") != nullptr);
   CHECK(strstr(page, "<dt>Occupied LEDs</dt><dd data-status=\"occupiedLeds\">53</dd>") != nullptr);
   CHECK(strstr(page, "<dt>Collision count</dt><dd data-status=\"collisionCount\">4</dd>") != nullptr);
@@ -573,11 +585,12 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "method=\"post\" action=\"/config/brightness\"") != nullptr);
   CHECK(strstr(page, "https://") == nullptr);
   CHECK(strstr(page, "cdn") == nullptr);
-  CHECK(strstr(page, "<script src=") == nullptr);
+  CHECK(strstr(page, "src=\"/ui.js?v=037\"") != nullptr);
+  CHECK(strstr(page, "href=\"/ui.css?v=037\"") != nullptr);
   CHECK(strstr(page, "value=\"password sentinel\"") == nullptr);
   CHECK(strstr(page, "password sentinel") == nullptr);
-  CHECK(strstr(page, "Routes to display") != nullptr);
-  CHECK(strstr(page, "18 of 18 routes enabled") != nullptr);
+  CHECK(strstr(page, "Choose subway lines") != nullptr);
+  CHECK(strstr(page, "18 of 18 lines shown") != nullptr);
   CHECK(strstr(page, "method=\"post\" action=\"/config/routes\"") != nullptr);
   CHECK(strstr(page, "method=\"post\" action=\"/config/dns\"") != nullptr);
   CHECK(strstr(page, "Use manual DNS") != nullptr);
@@ -588,7 +601,7 @@ void testPageEscapingAndRequiredContent() {
         nullptr);
   CHECK(strstr(page, "Select all") != nullptr);
   CHECK(strstr(page, "Clear all") != nullptr);
-  CHECK(strstr(page, "Save routes") != nullptr);
+  CHECK(strstr(page, "Save subway lines") != nullptr);
   CHECK(strstr(page, "Network diagnostics") != nullptr);
   CHECK(strstr(page, "Run Network Diagnostics") != nullptr);
   CHECK(strstr(page, "method=\"post\" action=\"/network-diagnostics/run\"") !=
@@ -652,8 +665,8 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "&lt;script&gt;alert(1)&lt;/script&gt;") != nullptr);
   CHECK(strstr(page, "<script>alert(1)</script>") == nullptr);
   CHECK(strstr(page, "boot&#x0a;ready") != nullptr);
-  CHECK(strstr(page, "Brightness: 0 / 255") != nullptr);
-  CHECK(strstr(page, "17 of 18 routes enabled") != nullptr);
+  CHECK(strstr(page, "id=\"map-level\">0</output>") != nullptr);
+  CHECK(strstr(page, "17 of 18 lines shown") != nullptr);
   CHECK(strstr(page, "name=\"route\" value=\"A\" checked") == nullptr);
   CHECK(strstr(page, "name=\"route\" value=\"2\" checked") != nullptr);
   CHECK(strstr(page, "http://brooklynmap.local/") != nullptr);
@@ -662,8 +675,8 @@ void testPageEscapingAndRequiredContent() {
   CHECK(brooklyn::web::renderHomePage(page, sizeof(page), status, 255, 0,
                                       csrfToken) > 0);
   CHECK(strstr(page, "brooklynmap.local") == nullptr);
-  CHECK(strstr(page, "Brightness: 255 / 255") != nullptr);
-  CHECK(strstr(page, "0 of 18 routes enabled") != nullptr);
+  CHECK(strstr(page, "id=\"map-level\">255</output>") != nullptr);
+  CHECK(strstr(page, "0 of 18 lines shown") != nullptr);
 
   status.adminSessionActive = false;
   CHECK(brooklyn::web::renderHomePage(
@@ -700,7 +713,7 @@ void testPageEscapingAndRequiredContent() {
 }
 
 void testInlineLoginOnStatusPage() {
-  static char page[16384];
+  static char page[brooklyn::web::kStatusPageCapacity];
   brooklyn::web::StatusSnapshot status{};
   status.adminConfigured = true;
   status.adminSessionActive = false;
@@ -729,7 +742,7 @@ void testInlineLoginOnStatusPage() {
 }
 
 void testLoginPageCsrfRendering() {
-  char page[1024] = {};
+  char page[4096] = {};
   const char csrf[] = "abcdef0123456789abcdef0123456789";
   CHECK(brooklyn::web::renderLoginPage(page, sizeof(page), csrf) > 0);
   CHECK(strstr(page, "method=\"post\" action=\"/login\"") != nullptr);
@@ -956,7 +969,7 @@ int main() {
       auto &s = status.blueReport.samples[i]; s.led=brooklyn::semantic::kMapLeds[i].globalOrder;
       s.age=100; s.flags=brooklyn::pipeline::NextDifferent; s.trains=2; strcpy(s.nextStop,"232N");
     }
-    static char json[6144], page[16384];
+    static char json[6144], page[brooklyn::web::kStatusPageCapacity];
     CHECK(brooklyn::web::renderStatusJson(json,sizeof(json),status,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
     CHECK(strstr(json,"\"blueSummary\":") != nullptr);
     CHECK(strstr(json,"NextDiff") != nullptr && strstr(json,"232N (different)") != nullptr);
@@ -967,7 +980,7 @@ int main() {
     auto s = sampleStatus();
     s.oledStatus.state = brooklyn::oled::State::Ready;
     s.oledStatus.requestedAddress = 0x38; s.oledStatus.activeAddress = 0x3c;
-    static char page[16384], json[6144];
+    static char page[brooklyn::web::kStatusPageCapacity], json[6144];
     CHECK(brooklyn::web::renderHomePage(page,sizeof(page),s,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
     CHECK(strstr(page,"Frame writes OK; startup address 0x38; active address 0x3C")!=nullptr);
     CHECK(brooklyn::web::renderStatusJson(json,sizeof(json),s,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
