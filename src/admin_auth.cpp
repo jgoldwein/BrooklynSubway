@@ -456,6 +456,7 @@ bool isMutationEndpoint(const char *method, const char *path) {
          strcmp(path, "/config/poll") == 0 ||
          strcmp(path, "/config/oled") == 0 ||
          strcmp(path, "/config/oled-dimmer") == 0 ||
+         strcmp(path, "/config/unknown-timing") == 0 ||
          strcmp(path, "/config/blue-hold") == 0 ||
          strcmp(path, "/hardware-test/run") == 0 ||
          strcmp(path, "/config/routes") == 0 ||

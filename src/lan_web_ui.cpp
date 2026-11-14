@@ -208,6 +208,7 @@ void LanWebUi::registerRoutes() {
   server_.on("/config/brightness", HTTP_POST,
              [this]() { handleBrightness(); });
   server_.on("/config/oled", HTTP_POST, [this]() { handleOledAddress(); });
+  server_.on("/config/unknown-timing", HTTP_POST, [this]() { handleUnknownTiming(); });
   server_.on("/config/oled-dimmer", HTTP_POST, [this]() { handleOledDimmer(); });
   server_.on("/config/blue-hold", HTTP_POST, [this]() { handleBlueHold(); });
   server_.on("/config/poll", HTTP_POST, [this]() { handlePollInterval(); });
@@ -409,6 +410,29 @@ void LanWebUi::handleOledAddress() {
   if (!configuration_.setOledAddress(address)) { server_.send(500, "text/plain", "Could not save OLED address"); return; }
   Serial.printf("OLED clock: saved address 0x%02X; reboot to apply\n", address);
   server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "OLED address saved; reboot to apply");
+}
+
+void LanWebUi::handleUnknownTiming() {
+  if (!authorizeRequest(true)) return;
+  bool brightnessSeen = false, csrfSeen = false, enabledSeen = false;
+  for (int i = 0; i < server_.args(); ++i) {
+    const String name = server_.argName(i);
+    if (name == "brightness" && !brightnessSeen) brightnessSeen = true;
+    else if (name == "csrf" && !csrfSeen) csrfSeen = true;
+    else if (name == "enabled" && !enabledSeen) enabledSeen = true;
+    else { server_.send(400, "text/plain", "Invalid unknown timing settings"); return; }
+  }
+  const String text = server_.arg("brightness"); uint8_t brightness = 0;
+  if (!brightnessSeen || !csrfSeen || !hasNoEmbeddedNull(text) ||
+      !parseBrightness(text.c_str(), brightness) || (enabledSeen && server_.arg("enabled") != "1")) {
+    server_.send(400, "text/plain", "Choose brightness 0 to 255"); return;
+  }
+  const uint16_t setting = (enabledSeen ? 256 : 0) | brightness;
+  if (!configuration_.setUnknownTiming(setting)) {
+    server_.send(500, "text/plain", "Could not save unknown timing settings"); return;
+  }
+  Serial.printf("Unknown timing: %s, brightness ceiling %u/255\n", enabledSeen ? "shown" : "hidden", brightness);
+  server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "Unknown timing settings saved");
 }
 
 void LanWebUi::handleOledDimmer() {
@@ -1761,6 +1785,7 @@ void LanWebUi::sendLoginFailure(admin::LoginResult::Code code) {
 }
 
 void LanWebUi::updateAdminStatus(StatusSnapshot &status) {
+  status.unknownTiming = configuration_.unknownTiming();
   status.oledContrast = configuration_.oledContrast();
   status.blueHoldSeconds = configuration_.blueHoldSeconds();
   status.pollSeconds = configuration_.pollSeconds();

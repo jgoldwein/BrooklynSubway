@@ -678,6 +678,20 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.html(length ? summary : "Diagnostic report unavailable");
     writer.append("</pre></details>");
   }
+  writer.format("<section><h2>Unknown train timing</h2><p>Orange lights: %s. Brightness limit: %u / 255. "
+                "When we cannot tell if a train is moving or waiting, its light can stay orange. "
+                "Show or hide these lights, or choose a lower number to dim them. Try 1 for a faint light. "
+                "They never become brighter than the map. Other train lights keep their normal brightness.</p>",
+                status.unknownTiming & 256 ? "shown" : "hidden", status.unknownTiming & 255);
+  if (status.adminSessionActive && csrfToken && csrfToken[0]) {
+    writer.append("<form method=\"post\" action=\"/config/unknown-timing\"><input type=\"hidden\" name=\"csrf\" value=\"");
+    writer.html(csrfToken);
+    writer.format("\"><label><input type=\"checkbox\" name=\"enabled\" value=\"1\"%s> Show lights when train timing is unknown</label> "
+                  "<label>Orange light brightness <input type=\"number\" name=\"brightness\" min=\"0\" max=\"255\" value=\"%u\" required></label>"
+                  "<button>Save orange light settings</button></form>",
+                  status.unknownTiming & 256 ? " checked" : "", status.unknownTiming & 255);
+  }
+  writer.append("</section>");
   writer.format("<section><h2>Station blue hold</h2><p>Maximum blue time per train at the same station: %lu seconds. "
                 "Repeated reports do not restart the timer. Afterward, the indication becomes steady dim amber. "
                 "Changes apply at the next poll; long genuine stops can also turn amber.</p>",
@@ -903,6 +917,7 @@ size_t renderStatusJson(char *out, size_t capacity,
     writer.append(",\"oledStatus\":\""); writer.json(text); writer.append("\"");
     writer.format(",\"oledActiveAddress\":%u,\"oledI2cError\":%u", status.oledStatus.activeAddress, status.oledStatus.error);
   }
+  writer.format(",\"unknownTimingEnabled\":%s,\"unknownTimingBrightness\":%u", status.unknownTiming & 256 ? "true" : "false", status.unknownTiming & 255);
   writer.format(",\"oledContrast\":%u", status.oledContrast);
   writer.format(",\"blueHoldSeconds\":%lu", static_cast<unsigned long>(status.blueHoldSeconds));
   writer.format(",\"pollSeconds\":%lu", static_cast<unsigned long>(status.pollSeconds));

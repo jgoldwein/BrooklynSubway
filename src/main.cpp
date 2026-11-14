@@ -135,10 +135,12 @@ void publishTelemetrySnapshot(uint32_t nowMs) {
 void updateLogicalDisplay(uint32_t nowMs) {
   bool changed = false;
   const uint8_t brightness = networkService.brightness();
+  const uint16_t unknownTiming = networkService.unknownTiming();
+  static uint16_t renderedUnknownTiming = UINT16_MAX;
   const uint32_t routeVisibilityMask = networkService.routeVisibilityMask();
   const bool approachingLit = brooklyn::semantic::approachingPhaseLit(nowMs);
   if (renderedFrameRevision != operationalDisplay.frameRevision() ||
-      renderedBrightness != brightness ||
+      renderedBrightness != brightness || renderedUnknownTiming != unknownTiming ||
       renderedRouteVisibilityMask != routeVisibilityMask ||
       (operationalDisplay.frame().approachingTrains != 0 &&
        renderedApproachingLit != approachingLit)) {
@@ -150,6 +152,7 @@ void updateLogicalDisplay(uint32_t nowMs) {
                                          logicalDisplayFrame, renderConfig);
     renderedFrameRevision = operationalDisplay.frameRevision();
     renderedBrightness = brightness;
+    renderedUnknownTiming = unknownTiming;
     renderedRouteVisibilityMask = routeVisibilityMask;
     renderedApproachingLit = approachingLit;
     changed = true;
@@ -192,6 +195,7 @@ void updateLogicalDisplay(uint32_t nowMs) {
       snapshot.frameAtMs = nowMs - operationalDisplay.dataAgeMs(nowMs);
       snapshot.routeMask = routeVisibilityMask;
       snapshot.brightness = brightness;
+      snapshot.unknownTiming = unknownTiming;
       snapshot.hasFrame = operationalDisplay.hasFrame();
       snapshot.clockUnix = static_cast<uint32_t>(time(nullptr));
       snapshot.clockAtMs = nowMs;

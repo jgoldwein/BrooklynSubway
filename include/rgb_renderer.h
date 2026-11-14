@@ -40,13 +40,15 @@ struct RgbFrame {
 };
 
 struct RenderConfig {
-  uint16_t blueHoldSeconds = 20;
   uint8_t brightness = kDefaultRenderBrightness;  // 0..255 global scale
   uint32_t routeVisibilityMask = kAllRoutesVisibleMask;
   bool approachingLit = true;  // legacy compatibility input; no longer gates visibility
   bool animateTraffic = false;
   uint32_t nowUnix = 0;
   uint32_t animationTimeMs = 0;
+  uint16_t blueHoldSeconds = 20;
+  bool showUnknownTiming = true;
+  uint8_t unknownTimingBrightness = 255; // ceiling, never exceeds normal map brightness
 };
 
 struct RenderResult {

@@ -412,6 +412,29 @@ int main() {
     }
     c.nowUnix = 1030; renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
   }
+  {
+    TrainFrame f{}; clearFrame(f); const auto index = firstLed(Role::Station);
+    CHECK(addUncertainLed(f, index)); f.animationEpochUnix = 1000;
+    RenderConfig c = cfg(5); c.animateTraffic = true; c.nowUnix = 1000;
+    RgbFrame r{}; c.unknownTimingBrightness = 1;
+    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{1,0,0}));
+    c.showUnknownTiming = false; renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
+    CHECK(f.resolvedTrains == 1 && f.occupancy[index] == 1);
+    clearFrame(f); CHECK(addValidatedLed(f, index, true)); f.animationEpochUnix = 1000;
+    f.timing[index].arrivalSecondsPlusOne = UINT16_MAX;
+    renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
+    c.showUnknownTiming = true; renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{1,0,0}));
+    c.unknownTimingBrightness = 255; renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{5,2,0}));
+    c.unknownTimingBrightness = 0; renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
+    // A usable ETA is unaffected by the unknown-timing switch and dimmer.
+    f.timing[index].arrivalSecondsPlusOne = 121; c.showUnknownTiming = false;
+    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{5,2,0}));
+    c.nowUnix = 1091; renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
+    clearFrame(f); CHECK(addValidatedLed(f, index)); f.animationEpochUnix = 1000;
+    f.blueSecondsRemaining[index] = 20; c.nowUnix = 1019;
+    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0,0,5}));
+    c.nowUnix = 1020; renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
+  }
   printf("Phase 4H RGB renderer host tests: %d checks, %d failures\n", checks, failures);
   return failures == 0 ? 0 : 1;
 }
