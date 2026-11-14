@@ -494,6 +494,37 @@ brooklyn::web::StatusSnapshot sampleStatus() {
   return status;
 }
 
+void testFullProductionPageCapacity() {
+  auto status = sampleStatus(); status.adminConfigured = status.adminSessionActive = true;
+  status.physicalLiveAvailable = status.physicalLedOutputEnabled = true;
+  auto &report = status.blueReport; report.timestamp = 1794615150; report.comparedTrips = 128;
+  report.steadyLeds = 9; report.uncertainLeds = 86;
+  for (unsigned i=1; i<=brooklyn::semantic::kRouteCount; ++i)
+    report.routes[i] = {15,20,4,7,6,2,3,2};
+  for (unsigned i=0; i<brooklyn::semantic::kMapLedCount && report.sampleCount<brooklyn::pipeline::kBlueSamples; ++i) {
+    const auto &led = brooklyn::semantic::kMapLeds[i];
+    if (led.role != brooklyn::semantic::Role::Station) continue;
+    auto &sample=report.samples[report.sampleCount++]; sample.led=led.globalOrder;
+    sample.trains=3; sample.age=255;
+    sample.flags=brooklyn::pipeline::NextDifferent | brooklyn::pipeline::NoPrediction | brooklyn::pipeline::StopChanged;
+  }
+  static char expanded[brooklyn::web::kStatusPageCapacity];
+  static char oldCapacity[16384]; const char *csrf="0123456789abcdef0123456789abcdef";
+  CHECK(brooklyn::web::renderHomePage(oldCapacity,sizeof(oldCapacity),status,5,brooklyn::semantic::kAllRoutesVisibleMask,csrf)==0);
+  const size_t size=brooklyn::web::renderHomePage(expanded,sizeof(expanded),status,5,brooklyn::semantic::kAllRoutesVisibleMask,csrf);
+  CHECK(size>0); CHECK(size>16384); CHECK(strstr(expanded,"Reported STOPPED_AT candidates")!=nullptr);
+  CHECK(strstr(expanded,"Save orange light settings")!=nullptr);
+  printf("Full production status page: %zu B\n",size);
+  memset(status.ssid,'&',sizeof(status.ssid)-1);
+  memset(status.deviceName,'&',sizeof(status.deviceName)-1);
+  memset(status.target,'&',sizeof(status.target)-1);
+  memset(status.availableVersion,'&',sizeof(status.availableVersion)-1);
+  const size_t escaped=brooklyn::web::renderHomePage(expanded,sizeof(expanded),status,255,brooklyn::semantic::kAllRoutesVisibleMask,csrf);
+  CHECK(escaped>size && escaped<sizeof(expanded));
+  CHECK(strstr(expanded,"Save orange light settings")!=nullptr);
+  printf("Full escaped production status page: %zu B\n",escaped);
+}
+
 void testPageEscapingAndRequiredContent() {
   char page[16384];
   brooklyn::web::StatusSnapshot status = sampleStatus();
@@ -937,6 +968,7 @@ int main() {
   testDnsConfigurationAndValidation();
   testDnsSettingsFormParsing();
   testRouteVisibilityPersistenceAndMigration();
+  testFullProductionPageCapacity();
   testPageEscapingAndRequiredContent();
   testInlineLoginOnStatusPage();
   testLoginPageCsrfRendering();  testJsonStatusIsEscapedAndSecretFree();

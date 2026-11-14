@@ -15,6 +15,9 @@
 
 namespace brooklyn::web {
 
+// Includes signed-in controls, all route diagnostics and escaped status text.
+constexpr size_t kStatusPageCapacity = 24576;
+
 constexpr const char *kDefaultDeviceName = "BrooklynMap";
 constexpr const char *kHostname = "brooklynmap";
 constexpr const char *kMdnsUrl = "http://brooklynmap.local/";
