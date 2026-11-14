@@ -50,6 +50,8 @@ struct MemoryStore {
   uint32_t blueHold = 0;
   uint32_t oledContrast = UINT32_MAX;
   uint32_t unknownTiming = UINT32_MAX;
+  bool colorsPresent=false;
+  brooklyn::semantic::TrainColors colors=brooklyn::semantic::kDefaultTrainColors;
 };
 
 bool loadBrightness(void *context, uint32_t &out) {
@@ -144,9 +146,34 @@ bool saveUnknown(void *context, uint32_t value) {
   if (memory.failSave) return false;
   memory.unknownTiming = value; return true;
 }
+bool loadColors(void *context,brooklyn::semantic::TrainColors &value) {
+  auto &memory=*static_cast<MemoryStore *>(context); if (!memory.colorsPresent) return false;
+  value=memory.colors; return true;
+}
+bool saveColors(void *context,const brooklyn::semantic::TrainColors &value) {
+  auto &memory=*static_cast<MemoryStore *>(context); if (memory.failSave) return false;
+  memory.colors=value; memory.colorsPresent=true; return true;
+}
 brooklyn::config::Store configStore(MemoryStore &memory) {
   return {&memory, loadBrightness, saveBrightness, loadRouteVisibilityMask,
-          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPoll, savePoll, loadOled, saveOled, loadBlueHold, saveBlueHold, loadContrast, saveContrast, loadUnknown, saveUnknown};
+          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPoll, savePoll, loadOled, saveOled, loadBlueHold, saveBlueHold, loadContrast, saveContrast, loadUnknown, saveUnknown, loadColors, saveColors};
+}
+
+void testTrainColors() {
+  using namespace brooklyn;
+  MemoryStore memory; config::DeviceConfiguration c(configStore(memory)); c.load();
+  CHECK(semantic::sameTrainColors(c.trainColors(),semantic::kDefaultTrainColors));
+  led::Rgb color{};
+  CHECK(config::parseTrainColor("#ffff00",color) && semantic::sameRgb(color,{255,255,0}));
+  CHECK(config::parseTrainColor("#123aBC",color) && semantic::sameRgb(color,{0x12,0x3a,0xbc}));
+  const char *bad[]={"", "#", "123456", "#12345", "#1234567", "#12xz56", " #123456", "#123456 ", "#123456;bad"};
+  for (const auto *text:bad) CHECK(!config::parseTrainColor(text,color));
+  CHECK(!config::parseTrainColor(nullptr,color));
+  semantic::TrainColors chosen{{10,20,30},{40,50,60},{70,80,90},{100,110,120}};
+  CHECK(c.setTrainColors(chosen)); config::DeviceConfiguration reload(configStore(memory)); reload.load();
+  CHECK(semantic::sameTrainColors(reload.trainColors(),chosen));
+  memory.failSave=true; CHECK(!c.setTrainColors(semantic::kDefaultTrainColors));
+  CHECK(semantic::sameTrainColors(c.trainColors(),chosen));
 }
 
 void testBlueHoldConfiguration() {
@@ -240,7 +267,7 @@ void testPersistentConfiguration() {
   CHECK(memory.brightnessValue == 256);
   CHECK(memory.saves == savesBeforeFailure);
   CHECK(brooklyn::led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP == 16);
-  CHECK(sizeof(brooklyn::config::DeviceConfiguration) <= sizeof(brooklyn::config::Store) + 32);
+  CHECK(sizeof(brooklyn::config::DeviceConfiguration) <= sizeof(brooklyn::config::Store) + 48);
 }
 
 void testDnsConfigurationAndValidation() {
@@ -585,8 +612,8 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "method=\"post\" action=\"/config/brightness\"") != nullptr);
   CHECK(strstr(page, "https://") == nullptr);
   CHECK(strstr(page, "cdn") == nullptr);
-  CHECK(strstr(page, "src=\"/ui.js?v=037\"") != nullptr);
-  CHECK(strstr(page, "href=\"/ui.css?v=037\"") != nullptr);
+  CHECK(strstr(page, "src=\"/ui.js?v=038\"") != nullptr);
+  CHECK(strstr(page, "href=\"/ui.css?v=038\"") != nullptr);
   CHECK(strstr(page, "value=\"password sentinel\"") == nullptr);
   CHECK(strstr(page, "password sentinel") == nullptr);
   CHECK(strstr(page, "Choose subway lines") != nullptr);
@@ -606,7 +633,7 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "Run Network Diagnostics") != nullptr);
   CHECK(strstr(page, "method=\"post\" action=\"/network-diagnostics/run\"") !=
         nullptr);
-  CHECK(countSubstring(page, csrfToken) == 13);
+  CHECK(countSubstring(page, csrfToken) == 14);
   // Exercise the actual generated forms against the runtime route policy.
   // A rendered POST form must pass authorizeRequest's endpoint-policy gate.
   const char *cursor = page;
@@ -942,6 +969,7 @@ int main() {
     CHECK(!brooklyn::config::parsePollSeconds("9999999999999999999", seconds));
     CHECK(!brooklyn::config::parsePollSeconds(nullptr, seconds));
   }
+  testTrainColors();
   testBlueHoldConfiguration();
   testBrightnessParsing();
   {
@@ -974,7 +1002,7 @@ int main() {
     CHECK(strstr(json,"\"blueSummary\":") != nullptr);
     CHECK(strstr(json,"NextDiff") != nullptr && strstr(json,"232N (different)") != nullptr);
     CHECK(brooklyn::web::renderHomePage(page,sizeof(page),status,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
-    CHECK(strstr(page,"Why blue?") != nullptr && strstr(page,"data-status=\"blueSummary\"") != nullptr);
+    CHECK(strstr(page,"Train report details") != nullptr && strstr(page,"data-status=\"blueSummary\"") != nullptr);
   }
   {
     auto s = sampleStatus();

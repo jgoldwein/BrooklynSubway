@@ -17,5 +17,6 @@ bool signalDiagnosticChannel(led::PhysicalChannel channel);
 // U23/GPIO14: dim PWM feed-health indicator, independent of map POWER state.
 // First successful ON per boot emits a 100 ms GPIO21 beep unless DIM-muted.
 void setFeedIndicator(bool freshComplete);
+void setFeedIndicatorAllowed(bool allowed);
 
 }  // namespace brooklyn::hardware

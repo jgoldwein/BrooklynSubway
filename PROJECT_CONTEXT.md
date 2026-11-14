@@ -259,6 +259,36 @@ MTA/OLED/hardware behavior. Keep the 24 KiB shared page buffer; assets are not
 embedded into it. See docs/WEB_UI.md and docs/RELEASE_0.2.37.md for maintenance
 and browser-validation coverage.
 
+0.2.38 adds saved four-state RGB colors. User defaults: approaching Yellow,
+stopped Red, leaving Green, uncertain Blue. Palette applies to live station and
+moving segment indications, including uncertainty/last-reported fading markers.
+No traffic blinking or ETA color gradients. Fade durations, state classification,
+brightness/current limits and counts are unchanged. NVS train_colors is one
+12-byte TrainColors blob; validate size before loading and strict #RRGGBB form
+values before saving. Route/status/diagnostic palettes remain separate. The web
+legend reflects the selected palette; stopped-duration wording is color-neutral.
+Assets version is 038. Build static RAM is 188,412 bytes, 80 bytes above 0.2.37.
+
+Accepted follow-up work after the color release:
+- Compare optional estimated motion against recorded feeds before enabling it
+  on hardware. Use observed stop changes, bounded learned travel times and ETAs;
+  reconcile fresh observations, suppress contradictory/stale/ambiguous estimates,
+  and distinguish estimates from confirmed reports. Do not silently enable guesses.
+- In a subsequent release, add OLED mapped-train count between Brooklyn Subway
+  and the existing clock. Use the committed map's resolved-train count so fading
+  location hints are not counted as extra trains. Preserve OLED GPIO8/9, address
+  fallback, dimmer, worker isolation and time/DST behavior.
+- The earlier geographic end-to-end ordering fix for the separate full-line
+  diagnostic remains queued after MTA representation work.
+
+Subway Now research (2026-11-14): its own sunny-ng/subwaynow-server README
+documents 15-second production processing with async workers and rolling average
+trip runtimes for ETAs (https://github.com/sunny-ng/subwaynow-server). Our current
+poll scheduler waits 15 seconds AFTER eight sequential downloads and publishes
+at cycle completion; this adds latency. Compare actual feed timestamps and cycle
+durations before claiming which app gets newer observations. No polling or
+estimation changes were included in 0.2.38.
+
 ## USB / programming
 
 - Native ESP32-S3 USB is wired to USB1: GPIO19 D-, GPIO20 D+.
@@ -311,3 +341,7 @@ Do not combine MTA route semantics with physical LED numbering. The logical mode
 6. Do not erase or repurpose GPIO0/EN recovery behavior.
 7. Treat all front buttons and rotary push as active LOW.
 8. Preserve the exact manufactured PCB as the hardware authority.
+
+## Pending 0.2.38 POWER controls
+
+GPIO40 POWER short-release cycles both on, LED-off/OLED-on, LED-on/OLED-off, both off. Default both on; selections are volatile. GPIO1 startup/fault guards remain. U23 GPIO14 follows LED selection through a serialized gate; its once-per-boot beep is retained. OLED U22 GPIO8/9 uses power-save commands in its own worker (up to one-second response), without changing address or contrast. Three-second debounced hold requests reboot once; main loop performs it at a safe boundary after any active feed/update operation. Held-at-boot input is ignored until release. No PCB changes.

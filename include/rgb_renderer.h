@@ -7,6 +7,7 @@
 #include "semantic_api.h"
 #include "train_frame.h"
 #include "unknown_timing.h"
+#include "train_colors.h"
 
 #include <stdint.h>
 
@@ -47,6 +48,7 @@ struct RenderConfig {
   bool animateTraffic = false;
   uint32_t nowUnix = 0;
   uint32_t animationTimeMs = 0;
+  TrainColors colors=kDefaultTrainColors;
   uint16_t blueHoldSeconds = 20;
   UnknownTimingMode unknownTimingMode = UnknownTimingMode::Orange;
   uint16_t lastReportedFadeSeconds = kDefaultLastReportedFadeSeconds;
@@ -73,7 +75,7 @@ uint16_t departurePeriodMs(const StationTiming &timing, uint32_t elapsedSeconds)
 enum class StationMotion : uint8_t { Approaching, Stopped, Departing };
 // Nominal motion colour; brightness/current limiting is applied afterward.
 Rgb stationMotionColor(StationMotion motion, const StationTiming &timing,
-                       uint32_t elapsedSeconds);
+                       uint32_t elapsedSeconds, const TrainColors &colors=kDefaultTrainColors);
 
 // Clears `output`, then paints every valid occupied, visible map LED. Hidden
 // routes remain in `input`; visibility affects only this final RGB rendering.

@@ -7,6 +7,7 @@ namespace brooklyn::oled {
 bool formatClock(time_t utc, char *out, size_t capacity);
 void begin(uint8_t address, uint8_t contrast = 207);
 void setContrast(uint8_t contrast);
+void setEnabled(bool enabled);
 enum class State : uint8_t { NotStarted, Starting, BusLow, NoAck, InitFailed, Ready, TransferFailed, TaskFailed, InvalidAddress };
 struct Status { State state; uint8_t requestedAddress, activeAddress, error; };
 Status status();

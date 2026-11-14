@@ -87,37 +87,13 @@ uint16_t departurePeriodMs(const StationTiming &timing, uint32_t elapsedSeconds)
 }
 
 Rgb stationMotionColor(StationMotion motion, const StationTiming &timing,
-                       uint32_t elapsedSeconds) {
-  constexpr Rgb orange{255, 96, 0};
-  constexpr Rgb blue{0, 0, 255};
-  constexpr Rgb cyan{0, 255, 255};
-  constexpr Rgb magenta{255, 0, 255};
-  constexpr uint32_t kApproachTransitionSeconds = 30;
-  constexpr uint32_t kDepartureTrailSeconds = 30;
-  Rgb from = blue, to = blue;
-  uint32_t weight = 0;
-  uint8_t fade = 255;
-  if (motion == StationMotion::Approaching) {
-    // Unknown/stalled predictions stay orange instead of inventing progress.
-    if (!timing.arrivalSecondsPlusOne || timing.arrivalSecondsPlusOne == UINT16_MAX ||
-        timing.movementAgeSeconds + elapsedSeconds > 90) return orange;
-    const uint32_t eta = timing.arrivalSecondsPlusOne - 1;
-    const uint32_t remaining = eta > elapsedSeconds ? eta - elapsedSeconds : 0;
-    from = orange; to = cyan;
-    weight = remaining >= kApproachTransitionSeconds ? 0 :
-        (kApproachTransitionSeconds - remaining) * 255 / kApproachTransitionSeconds;
-  } else if (motion == StationMotion::Departing) {
-    uint32_t age = timing.departureAgePlusOne ? timing.departureAgePlusOne - 1 + elapsedSeconds : 0;
-    if (age > kDepartureTrailSeconds) age = kDepartureTrailSeconds;
-    from = blue; to = magenta;
-    weight = age * 255 / kDepartureTrailSeconds;
-    fade = static_cast<uint8_t>((kDepartureTrailSeconds - age) * 255 / kDepartureTrailSeconds);
-  }
-  const uint32_t inverse = 255 - weight;
-  return scaleBrightness(Rgb{
-      static_cast<uint8_t>((from.red * inverse + to.red * weight + 127) / 255),
-      static_cast<uint8_t>((from.green * inverse + to.green * weight + 127) / 255),
-      static_cast<uint8_t>((from.blue * inverse + to.blue * weight + 127) / 255)}, fade);
+                       uint32_t elapsedSeconds, const TrainColors &colors) {
+  if (motion==StationMotion::Approaching) return colors.approaching;
+  if (motion==StationMotion::Stopped) return colors.stopped;
+  constexpr uint32_t duration=30;
+  uint32_t age=timing.departureAgePlusOne ? timing.departureAgePlusOne-1+elapsedSeconds : 0;
+  if (age>duration) age=duration;
+  return scaleBrightness(colors.leaving,static_cast<uint8_t>((duration-age)*255/duration));
 }
 
 RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
@@ -156,8 +132,9 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
       const auto motion = isApproachingOnly(input, i) || approachOverlay
           ? StationMotion::Approaching : !occupied && departure
           ? StationMotion::Departing : StationMotion::Stopped;
-      color = stationMotionColor(motion, timing, elapsed);
+      color = stationMotionColor(motion, timing, elapsed, config.colors);
     }
+    if (config.animateTraffic && semantic->role==Role::Segment) color=config.colors.approaching;
     const bool uncertain = isUncertainOnly(input, i) ||
         (occupied && !isApproachingOnly(input, i) && input.blueSecondsRemaining[i] &&
          elapsed >= input.blueSecondsRemaining[i]);
@@ -169,7 +146,8 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
     const bool unknown = hintOverlay || staleSegment || (config.animateTraffic && semantic->role == Role::Station &&
         (uncertain || unknownApproach));
     if (unknown && (!config.showUnknownTiming || config.unknownTimingMode==UnknownTimingMode::Hidden)) continue;
-    if (config.animateTraffic && uncertain) color = Rgb{128, 48, 0};
+    if (unknown) color=config.colors.uncertain;
+    if (config.animateTraffic && uncertain) color=scaleBrightness(config.colors.uncertain,128);
     const uint8_t brightness = unknown && config.unknownTimingBrightness < config.brightness
         ? config.unknownTimingBrightness : config.brightness;
     if (unknown && lastMode) {
@@ -179,7 +157,7 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
       const uint8_t limit=brightness<2 ? brightness : 2; // Faint neutral marker, still subject to all output caps.
       const uint32_t remaining=config.lastReportedFadeSeconds-age;
       const uint8_t level=(uint32_t(limit)*remaining+config.lastReportedFadeSeconds-1)/config.lastReportedFadeSeconds;
-      output.pixels[i]=Rgb{level,level,level};
+      output.pixels[i]=scaleBrightness(config.colors.uncertain,level);
     } else output.pixels[i] = scaleBrightness(color, brightness);
     ++result.renderedLeds;
     if (semantic->role == Role::Station) ++result.stationLeds;

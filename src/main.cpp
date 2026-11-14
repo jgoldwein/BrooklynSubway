@@ -136,11 +136,13 @@ void updateLogicalDisplay(uint32_t nowMs) {
   bool changed = false;
   const uint8_t brightness = networkService.brightness();
   const uint32_t unknownTiming = networkService.unknownTiming();
+  const auto colors=networkService.trainColors();
+  static auto renderedColors=brooklyn::semantic::kDefaultTrainColors;
   static uint32_t renderedUnknownTiming = UINT32_MAX;
   const uint32_t routeVisibilityMask = networkService.routeVisibilityMask();
   const bool approachingLit = brooklyn::semantic::approachingPhaseLit(nowMs);
   if (renderedFrameRevision != operationalDisplay.frameRevision() ||
-      renderedBrightness != brightness || renderedUnknownTiming != unknownTiming ||
+      renderedBrightness != brightness || renderedUnknownTiming != unknownTiming || !brooklyn::semantic::sameTrainColors(renderedColors,colors) ||
       renderedRouteVisibilityMask != routeVisibilityMask ||
       (operationalDisplay.frame().approachingTrains != 0 &&
        renderedApproachingLit != approachingLit)) {
@@ -153,6 +155,7 @@ void updateLogicalDisplay(uint32_t nowMs) {
     renderedFrameRevision = operationalDisplay.frameRevision();
     renderedBrightness = brightness;
     renderedUnknownTiming = unknownTiming;
+    renderedColors=colors;
     renderedRouteVisibilityMask = routeVisibilityMask;
     renderedApproachingLit = approachingLit;
     changed = true;
@@ -196,6 +199,7 @@ void updateLogicalDisplay(uint32_t nowMs) {
       snapshot.routeMask = routeVisibilityMask;
       snapshot.brightness = brightness;
       snapshot.unknownTiming = unknownTiming;
+      snapshot.colors=colors;
       snapshot.hasFrame = operationalDisplay.hasFrame();
       snapshot.clockUnix = static_cast<uint32_t>(time(nullptr));
       snapshot.clockAtMs = nowMs;
@@ -298,6 +302,12 @@ void setup() {
 }
 
 void loop() {
+  if (brooklyn::display::live::consumeRebootRequest()) {
+    Serial.println("POWER: 3-second hold; rebooting");
+    brooklyn::display::live::disable();
+    delay(100);
+    ESP.restart();
+  }
   brooklyn::controls::update();
   const bool backgroundTest = brooklyn::display::live::consumeTestRequest();
   if (brooklyn::controls::consumeLedDiagnosticRequest() || backgroundTest) {

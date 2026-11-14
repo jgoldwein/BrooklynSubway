@@ -506,6 +506,7 @@ NetworkService::NetworkService(pipeline::TrainPipeline &pipeline)
 uint8_t NetworkService::oledAddress() const { return configuration_.oledAddress(); }
 uint8_t NetworkService::oledContrast() const { return configuration_.oledContrast(); }
 uint32_t NetworkService::unknownTiming() const { return configuration_.unknownTiming(); }
+semantic::TrainColors NetworkService::trainColors() const { return configuration_.trainColors(); }
 
 uint8_t NetworkService::brightness() const {
   return configuration_.brightness();
@@ -1126,6 +1127,7 @@ NetworkService::NetworkService(pipeline::TrainPipeline &pipeline)
 uint8_t NetworkService::oledAddress() const { return config::kDefaultOledAddress; }
 uint8_t NetworkService::oledContrast() const { return config::kDefaultOledContrast; }
 uint32_t NetworkService::unknownTiming() const { return config::kDefaultUnknownTiming; }
+semantic::TrainColors NetworkService::trainColors() const { return semantic::kDefaultTrainColors; }
 
 uint8_t NetworkService::brightness() const {
   return config::kDefaultBrightness;

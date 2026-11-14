@@ -309,7 +309,7 @@ size_t renderBlueSummary(char *out, size_t capacity, const pipeline::BlueReport 
   if (!report.timestamp) { w.append("Waiting for a completed poll."); return w.size(); }
   w.format("Latest poll: %lu (Unix). Station LEDs, visible routes; live timers or held/paused display may differ.\n",
            static_cast<unsigned long>(report.timestamp));
-  w.format("Station indications: %u recent matching stop LEDs (blue), %u uncertain LEDs (steady dim amber).\n", report.steadyLeds, report.uncertainLeds);
+  w.format("Station indications: %u recent matching stop LEDs, %u uncertain LEDs.\n", report.steadyLeds, report.uncertainLeds);
   w.append("Reported STOPPED_AT candidates:\nRoute  LEDs Trains Old NextDiff Future NoETA Shared Changed\n");
   for (uint8_t i = 1; i <= semantic::kRouteCount; ++i) {
     const auto &r = report.routes[i];
@@ -374,7 +374,7 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<span>Feeds working</span></div><div class=\"metric\"><strong data-status=\"dataAgeSeconds\">",
                 static_cast<unsigned long>(status.resolvedTrains),status.feedsSucceeded,status.feedsTotal);
   if (status.hasDataAge) writer.format("%lu seconds",static_cast<unsigned long>(status.dataAgeSeconds)); else writer.append("Waiting");
-  writer.append("</strong><span>Latest update</span></div></div><p class=\"hint\">Use the POWER button on your map to pause or resume its lights.</p>"
+  writer.append("</strong><span>Latest update</span></div></div><p class=\"hint\">POWER cycles: all on, LEDs off, screen off, all off. Hold 3 seconds to reboot.</p>"
                 "<div class=\"actions\"><a class=\"button\" href=\"#lights\">Adjust train lights</a>"
                 "<a class=\"button secondary\" href=\"#screen\">Screen brightness</a></div></section>"
                 "<section class=\"wide\" data-view=\"advanced\" id=\"advanced\"><p class=\"kicker\">Tools &amp; help</p><h2>Keep your map running</h2>"
@@ -574,17 +574,21 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<dt>Approaching trains (included above)</dt><dd data-status=\"approachingTrains\">%lu</dd>"
                 "<dt>Occupied LEDs</dt><dd data-status=\"occupiedLeds\">%u</dd>"
                 "<dt>Collision count</dt><dd data-status=\"collisionCount\">%u</dd></dl>"
-                "</details><div class=\"legend\"><span><i class=\"swatch blue\"></i>Blue: train reported stopped</span>"
-                "<span><i class=\"swatch cyan\"></i>Orange to cyan: approaching</span><span><i class=\"swatch pink\"></i>Blue to pink: departing</span>"
-                "<span><i class=\"swatch white\"></i>Faint white: last reported place</span></div>"
-                "<p class=\"hint\">Colors are estimates from train reports. White markers appear when that option is selected; "
-                "orange can also show uncertain movement. No traffic lights blink.</p></section>"
+                "</details><div class=\"legend\"><span><i class=\"swatch\" data-train-color=\"approaching\" style=\"background:#%02X%02X%02X\"></i>Approaching</span>"
+                "<span><i class=\"swatch\" data-train-color=\"stopped\" style=\"background:#%02X%02X%02X\"></i>Stopped</span>"
+                "<span><i class=\"swatch\" data-train-color=\"leaving\" style=\"background:#%02X%02X%02X\"></i>Leaving</span>"
+                "<span><i class=\"swatch\" data-train-color=\"uncertain\" style=\"background:#%02X%02X%02X\"></i>Uncertain / last reported</span></div>"
+                "<p class=\"hint\">Choose these colors in Train lights. Faint markers show the last reported place when selected. No traffic lights blink.</p></section>"
                 "<details class=\"card wide\" data-view=\"advanced\"><summary>Network diagnostics</summary><dl>"
                 "<dt>Diagnostic run</dt><dd>%s</dd>"
                 "<dt>NTP DNS</dt><dd>%s",
                 static_cast<unsigned long>(status.resolvedTrains),
                 static_cast<unsigned long>(status.approachingTrains),
                 status.occupiedLeds, status.collisionCount,
+                status.trainColors.approaching.red,status.trainColors.approaching.green,status.trainColors.approaching.blue,
+                status.trainColors.stopped.red,status.trainColors.stopped.green,status.trainColors.stopped.blue,
+                status.trainColors.leaving.red,status.trainColors.leaving.green,status.trainColors.leaving.blue,
+                status.trainColors.uncertain.red,status.trainColors.uncertain.green,status.trainColors.uncertain.blue,
                 network::diagnostics::runStateName(
                     status.networkDiagnostics.state),
                 network::diagnostics::checkStateName(
@@ -662,7 +666,22 @@ size_t renderHomePage(char *out, size_t capacity,
   }
   writer.append("<p class=\"muted\">Read-only connectivity checks; raw TCP "
                 "success does not verify TLS or HTTPS.</p></details>"
-                "<section class=\"map-brightness\" data-view=\"lights\" id=\"lights\"><h2>Map brightness</h2>");
+                "");
+  writer.append("<section class=\"train-colors wide\" data-view=\"lights\" id=\"lights\"><h2>Train colors</h2>"
+                "<p>Pick a color for each state. Defaults: approaching yellow, stopped red, leaving green, uncertain blue.</p>");
+  if (status.adminSessionActive && csrfToken && csrfToken[0]) {
+    writer.append("<form method=\"post\" action=\"/config/colors\"><input type=\"hidden\" name=\"csrf\" value=\""); writer.html(csrfToken);
+    writer.append("\"><div class=\"color-options\">");
+    const char *names[]={"approaching","stopped","leaving","uncertain"};
+    const char *labels[]={"Approaching","Stopped","Leaving","Uncertain"};
+    const led::Rgb values[]={status.trainColors.approaching,status.trainColors.stopped,status.trainColors.leaving,status.trainColors.uncertain};
+    const char *defaultHex[]={"#FFFF00","#FF0000","#00FF00","#0000FF"};
+    for (unsigned i=0;i<4;++i) writer.format("<label>%s<input type=\"color\" name=\"%s\" value=\"#%02X%02X%02X\" data-default=\"%s\" required></label>",labels[i],names[i],values[i].red,values[i].green,values[i].blue,defaultHex[i]);
+    writer.append("</div><div class=\"actions\"><button type=\"submit\">Save colors</button>"
+                  "<button type=\"button\" class=\"secondary\" onclick=\"this.form.querySelectorAll('input[data-default]').forEach(e=>e.value=e.dataset.default)\">Use default colors</button></div></form>");
+  } else writer.append("<p class=\"hint\">Sign in to change colors.</p>");
+  writer.append("<p class=\"hint\">Leaving and last-reported lights still fade. Brightness limits still apply. Black hides that state.</p></section>"
+                "<section class=\"map-brightness\" data-view=\"lights\"><h2>Map brightness</h2>");
   if (status.adminSessionActive && csrfToken != nullptr &&
       csrfToken[0] != '\0') {
     writer.append("<form method=\"post\" action=\"/config/brightness\">"
@@ -682,7 +701,7 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.format("<p>Current setting: %u / 255 (%u%%).</p>", brightness,
                   static_cast<unsigned>(brightness) * 100 / 255);
   }
-  writer.append("<p class=\"muted\">Live output starts automatically with fresh data. POWER toggles off/on; "
+  writer.append("<p class=\"muted\">Live output starts automatically with fresh data. POWER cycles LEDs and screen; hold 3 seconds to reboot; "
                 "Your map keeps a safe maximum brightness, even if you choose a higher value."
                 "</p></section>");
   writer.append("<p class=\"notice wide\" data-view=\"overview\" data-status=\"uncertaintyNotice\">");
@@ -691,24 +710,24 @@ size_t renderHomePage(char *out, size_t capacity,
   {
     char summary[3072];
     const size_t length = renderBlueSummary(summary, sizeof(summary), status.blueReport);
-    writer.append("<details class=\"card wide\" data-view=\"advanced\"><summary>Why blue?</summary><pre data-status=\"blueSummary\" style=\"overflow:auto\">");
+    writer.append("<details class=\"card wide\" data-view=\"advanced\"><summary>Train report details</summary><pre data-status=\"blueSummary\" style=\"overflow:auto\">");
     writer.html(length ? summary : "Diagnostic report unavailable");
     writer.append("</pre></details>");
   }
   const auto uncertainMode=semantic::unknownTimingMode(status.unknownTiming);
   writer.append("<section class=\"uncertain-lights\" data-view=\"lights\"><h2>Uncertain train movement</h2><p>When train reports are unclear, choose what to show. "
-                "A faint white light marks its last reported place, then fades away. It does not mean the train is still there. "
+                "A faint light marks its last reported place, then fades away. It does not mean the train is still there. "
                 "Other train lights keep their normal brightness.</p>");
   if (!status.adminSessionActive) writer.format("<p>Current choice: %s. Fade time: %u seconds. Brightness limit: %u / 255.</p>",
       uncertainMode==semantic::UnknownTimingMode::LastReported?"Last reported location":
-      uncertainMode==semantic::UnknownTimingMode::Orange?"Orange":"Hide",
+      uncertainMode==semantic::UnknownTimingMode::Orange?"Steady color":"Hide",
       semantic::lastReportedFadeSeconds(status.unknownTiming),status.unknownTiming&255);
   if (status.adminSessionActive && csrfToken && csrfToken[0]) {
     writer.append("<form method=\"post\" action=\"/config/unknown-timing\"><input type=\"hidden\" name=\"csrf\" value=\"");
     writer.html(csrfToken);
     writer.format("\"><label>Uncertain trains <select name=\"mode\">"
                   "<option value=\"hide\"%s>Hide</option><option value=\"last\"%s>Show last reported location</option>"
-                  "<option value=\"orange\"%s>Show orange</option></select></label> "
+                  "<option value=\"orange\"%s>Steady color</option></select></label> "
                   "<label>Dim light brightness <input type=\"number\" name=\"brightness\" min=\"0\" max=\"255\" value=\"%u\" required></label> "
                   "<label>Fade out after (seconds) <input type=\"number\" name=\"fade\" min=\"1\" max=\"300\" value=\"%u\" required></label>"
                   "<button>Save train display settings</button></form>",
@@ -717,8 +736,8 @@ size_t renderHomePage(char *out, size_t capacity,
                   uncertainMode==semantic::UnknownTimingMode::Orange?" selected":"",
                   status.unknownTiming&255,semantic::lastReportedFadeSeconds(status.unknownTiming));
   }
-  writer.append("<p>White lights stay faint. Fade time applies to the white markers. Brightness 0 hides uncertain lights.</p></section>");
-  writer.format("<section class=\"blue-hold\" data-view=\"lights\"><h2>How long should blue stay on?</h2><p>A blue light means a train was reported stopped. Keep it blue for up to %lu seconds. "
+  writer.append("<p>Faint lights stay faint. Fade time applies to the fading markers. Brightness 0 hides uncertain lights.</p></section>");
+  writer.format("<section class=\"blue-hold\" data-view=\"lights\"><h2>How long should the stopped color stay on?</h2><p>The stopped color means a train was reported stopped. Keep it on for up to %lu seconds. "
                 "After that, use your choice for uncertain movement. "
                 "Changes take effect with the next train update. Long stops can also become uncertain.</p>",
                 static_cast<unsigned long>(status.blueHoldSeconds));
@@ -726,7 +745,7 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.append("<form method=\"post\" action=\"/config/blue-hold\"><input type=\"hidden\" name=\"csrf\" value=\"");
     writer.html(csrfToken);
     writer.format("\"><label>Seconds <input type=\"number\" name=\"seconds\" min=\"1\" max=\"300\" value=\"%lu\" required></label>"
-                  "<button>Save blue hold time</button></form>", static_cast<unsigned long>(status.blueHoldSeconds));
+                  "<button>Save stop time</button></form>", static_cast<unsigned long>(status.blueHoldSeconds));
   }
   writer.append("</section>");
   writer.format("<details class=\"card wide\" data-view=\"advanced\"><summary>Train update timing</summary><p>Wait after each completed download cycle: %lu seconds. "
@@ -834,7 +853,7 @@ size_t renderHomePage(char *out, size_t capacity,
                 "async function refresh(){let timer;try{if(!document.hidden){"
                 "const controller=new AbortController();timer=setTimeout(()=>controller.abort(),15000);"
                 "const r=await fetch('/api/status',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();"
-                "const s=await r.json();s.feedSummary=s.feedsSucceeded+' / '+s.feedsTotal;s.connectionLabel=s.networkConnected?'Wi-Fi connected':'Wi-Fi disconnected';"
+                "const s=await r.json();if(s.trainColors)document.querySelectorAll('[data-train-color]').forEach(e=>{const c=s.trainColors[e.dataset.trainColor];if(/^#[0-9a-f]{6}$/i.test(c))e.style.backgroundColor=c});s.feedSummary=s.feedsSucceeded+' / '+s.feedsTotal;s.connectionLabel=s.networkConnected?'Wi-Fi connected':'Wi-Fi disconnected';"
                 "s.mapPower=s.physicalLedOutputEnabled?'Lights on':s.physicalPowerPaused?'Lights paused':'Lights off';"
                 "s.friendlyState=s.displayState==='Fresh'?'Train data is up to date':s.displayState==='WaitingForData'?'Waiting for the first train update':s.displayState==='NoData'?'No current train data':'Some train updates are delayed';"
                 "document.querySelectorAll('[data-status]').forEach(e=>{const k=e.dataset.status;"
@@ -853,7 +872,7 @@ size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken) {
   writer.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
                 "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
                 "<meta name=\"referrer\" content=\"same-origin\"><title>Sign in - Brooklyn Subway</title>"
-                "<link rel=\"stylesheet\" href=\"/ui.css?v=037\"></head><body>"
+                "<link rel=\"stylesheet\" href=\"/ui.css?v=038\"></head><body>"
                 "<header><div class=\"brand\"><span class=\"brand-mark\" aria-hidden=\"true\">BK</span>"
                 "<h1>Brooklyn Subway</h1></div><a href=\"/\">Back to map</a></header>"
                 "<main class=\"login-shell\"><section class=\"wide\"><p class=\"kicker\">Settings access</p><h2>Sign in</h2>"
@@ -945,6 +964,11 @@ size_t renderStatusJson(char *out, size_t capacity,
     writer.format(",\"oledActiveAddress\":%u,\"oledI2cError\":%u", status.oledStatus.activeAddress, status.oledStatus.error);
   }
   writer.format(",\"uncertaintyNotice\":\"%s\"",status.blueReport.uncertainLeds?"Some train movements are uncertain.":"");
+  writer.format(",\"trainColors\":{\"approaching\":\"#%02X%02X%02X\",\"stopped\":\"#%02X%02X%02X\",\"leaving\":\"#%02X%02X%02X\",\"uncertain\":\"#%02X%02X%02X\"}",
+      status.trainColors.approaching.red,status.trainColors.approaching.green,status.trainColors.approaching.blue,
+      status.trainColors.stopped.red,status.trainColors.stopped.green,status.trainColors.stopped.blue,
+      status.trainColors.leaving.red,status.trainColors.leaving.green,status.trainColors.leaving.blue,
+      status.trainColors.uncertain.red,status.trainColors.uncertain.green,status.trainColors.uncertain.blue);
   writer.format(",\"unknownTimingEnabled\":%s,\"unknownTimingBrightness\":%u,\"unknownTimingMode\":\"%s\",\"lastReportedFadeSeconds\":%u",
       semantic::unknownTimingMode(status.unknownTiming)!=semantic::UnknownTimingMode::Hidden?"true":"false",status.unknownTiming&255,
       semantic::unknownTimingModeName(semantic::unknownTimingMode(status.unknownTiming)),semantic::lastReportedFadeSeconds(status.unknownTiming));

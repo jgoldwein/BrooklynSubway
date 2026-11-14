@@ -17,4 +17,5 @@ struct DiagnosticGuard {
   ~DiagnosticGuard() { endDiagnostic(); }
 };
 bool consumeRecoveryRequest();
+bool consumeRebootRequest();
 }

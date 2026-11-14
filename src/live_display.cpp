@@ -3,6 +3,7 @@
 #if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
 #include "board_pins.h"
 #include "hardware.h"
+#include "oled_clock.h"
 #include "led_backend.h"
 #include "wifi_policy.h"
 #include "test_button_policy.h"
@@ -44,6 +45,8 @@ void run(void *) {
         ? "Live display paused by POWER; press POWER again to resume"
         : "Live display stopped; GPIO1 LOW; press POWER when fresh data returns");
     if (!wasEnabled && controller.enabled()) Serial.println("Live display started/resumed after checks");
+    hardware::setFeedIndicatorAllowed(controller.ledsRequested());
+    oled::setEnabled(controller.screenEnabled());
     xSemaphoreGive(mutex);
     vTaskDelay(pdMS_TO_TICKS(20));
   }
@@ -61,7 +64,7 @@ bool begin() {
     Serial.println("Live display unavailable: task allocation failed; outputs OFF");
     return false;
   }
-  Serial.println("Live display ready: GPIO1 enable; GPIO4/5/6/7/10/11/12/13 data; auto-start after healthy fresh data; cap 16/255; POWER toggles");
+  Serial.println("Live display ready: GPIO1 enable; GPIO4/5/6/7/10/11/12/13 data; auto-start after healthy fresh data; cap 16/255; POWER cycles LEDs/OLED; hold 3 seconds to reboot");
   return true;
 }
 bool available() { return task != nullptr; }
@@ -90,6 +93,13 @@ bool consumeRecoveryRequest() {
   xSemaphoreTake(mutex, portMAX_DELAY);
   const bool result = recoveryRequested;
   recoveryRequested = false;
+  xSemaphoreGive(mutex);
+  return result;
+}
+bool consumeRebootRequest() {
+  if (!available()) return false;
+  xSemaphoreTake(mutex, portMAX_DELAY);
+  const bool result = controller.consumeRebootRequest();
   xSemaphoreGive(mutex);
   return result;
 }
@@ -151,5 +161,6 @@ bool consumeTestRequest() { return false; }
 void beginDiagnostic() {}
 void endDiagnostic() {}
 bool consumeRecoveryRequest() { return false; }
+bool consumeRebootRequest() { return false; }
 }
 #endif

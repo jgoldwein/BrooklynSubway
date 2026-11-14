@@ -39,6 +39,7 @@ class ServerOwnership {
 struct StatusSnapshot {
   uint32_t uptimeSeconds = 0;
   pipeline::BlueReport blueReport{};
+  semantic::TrainColors trainColors=semantic::kDefaultTrainColors;
   uint32_t unknownTiming = 511;
   uint8_t oledContrast = 207;
   uint32_t blueHoldSeconds = 20;

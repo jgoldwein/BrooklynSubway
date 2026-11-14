@@ -314,53 +314,30 @@ int main() {
     CHECK(f.resolvedTrains == 1);
   }
   {
-    StationTiming t{};
-    t.arrivalSecondsPlusOne = 121;
-    CHECK(eq(stationMotionColor(StationMotion::Approaching, t, 0), Rgb{255, 96, 0}));
-    // Simulate a fresh prediction near arrival, rather than a stale extrapolation.
-    t.arrivalSecondsPlusOne = 1;
-    CHECK(eq(stationMotionColor(StationMotion::Approaching, t, 0), Rgb{0, 255, 255}));
-    CHECK(eq(stationMotionColor(StationMotion::Stopped, t, 0), Rgb{0, 0, 255}));
-    CHECK(eq(stationMotionColor(StationMotion::Approaching, t, 91), Rgb{255, 96, 0}));
-    t.arrivalSecondsPlusOne = UINT16_MAX;
-    CHECK(eq(stationMotionColor(StationMotion::Approaching, t, 0), Rgb{255, 96, 0}));
-    t.departureAgePlusOne = 1;
-    CHECK(eq(stationMotionColor(StationMotion::Departing, t, 0), Rgb{0, 0, 255}));
-    CHECK(eq(stationMotionColor(StationMotion::Departing, t, 30), Rgb{0, 0, 0}));
-    const auto middle = stationMotionColor(StationMotion::Departing, t, 15);
-    CHECK(middle.red > 0 && middle.blue > 0 && middle.red < 255 && middle.blue < 255);
-    TrainFrame f{}; clearFrame(f);
-    const auto index = firstLed(Role::Station);
-    CHECK(addValidatedLed(f, index));
-    RenderConfig c = cfg(5); c.animateTraffic = true;
-    RgbFrame r{}; renderTrainFrame(f, r, c);
-    CHECK(eq(r.pixels[index], Rgb{0, 0, 5}));
-    // A stopped train sharing an approach station stays steady blue.
-    CHECK(addValidatedLed(f, index, true));
-    f.timing[index].arrivalSecondsPlusOne = 121;
-    f.animationEpochUnix = 1000; c.nowUnix = 1000; c.animationTimeMs = 1500;
-    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0, 0, 5}));
-    uint8_t previousRed = 255, previousBlue = 0;
-    for (unsigned remaining = 120; ; --remaining) {
-      t.arrivalSecondsPlusOne = remaining + 1;
-      const auto color = stationMotionColor(StationMotion::Approaching, t, 0);
-      CHECK(color.red <= previousRed && color.blue >= previousBlue);
-      previousRed = color.red; previousBlue = color.blue;
-      if (!remaining) break;
+    StationTiming t{}; t.arrivalSecondsPlusOne=121; t.departureAgePlusOne=1;
+    CHECK(eq(stationMotionColor(StationMotion::Approaching,t,0),Rgb{255,255,0}));
+    CHECK(eq(stationMotionColor(StationMotion::Stopped,t,0),Rgb{255,0,0}));
+    CHECK(eq(stationMotionColor(StationMotion::Departing,t,0),Rgb{0,255,0}));
+    CHECK(eq(stationMotionColor(StationMotion::Departing,t,30),Rgb{0,0,0}));
+    CHECK(eq(stationMotionColor(StationMotion::Approaching,t,90),Rgb{255,255,0}));
+    const TrainColors custom{{10,20,30},{40,50,60},{70,80,90},{100,110,120}};
+    CHECK(eq(stationMotionColor(StationMotion::Approaching,t,0,custom),custom.approaching));
+    CHECK(eq(stationMotionColor(StationMotion::Stopped,t,0,custom),custom.stopped));
+    CHECK(eq(stationMotionColor(StationMotion::Departing,t,0,custom),custom.leaving));
+    uint8_t previous=255;
+    for (unsigned age=0;age<=30;++age) {
+      const auto color=stationMotionColor(StationMotion::Departing,t,age);
+      CHECK(color.red==0 && color.blue==0 && color.green<=previous); previous=color.green;
     }
-    previousRed = 0; previousBlue = 255;
-    for (unsigned age = 0; age <= 30; ++age) {
-      const auto color = stationMotionColor(StationMotion::Departing, t, age);
-      CHECK(color.blue <= previousBlue); // departure fades continuously
-      previousRed = color.red; previousBlue = color.blue;
-    }
-    clearFrame(f);
-    CHECK(addValidatedLed(f, index, true));
-    f.animationEpochUnix = 1000; f.timing[index].arrivalSecondsPlusOne = 121;
-    c.animationTimeMs = 0; renderTrainFrame(f, r, c);
-    CHECK(eq(r.pixels[index], Rgb{5, 2, 0}));
-    f.timing[index].arrivalSecondsPlusOne = 1;
-    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0, 5, 5}));
+    TrainFrame f{}; clearFrame(f); const auto index=firstLed(Role::Station);
+    CHECK(addValidatedLed(f,index)); RenderConfig c=cfg(5); c.animateTraffic=true;
+    RgbFrame r{}; renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{5,0,0}));
+    CHECK(addValidatedLed(f,index,true)); renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{5,0,0}));
+    clearFrame(f); CHECK(addValidatedLed(f,index,true)); f.animationEpochUnix=1000;
+    f.timing[index].arrivalSecondsPlusOne=121; c.nowUnix=1000;
+    renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{5,5,0}));
+    f.timing[index].arrivalSecondsPlusOne=1;
+    renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{5,5,0}));
   }
   {
     TrainFrame f{}; clearFrame(f);
@@ -369,9 +346,9 @@ int main() {
     RgbFrame r{};
     CHECK(addUncertainLed(f, index));
     CHECK(isUncertainOnly(f, index));
-    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{3, 1, 0}));
+    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0, 0, 3}));
     c.animationTimeMs = 1234;
-    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{3, 1, 0}));
+    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0, 0, 3}));
     CHECK(addValidatedLed(f, index, true));
     CHECK(!isUncertainOnly(f, index) && isApproachingOnly(f, index));
     CHECK(addUncertainLed(f, index));
@@ -380,7 +357,7 @@ int main() {
     CHECK(addValidatedLed(f, index));
     CHECK(!isUncertainOnly(f, index) && !isApproachingOnly(f, index));
     CHECK(addUncertainLed(f, index));
-    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0, 0, 5}));
+    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{5, 0, 0}));
     clearFrame(f);
     CHECK(addValidatedLed(f, index)); CHECK(addUncertainLed(f, index));
     CHECK(!isUncertainOnly(f, index));
@@ -401,7 +378,7 @@ int main() {
     f.timing[index].arrivalSecondsPlusOne = UINT16_MAX;
     for (uint32_t ms = 0; ms < 2000; ms += 41) {
       c.animationTimeMs = ms; renderTrainFrame(f, r, c);
-      CHECK(eq(r.pixels[index], Rgb{255, 96, 0}));
+      CHECK(eq(r.pixels[index], Rgb{0, 0, 255}));
     }
     clearFrame(f); f.animationEpochUnix = 1000; f.timing[index].departureAgePlusOne = 1;
     for (uint32_t age = 0; age < 30; ++age) {
@@ -417,28 +394,28 @@ int main() {
     CHECK(addUncertainLed(f, index)); f.animationEpochUnix = 1000;
     RenderConfig c = cfg(5); c.animateTraffic = true; c.nowUnix = 1000;
     RgbFrame r{}; c.unknownTimingBrightness = 1;
-    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{1,0,0}));
+    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0,0,1}));
     c.showUnknownTiming = false; renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
     CHECK(f.resolvedTrains == 1 && f.occupancy[index] == 1);
     clearFrame(f); CHECK(addValidatedLed(f, index, true)); f.animationEpochUnix = 1000;
     f.timing[index].arrivalSecondsPlusOne = UINT16_MAX;
     renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
-    c.showUnknownTiming = true; renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{1,0,0}));
-    c.unknownTimingBrightness = 255; renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{5,2,0}));
+    c.showUnknownTiming = true; renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0,0,1}));
+    c.unknownTimingBrightness = 255; renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0,0,5}));
     c.unknownTimingBrightness = 0; renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
     // A usable ETA is unaffected by the unknown-timing switch and dimmer.
     f.timing[index].arrivalSecondsPlusOne = 121; c.showUnknownTiming = false;
-    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{5,2,0}));
+    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{5,5,0}));
     c.nowUnix = 1091; renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
     clearFrame(f); CHECK(addValidatedLed(f, index)); f.animationEpochUnix = 1000;
     f.blueSecondsRemaining[index] = 20; c.nowUnix = 1019;
-    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{0,0,5}));
+    renderTrainFrame(f, r, c); CHECK(eq(r.pixels[index], Rgb{5,0,0}));
     c.nowUnix = 1020; renderTrainFrame(f, r, c); CHECK(black(r.pixels[index]));
   }
   {
     TrainFrame f{}; clearFrame(f); const auto index=firstLed(Role::Station);
     f.animationEpochUnix=1000; f.lastReportedFadeStartUnix[index]=1000;
-    RenderConfig c=cfg(5); c.animateTraffic=true; c.unknownTimingMode=UnknownTimingMode::LastReported;
+    RenderConfig c=cfg(5); c.animateTraffic=true; c.unknownTimingMode=UnknownTimingMode::LastReported; c.colors.uncertain=Rgb{255,255,255};
     RgbFrame r{};
     uint8_t previous=255;
     for (uint32_t age=0;age<60;++age) {
@@ -457,16 +434,38 @@ int main() {
     c.unknownTimingMode=UnknownTimingMode::Orange; renderTrainFrame(f,r,c); CHECK(black(r.pixels[index]));
     CHECK(f.resolvedTrains==0 && f.occupiedLeds==0);
     // A real station contribution overrides a retained neutral marker.
-    CHECK(addValidatedLed(f,index)); c.unknownTimingMode=UnknownTimingMode::LastReported;
-    renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{0,0,5}));
+    CHECK(addValidatedLed(f,index)); c.unknownTimingMode=UnknownTimingMode::LastReported; c.colors.uncertain=Rgb{255,255,255};
+    renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{5,0,0}));
   }
   {
     TrainFrame f{}; clearFrame(f); const auto index=firstLed(Role::Segment);
     CHECK(addValidatedLed(f,index)); f.animationEpochUnix=1000; f.lastReportedFadeStartUnix[index]=1005;
-    RenderConfig c=cfg(5); c.animateTraffic=true; c.unknownTimingMode=UnknownTimingMode::LastReported;
+    RenderConfig c=cfg(5); c.animateTraffic=true; c.unknownTimingMode=UnknownTimingMode::LastReported; c.colors.uncertain=Rgb{255,255,255};
     c.nowUnix=1004; RgbFrame r{}; renderTrainFrame(f,r,c); CHECK(!black(r.pixels[index]));
     c.nowUnix=1005; renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{2,2,2}));
     c.nowUnix=1065; renderTrainFrame(f,r,c); CHECK(black(r.pixels[index]));
+  }
+  {
+    TrainFrame f{}; clearFrame(f); const auto index=firstLed(Role::Station);
+    RenderConfig c=cfg(255); c.animateTraffic=true; c.nowUnix=1000;
+    f.animationEpochUnix=1000; CHECK(addValidatedLed(f,index,true));
+    f.timing[index].arrivalSecondsPlusOne=31; RgbFrame r{};
+    renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{255,255,0}));
+    clearFrame(f); CHECK(addValidatedLed(f,index)); renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{255,0,0}));
+    clearFrame(f); f.animationEpochUnix=1000; f.timing[index].departureAgePlusOne=1;
+    renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{0,255,0}));
+    clearFrame(f); CHECK(addUncertainLed(f,index)); renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{0,0,128}));
+    c.colors.uncertain=Rgb{240,80,40}; renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{120,40,20}));
+    c.colors.stopped=Rgb{40,80,120}; CHECK(addValidatedLed(f,index));
+    renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{40,80,120}));
+    clearFrame(f); f.animationEpochUnix=1000; f.lastReportedFadeStartUnix[index]=1000;
+    c.unknownTimingMode=UnknownTimingMode::LastReported; c.colors=kDefaultTrainColors;
+    renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{0,0,2}));
+    c.nowUnix=1030; renderTrainFrame(f,r,c); CHECK(eq(r.pixels[index],Rgb{0,0,1}));
+    c.nowUnix=1060; renderTrainFrame(f,r,c); CHECK(black(r.pixels[index]));
+    clearFrame(f); const auto segment=firstLed(Role::Segment); CHECK(addValidatedLed(f,segment));
+    c.nowUnix=1000; c.colors.approaching=Rgb{70,80,90}; renderTrainFrame(f,r,c);
+    CHECK(eq(r.pixels[segment],Rgb{70,80,90}));
   }
   printf("Phase 4H RGB renderer host tests: %d checks, %d failures\n", checks, failures);
   return failures == 0 ? 0 : 1;

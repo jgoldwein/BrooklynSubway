@@ -30,6 +30,7 @@ OutputStats Controller::stats() const {
   auto result = stats_;
   result.powerCanResume = powerCanResume_ && !enabled_ && !automaticStartPending_;
   result.automaticStartPending = automaticStartPending_;
+  result.powerMode = powerMode_;
   if (!enabled_) result.blinkingLeds = 0;
   return result;
 }
@@ -38,16 +39,26 @@ bool Controller::powerPress(uint32_t nowMs, bool pressed) {
   if (!buttonInitialized_) {
     buttonInitialized_ = true;
     buttonReading_ = buttonStable_ = pressed;
-    return false;  // A button held at boot must be released first.
+    buttonArmed_ = !pressed; // Ignore a button held through reset until released.
+    return false;
   }
   if (pressed != buttonReading_) {
     buttonReading_ = pressed;
     buttonChangedAtMs_ = nowMs;
   }
-  if (buttonStable_ != buttonReading_ &&
-      static_cast<uint32_t>(nowMs - buttonChangedAtMs_) >= 30) {
+  if (buttonStable_ != buttonReading_ && uint32_t(nowMs - buttonChangedAtMs_) >= 30) {
     buttonStable_ = buttonReading_;
-    return buttonStable_;
+    if (buttonStable_) { pressedAtMs_ = nowMs; longHandled_ = false; }
+    else {
+      const bool shortPress = buttonArmed_ && !longHandled_;
+      buttonArmed_ = true;
+      return shortPress;
+    }
+  }
+  if (buttonArmed_ && buttonStable_ && pressed && !longHandled_ &&
+      uint32_t(nowMs - pressedAtMs_) >= 3000) {
+    longHandled_ = true;
+    rebootRequested_ = rebootPending_ = true;
   }
   return false;
 }
@@ -62,7 +73,7 @@ bool Controller::safe(uint32_t nowMs) const {
 
 bool Controller::enable(uint32_t nowMs) {
   // An old held frame cannot be used to start a new session.
-  if (!safe(nowMs) || static_cast<uint32_t>(nowMs - snapshot_.frameAtMs) > kPartialGraceMs ||
+  if (!ledsRequested() || !safe(nowMs) || static_cast<uint32_t>(nowMs - snapshot_.frameAtMs) > kPartialGraceMs ||
       (snapshot_.status.displayState != State::Fresh &&
                        snapshot_.status.displayState != State::DegradedPartial)) return false;
   enabled_ = true;
@@ -82,13 +93,16 @@ void Controller::disable(const Operations &operations) {
 
 void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
                          const Operations &operations) {
-  const bool pressedEvent = powerPress(nowMs, powerPressed);
-  if (!powerPressed) suppressPowerUntilRelease_ = false;
-  if (automaticStartPending_ && powerPressed) {
-    automaticStartPending_ = false;
-    suppressPowerUntilRelease_ = true;
+  const bool releasedEvent = powerPress(nowMs, powerPressed);
+  if (releasedEvent && !rebootPending_) {
+    powerMode_ = (powerMode_ + 1) % 4;
+    if (ledsRequested()) automaticStartPending_ = true;
+    else disable(operations);
   }
-  const bool toggle = pressedEvent && !suppressPowerUntilRelease_;
+  if (rebootPending_ || !ledsRequested()) {
+    disable(operations);
+    return;
+  }
   if (!hasSnapshot_) return;
   // Keep startup LOW while waiting for the first usable cycle. POWER can
   // cancel automatic startup during this wait without enabling anything.
@@ -99,14 +113,6 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
       !operations.transmit || !operations.stop) {
     disable(operations);
     return;
-  }
-  if (toggle && powerCanResume_) {
-    if (enabled_) {
-      disable(operations);
-      powerCanResume_ = true;  // A button pause preserves this boot's approval.
-    } else {
-      (void)enable(nowMs);
-    }
   }
   if (!enabled_) return;
   if (!armed_) {
@@ -124,6 +130,7 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
   semantic::RenderConfig config{};
   config.brightness = snapshot_.brightness < led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP
       ? snapshot_.brightness : led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP;
+  config.colors=snapshot_.colors;
   config.unknownTimingMode = semantic::unknownTimingMode(snapshot_.unknownTiming);
   config.showUnknownTiming = config.unknownTimingMode != semantic::UnknownTimingMode::Hidden;
   config.lastReportedFadeSeconds = semantic::lastReportedFadeSeconds(snapshot_.unknownTiming);
