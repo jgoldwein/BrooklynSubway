@@ -15,7 +15,7 @@ bool buzzerOutput = false;
 bool cueMode = false;
 bool feedReadyMode = false;
 bool brightnessMode = false;
-bool knobMode=false,probePriority=false;
+bool knobMode=false,probePriority=false,eggMode=false;
 int readyBeeps = 0;
 int beepStarts = 0, cueMs = 0, cueOnMs = 0, abortAtMs = -1;
 bool recoveryRequested = false;
@@ -55,7 +55,8 @@ uint32_t ledcSetup(uint8_t channel, uint32_t hz, uint8_t resolution) {
     ++feedSetups; return failFeedSetup ? 0 : hz;
   }
   CHECK(channel == 7 && resolution == 8 && duty == 0);
-  if (knobMode) {CHECK(hz==2000);}
+  if(eggMode) {CHECK(hz>=100 && hz<=4000);}
+  else if (knobMode) {CHECK(hz==2000);}
   else if (brightnessMode) { CHECK(hz >= 800 && hz <= 3200); }
   else if (feedReadyMode) { CHECK(hz == 2000 && feedDuty == 8); }
   else if (cueMode) { CHECK(setupCalls == 0 && hz == 4000); }
@@ -255,5 +256,17 @@ int main() {
   brooklyn::hardware::setFeedIndicatorAllowed(true,8);CHECK(feedDuty==8);
   brooklyn::hardware::setQuiet(false);
   puts("Quiet hours: startup/feed/brightness/rotary/diagnostic cues muted, visual tests preserved PASS");
+  reset(false);eggMode=true;
+  brooklyn::hardware::setEasterEggTone(700);CHECK(duty==128 && frequency==700);
+  const int attached=attachCalls;
+  brooklyn::hardware::setEasterEggTone(700);CHECK(attachCalls==attached);
+  serviceKnobClick(0,false);CHECK(duty==128); // Knob cleanup cannot silence effect ownership.
+  brooklyn::hardware::setQuiet(true);brooklyn::hardware::setEasterEggTone(700);CHECK(duty==0 && buzzer==LOW);
+  brooklyn::hardware::setQuiet(false);brooklyn::hardware::setEasterEggTone(1047);CHECK(duty==128 && frequency==1047);
+  brooklyn::hardware::setEasterEggTone(0);CHECK(duty==0 && buzzer==LOW);
+  brooklyn::hardware::setEasterEggTone(5000);CHECK(duty==0);
+  reset(false,0);eggMode=true;brooklyn::hardware::setEasterEggTone(700);CHECK(duty==0 && attachCalls==0);
+  brooklyn::hardware::setEasterEggTone(0);
+  puts("Easter tone: shared PWM ownership, repeated pitch, quiet suppression, bounds and failure cleanup PASS");
   puts("Startup: U23 pulses, four rising notes plus descending pair, 2265 ms, 50%-duty PWM, DIM mute, failed-check silence, PWM failure cleanup, addressable outputs disabled PASS");
 }

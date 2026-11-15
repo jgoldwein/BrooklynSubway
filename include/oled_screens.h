@@ -63,6 +63,7 @@ void formatLineTest(const LineTestView &test,ScreenText &out);
 void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenText &out,
                   const NavigationView &view = {});
 void scrollName(const char *name, uint32_t elapsedMs, char (&out)[22]);
+void scrollDedicationNames(uint32_t elapsedMs,char (&out)[22]);
 void setLineCounts(ScreenData &data, const semantic::TrainFrame &frame,
                    const uint16_t (&lights)[semantic::kRouteCount+1]);
 const char *screenName(Screen screen);

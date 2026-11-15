@@ -32,6 +32,7 @@ def main():
             str(h.ROOT / "tools/host_tests/led_diagnostic_test.cpp"),
             str(h.ROOT / "src/physical_output_safety.cpp"),
             str(h.ROOT / "src/led_backend.cpp"),
+            str(h.ROOT / "src/easter_eggs.cpp"),str(h.ROOT / "src/oled_screens.cpp"),
             str(h.ROOT / "src/led_map.cpp"),
             str(h.ROOT / "src/semantic_api.cpp"),
             str(h.ROOT / "src/generated/semantic_tables.cpp"),

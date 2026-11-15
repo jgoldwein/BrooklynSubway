@@ -71,6 +71,7 @@ void scrollText(const char *text, unsigned limit, uint32_t elapsedMs, char (&out
 constexpr char kDedicationNames[]="Joel, Marlene, Marc, Kim, Juliana, Levi, Robbie, Eric";
 }
 void scrollName(const char *name,uint32_t elapsedMs,char (&out)[22]) {scrollText(name,32,elapsedMs,out);}
+void scrollDedicationNames(uint32_t elapsedMs,char (&out)[22]) {scrollText(kDedicationNames,sizeof(kDedicationNames)-1,elapsedMs,out);}
 void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenText &out, const NavigationView &view) {
   out = {};
   const TextWriter write(out);
@@ -131,7 +132,7 @@ void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenT
       write(1,"Avi");
       write(2,"From the Goldweins");
       write(3,"September 26, 2026");
-      scrollText(kDedicationNames,sizeof(kDedicationNames)-1,static_cast<uint32_t>(nowMs-view.changedAtMs),out.lines[4]);
+      scrollDedicationNames(static_cast<uint32_t>(nowMs-view.changedAtMs),out.lines[4]);
       break;
     default: break; // Main keeps the existing title / trains / large clock layout.
   }

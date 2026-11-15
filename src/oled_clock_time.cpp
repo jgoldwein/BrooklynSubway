@@ -30,6 +30,11 @@ bool newYorkMinutes(time_t utc,uint16_t &minute) {
   struct tm local{};if(!newYorkCalendar(utc,local)) return false;
   minute=local.tm_hour*60+local.tm_min;return true;
 }
+uint16_t newYorkAnniversaryYear(time_t utc) {
+  struct tm local{};
+  if(!newYorkCalendar(utc,local) || local.tm_mon!=8 || local.tm_mday!=26 || local.tm_year<126) return 0;
+  return static_cast<uint16_t>(local.tm_year+1900);
+}
 bool formatClock(time_t utc, char *out, size_t capacity) {
   if (!out || !capacity) return false;
   if (utc < 1700000000) { snprintf(out, capacity, "Syncing time..."); return false; }

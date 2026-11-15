@@ -25,5 +25,10 @@ CHECK(brooklyn::oled::newYorkMinutes(1772953199,minute) && minute==119);
 CHECK(brooklyn::oled::newYorkMinutes(1772953200,minute) && minute==180);
 CHECK(brooklyn::oled::newYorkMinutes(1793512799,minute) && minute==119);
 CHECK(brooklyn::oled::newYorkMinutes(1793512800,minute) && minute==60);
+CHECK(brooklyn::oled::newYorkAnniversaryYear(0)==0);
+CHECK(brooklyn::oled::newYorkAnniversaryYear(1790395199)==0);
+CHECK(brooklyn::oled::newYorkAnniversaryYear(1790395200)==2026);
+CHECK(brooklyn::oled::newYorkAnniversaryYear(1790481599)==2026);
+CHECK(brooklyn::oled::newYorkAnniversaryYear(1790481600)==0);
 puts("OLED clock: synchronization, winter/summer, DST boundaries, noon/midnight and buffer limits PASS");
 }

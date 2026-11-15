@@ -23,5 +23,7 @@ void signalBrightness(uint8_t value, uint8_t maximum);
 void requestKnobClick();
 void serviceKnobClick(uint32_t nowMs, bool allowed);
 void setQuiet(bool quiet,uint8_t mapBrightness=255);
+// Manual easter-egg tone; zero stops. Shared timer/quiet policy, no delay.
+void setEasterEggTone(uint16_t frequency);
 
 }  // namespace brooklyn::hardware

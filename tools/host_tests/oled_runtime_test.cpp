@@ -12,7 +12,8 @@ uint32_t fakeNowMs=120000;
 uint32_t millis() { return fakeNowMs; }
 char lastScreenTitle[24]{};
 int borderDraws=0;
-extern "C" time_t time(time_t *out) {const time_t value=1768498496;if(out)*out=value;return value;}
+extern int scenario;
+extern "C" time_t time(time_t *out) {const time_t value=scenario==46?1790395200:1768498496;if(out)*out=value;return value;}
 int setupTitles=0,setupNames=0,setupAddresses=0;
 int frames=0,titles=0,ends=0,starts=0,deletes=0,delays=0;
 char lastTrainText[24]={};
@@ -38,6 +39,12 @@ void delay(uint32_t ms){OLED_CHECK(ms==100);++retryDelays;}
 void vTaskDelete(void *) {++deletes;}
 void vTaskDelay(uint32_t ms) {
  OLED_CHECK(ms==20);++delays;fakeNowMs+=(scenario==19 || scenario==39)?1000:20;
+ if(scenario==43 && delays==1) {brooklyn::oled::clearEasterEgg();return;}
+ if(scenario==46 && delays<=2) {
+   using namespace brooklyn::oled;
+   if(delays==2) {OLED_CHECK(selectedScreen()==Screen::Dedication);navigate(Action::NextScreen,fakeNowMs);}
+   serviceNavigation(fakeNowMs,true);return;
+ }
  if(scenario==40 && delays==1) {brooklyn::oled::clearLineTest();return;}
  if(scenario==33 && delays==1) {brooklyn::oled::advanceScreen();return;}
  if(scenario==34 && delays==1) {brooklyn::oled::navigate(brooklyn::oled::Action::TurnNext,fakeNowMs);return;}
@@ -131,6 +138,12 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
    if(scenario==41) setSetupMode(true);
    if(scenario==42) setEnabled(false);
  }
+ if(scenario>=43 && scenario<=45) {
+   brooklyn::oled::ScreenText text;strcpy(text.lines[0],"Happy Bar Mitsvah!");strcpy(text.lines[1],"Avi Yao");
+   brooklyn::oled::showEasterEgg(text);
+   if(scenario==44) brooklyn::oled::setSetupMode(true);
+   if(scenario==45) brooklyn::oled::setEnabled(false);
+ }
  const uint8_t preferred=scenario==11?0x3c:0x38;
  brooklyn::oled::begin(preferred,scenario==12||scenario==13?32:207);OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
  if(scenario==6){OLED_CHECK(worker==nullptr);puts("OLED task allocation failure isolated PASS");return 0;}
@@ -176,5 +189,9 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==40) OLED_CHECK(frames==3 && titles==1 && borderDraws==1 && brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Main);
  if(scenario==41) OLED_CHECK(frames==2 && setupTitles==2 && titles==0);
  if(scenario==42) OLED_CHECK(frames==1 && powerCommands==1 && titles==0);
+ if(scenario==43) OLED_CHECK(frames==3 && titles==1 && brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Main);
+ if(scenario==44) OLED_CHECK(frames==2 && setupTitles==2 && titles==0);
+ if(scenario==45) OLED_CHECK(frames==1 && powerCommands==1 && titles==0);
+ if(scenario==46) OLED_CHECK(frames==4 && titles==3 && brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Main);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

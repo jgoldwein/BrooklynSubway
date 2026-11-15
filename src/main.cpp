@@ -397,6 +397,16 @@ void loop() {
   }
   brooklyn::controls::update();
   serviceBrightnessButtons();
+  if(brooklyn::display::live::consumeEasterEggRequest() &&
+      networkService.state()!=brooklyn::network::State::Provisioning &&
+      networkService.state()!=brooklyn::network::State::NoCredentials) {
+    static uint8_t nextEgg=0;
+    const auto before=brooklyn::display::live::stats();
+    const bool resume=brooklyn::display::live::enabled() || before.automaticStartPending;
+    const bool completed=brooklyn::led::backend::runEasterEgg(static_cast<brooklyn::eggs::Kind>(nextEgg));
+    nextEgg=(nextEgg+1)%brooklyn::eggs::kCount;
+    if(completed && resume) brooklyn::display::live::restoreAfterSuccessfulTest(true);
+  }
   const bool backgroundTest = brooklyn::display::live::consumeTestRequest();
   if (brooklyn::controls::consumeLedDiagnosticRequest() || backgroundTest) {
     const auto beforeTest = brooklyn::display::live::stats();

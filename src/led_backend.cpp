@@ -14,6 +14,8 @@
 #include "oled_clock.h"
 
 #include <Arduino.h>
+#include <string.h>
+#include <time.h>
 
 #if defined(BROOKLYN_TARGET_PCB)
 #include <Adafruit_NeoPixel.h>
@@ -411,6 +413,88 @@ bool runAllRouteDiagnostics(RouteDiagnosticSpeed speed, RouteDiagnosticStyle sty
 #else
   (void)speed;(void)style;
   return false;
+#endif
+}
+
+bool runEasterEgg(eggs::Kind kind) {
+#if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
+  if(!diagnosticSystemReady || !semantic::selfCheck() || !eggs::duration(kind)) return false;
+#if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+  const uint8_t powerMode=display::live::stats().powerMode;
+  const bool lightsAllowed=powerMode==0 || powerMode==2;
+  display::live::DiagnosticGuard diagnosticGuard;
+  display::live::disable(display::IndicationEnd::HardwareTest);
+#else
+  const bool lightsAllowed=false;
+#endif
+  disarmLedOutputs();
+  DisplayState frame[map::TOTAL_LED_COUNT]{};
+  struct Cleanup {
+    DisplayState (&frame)[map::TOTAL_LED_COUNT];
+    ~Cleanup(){
+      hardware::setEasterEggTone(0);
+      for(auto &pixel:frame) pixel.color={0,0,0};
+      if(physicalLedOutputsArmed()) (void)outputController.transmit(kOutputOperations,true,frame,map::TOTAL_LED_COUNT);
+      disarmLedOutputs();oled::clearEasterEgg();
+    }
+  } cleanup{frame};
+  oled::ScreenText previousText{};
+  const uint32_t started=millis();uint32_t previousFrame=UINT32_MAX;
+  bool armed=false;
+  Serial.printf("Easter egg: %u; duration %lu ms; dim map cap4; POWER cancels\n",unsigned(kind),static_cast<unsigned long>(eggs::duration(kind)));
+  while(static_cast<uint32_t>(millis()-started)<eggs::duration(kind)) {
+    if(digitalRead(pins::BUTTON_POWER)==LOW || controls::pollWifiRecoveryDuringDiagnostic()) return false;
+    const uint32_t elapsed=millis()-started;
+    eggs::Sample sample;
+    if(!eggs::sample(kind,elapsed,sample)) break;
+    const bool quiet=oled::quietHoursActive(time(nullptr));
+    const uint8_t quietCap=quiet?oled::quietMapBrightness():255;
+    hardware::setQuiet(quiet,quietCap);
+    hardware::setEasterEggTone(sample.frequency);
+    if(memcmp(&previousText,&sample.text,sizeof(previousText))!=0) {
+      previousText=sample.text;oled::showEasterEgg(sample.text);
+    }
+    if(elapsed/40!=previousFrame) {
+      previousFrame=elapsed/40;
+      const uint8_t cap=quietCap<4?quietCap:4;
+      const uint16_t chaser=sample.position%semantic::kMapLedCount;
+      uint16_t mappedPosition=0;
+      for(uint16_t i=0;i<map::TOTAL_LED_COUNT;++i) {
+        const auto *mapped=semantic::semanticForLed(i);
+        const bool lit=mapped && (sample.visual==eggs::Visual::Line?mapped->route==sample.route:
+            sample.visual==eggs::Visual::Chaser && mappedPosition==chaser);
+        frame[i].color=lit?sample.color:Rgb{0,0,0};
+        if(frame[i].color.red>cap) frame[i].color.red=cap;
+        if(frame[i].color.green>cap) frame[i].color.green=cap;
+        if(frame[i].color.blue>cap) frame[i].color.blue=cap;
+        if(mapped) ++mappedPosition;
+      }
+      const bool wantsLights=lightsAllowed && cap && sample.visual!=eggs::Visual::None;
+      if(wantsLights && !armed) {
+        if(!outputController.initialize(kOutputOperations,true) || !outputController.arm(kOutputOperations,true)) return false;
+        armed=true;
+      }
+      if(armed) {
+        if(!wantsLights) {
+          for(auto &pixel:frame) pixel.color={0,0,0};
+          if(!outputController.transmit(kOutputOperations,true,frame,map::TOTAL_LED_COUNT)) return false;
+          disarmLedOutputs();armed=false;
+        }
+        else if(power::estimateFrameCurrentMa(frame,map::TOTAL_LED_COUNT,255)>power::FIRMWARE_LED_CURRENT_BUDGET_MA ||
+                !outputController.transmit(kOutputOperations,true,frame,map::TOTAL_LED_COUNT)) return false;
+      }
+    }
+    delay(20);
+  }
+  if(armed) {
+    for(auto &pixel:frame) pixel.color={0,0,0};
+    if(!outputController.transmit(kOutputOperations,true,frame,map::TOTAL_LED_COUNT)) return false;
+  }
+  disarmLedOutputs();
+  Serial.println("Easter egg: complete; buzzer/OLED overlay/map cleared");
+  return true;
+#else
+  (void)kind;return false;
 #endif
 }
 

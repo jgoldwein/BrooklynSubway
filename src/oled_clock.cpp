@@ -22,6 +22,9 @@ uint32_t returnSeconds = 60;
 portMUX_TYPE screenDataMux = portMUX_INITIALIZER_UNLOCKED;
 ScreenData screenData{};
 LineTestView lineTest{};
+ScreenText easterText{};
+bool easterActive=false;
+uint16_t anniversaryShownYear=0;
 uint32_t feedbackWord = 0, feedbackSequence = 0;
 uint32_t requestedContrast = 207; // Accessed atomically; only the OLED worker touches I2C.
 uint32_t uiRevision = 0;
@@ -48,6 +51,13 @@ void draw(const char *clock) {
     return;
   }
   LineTestView diagnostic;
+  ScreenText eggText;bool eggActive;
+  portENTER_CRITICAL(&screenDataMux);eggText=easterText;eggActive=easterActive;portEXIT_CRITICAL(&screenDataMux);
+  if(eggActive) {
+    screen.setFont(u8g2_font_6x12_tf);
+    for(uint8_t i=0;i<5;++i) screen.drawStr(i<3?(128-screen.getStrWidth(eggText.lines[i]))/2:0,11+i*12,eggText.lines[i]);
+    screen.sendBuffer();return;
+  }
   portENTER_CRITICAL(&screenDataMux);diagnostic=lineTest;portEXIT_CRITICAL(&screenDataMux);
   if(diagnostic.active) {
     ScreenText text;formatLineTest(diagnostic,text);screen.setFont(u8g2_font_6x12_tf);
@@ -260,6 +270,13 @@ void showLineTest(semantic::Route route,uint8_t color,uint16_t current,uint16_t 
 void clearLineTest() {
   portENTER_CRITICAL(&screenDataMux);lineTest={};portEXIT_CRITICAL(&screenDataMux);requestRefresh();
 }
+void showEasterEgg(const ScreenText &text) {
+  portENTER_CRITICAL(&screenDataMux);easterText=text;easterActive=true;portEXIT_CRITICAL(&screenDataMux);
+  clearBrightnessFeedback();requestRefresh();
+}
+void clearEasterEgg() {
+  portENTER_CRITICAL(&screenDataMux);easterActive=false;portEXIT_CRITICAL(&screenDataMux);requestRefresh();
+}
 Screen selectedScreen() {
   portENTER_CRITICAL(&screenDataMux);
   const auto selected = navigation.view().screen;
@@ -281,10 +298,20 @@ void navigate(Action action, uint32_t nowMs) {
 }
 void serviceNavigation(uint32_t nowMs, bool active) {
   const bool usable=active && !__atomic_load_n(&setupMode,__ATOMIC_RELAXED);
+  static bool checkedAnniversary=false;
+  static uint32_t anniversaryCheckedAt=0;
+  static uint16_t anniversaryYear=0;
+  if(!checkedAnniversary || static_cast<uint32_t>(nowMs-anniversaryCheckedAt)>=1000) {
+    checkedAnniversary=true;anniversaryCheckedAt=nowMs;anniversaryYear=newYorkAnniversaryYear(time(nullptr));
+  }
   const uint16_t timeout=__atomic_load_n(&returnSeconds,__ATOMIC_RELAXED);
   portENTER_CRITICAL(&screenDataMux);
   navigation.setReturnSeconds(timeout,nowMs);
-  const bool changed=navigation.update(nowMs,usable,screenData.wifiConnected);
+  bool changed=navigation.update(nowMs,usable,screenData.wifiConnected);
+  if(usable && anniversaryYear && navigation.view().screen==Screen::Dedication) anniversaryShownYear=anniversaryYear;
+  if(usable && !easterActive && anniversaryYear && anniversaryYear!=anniversaryShownYear && navigation.view().screen==Screen::Main) {
+    anniversaryShownYear=anniversaryYear;navigation.startDedication(nowMs);changed=true;
+  }
   const auto view=navigation.view();
   portEXIT_CRITICAL(&screenDataMux);
   if(changed) {requestRefresh();Serial.printf("OLED navigation: %s, line %s %s\n",screenName(view.screen),
@@ -341,5 +368,5 @@ Status status() {
 }
 }
 #else
-namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void setSetupMode(bool) {} void setScreenPreferences(uint64_t) {} bool quietHoursActive(time_t) {return false;} uint8_t quietMapBrightness() {return 255;} void publishScreenData(const ScreenData &) {} void showLineTest(semantic::Route,uint8_t,uint16_t,uint16_t,bool) {} void clearLineTest() {} Screen selectedScreen() { return Screen::Main; } void advanceScreen() {} void navigate(Action,uint32_t) {} void serviceNavigation(uint32_t,bool) {} void setReturnSeconds(uint16_t) {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} void setTrackedTrains(uint32_t, bool) {} void setVisibleMapLights(uint16_t) {} Status status() { return {}; } }
+namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void setSetupMode(bool) {} void setScreenPreferences(uint64_t) {} bool quietHoursActive(time_t) {return false;} uint8_t quietMapBrightness() {return 255;} void publishScreenData(const ScreenData &) {} void showLineTest(semantic::Route,uint8_t,uint16_t,uint16_t,bool) {} void clearLineTest() {} void showEasterEgg(const ScreenText &) {} void clearEasterEgg() {} Screen selectedScreen() { return Screen::Main; } void advanceScreen() {} void navigate(Action,uint32_t) {} void serviceNavigation(uint32_t,bool) {} void setReturnSeconds(uint16_t) {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} void setTrackedTrains(uint32_t, bool) {} void setVisibleMapLights(uint16_t) {} Status status() { return {}; } }
 #endif

@@ -4,6 +4,7 @@
 #pragma once
 
 #include "led_types.h"
+#include "easter_eggs.h"
 
 #include <stdint.h>
 
@@ -24,6 +25,7 @@ bool runChannelOneDiagnostic();
 // One selected manufactured channel, including CH8 status pixels.
 bool runChannelDiagnostic(PhysicalChannel channel);
 bool runAllChannelDiagnostics();
+bool runEasterEgg(eggs::Kind kind);
 enum class RouteDiagnosticSpeed : uint8_t { Normal, Fast };
 enum class RouteDiagnosticStyle : uint8_t { WholeLine, Individual };
 bool runAllRouteDiagnostics(RouteDiagnosticSpeed speed = RouteDiagnosticSpeed::Normal,

@@ -8,6 +8,7 @@ namespace brooklyn::oled {
 // New York civil time; independent of the UTC SNTP configuration.
 bool formatClock(time_t utc, char *out, size_t capacity);
 bool newYorkMinutes(time_t utc,uint16_t &minute);
+uint16_t newYorkAnniversaryYear(time_t utc);
 void setScreenPreferences(uint64_t word);
 bool quietHoursActive(time_t utc);
 uint8_t quietMapBrightness();
@@ -19,6 +20,8 @@ void setSetupMode(bool enabled);
 void publishScreenData(const ScreenData &data);
 void showLineTest(semantic::Route route,uint8_t color,uint16_t current,uint16_t total,bool individual);
 void clearLineTest();
+void showEasterEgg(const ScreenText &text);
+void clearEasterEgg();
 Screen selectedScreen();
 void advanceScreen();
 void navigate(Action action, uint32_t nowMs);

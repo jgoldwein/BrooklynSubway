@@ -12,6 +12,7 @@ bool enabled();
 OutputStats stats();
 void restoreAfterSuccessfulTest(bool start);
 bool consumeTestRequest();
+bool consumeEasterEggRequest();
 bool consumeBrightnessRequest(controls::BrightnessRequest &request);
 bool showBrightnessFeedback(const controls::BrightnessRequest &request, uint8_t value);
 void beginDiagnostic();

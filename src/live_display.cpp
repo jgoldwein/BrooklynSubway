@@ -8,6 +8,7 @@
 #include "wifi_policy.h"
 #include "test_button_policy.h"
 #include "rotary_policy.h"
+#include "easter_eggs.h"
 #include <Arduino.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
@@ -28,6 +29,8 @@ constexpr uint8_t kBrightnessQueueSize = 8;
 controls::BrightnessRequest brightnessQueue[kBrightnessQueueSize];
 uint8_t brightnessHead = 0, brightnessCount = 0, previousPowerMode = 0;
 bool testRequested = false;
+bool easterRequested=false;
+eggs::Chord easterChord;
 uint16_t diagnosticDepth = 0;
 bool arm(void *) { return led::backend::armLiveOutput(); }
 bool transmit(void *, const led::DisplayState *frame, uint16_t count) {
@@ -53,12 +56,14 @@ void run(void *) {
     const bool routeReleased = routeButton.update(digitalRead(pins::BUTTON_ROUTE) == LOW, nowMs);
     const bool rotaryReleased = rotaryButton.update(digitalRead(pins::ROTARY_PUSH) == LOW, nowMs);
     const int8_t rotaryStep=rotaryEncoder.update(digitalRead(pins::ROTARY_A)!=LOW,digitalRead(pins::ROTARY_B)!=LOW);
-    if (testReleased && diagnosticDepth == 0) testRequested = true;
+    const bool eggReleased=easterChord.update(digitalRead(pins::BUTTON_TEST)==LOW,digitalRead(pins::BUTTON_ROUTE)==LOW,nowMs);
+    if(eggReleased && !diagnosticDepth && !recoveryPending && !recovery) easterRequested=true;
+    if (testReleased && diagnosticDepth == 0 && !easterChord.suppressed()) testRequested = true;
     if (recovery) recoveryRequested = recoveryPending = true;
     if (!recoveryRequested && digitalRead(pins::ROTARY_PUSH) != LOW) recoveryPending = false;
     if (!diagnosticDepth && !recoveryPending && !recovery) {
       if (rotaryReleased && rotaryButton.heldMs()<1000) oled::navigate(oled::Action::Select,nowMs);
-      if (routeReleased) oled::navigate(oled::selectedScreen()==oled::Screen::Lines?oled::Action::ToggleAuto:oled::Action::OpenLines,nowMs);
+      if (routeReleased && !easterChord.suppressed()) oled::navigate(oled::selectedScreen()==oled::Screen::Lines?oled::Action::ToggleAuto:oled::Action::OpenLines,nowMs);
       if (rotaryStep) {
         oled::navigate(rotaryStep>0?oled::Action::TurnNext:oled::Action::TurnPrevious,nowMs);
         hardware::requestKnobClick();
@@ -175,6 +180,10 @@ void restoreAfterSuccessfulTest(bool start) {
   }
   xSemaphoreGive(mutex);
 }
+bool consumeEasterEggRequest() {
+  if(!available()) return false;
+  xSemaphoreTake(mutex,portMAX_DELAY);const bool result=easterRequested;easterRequested=false;xSemaphoreGive(mutex);return result;
+}
 bool consumeTestRequest() {
   if (!available()) return false;
   xSemaphoreTake(mutex, portMAX_DELAY);
@@ -207,6 +216,7 @@ void beginDiagnostic() {
   if (!available()) return;
   xSemaphoreTake(mutex, portMAX_DELAY);
   ++diagnosticDepth;
+  easterRequested=false;
   brightnessCount = 0;
   testRequested = false;
   xSemaphoreGive(mutex);
@@ -216,6 +226,8 @@ void endDiagnostic() {
   xSemaphoreTake(mutex, portMAX_DELAY);
   if (diagnosticDepth) --diagnosticDepth;
   if (!diagnosticDepth) {
+    easterRequested=false;
+    easterChord=eggs::Chord{};
     testButton.reset(digitalRead(pins::BUTTON_TEST) == LOW, millis());
     routeButton.reset(digitalRead(pins::BUTTON_ROUTE) == LOW, millis());
     rotaryButton.reset(digitalRead(pins::ROTARY_PUSH) == LOW, millis());
@@ -239,6 +251,7 @@ bool enabled() { return false; }
 OutputStats stats() { return {}; }
 void restoreAfterSuccessfulTest(bool) {}
 bool consumeTestRequest() { return false; }
+bool consumeEasterEggRequest() { return false; }
 bool consumeBrightnessRequest(controls::BrightnessRequest &) { return false; }
 bool showBrightnessFeedback(const controls::BrightnessRequest &, uint8_t) { return false; }
 void beginDiagnostic() {}

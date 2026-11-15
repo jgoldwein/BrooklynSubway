@@ -267,6 +267,23 @@ void setQuiet(bool quiet,uint8_t mapBrightness) {
   (void)quiet;(void)mapBrightness;
 #endif
 }
+void setEasterEggTone(uint16_t frequency) {
+#if defined(BROOKLYN_TARGET_PCB)
+  static uint16_t playing=0;
+  lockIndicator();
+  if(isQuiet() || frequency<100 || frequency>4000) frequency=0;
+  stopKnobToneLocked();
+  if(frequency!=playing) {
+    if(playing) {ledcWrite(7,0);ledcDetachPin(pins::BUZZER);digitalWrite(pins::BUZZER,LOW);playing=0;}
+    if(frequency && ledcSetup(7,frequency,8)!=0) {
+      ledcWrite(7,0);ledcAttachPin(pins::BUZZER,7);ledcWrite(7,128);playing=frequency;
+    }
+  }
+  unlockIndicator();
+#else
+  (void)frequency;
+#endif
+}
 void requestKnobClick() {
 #if defined(BROOKLYN_TARGET_PCB)
   if(isQuiet()) return;

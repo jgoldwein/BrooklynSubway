@@ -6,17 +6,20 @@
 #include "hardware.h"
 #include "semantic_api.h"
 #include "oled_clock.h"
+#include "live_display.h"
 #include <Arduino.h>
 #include <stdio.h>
 #include <stdlib.h>
 
 
 FakeSerial Serial;
+bool eggMode=false,eggQuiet=false;uint8_t eggCap=255,eggPowerMode=0;int eggTone=0,eggFramePixels=0;bool eggLastColored=false;
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
 namespace brooklyn::display::live {
 void disable(brooklyn::display::IndicationEnd) {}
 void beginDiagnostic() {}
 void endDiagnostic() {}
+OutputStats stats() {OutputStats s;s.powerMode=eggPowerMode;return s;}
 }
 #endif
 bool failAllocation = false;
@@ -30,6 +33,8 @@ uint32_t elapsed = 0;
 int overlayStarts=0, overlayClears=0;
 bool overlayActive=false;
 namespace brooklyn::oled {
+void showEasterEgg(const ScreenText &) {overlayActive=true;} void clearEasterEgg() {overlayActive=false;}
+bool quietHoursActive(time_t) {return eggQuiet;} uint8_t quietMapBrightness() {return eggCap;}
 void showLineTest(semantic::Route,uint8_t,uint16_t,uint16_t,bool) {overlayActive=true;++overlayStarts;}
 void clearLineTest() {overlayActive=false;++overlayClears;}
 }
@@ -45,6 +50,7 @@ constexpr uint8_t kExpectedPins[] = {4, 5, 6, 7, 10, 11, 12, 13};
 constexpr int kExpectedCounts[] = {37, 38, 37, 37, 42, 37, 38, 40};
 #define CHECK(x) do { if (!(x)) { printf("FAIL line %d: %s\n", __LINE__, #x); exit(1); } } while (0)
 namespace backend = brooklyn::led::backend;
+uint32_t millis() {return elapsed;}
 void digitalWrite(uint8_t pin, int level) {
   if (pin == brooklyn::pins::LED_ENABLE) {
     enable = level;
@@ -57,6 +63,14 @@ void observeStrip(uint8_t pin, const uint32_t *pixels, uint16_t count) {
   int colored = 0;
   for (uint16_t i = 0; i < count; ++i) {
     if (pixels[i]) {
+      if(eggMode) {
+        int channel=0;while(kExpectedPins[channel]!=pin) ++channel;
+        int global=i;for(int c=0;c<channel;++c) global+=kExpectedCounts[c];
+        CHECK(brooklyn::semantic::semanticForLed(global));
+        const uint8_t cap=eggQuiet && eggCap<4?eggCap:4;
+        CHECK(((pixels[i]>>16)&255)<=cap && ((pixels[i]>>8)&255)<=cap && (pixels[i]&255)<=cap);
+        ++colored;++eggFramePixels;continue;
+      }
       if (routeMode) {
         int channel = 0;
         while (kExpectedPins[channel] != pin) ++channel;
@@ -78,9 +92,10 @@ void observeStrip(uint8_t pin, const uint32_t *pixels, uint16_t count) {
       ++colored;
     }
   }
-  CHECK(colored <= 1);
+  if(!eggMode) CHECK(colored <= 1);
   coloredShows += colored;
   ++shows;
+  if(eggMode && shows%8==0) {eggLastColored=eggFramePixels>0;eggFramePixels=0;}
   if (routeMode && shows % 8 == 0) {
     if(wholeMode && routeFramePixels) {
       int expected=0;
@@ -91,6 +106,7 @@ void observeStrip(uint8_t pin, const uint32_t *pixels, uint16_t count) {
   }
 }
 void delay(uint32_t milliseconds) {
+  if(eggMode) {CHECK(milliseconds==20);elapsed+=milliseconds;++delays;return;}
   if (routeMode) { if(wholeMode) CHECK(milliseconds>0 && milliseconds<=20); else CHECK(milliseconds == expectedRouteDwell && enable == HIGH); elapsed+=milliseconds; ++delays; return; }
   CHECK(milliseconds == (expectedPixels == 1 ? 2000u : 500u));
   CHECK(shows == (delays + 2) * 8 && coloredShows == delays + 1 && enable == HIGH);
@@ -112,6 +128,7 @@ namespace brooklyn::controls {
 bool pollWifiRecoveryDuringDiagnostic() { return recoveryRequested; }
 }
 namespace brooklyn::hardware {
+void setEasterEggTone(uint16_t value) {eggTone=eggQuiet?0:value;} void setQuiet(bool,uint8_t) {}
 bool signalDiagnosticChannel(led::PhysicalChannel channel) {
   const int number = static_cast<int>(channel);
   CHECK(enable == LOW && number == cueCalls + 1);
@@ -265,6 +282,27 @@ int main() {
   CHECK(!backend::runAllRouteDiagnostics() && enable==LOW && !overlayActive && delays==0);
   recoveryRequested=false;wholeMode=false;
   CHECK(overlayStarts>0 && overlayClears>0);
+  routeMode=false;eggMode=true;
+  for(uint8_t k=0;k<brooklyn::eggs::kCount;++k) {
+    elapsed=0;shows=coloredShows=delays=0;abortAfter=-1;
+    CHECK(backend::runEasterEgg(static_cast<brooklyn::eggs::Kind>(k)));
+    CHECK(elapsed>=brooklyn::eggs::duration(static_cast<brooklyn::eggs::Kind>(k)) && enable==LOW && eggTone==0 && !overlayActive && !eggLastColored);
+  }
+  for(int stop=0;stop<5;++stop) {
+    elapsed=0;shows=coloredShows=delays=0;abortAfter=stop;
+    CHECK(!backend::runEasterEgg(brooklyn::eggs::Kind::Celebration));
+    CHECK(enable==LOW && eggTone==0 && !overlayActive && !eggLastColored && delays==stop);
+  }
+  abortAfter=-1;eggQuiet=true;eggCap=0;elapsed=0;shows=delays=0;
+  CHECK(backend::runEasterEgg(brooklyn::eggs::Kind::Celebration) && shows==0 && eggTone==0);
+  eggCap=1;elapsed=0;shows=delays=0;
+  CHECK(backend::runEasterEgg(brooklyn::eggs::Kind::Celebration) && eggTone==0);
+  eggQuiet=false;eggPowerMode=3;elapsed=0;shows=delays=0;
+  CHECK(backend::runEasterEgg(brooklyn::eggs::Kind::Express) && shows==0);
+  recoveryRequested=true;elapsed=0;
+  CHECK(!backend::runEasterEgg(brooklyn::eggs::Kind::Morse) && eggTone==0 && !overlayActive);
+  recoveryRequested=false;eggMode=false;eggPowerMode=0;
+  puts("Easter runtime: all five effects, dim map/status exclusion, quiet off/dim, POWER mode, recovery/cancel and cleanup PASS");
   puts("Route diagnostic: all 18 lines, 302 map LEDs RGB, status exclusion, POWER/recovery abort and startup interlock PASS");
   puts("LED diagnostic: all 8 channel walks, exact counts/pins/order, CH8 status mapping, POWER abort, strict selection, startup interlock, black cleanup and normal-output lock PASS");
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
