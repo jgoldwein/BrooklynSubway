@@ -30,6 +30,7 @@ struct OutputStats {
   uint32_t lastWriteAtMs = 0;
   uint32_t mapChanges = 0;
   uint16_t blinkingLeds = 0;
+  uint32_t stackMinimumBytes=0;
   uint16_t visibleMapLeds = 0;
   uint16_t darkOccupiedMapLeds = 0;
   IndicationCounts indications{};

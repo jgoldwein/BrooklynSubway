@@ -16,6 +16,7 @@
 #include "train_pipeline.h"
 #include "normal_config.h"
 #include "poll_handoff.h"
+#include "runtime_observation.h"
 
 #if BROOKLYN_NETWORK_ENABLED
 #include "lan_web_policy.h"
@@ -109,7 +110,8 @@ class NetworkService {
   semantic::RenderConfig workerConfig_{};
   transport::TransportCounters workerCounters_{};
   transport::CycleResult workerResult_{};
-  transport::FeedFailure workerFailure_{};
+  observation::FailureBatch workerFailures_{};
+  observation::RuntimeReport runtimeReport_{};
   uint32_t workerNowUnix_ = 0;
   uint32_t workerCompletedAtMs_ = 0;
   uint32_t workerStackWatermark_ = 0;

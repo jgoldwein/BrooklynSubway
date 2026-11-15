@@ -80,16 +80,23 @@ wifi::Portal &portal() {
 // Logs feed failures (name, category, bytes, elapsed). Diagnostic only.
 class FailureLogger : public transport::FeedFailureObserver {
  public:
-  explicit FailureLogger(transport::FeedFailure &failure) : failure_(failure) {}
+  explicit FailureLogger(observation::FailureBatch &batch,const transport::FeedConnection &connection) : batch_(batch),connection_(connection) {}
 
   void onFeedFailure(const transport::FeedFailure &failure) override {
     char line[112];
     transport::formatFeedFailure(line, sizeof(line), failure);
     Serial.println(line);
-    failure_ = failure;
+    if(batch_.count<observation::kFailureHistory) {
+      auto &record=batch_.items[batch_.count++];record.failure=failure;record.details=connection_.diagnostics();
+      Serial.printf("Feed detail: HTTP %ld TLS %ld; before free/largest %lu/%lu; before close %lu/%lu\n",
+          static_cast<long>(record.details.httpCode),static_cast<long>(record.details.tlsError),
+          static_cast<unsigned long>(record.details.heapBefore),static_cast<unsigned long>(record.details.largestBefore),
+          static_cast<unsigned long>(record.details.heapBeforeClose),static_cast<unsigned long>(record.details.largestBeforeClose));
+    }
   }
  private:
-  transport::FeedFailure &failure_;
+  observation::FailureBatch &batch_;
+  const transport::FeedConnection &connection_;
 };
 
 constexpr uint32_t elapsed(uint32_t now, uint32_t since) { return now - since; }
@@ -388,11 +395,22 @@ EspNetworkDiagnosticProbe &diagnosticProbe() {
   return instance;
 }
 
+// This framework keeps _lastError across stop(), including DNS-only failures.
+// Reset only that diagnostic value; no TLS policy or connection behavior changes.
+class ObservedSecureClient : public WiFiClientSecure {
+ public:
+  void resetAttemptError() { _lastError=0; }
+};
 class HttpsFeedConnection : public transport::FeedConnection {
  public:
   explicit HttpsFeedConnection(const NetworkConfig &config) : config_(config) {}
 
   transport::OpenResult open(const char *url, int32_t &contentLength) override {
+    details_={};details_.captured=true;details_.startedAtMs=millis();
+    details_.unixTime=static_cast<uint32_t>(time(nullptr));
+    details_.heapBefore=heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    details_.largestBefore=heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+    client_.resetAttemptError();
     contentLength = transport::kUnknownLength;
     if (WiFi.status() != WL_CONNECTED) return transport::OpenResult::WifiUnavailable;
 
@@ -407,6 +425,7 @@ class HttpsFeedConnection : public transport::FeedConnection {
     startedMs_ = millis();
 
     const int code = http_.GET();
+    details_.httpCode=code;
     if (code < 0) {
       if (WiFi.status() != WL_CONNECTED) return transport::OpenResult::WifiUnavailable;
       if (code == HTTPC_ERROR_READ_TIMEOUT) return transport::OpenResult::Timeout;
@@ -442,7 +461,15 @@ class HttpsFeedConnection : public transport::FeedConnection {
     }
   }
 
+  transport::AttemptDiagnostics diagnostics() const override {return details_;}
   void close() override {
+    // Capture before our explicit cleanup. HTTPClient/TLS may already have cleaned
+    // up internally; these readings are not claimed to be the allocation peak.
+    char error[1]={0};const int raw=client_.lastError(error,sizeof(error));
+    details_.tlsError=raw<0?raw:0;
+    details_.heapBeforeClose=heap_caps_get_free_size(MALLOC_CAP_INTERNAL);
+    details_.largestBeforeClose=heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+    details_.minimumHeap=heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL);
     if (active_) http_.end();
     client_.stop();
     stream_ = nullptr;
@@ -451,7 +478,8 @@ class HttpsFeedConnection : public transport::FeedConnection {
 
  private:
   const NetworkConfig &config_;
-  WiFiClientSecure client_;
+  ObservedSecureClient client_;
+  transport::AttemptDiagnostics details_{};
   HTTPClient http_;
   WiFiClient *stream_ = nullptr;
   bool active_ = false;
@@ -495,7 +523,7 @@ NetworkService::NetworkService(pipeline::TrainPipeline &pipeline)
       timeStarted_(false), recoveryRequested_(false), lastWifiAttemptMs_(0), timeStartMs_(0),
       completedCycle_{}, completedCycleAtMs_(0), completedCyclePending_(false),
       configuration_(config::nvsStore()),
-      lanWebUi_(configuration_), serverOwnership_{}, webStatus_{}, latestCycle_{},
+      lanWebUi_(configuration_,runtimeReport_), serverOwnership_{}, webStatus_{}, latestCycle_{},
       hasLatestCycle_(false), mdnsAttempted_(false), mdnsStarted_(false) {}
 
 bool NetworkService::setPhysicalBrightness(bool screen, uint8_t value) {
@@ -557,6 +585,9 @@ void NetworkService::begin() {
     Serial.printf("Network: %s\n", stateName(state_));
     return;
   }
+  runtimeReport_.boot=brooklyn::diagnostics::bootInfo();
+  runtimeReport_.deviceId=ESP.getEfuseMac();runtimeReport_.resetReason=brooklyn::diagnostics::resetReasonName();
+  webStatus_.boot=runtimeReport_.boot;webStatus_.deviceId=runtimeReport_.deviceId;
   const bool savedConfigurationLoaded = configuration_.load();
   strncpy(webStatus_.deviceName, web::kDefaultDeviceName,
           sizeof(webStatus_.deviceName) - 1);
@@ -595,6 +626,7 @@ void NetworkService::begin() {
   Serial.printf("Network: credentials source: %s\n",
                 gActiveFromNvs ? "NVS" : (fallback ? "secrets.h developer fallback" : "none"));
   if (wifi::decideBootMode(gActiveFromNvs, fallback, false) == wifi::BootMode::Provisioning) {
+    state_ = State::NoCredentials; // enabled fresh board must reach queued setup in update()
     requestProvisioning();
   } else {
     state_ = State::WifiConnecting;
@@ -799,7 +831,7 @@ void NetworkService::pollWorker(void *context) {
   for (;;) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
     static const MillisClock clock;
-    FailureLogger logger(self.workerFailure_);
+    FailureLogger logger(self.workerFailures_,connection());
     DeferredPipelineSink sink(self.pipeline_, self.workerConfig_);
     sink.setNow(self.workerNowUnix_);
     const transport::PollPreconditions pre{WiFi.status()==WL_CONNECTED, self.workerNowUnix_>=kMinValidUnixTime};
@@ -807,7 +839,7 @@ void NetworkService::pollWorker(void *context) {
         kDefaultNetworkConfig.acceptUnknownLength,self.workerCounters_,
         transport::CycleBudget{&clock,kDefaultNetworkConfig.cycleBudgetMs},&logger);
     self.workerCompletedAtMs_=millis();
-    self.workerStackWatermark_=uxTaskGetStackHighWaterMark(nullptr);
+    self.workerStackWatermark_=uxTaskGetStackHighWaterMark(nullptr)*sizeof(StackType_t);
     self.pollHandoff_.finish(); // release all result/pipeline writes; task sleeps until next launch
   }
 }
@@ -828,7 +860,7 @@ void NetworkService::pollNow(uint32_t nowMs) {
   workerConfig_.brightness=configuration_.brightness();
   workerConfig_.blueHoldSeconds=configuration_.blueHoldSeconds();
   workerCounters_=counters_;
-  workerFailure_={};
+  workerFailures_={};
   workerNowUnix_=static_cast<uint32_t>(time(nullptr));
   if (pollHandoff_.start()) xTaskNotifyGive(static_cast<TaskHandle_t>(pollTask_));
 }
@@ -840,12 +872,14 @@ void NetworkService::collectPollResult() {
   completedCycleAtMs_=workerCompletedAtMs_;
   completedCyclePending_=true;
   scheduler_.cycleFinished(completedCycleAtMs_);
-  if (workerFailure_.name) {
+  for(uint8_t i=0;i<workerFailures_.count;++i)runtimeReport_.record(workerFailures_.items[i]);
+  if(workerFailures_.count) {
+    const auto &failure=workerFailures_.items[workerFailures_.count-1].failure;
     webStatus_.hasLastFeedFailure=true;
-    snprintf(webStatus_.lastFeedFailureName,sizeof(webStatus_.lastFeedFailureName),"%s",workerFailure_.name);
-    snprintf(webStatus_.lastFeedFailureCategory,sizeof(webStatus_.lastFeedFailureCategory),"%s",transport::downloadStatusName(workerFailure_.status));
-    webStatus_.lastFeedFailureBytes=workerFailure_.bytesReceived>UINT32_MAX?UINT32_MAX:static_cast<uint32_t>(workerFailure_.bytesReceived);
-    webStatus_.lastFeedFailureElapsedMs=workerFailure_.elapsedMs;
+    snprintf(webStatus_.lastFeedFailureName,sizeof(webStatus_.lastFeedFailureName),"%s",failure.name);
+    snprintf(webStatus_.lastFeedFailureCategory,sizeof(webStatus_.lastFeedFailureCategory),"%s",transport::downloadStatusName(failure.status));
+    webStatus_.lastFeedFailureBytes=failure.bytesReceived>UINT32_MAX?UINT32_MAX:static_cast<uint32_t>(failure.bytesReceived);
+    webStatus_.lastFeedFailureElapsedMs=failure.elapsedMs;
   }
 }
 
@@ -1016,6 +1050,13 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
   }
   webStatus_.freeInternalHeap =
       static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+  webStatus_.largestInternalBlock=heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
+  runtimeReport_.uptimeMs=millis();runtimeReport_.freeHeap=webStatus_.freeInternalHeap;
+  runtimeReport_.largestBlock=webStatus_.largestInternalBlock;
+  runtimeReport_.minimumHeap=heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL);
+  runtimeReport_.workerStackMinimumBytes=workerStackWatermark_;
+  runtimeReport_.liveStackMinimumBytes=display::live::stats().stackMinimumBytes;
+  runtimeReport_.loopStackMinimumBytes=uxTaskGetStackHighWaterMark(nullptr)*sizeof(StackType_t);
   webStatus_.minimumInternalHeap = static_cast<uint32_t>(
       heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));
   webStatus_.psramPresent = psramFound();

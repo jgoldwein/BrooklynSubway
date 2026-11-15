@@ -125,7 +125,8 @@ bool consumeRebootRequest() {
 OutputStats stats() {
   if (!available()) return {};
   xSemaphoreTake(mutex, portMAX_DELAY);
-  const auto result = controller.stats();
+  auto result = controller.stats();
+  result.stackMinimumBytes=uxTaskGetStackHighWaterMark(task)*sizeof(StackType_t);
   xSemaphoreGive(mutex);
   return result;
 }

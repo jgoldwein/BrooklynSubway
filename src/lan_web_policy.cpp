@@ -819,6 +819,8 @@ size_t renderHomePage(char *out, size_t capacity,
   writer.append("<details class=\"card wide\" data-view=\"advanced\"><summary>Memory diagnostics</summary><dl>"
                 "<dt>Free internal heap</dt><dd>");
   writer.format("%lu B", static_cast<unsigned long>(status.freeInternalHeap));
+  writer.append("</dd><dt>Largest free internal block</dt><dd data-status=\"largestInternalBlock\">");
+  writer.format("%lu B",static_cast<unsigned long>(status.largestInternalBlock));
   writer.append("</dd><dt>Minimum internal heap</dt><dd>");
   writer.format("%lu B", static_cast<unsigned long>(status.minimumInternalHeap));
   writer.append("</dd><dt>Free PSRAM</dt><dd>");
@@ -835,7 +837,7 @@ size_t renderHomePage(char *out, size_t capacity,
   }
   writer.append("</dd><dt>PSRAM feed buffer</dt><dd>");
   writer.append(status.psramFeedBufferPresent ? "Present" : "Unavailable");
-  writer.append("</dd></dl></details><section class=\"wide\" data-view=\"advanced\"><h2>Restart the map</h2>");
+  writer.append("</dd></dl><p><a href=\"/monitor#runtime\">Connection and restart details</a></p></details><section class=\"wide\" data-view=\"advanced\"><h2>Restart the map</h2>");
   if (status.adminSessionActive && csrfToken != nullptr &&
       csrfToken[0] != '\0') {
     writer.append("<form method=\"post\" action=\"/reboot\" "
@@ -968,6 +970,10 @@ void monitorRows(Writer &w,const StatusSnapshot &s) {
 }
 }
 namespace {
+constexpr const char *kRuntimeSection=R"HTML(<section id="runtime"><h2>Connection and restart details</h2><p id="runtime-state" role="status">Loading...</p><dl><dt>Board ID</dt><dd id="runtime-device"></dd><dt>Boot ID</dt><dd id="runtime-boot"></dd><dt>Free internal memory / largest block</dt><dd id="runtime-memory"></dd><dt>Minimum free task stacks: feeds / web / lights</dt><dd id="runtime-stacks"></dd><dt>Previous run checkpoint</dt><dd id="runtime-previous"></dd></dl><p class="hint">Restart history may be cleared when power is removed. A checkpoint records the last saved uptime and memory, not a crash backtrace. A missing TLS error does not prove TLS succeeded.</p><h3>Recent feed failures</h3><ul id="runtime-failures"></ul><p id="runtime-refresh" class="hint"></p><a href="/api/runtime-diagnostics" download="brooklyn-runtime-diagnostics.json">Download connection and restart report</a></section><script>(()=>{const by=id=>document.getElementById(id),set=(id,v)=>by(id).textContent=v;async function refresh(){let timer;try{if(!document.hidden){const c=new AbortController();timer=setTimeout(()=>c.abort(),8000);const r=await fetch('/api/runtime-diagnostics',{cache:'no-store',signal:c.signal});if(!r.ok)throw Error();const s=await r.json();set('runtime-state','Last restart: '+s.resetReason+' | Unexpected warm resets: '+s.unexpectedWarmResets);set('runtime-device',s.deviceId);set('runtime-boot',s.bootId);set('runtime-memory',s.freeInternalHeap+' / '+s.largestInternalBlock+' bytes');set('runtime-stacks',s.workerStackMinimumBytes+' / '+s.loopStackMinimumBytes+' / '+s.liveStackMinimumBytes+' bytes');set('runtime-previous',s.previousCheckpointAvailable?Math.floor(s.previousUptimeMs/1000)+' seconds uptime; '+s.previousFreeHeap+' bytes free':'No retained checkpoint available');const items=document.createDocumentFragment();s.failures.forEach(e=>{const li=document.createElement('li');li.textContent=e.feed+': '+e.category+'; HTTP '+e.httpCode+'; TLS '+(e.tlsError===null?'not reported':e.tlsError)+'; before attempt '+e.heapBefore+' bytes free, largest '+e.largestBefore+'; before cleanup '+e.heapBeforeClose+' free, largest '+e.largestBeforeClose;items.append(li)});if(!s.failures.length){const li=document.createElement('li');li.textContent='No feed failures recorded since restart.';items.append(li)}by('runtime-failures').replaceChildren(items);set('runtime-refresh','Updated '+new Date().toLocaleTimeString());}}catch(e){set('runtime-refresh','Runtime details refresh delayed; retrying.')}finally{clearTimeout(timer);setTimeout(refresh,10000)}}setTimeout(refresh,750)})();</script>)HTML";
+}
+
+namespace {
 constexpr const char *kLiveIndicationSection=R"HTML(<section aria-labelledby="lights-title"><h2 id="lights-title">What the map lights are doing</h2>
 <p id="light-counts" role="status">Loading live light counts...</p>
 <p class="hint">Counts follow your color settings: approaching, stopped, leaving and uncertain. These are nonzero colors successfully sent to map LEDs, not a physical light sensor. A shared light can represent several trains.</p>
@@ -999,6 +1005,29 @@ void indicationLocation(Writer &w,uint16_t led) {
   const char *name=m?semantic::stationName(m->stationId):nullptr;monitorString(w,name?name:"");
 }
 }
+size_t renderRuntimeJson(char *out,size_t capacity,const observation::RuntimeReport &r) {
+  Writer w(out,capacity);const auto &b=r.boot;
+  w.format("{\"schemaVersion\":1,\"deviceId\":\"%08lx%08lx\",\"bootId\":\"%08lx%08lx\",\"resetReason\":",
+      static_cast<unsigned long>(r.deviceId>>32),static_cast<unsigned long>(r.deviceId&0xffffffffu),static_cast<unsigned long>(b.idHigh),static_cast<unsigned long>(b.idLow));
+  monitorString(w,r.resetReason);
+  w.format(",\"uptimeMs\":%lu,\"warmSessionBoots\":%lu,\"unexpectedWarmResets\":%lu,\"previousBootAvailable\":%s,\"previousCheckpointAvailable\":%s,\"previousBootId\":\"%08lx%08lx\",\"previousUptimeMs\":%lu,\"previousFreeHeap\":%lu,\"previousMinimumHeap\":%lu,",
+      static_cast<unsigned long>(r.uptimeMs),static_cast<unsigned long>(b.boots),static_cast<unsigned long>(b.unexpected),b.previousAvailable?"true":"false",b.previousCheckpointAvailable?"true":"false",static_cast<unsigned long>(b.previousHigh),static_cast<unsigned long>(b.previousLow),static_cast<unsigned long>(b.previousUptimeMs),static_cast<unsigned long>(b.previousFreeHeap),static_cast<unsigned long>(b.previousMinHeap));
+  w.format("\"freeInternalHeap\":%lu,\"minimumInternalHeap\":%lu,\"largestInternalBlock\":%lu,\"workerStackMinimumBytes\":%lu,\"loopStackMinimumBytes\":%lu,\"liveStackMinimumBytes\":%lu,\"newestFailureSequence\":%lu,\"oldestFailureSequence\":%lu,\"failures\":[",
+      static_cast<unsigned long>(r.freeHeap),static_cast<unsigned long>(r.minimumHeap),static_cast<unsigned long>(r.largestBlock),static_cast<unsigned long>(r.workerStackMinimumBytes),static_cast<unsigned long>(r.loopStackMinimumBytes),static_cast<unsigned long>(r.liveStackMinimumBytes),static_cast<unsigned long>(r.newestSequence),static_cast<unsigned long>(r.count?r.failures[(r.head+observation::kFailureHistory-r.count)%observation::kFailureHistory].sequence:0));
+  for(uint8_t n=0;n<r.count;++n) {
+    if(n)w.append(",");const auto &e=r.failures[(r.head+observation::kFailureHistory-r.count+n)%observation::kFailureHistory];
+    const auto &f=e.observation.failure;const auto &d=e.observation.details;
+    w.format("{\"sequence\":%lu,\"feed\":",static_cast<unsigned long>(e.sequence));monitorString(w,f.name?f.name:"");
+    w.append(",\"category\":");monitorString(w,transport::downloadStatusName(f.status));
+    w.format(",\"bytes\":%lu,\"elapsedMs\":%lu,\"captured\":%s,\"httpCode\":%ld,\"tlsError\":",
+        static_cast<unsigned long>(f.bytesReceived),static_cast<unsigned long>(f.elapsedMs),d.captured?"true":"false",static_cast<long>(d.httpCode));
+    if(d.tlsError<0)w.format("%ld",static_cast<long>(d.tlsError));else w.append("null");
+    w.format(",\"startedAtUptimeMs\":%lu,\"unixTime\":%lu,\"heapBefore\":%lu,\"largestBefore\":%lu,\"heapBeforeClose\":%lu,\"largestBeforeClose\":%lu,\"minimumHeap\":%lu}",
+        static_cast<unsigned long>(d.startedAtMs),static_cast<unsigned long>(d.unixTime),static_cast<unsigned long>(d.heapBefore),static_cast<unsigned long>(d.largestBefore),static_cast<unsigned long>(d.heapBeforeClose),static_cast<unsigned long>(d.largestBeforeClose),static_cast<unsigned long>(d.minimumHeap));
+  }
+  w.append("]}");return w.size();
+}
+
 size_t renderIndicationJson(char *out,size_t capacity,const display::IndicationReport &r) {
   Writer w(out,capacity);
   w.format("{\"schemaVersion\":1,\"stoppedPolicy\":\"fresh-evidence\",\"available\":%s,\"outputEnabled\":%s,\"uptimeMs\":%lu,\"unixTime\":%lu,\"sampleAgeMs\":%lu,\"counts\":",
@@ -1065,6 +1094,7 @@ size_t renderTrainMonitorPage(char *out,size_t capacity,const StatusSnapshot &s)
   monitorRows(w,s);
   w.append("</tbody></table></div><p id=\"refresh\" class=\"hint\">Live values refresh automatically.</p></section>");
   w.append(kLiveIndicationSection);
+  w.append(kRuntimeSection);
   w.append("</main><script>(function(){const by=id=>document.getElementById(id);function text(id,v){by(id).textContent=v}const age=v=>v===null?'Not available':v+' seconds';async function refresh(){let timer;try{const controller=new AbortController();timer=setTimeout(()=>controller.abort(),15000);const r=await fetch('/api/monitor',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();const s=await r.json();text('health',s.health);text('mapped',s.mappedTrains);text('pollCount',s.latestPollMappedTrains);text('lit',s.visibleMapLeds);text('occupied',s.occupiedMapLeds);text('dark',s.outputEnabled?s.darkOccupiedMapLeds:'Map lights are off');text('feeds',s.feedsSucceeded+' / '+s.feedsTotal);text('mapAge',age(s.mapAgeSeconds));text('sourceAge',age(s.sourceAgeSeconds));text('reportAge',age(s.reportAgeSeconds));text('policy',s.uncertainMode==='Last reported'?'Last reported: fades after '+s.fadeSeconds+' seconds, at most 2/255 brightness':s.uncertainMode+' (ceiling '+s.uncertainBrightness+'/255)');text('stale',s.staleVehicles);text('unmapped',s.unmappedPositions);text('conflicts',s.conflictedTrips);text('predictions',s.predictionConflicts);text('capacity',s.capacityDrops);text('decode',s.decodeFailures);text('failure',s.lastFeedFailure?s.lastFeedFailure.feed+': '+s.lastFeedFailure.reason:'None recorded');const rows=document.createDocumentFragment();s.routes.forEach(q=>{const tr=document.createElement('tr');[q.line+(q.shown?'':' (hidden)'),q.mapped,q.moving,q.estimated,q.uncertain,q.feedState].forEach((v,i)=>{const cell=document.createElement(i?'td':'th');if(!i)cell.scope='row';cell.textContent=v;tr.append(cell)});rows.append(tr)});by('lines').replaceChildren(rows);text('refresh','Updated '+new Date().toLocaleTimeString());}catch(e){text('refresh','Refresh delayed; values may be old. Retrying...')}finally{clearTimeout(timer);setTimeout(refresh,5000)}}setTimeout(refresh,500)})();</script></body></html>");
   return w.size();
 }
@@ -1082,7 +1112,9 @@ size_t renderStatusJson(char *out, size_t capacity,
   writer.json(status.deviceName);
   writer.append("\",\"target\":\"");
   writer.json(status.target);
-  writer.append("\",\"indications\":");indicationCounts(writer,status.indications);
+  writer.format("\",\"deviceId\":\"%08lx%08lx\",\"bootId\":\"%08lx%08lx\",\"largestInternalBlock\":%lu,\"unexpectedWarmResets\":%lu,\"indications\":",
+      static_cast<unsigned long>(status.deviceId>>32),static_cast<unsigned long>(status.deviceId&0xffffffffu),static_cast<unsigned long>(status.boot.idHigh),static_cast<unsigned long>(status.boot.idLow),static_cast<unsigned long>(status.largestInternalBlock),static_cast<unsigned long>(status.boot.unexpected));
+  indicationCounts(writer,status.indications);
   writer.append(",\"resetReason\":\"");
   writer.json(status.resetReason);
   writer.format("\",\"uptimeSeconds\":%lu,\"networkConnected\":%s,"

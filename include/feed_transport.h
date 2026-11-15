@@ -42,6 +42,13 @@ constexpr int32_t kReadEof = 0;       // clean end of the body
 constexpr int32_t kReadTimeout = -1;  // no data within the idle/deadline limit
 constexpr int32_t kReadError = -2;    // connection lost / TLS error
 
+// Diagnostics are observational and retained across close(), reset at every open().
+struct AttemptDiagnostics {
+  int32_t httpCode=0,tlsError=0;
+  uint32_t startedAtMs=0,unixTime=0,heapBefore=0,largestBefore=0,heapBeforeClose=0,largestBeforeClose=0,minimumHeap=0;
+  bool captured=false;
+};
+
 class FeedConnection {
  public:
   virtual ~FeedConnection() = default;
@@ -52,6 +59,7 @@ class FeedConnection {
   // kReadError. 0 is ONLY a clean end of body, never "no data yet".
   virtual int32_t read(uint8_t *dest, size_t maxLen) = 0;
   virtual void close() = 0;
+  virtual AttemptDiagnostics diagnostics() const { return {}; }
 };
 
 // ---- Counters -----------------------------------------------------------------
@@ -123,7 +131,21 @@ class FeedFailureObserver {
   virtual void onFeedFailure(const FeedFailure &failure) = 0;
 };
 
-const char *downloadStatusName(DownloadStatus status);
+inline const char *downloadStatusName(DownloadStatus status) {
+  switch (status) {
+    case DownloadStatus::Ok: return "ok";
+    case DownloadStatus::WifiUnavailable: return "wifi-unavailable";
+    case DownloadStatus::SecureConnectFailure: return "connect/tls-failure";
+    case DownloadStatus::HttpFailure: return "http-failure";
+    case DownloadStatus::Timeout: return "timeout";
+    case DownloadStatus::ZeroLength: return "zero-length";
+    case DownloadStatus::TooLarge: return "too-large";
+    case DownloadStatus::Partial: return "partial/closed-early";
+    case DownloadStatus::UnknownLength: return "unknown-length";
+    case DownloadStatus::BufferUnavailable: return "no-buffer";
+  }
+  return "?";
+}
 // "Feed ACE FAIL: timeout bytes=1234 elapsed=8012ms" (no body content).
 size_t formatFeedFailure(char *out, size_t capacity, const FeedFailure &failure);
 

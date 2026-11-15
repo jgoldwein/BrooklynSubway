@@ -144,8 +144,8 @@ bool releaseVersionFromJson(const char *json, size_t length, char *version,
 
 }  // namespace
 
-LanWebUi::LanWebUi(config::DeviceConfiguration &configuration)
-    : configuration_(configuration),
+LanWebUi::LanWebUi(config::DeviceConfiguration &configuration,const observation::RuntimeReport &runtime)
+    : runtime_(runtime), configuration_(configuration),
       auth_(admin::nvsCredentialStore(), admin::espCryptoProvider()),
       server_(80) {}
 
@@ -225,6 +225,12 @@ void LanWebUi::registerRoutes() {
     current.physicalLedOutputEnabled=display::live::enabled();
     const size_t length=renderTrainMonitorJson(gJson,sizeof(gJson),current);
     if (!length) { server_.send(500,"text/plain","Unable to render train monitor data"); return; }
+    server_.sendHeader("Cache-Control","no-store");server_.sendHeader("X-Content-Type-Options","nosniff");
+    server_.send(200,"application/json",gJson);
+  });
+  server_.on("/api/runtime-diagnostics",HTTP_GET,[this]() {
+    const size_t length=renderRuntimeJson(gJson,sizeof(gJson),runtime_);
+    if(!length) {server_.send(500,"text/plain","Unable to render runtime diagnostics");return;}
     server_.sendHeader("Cache-Control","no-store");server_.sendHeader("X-Content-Type-Options","nosniff");
     server_.send(200,"application/json",gJson);
   });

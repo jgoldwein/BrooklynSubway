@@ -42,4 +42,41 @@ class CollectorTests(unittest.TestCase):
         with self.assertRaises(ValueError):c.collect(lambda after:dict(schemaVersion=2))
 
 
+from monitor_stability import StabilityStats, version_at_least
+
+
+class StabilityTests(unittest.TestCase):
+    def payload(self,boot='a',poll=1,success=8,seq=0):
+        status=dict(bootId=boot,fetchingFeeds=False,freeInternalHeap=80000,firmwareVersion='0.2.49',resetReason='software',displayState='Fresh')
+        monitor=dict(reportTimestamp=poll,feedsSucceeded=success,feedsTotal=8)
+        runtime=dict(bootId=boot,oldestFailureSequence=1 if seq else 0,newestFailureSequence=seq,
+                     failures=[dict(sequence=i,category='connect/tls-failure') for i in range(1,seq+1)],unexpectedWarmResets=0)
+        return status,monitor,runtime
+    def test_baseline_is_not_new_failure_or_poll(self):
+        stats=StabilityStats();stats.health(*self.payload(seq=2));self.assertEqual(sum(stats.failureKinds.values()),0)
+        self.assertEqual(stats.data['completePolls'],0)
+        stats.health(*self.payload(poll=2,seq=3));self.assertEqual(sum(stats.failureKinds.values()),1)
+        self.assertEqual(stats.data['completePolls'],1)
+        stats.health(*self.payload(poll=3,success=6,seq=3));self.assertEqual(stats.data['partialPolls'],1)
+    def test_boot_change_and_consistency(self):
+        stats=StabilityStats();stats.health(*self.payload())
+        stats.health(*self.payload('b',seq=1));self.assertEqual(stats.data['bootChanges'],1)
+        self.assertEqual(sum(stats.failureKinds.values()),1)
+        status,monitor,runtime=self.payload();runtime['bootId']='other'
+        with self.assertRaises(ValueError):stats.health(status,monitor,runtime)
+    def test_history_gap_and_persistence_are_explicit(self):
+        stats=StabilityStats();stats.health(*self.payload())
+        status,monitor,runtime=self.payload(poll=2,seq=12)
+        runtime['oldestFailureSequence']=5;runtime['failures']=runtime['failures'][4:]
+        stats.health(status,monitor,runtime);self.assertEqual(stats.data['failureHistoryGaps'],1)
+        stats.indication(dict(type='sample',active=[dict(index=2,durationMs=301000,line='F')]),300)
+        self.assertEqual(stats.summary()['persistentCount'],1)
+        self.assertEqual(stats.summary()['persistentIndicationsForReview'][0]['bootId'],'a')
+    def test_versions(self):
+        self.assertTrue(version_at_least('0.2.49','0.2.49'))
+        self.assertTrue(version_at_least('0.2.50','0.2.49'))
+        self.assertFalse(version_at_least('0.2.48','0.2.49'))
+        self.assertFalse(version_at_least('unknown','0.2.49'))
+
+
 if __name__=='__main__':unittest.main()

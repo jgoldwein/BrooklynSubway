@@ -11,10 +11,15 @@
 
 #include <Arduino.h>
 #include <esp_system.h>
+#include <esp_attr.h>
+#include <esp_heap_caps.h>
 
 namespace {
 
 uint32_t lastHeartbeatMs = 0;
+RTC_NOINIT_ATTR brooklyn::observation::RetainedBoot retainedBoot;
+brooklyn::observation::BootInfo currentBoot{};
+bool bootStarted=false;
 
 const char *resetReasonLabel(esp_reset_reason_t reason) {
   switch (reason) {
@@ -51,8 +56,19 @@ const char *resetReasonName() {
   return resetReasonLabel(esp_reset_reason());
 }
 
+const observation::BootInfo &bootInfo() {return currentBoot;}
 void begin() {
   const esp_reset_reason_t resetReason = esp_reset_reason();
+  if(!bootStarted) {
+    const bool unexpected=resetReason==ESP_RST_PANIC || resetReason==ESP_RST_INT_WDT ||
+        resetReason==ESP_RST_TASK_WDT || resetReason==ESP_RST_WDT || resetReason==ESP_RST_BROWNOUT;
+    currentBoot=observation::startBoot(retainedBoot,resetReason==ESP_RST_POWERON,unexpected,esp_random(),esp_random());
+    bootStarted=true;
+    Serial.printf("Boot ID: %08lx%08lx; warm-session boots %lu, unexpected %lu; prior context %s\n",
+        static_cast<unsigned long>(currentBoot.idHigh),static_cast<unsigned long>(currentBoot.idLow),
+        static_cast<unsigned long>(currentBoot.boots),static_cast<unsigned long>(currentBoot.unexpected),
+        currentBoot.previousAvailable?"available":"unavailable");
+  }
   const bool hasPsram = psramFound();
 
   Serial.println();
@@ -107,6 +123,7 @@ void update() {
   const uint32_t now = millis();
   if (static_cast<uint32_t>(now - lastHeartbeatMs) >= 5000) {
     lastHeartbeatMs = now;
+    if(bootStarted)observation::checkpoint(retainedBoot,now,heap_caps_get_free_size(MALLOC_CAP_INTERNAL),heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL));
     const auto output = display::live::stats();
     Serial.printf("Heartbeat: uptime %lu s; live LED output %s\n",
                   static_cast<unsigned long>(now / 1000),

@@ -18,7 +18,7 @@ namespace brooklyn::web {
 
 class LanWebUi {
  public:
-  explicit LanWebUi(config::DeviceConfiguration &configuration);
+  explicit LanWebUi(config::DeviceConfiguration &configuration, const observation::RuntimeReport &runtime);
   bool begin();
   void stop();
   void service(const StatusSnapshot &status);
@@ -77,6 +77,7 @@ class LanWebUi {
   void sendLoginFailure(admin::LoginResult::Code code);
   void updateAdminStatus(StatusSnapshot &status);
 
+  const observation::RuntimeReport &runtime_;
   config::DeviceConfiguration &configuration_;
   admin::Manager auth_;
   WebServer server_;

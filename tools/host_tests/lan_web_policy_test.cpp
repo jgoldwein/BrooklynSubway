@@ -799,6 +799,45 @@ void testLoginPageCsrfRendering() {
 
 }
 
+void testRuntimeObservation() {
+  using namespace brooklyn::observation;
+  RetainedBoot retained{};
+  auto first=startBoot(retained,true,false,1,2);
+  CHECK(first.boots==1 && !first.previousAvailable && retainedValid(retained));
+  checkpoint(retained,12345,60000,30000);
+  auto warm=startBoot(retained,false,true,3,4);
+  CHECK(warm.boots==2 && warm.unexpected==1 && warm.previousCheckpointAvailable);
+  CHECK(warm.previousHigh==1 && warm.previousLow==2 && warm.previousUptimeMs==12345);
+  CHECK(warm.previousFreeHeap==60000 && warm.previousMinHeap==30000);
+  checkpoint(retained,20000,55000,28000);
+  auto software=startBoot(retained,false,false,5,6);CHECK(software.boots==3 && software.unexpected==1);
+  retained.freeHeap^=1;CHECK(!retainedValid(retained));
+  auto corrupt=startBoot(retained,false,true,7,8);CHECK(!corrupt.previousAvailable && corrupt.boots==1 && corrupt.unexpected==1);
+  auto cold=startBoot(retained,true,false,9,10);CHECK(cold.boots==1 && cold.unexpected==0 && !cold.previousAvailable);
+  retained.boots=retained.unexpected=UINT32_MAX;retained.checksum=bootChecksum(retained);
+  auto saturated=startBoot(retained,false,true,11,12);CHECK(saturated.boots==UINT32_MAX && saturated.unexpected==UINT32_MAX);
+  RuntimeReport report{};report.boot=warm;report.resetReason="panic";report.deviceId=0x123456789abcdef0ull;
+  ObservedFailure failure{};failure.failure.name="NQRW";failure.failure.status=brooklyn::transport::DownloadStatus::SecureConnectFailure;
+  failure.details.captured=true;failure.details.httpCode=-1;failure.details.tlsError=-32512;
+  failure.details.heapBefore=50000;failure.details.largestBefore=24000;
+  failure.details.heapBeforeClose=45000;failure.details.largestBeforeClose=19000;
+  for(unsigned i=0;i<12;++i)report.record(failure);
+  CHECK(report.count==8 && report.newestSequence==12);
+  char json[6144];CHECK(brooklyn::web::renderRuntimeJson(json,sizeof(json),report)>0);
+  CHECK(strstr(json,"\"deviceId\":\"123456789abcdef0\"") && strstr(json,"\"oldestFailureSequence\":5"));
+  CHECK(strstr(json,"\"tlsError\":-32512") && strstr(json,"\"largestBefore\":24000"));
+  CHECK(brooklyn::web::renderRuntimeJson(json,30,report)==0);
+  failure.details.tlsError=0;report.record(failure);CHECK(brooklyn::web::renderRuntimeJson(json,sizeof(json),report)>0);
+  CHECK(strstr(json,"\"tlsError\":null"));
+  failure.failure.name="1-7,S";failure.failure.bytesReceived=UINT32_MAX;failure.failure.elapsedMs=UINT32_MAX;
+  failure.details.httpCode=INT32_MIN;failure.details.tlsError=INT32_MIN;
+  failure.details.startedAtMs=failure.details.unixTime=failure.details.heapBefore=failure.details.largestBefore=UINT32_MAX;
+  failure.details.heapBeforeClose=failure.details.largestBeforeClose=failure.details.minimumHeap=UINT32_MAX;
+  for(unsigned i=0;i<8;++i)report.record(failure);
+  CHECK(brooklyn::web::renderRuntimeJson(json,sizeof(json),report)>0);
+
+}
+
 void testIndicationApi() {
   uint32_t cursor=17;
   CHECK(brooklyn::web::parseIndicationCursor("0",cursor)&&cursor==0);
@@ -1109,7 +1148,8 @@ int main() {
   testInlineLoginOnStatusPage();
   testLoginPageCsrfRendering();
   testTrainMonitor();
-  testIndicationApi();  testJsonStatusIsEscapedAndSecretFree();
+  testIndicationApi();
+  testRuntimeObservation();  testJsonStatusIsEscapedAndSecretFree();
   testRouteVisibilityApiMasks();
   testRouteSelectionParsing();
   testServerOwnershipTransitions();

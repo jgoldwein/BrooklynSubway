@@ -101,21 +101,6 @@ DownloadStatus downloadFeed(FeedConnection &connection, const char *url,
   return status;
 }
 
-const char *downloadStatusName(DownloadStatus status) {
-  switch (status) {
-    case DownloadStatus::Ok: return "ok";
-    case DownloadStatus::WifiUnavailable: return "wifi-unavailable";
-    case DownloadStatus::SecureConnectFailure: return "connect/tls-failure";
-    case DownloadStatus::HttpFailure: return "http-failure";
-    case DownloadStatus::Timeout: return "timeout";
-    case DownloadStatus::ZeroLength: return "zero-length";
-    case DownloadStatus::TooLarge: return "too-large";
-    case DownloadStatus::Partial: return "partial/closed-early";
-    case DownloadStatus::UnknownLength: return "unknown-length";
-    case DownloadStatus::BufferUnavailable: return "no-buffer";
-  }
-  return "?";
-}
 
 size_t formatFeedFailure(char *out, size_t capacity, const FeedFailure &failure) {
   if (capacity == 0) return 0;

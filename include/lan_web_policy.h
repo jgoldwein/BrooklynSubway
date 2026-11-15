@@ -9,6 +9,7 @@
 #include "normal_config.h"
 #include "blue_diagnostics.h"
 #include "oled_clock.h"
+#include "runtime_observation.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -98,6 +99,9 @@ struct StatusSnapshot {
   uint16_t occupiedLeds = 0;
   uint16_t collisionCount = 0;
   uint32_t freeInternalHeap = 0;
+  uint32_t largestInternalBlock=0;
+  observation::BootInfo boot{};
+  uint64_t deviceId=0;
   uint32_t minimumInternalHeap = 0;
   uint32_t freePsram = 0;
   uint32_t minimumFreePsram = 0;
@@ -111,6 +115,8 @@ struct StatusSnapshot {
   uint32_t lastFeedFailureElapsedMs = 0;
   network::diagnostics::Snapshot networkDiagnostics{};
 };
+
+size_t renderRuntimeJson(char *out, size_t capacity, const observation::RuntimeReport &report);
 
 bool parseIndicationCursor(const char *text, uint32_t &after);
 size_t renderIndicationJson(char *out, size_t capacity, const display::IndicationReport &report);
