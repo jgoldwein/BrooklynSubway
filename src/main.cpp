@@ -133,6 +133,7 @@ void publishTelemetrySnapshot(uint32_t nowMs) {
 }
 
 void updateLogicalDisplay(uint32_t nowMs) {
+  brooklyn::oled::setSetupMode(networkService.state() == brooklyn::network::State::Provisioning);
   brooklyn::oled::setTrackedTrains(operationalDisplay.frame().resolvedTrains,
       systemHealthy && operationalDisplay.hasFrame() &&
       (operationalDisplay.state() == brooklyn::display::State::Fresh ||

@@ -13,7 +13,7 @@ namespace {
 // Bounded appender; always leaves out NUL-terminated.
 class Out {
  public:
-  Out(char *buf, size_t cap) : buf_(buf), cap_(cap), len_(0) {
+  Out(char *buf, size_t cap) : buf_(buf), cap_(cap), len_(0),full_(false) {
     if (cap_ != 0) buf_[0] = 0;
   }
   void put(const char *s) {
@@ -23,7 +23,7 @@ class Out {
     if (cap_ != 0 && len_ + 1 < cap_) {
       buf_[len_++] = c;
       buf_[len_] = 0;
-    }
+    } else full_=true;
   }
   void putInt(int v) {
     char tmp[12];
@@ -48,12 +48,22 @@ class Out {
       }
     }
   }
+  void jsonEscaped(const char *text) {
+    const char hex[]="0123456789abcdef";
+    for(const unsigned char *p=reinterpret_cast<const unsigned char *>(text);*p;++p) {
+      if(*p=='"')put("\\\"");else if(*p=='\\')put("\\\\");
+      else if(*p<32) {put("\\u00");putc(hex[*p>>4]);putc(hex[*p&15]);}
+      else putc(static_cast<char>(*p));
+    }
+  }
   size_t length() const { return len_; }
+  size_t completeLength() {if(full_){if(cap_)buf_[0]=0;return 0;}return len_;}
 
  private:
   char *buf_;
   size_t cap_;
   size_t len_;
+  bool full_;
 };
 
 bool startsWith(const char *s, const char *prefix) {
@@ -152,6 +162,8 @@ PortalRoute classifyPath(const char *path) {
   if (path == nullptr || path[0] == 0 || strcmp(path, "/") == 0) return PortalRoute::Root;
   if (strcmp(path, "/scan") == 0) return PortalRoute::Scan;
   if (strcmp(path, "/connect") == 0) return PortalRoute::Connect;
+  if (strcmp(path,"/setup/networks")==0)return PortalRoute::Networks;
+  if (strcmp(path,"/ui.css")==0 || strcmp(path,"/setup.css")==0 || strcmp(path,"/setup.js")==0)return PortalRoute::Asset;
   if (strcmp(path, "/generate_204") == 0 || strcmp(path, "/gen_204") == 0 ||
       strcmp(path, "/hotspot-detect.html") == 0 || strcmp(path, "/library/test/success.html") == 0 ||
       strcmp(path, "/connecttest.txt") == 0 || strcmp(path, "/ncsi.txt") == 0 ||
@@ -162,143 +174,90 @@ PortalRoute classifyPath(const char *path) {
   return PortalRoute::Redirect;
 }
 
+size_t renderScanJson(char *out,size_t capacity,const ScanEntry *entries,size_t count,bool pending,bool busy) {
+  Out o(out,capacity);o.put("{\"pending\":");o.put(pending?"true":"false");o.put(",\"busy\":");o.put(busy?"true":"false");o.put(",\"networks\":[");
+  for(size_t i=0;entries && i<count && i<kMaxScanEntries;++i) {
+    if(i)o.put(",");o.put("{\"ssid\":\"");o.jsonEscaped(entries[i].ssid);o.put("\",\"rssi\":");o.putInt(entries[i].rssi);
+    o.put(",\"encrypted\":");o.put(entries[i].encrypted?"true":"false");o.put("}");
+  }
+  o.put("]}");return o.completeLength();
+}
+
 size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, size_t count,
                         PortalStatus status, bool hasStored, const char *connectedSsid,
                         const char *connectedIp, bool adminConfigured) {
-  Out o(out, capacity);
-  o.put("<!DOCTYPE html><html><head><meta charset=\"utf-8\">");
-  if (status == PortalStatus::Scanning || status == PortalStatus::Connecting) {
-    o.put("<meta http-equiv=\"refresh\" content=\"2\">");
+  Out o(out,capacity);
+  o.put("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">");
+  if(status==PortalStatus::Connecting)o.put("<meta http-equiv=\"refresh\" content=\"2\">");
+  o.put("<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Brooklyn Subway - Wi-Fi setup</title>"
+        "<link rel=\"stylesheet\" href=\"/ui.css?v=038\"><link rel=\"stylesheet\" href=\"/setup.css?v=050\">"
+        "<script defer src=\"/setup.js?v=050\"></script></head><body class=\"setup-shell\">"
+        "<header><div class=\"brand\"><span class=\"brand-mark\" aria-hidden=\"true\">BK</span><div>"
+        "<h1>Brooklyn Subway</h1><p class=\"subtitle\">Specially Designed for Avi Yao</p></div></div></header>"
+        "<main><section class=\"hero\"><p class=\"kicker\">Wi-Fi setup mode</p><h2>Let's connect your map</h2>"
+        "<p>Stay connected to <strong>BrooklynMap-Avi</strong> while you set up. Your phone may say &ldquo;No internet&rdquo; &mdash; that's normal.</p>"
+        "<ol class=\"steps\" aria-label=\"Setup progress\"><li");
+  if(!adminConfigured && status!=PortalStatus::Saved && status!=PortalStatus::Connecting)o.put(" aria-current=\"step\"");
+  o.put(">1. Map password</li><li");if(status==PortalStatus::Connecting || (adminConfigured && status!=PortalStatus::Saved))o.put(" aria-current=\"step\"");
+  o.put(">2. Wi-Fi</li><li");if(status==PortalStatus::Saved)o.put(" aria-current=\"step\"");o.put(">3. Open your map</li></ol></section>");
+  if(status==PortalStatus::Connecting) {
+    o.put("<section><h2>Connecting to Wi-Fi...</h2><progress aria-label=\"Connecting to Wi-Fi\"></progress>"
+          "<p>Please keep this page open. This can take up to 20 seconds.</p><p class=\"hint\">Your saved Wi-Fi settings are kept until a new network connects.</p></section></main></body></html>");
+    return o.completeLength();
   }
-  o.put("<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-        "<title>Brooklyn Subway</title>"
-        "<style>body{font-family:sans-serif;max-width:30em;margin:1em auto;padding:0 1em}"
-        "input,select,button{font-size:1em;width:100%;margin:.3em 0;padding:.4em}"
-        ".s{padding:.5em;background:#eee}</style></head><body>"
-        "<h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p>"
-        "<p class=\"s\"><b>Wi-Fi setup mode</b></p>"
-        "<p>This map connects to <b>2.4 GHz</b> Wi-Fi only (5 GHz networks will not work).</p>");
-
-  switch (status) {
-    case PortalStatus::None: break;
-    case PortalStatus::Scanning: o.put("<p class=\"s\">Scan in progress; reload in a moment.</p>"); break;
-    case PortalStatus::Connecting: o.put("<p class=\"s\">Connecting...</p>"); break;
-    case PortalStatus::Saved:
-      o.put("<p class=\"s\">Successfully connected to Wi-Fi");
-      if (connectedSsid != nullptr && connectedSsid[0] != 0) {
-        o.put(": <b>");
-        o.escaped(connectedSsid);
-        o.put("</b>");
-      }
-      o.put(". Settings saved.");
-      if (connectedIp != nullptr && connectedIp[0] != 0) {
-        o.put(" LAN address: <a href=\"http://");
-        o.escaped(connectedIp);
-        o.put("/\">");
-        o.escaped(connectedIp);
-        o.put("</a> (open after reconnecting your phone to the same Wi-Fi).");
-      }
-      o.put(" To return to this setup page while setup Wi-Fi is "
-            "available, go to <a href=\"http://192.168.4.1/\">192.168.4.1</a>. "
-            "The setup network closes shortly.</p>");
-      break;
-    case PortalStatus::SaveFailed:
-      o.put("<p class=\"s\">Successfully connected to Wi-Fi");
-      if (connectedSsid != nullptr && connectedSsid[0] != 0) {
-        o.put(": <b>");
-        o.escaped(connectedSsid);
-        o.put("</b>");
-      }
-      o.put(", but settings could not be saved. The previous saved settings are unchanged. ");
-      if (connectedIp != nullptr && connectedIp[0] != 0) {
-        o.put("LAN address: <a href=\"http://");
-        o.escaped(connectedIp);
-        o.put("/\">");
-        o.escaped(connectedIp);
-        o.put("</a> (open after reconnecting your phone to the same Wi-Fi). ");
-      }
-      o.put("To return to this setup page while setup Wi-Fi is available, go to "
-            "<a href=\"http://192.168.4.1/\">192.168.4.1</a>.</p>");
-      break;
-    case PortalStatus::ConnectFailed:
-      o.put("<p class=\"s\">Could not connect. Check the name and password"
-            "; previously saved settings were not changed.</p>");
-      break;
-    case PortalStatus::InvalidInput:
-      o.put("<p class=\"s\">Invalid network name or password.</p>");
-      break;
-  }
-  if (status == PortalStatus::Saved) {
-    // Provisioning is done: show only the result, not the setup forms.
-    bool ipSafe = connectedIp != nullptr && connectedIp[0] != 0;
-    for (const char *c = connectedIp; ipSafe && *c != 0; ++c) {
-      ipSafe = (*c >= '0' && *c <= '9') || *c == '.';
+  if(status==PortalStatus::Saved || status==PortalStatus::SaveFailed) {
+    const bool saved=status==PortalStatus::Saved;
+    o.put(saved?"<section><div class=\"alert success\" role=\"status\"><h2>You're connected!</h2>":"<section><div class=\"alert warning\" role=\"alert\"><h2>Connected, but not saved</h2>");
+    o.put("<p>Successfully connected to Wi-Fi");
+    if(connectedSsid && *connectedSsid){o.put(": <b>");o.escaped(connectedSsid);o.put("</b>");}
+    o.put(saved?". Settings saved.</p>":", but settings could not be saved. Keep this page open and try again.</p>");
+    o.put("</div>");
+    bool ipSafe=connectedIp && *connectedIp;
+    for(const char *c=connectedIp;ipSafe && *c;++c)ipSafe=(*c>='0'&&*c<='9')||*c=='.';
+    if(ipSafe) {
+      o.put("<h3>Open your map</h3><ol><li>Reconnect your phone to the same Wi-Fi as the map.</li><li>Open this address in your normal browser:</li></ol>"
+            "<p class=\"ip-link\"><a href=\"http://");o.put(connectedIp);o.put("/\">");o.put(connectedIp);o.put("</a></p>"
+            "<a class=\"button\" href=\"http://");o.put(connectedIp);o.put("/\">Open your map</a>"
+            "<p class=\"hint\">If you have two maps, use this board's individual IP address. Your phone's setup pop-up may not open your home network automatically.</p>");
     }
-    if (ipSafe) {
-      // The setup AP closes soon and the phone rejoins its normal Wi-Fi. Keep
-      // probing the LAN address and open it as soon as it is reachable.
-      o.put("<p id=\"w\" class=\"s\"><b>Next:</b> reconnect your phone to "
-            "your normal Wi-Fi, then open <a href=\"http://");
-      o.put(connectedIp);
-      o.put("/\">");
-      o.put(connectedIp);
-      o.put("</a> or <b>brooklynmap.local</b> in your regular browser. "
-            "(Android's setup pop-up can't reach your home network, so it may "
-            "not redirect on its own.)</p><script>var ip=\"");
-      o.put(connectedIp);
-      o.put("\";function probe(){var c=new AbortController(),k=setTimeout("
-            "function(){c.abort()},2500);fetch(\"http://\"+ip+\"/api/status\","
-            "{mode:\"no-cors\",cache:\"no-store\",signal:c.signal}).then("
-            "function(){clearTimeout(k);location.replace(\"http://\"+ip+\"/\")})"
-            ".catch(function(){clearTimeout(k);setTimeout(probe,2000)})}"
-            "probe()</script>");
+    if(!adminConfigured)o.put("<p class=\"alert warning\">No administrator password is set. The map's settings will stay locked until you set one through setup Wi-Fi.</p>");
+    o.put("<p class=\"hint\">To return while setup Wi-Fi is available, go to <a href=\"http://192.168.4.1/\">192.168.4.1</a>. ");
+    if(saved)o.put("The setup network closes shortly.");o.put("</p></section>");
+    if(saved) {
+      if(ipSafe) {
+        o.put("<script>var ip=\"");o.put(connectedIp);
+        o.put("\";function probe(){var c=new AbortController(),k=setTimeout(function(){c.abort()},2500);fetch(\"http://\"+ip+\"/api/status\",{mode:\"no-cors\",cache:\"no-store\",signal:c.signal}).then(function(){clearTimeout(k);location.replace(\"http://\"+ip+\"/\")}).catch(function(){clearTimeout(k);setTimeout(probe,2000)})}probe()</script>");
+      }
+      o.put("</main></body></html>");return o.completeLength();
     }
-    if (!adminConfigured) {
-      o.put("<p>No administrator password is set, so the LAN page stays "
-            "locked. Reconnect to the setup Wi-Fi at "
-            "<a href=\"http://192.168.4.1/\">192.168.4.1</a> to set one.</p>");
-    }
-    o.put("</body></html>");
-    return o.length();
   }
-  if (hasStored) o.put("<p>Saved Wi-Fi settings exist and stay in place until a new network connects.</p>");
-
-  o.put("<form method=\"POST\" action=\"/connect\"><label>Visible networks</label>"
-        "<select name=\"pick\"><option value=\"\">(choose a network)</option>");
-  for (size_t i = 0; i < count && i < kMaxScanEntries; ++i) {
-    o.put("<option value=\"");
-    o.escaped(entries[i].ssid);
-    o.put("\">");
-    o.escaped(entries[i].ssid);
-    o.put("</option>");
+  if(status==PortalStatus::ConnectFailed)o.put("<section class=\"alert error\" role=\"alert\"><h2>Let's try that again</h2><p>Could not connect. Check the name and password; previously saved settings were not changed.</p><p>Make sure your network supports 2.4 GHz.</p></section>");
+  if(status==PortalStatus::InvalidInput)o.put("<section class=\"alert error\" role=\"alert\"><h2>Check your Wi-Fi details</h2><p>Choose or enter a Wi-Fi name. Use 8 to 63 password characters, or leave it empty for an open network.</p></section>");
+  o.put("<section><h2 class=\"step-title\"><span class=\"step-number\">1</span>Protect your map settings</h2>");
+  if(adminConfigured)o.put("<p class=\"pill\">Administrator password is set</p><details><summary>Advanced: reset administrator password</summary><p>An administrator password is configured. Resetting it replaces the map password and signs out existing administrator sessions.</p>");
+  else o.put("<p>Set the initial administrator password so you can change map settings later. This is just for your map &mdash; it can be different from your Wi-Fi password.</p>");
+  o.put("<form method=\"POST\" action=\"/admin/setup\" id=\"admin-form\"><label for=\"admin-password\">New map password (at least 8 characters)</label>"
+        "<input id=\"admin-password\" name=\"password\" type=\"password\" minlength=\"8\" maxlength=\"128\" autocomplete=\"new-password\" required>"
+        "<label for=\"admin-confirm\">Type the map password again</label><input id=\"admin-confirm\" name=\"confirmation\" type=\"password\" minlength=\"8\" maxlength=\"128\" autocomplete=\"new-password\" required>");
+  o.put(web::kPasswordVisibilityControl);o.put("<button type=\"submit\" class=\"submit\">");o.put(adminConfigured?"Reset administrator password":"Set administrator password");o.put("</button></form>");
+  if(adminConfigured)o.put("</details>");o.put("</section>");
+  o.put("<section><h2 class=\"step-title\"><span class=\"step-number\">2</span>Choose your Wi-Fi</h2>"
+        "<p>The map uses <strong>2.4 GHz</strong> Wi-Fi. A shared 2.4/5 GHz name is fine; a 5 GHz-only network will not work.</p>");
+  if(hasStored)o.put("<p class=\"hint\">Saved Wi-Fi settings stay in place until a new network connects.</p>");
+  o.put("<div class=\"network-list\" id=\"setup-networks\" aria-label=\"Nearby Wi-Fi networks\">");
+  for(size_t i=0;entries && i<count && i<3;++i) {
+    o.put("<button type=\"button\" class=\"network\" aria-pressed=\"false\"><span class=\"ssid\">");o.escaped(entries[i].ssid);o.put("</span><small>");
+    o.put(entries[i].rssi>=-60?"Strong signal":entries[i].rssi>=-75?"Good signal":"Weak signal");o.put(entries[i].encrypted?" - Password needed":" - Open network");o.put("</small></button>");
   }
-  o.put("</select>"
-        "<label>Password (leave empty for an open network)</label>"
-        "<input name=\"pass\" type=\"password\" maxlength=\"63\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\">");
-  o.put(web::kPasswordVisibilityControl);
-  o.put("<button type=\"submit\">Save and connect</button></form>"
-        "<section><h2>Administrator password</h2>");
-  if (adminConfigured) {
-    o.put("<p>An administrator password is configured. Setting a new one "
-          "here resets normal-LAN administrator sessions.</p>");
-  } else {
-    o.put("<p>Set the initial administrator password to unlock normal-LAN "
-          "configuration.</p>");
-  }
-  o.put("<form method=\"POST\" action=\"/admin/setup\">"
-        "<label>New password (8 to 128 characters)</label>"
-        "<input name=\"password\" type=\"password\" minlength=\"8\" "
-        "maxlength=\"128\" autocomplete=\"new-password\" required>"
-        "<label>Confirm password</label>"
-        "<input name=\"confirmation\" type=\"password\" minlength=\"8\" "
-        "maxlength=\"128\" autocomplete=\"new-password\" required>");
-  o.put(web::kPasswordVisibilityControl);
-  o.put("<button type=\"submit\">");
-  o.put(adminConfigured ? "Reset administrator password"
-                        : "Set administrator password");
-  o.put("</button></form></section>"
-        "<p><a href=\"/scan\">Rescan</a></p></body></html>");
-  return o.length();
+  o.put("</div><div class=\"actions\"><button type=\"button\" class=\"secondary\" id=\"scan-again\">Scan again</button><p id=\"scan-state\" class=\"hint\" role=\"status\">Loading nearby Wi-Fi...</p></div>"
+        "<noscript><p>Type the Wi-Fi name below. <a href=\"/scan\">Rescan and reload this page</a> if needed.</p></noscript>"
+        "<form method=\"POST\" action=\"/connect\" id=\"wifi-form\"><label for=\"wifi-name\">Wi-Fi name</label>"
+        "<input id=\"wifi-name\" name=\"pick\" type=\"text\" maxlength=\"32\" placeholder=\"Choose above, or type a network name\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\" required>"
+        "<label for=\"wifi-password\">Wi-Fi password</label><input id=\"wifi-password\" name=\"pass\" type=\"password\" minlength=\"8\" maxlength=\"63\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\">"
+        "<p class=\"hint\">Leave the password empty only for an open network.</p>");
+  o.put(web::kPasswordVisibilityControl);o.put("<button type=\"submit\" class=\"submit\">Connect to Wi-Fi</button></form></section>"
+        "</main><p class=\"footer\">Setup address: 192.168.4.1 &middot; Keep your map powered while connecting.</p></body></html>");
+  return o.completeLength();
 }
 
 }  // namespace brooklyn::wifi

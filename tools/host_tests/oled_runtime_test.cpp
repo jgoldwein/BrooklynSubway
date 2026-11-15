@@ -8,6 +8,7 @@
 #include <setjmp.h>
 jmp_buf iterationEnd;
 FakeSerial Serial; FakeWire Wire;
+int setupTitles=0,setupNames=0,setupAddresses=0;
 int frames=0,titles=0,ends=0,starts=0,deletes=0,delays=0;
 char lastTrainText[24]={};
 int powerCommands=0;
@@ -30,7 +31,7 @@ int xTaskCreatePinnedToCore(void (*f)(void *),const char *,uint32_t stack,void *
 }
 void delay(uint32_t ms){OLED_CHECK(ms==100);++retryDelays;}
 void vTaskDelete(void *) {++deletes;}
-void vTaskDelay(uint32_t ms) { OLED_CHECK(ms==1000); ++delays; if(scenario==19 && delays<5) return; if(scenario==20 && delays==1) { brooklyn::oled::clearBrightnessFeedback(); return; } if(scenario==16 && delays==1) { brooklyn::oled::setEnabled(true); return; } longjmp(iterationEnd,1); }
+void vTaskDelay(uint32_t ms) { OLED_CHECK(ms==1000); ++delays; if(scenario==26 && delays==1) { brooklyn::oled::setSetupMode(false); return; } if(scenario==19 && delays<5) return; if(scenario==20 && delays==1) { brooklyn::oled::clearBrightnessFeedback(); return; } if(scenario==16 && delays==1) { brooklyn::oled::setEnabled(true); return; } longjmp(iterationEnd,1); }
 void FakeWire::setTimeOut(uint16_t ms){OLED_CHECK(ms==50);}
 void FakeWire::setClock(uint32_t hz){OLED_CHECK(hz==100000);}
 void FakeWire::beginTransmission(uint8_t a){OLED_CHECK(!open); OLED_CHECK(a==0x38||a==0x3c||a==0x3d);lastAddress=a;open=true;++starts;}
@@ -52,6 +53,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==22) brooklyn::oled::setTrackedTrains(0,true);
  if(scenario==23) {brooklyn::oled::setTrackedTrains(132,true);brooklyn::oled::setTrackedTrains(132,false);}
  if(scenario==24) {brooklyn::oled::setTrackedTrains(80,true);brooklyn::oled::setVisibleMapLights(12);}
+ if(scenario>=25) brooklyn::oled::setSetupMode(true);
  const uint8_t preferred=scenario==11?0x3c:0x38;
  brooklyn::oled::begin(preferred,scenario==12||scenario==13?32:207);OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
  if(scenario==6){OLED_CHECK(worker==nullptr);puts("OLED task allocation failure isolated PASS");return 0;}
@@ -81,5 +83,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==21) OLED_CHECK(strcmp(lastTrainText,"Trains:132 Lit:0")==0);
  if(scenario==22) OLED_CHECK(strcmp(lastTrainText,"Trains:0 Lit:0")==0);
  if(scenario==24) OLED_CHECK(strcmp(lastTrainText,"Trains:80 Lit:12")==0);
+ if(scenario==25) OLED_CHECK(setupTitles==2 && setupNames==2 && setupAddresses==2 && titles==0);
+ if(scenario==26) OLED_CHECK(setupTitles==2 && setupNames==2 && setupAddresses==2 && titles==1 && frames==3);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

@@ -186,7 +186,7 @@ void testPortal() {
   e[1].rssi = -70;
   e[1].encrypted = false;
 
-  static char page[8192];
+  static char page[6144];
   const PortalStatus all[] = {PortalStatus::None,       PortalStatus::Scanning,
                               PortalStatus::Connecting, PortalStatus::Saved,
                               PortalStatus::SaveFailed,
@@ -196,22 +196,22 @@ void testPortal() {
     CHECK(len == strlen(page));
     CHECK(strstr(page, kSecret) == nullptr);  // no password ever rendered
     CHECK(strstr(page, "Wi-Fi setup mode") != nullptr);
-    CHECK(strstr(page, "2.4 GHz") != nullptr);
+    CHECK(s == PortalStatus::Saved || s == PortalStatus::Connecting || strstr(page, "2.4 GHz") != nullptr);
     CHECK(strstr(page, "name=\"ssid\"") == nullptr);       // no manual/hidden entry
     CHECK(strstr(page, "<b>\"Wi&Fi\"") == nullptr);        // SSID is escaped
     CHECK(strstr(page, "dBm") == nullptr);
-    if (s == PortalStatus::Saved) {
+    if (s == PortalStatus::Saved || s == PortalStatus::Connecting) {
       CHECK(strstr(page, "<form") == nullptr);  // result page only
       CHECK(strstr(page, "name=\"confirmation\"") == nullptr);
     } else {
       CHECK(strstr(page, "name=\"pass\"") != nullptr);
       CHECK(strstr(page, "name=\"pass\" type=\"password\"") != nullptr);
       CHECK(strstr(page, "name=\"confirmation\"") != nullptr);
-      CHECK(strstr(page, ">OpenNet</option>") != nullptr);
+      CHECK(strstr(page, ">OpenNet</span>") != nullptr);
       CHECK(strstr(page, "&lt;b&gt;&quot;Wi&amp;Fi&quot;") != nullptr);
     }
     CHECK((strstr(page, "http-equiv=\"refresh\"") != nullptr) ==
-          (s == PortalStatus::Scanning || s == PortalStatus::Connecting));
+          (s == PortalStatus::Connecting));
   }
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::None, false);
   CHECK(strstr(page, "Set the initial administrator password") != nullptr);
@@ -224,8 +224,8 @@ void testPortal() {
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "TestNetwork", "192.168.1.42");
   CHECK(strstr(page, "Successfully connected to Wi-Fi: <b>TestNetwork</b>") != nullptr);
   CHECK(strstr(page, "Settings saved") != nullptr);
-  CHECK(strstr(page, "LAN address: <a href=\"http://192.168.1.42/\">192.168.1.42</a>") != nullptr);
-  CHECK(strstr(page, "open after reconnecting your phone to the same Wi-Fi") != nullptr);
+  CHECK(strstr(page, "<a href=\"http://192.168.1.42/\">192.168.1.42</a>") != nullptr);
+  CHECK(strstr(page, "Reconnect your phone to the same Wi-Fi") != nullptr);
   CHECK(strstr(page, "go to <a href=\"http://192.168.4.1/\">192.168.4.1</a>") != nullptr);
   CHECK(strstr(page, "The setup network closes shortly.") != nullptr);
   CHECK(strstr(page, "No administrator password is set") != nullptr);
@@ -249,10 +249,26 @@ void testPortal() {
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::SaveFailed, true, "TestNetwork", "192.168.1.42");
   CHECK(strstr(page, "Successfully connected to Wi-Fi: <b>TestNetwork</b>") != nullptr);
   CHECK(strstr(page, "settings could not be saved") != nullptr);
-  CHECK(strstr(page, "LAN address: <a href=\"http://192.168.1.42/\">192.168.1.42</a>") != nullptr);
+  CHECK(strstr(page, "<a href=\"http://192.168.1.42/\">192.168.1.42</a>") != nullptr);
   CHECK(strstr(page, "<a href=\"http://192.168.4.1/\">192.168.4.1</a>") != nullptr);
   CHECK(strstr(page, kSecret) == nullptr);
 
+  // Maximum escaped SSIDs fit the production buffer; all 24 entries are in JSON.
+  ScanEntry maximum[24]{};
+  for (auto &entry : maximum) { memset(entry.ssid, '&', 32); entry.rssi = -100; entry.encrypted = true; }
+  for (auto state : all) {
+    CHECK(renderPortalPage(page, sizeof(page), maximum, 24, state, true,
+        maximum[0].ssid, "192.168.100.200", false) > 0);
+    CHECK(strstr(page, "</html>") != nullptr);
+  }
+  CHECK(renderScanJson(page, sizeof(page), maximum, 24, true, false) > 0);
+  CHECK(strstr(page, "\"pending\":true") != nullptr);
+  strcpy(maximum[0].ssid, "quote\"slash\\line\n");
+  CHECK(renderScanJson(page, sizeof(page), maximum, 24, false, true) > 0);
+  CHECK(strstr(page, "quote\\\"slash\\\\line\\u000a") != nullptr);
+  char tinyJson[8];
+  CHECK(renderScanJson(tinyJson, sizeof(tinyJson), maximum, 24, false, false) == 0);
+  CHECK(tinyJson[0] == 0);
   // Tiny buffers never overflow and stay NUL-terminated.
   for (size_t cap = 0; cap < 40; ++cap) {
     char guard[64];
@@ -271,6 +287,10 @@ void testPortal() {
 void testRoutes() {
   CHECK(classifyPath("/") == PortalRoute::Root);
   CHECK(classifyPath("") == PortalRoute::Root);
+  CHECK(classifyPath("/setup/networks") == PortalRoute::Networks);
+  CHECK(classifyPath("/setup.css") == PortalRoute::Asset);
+  CHECK(classifyPath("/setup.js") == PortalRoute::Asset);
+  CHECK(classifyPath("/ui.css") == PortalRoute::Asset);
   CHECK(classifyPath("/scan") == PortalRoute::Scan);
   CHECK(classifyPath("/connect") == PortalRoute::Connect);
   CHECK(classifyPath("/generate_204") == PortalRoute::Probe);

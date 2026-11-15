@@ -52,6 +52,7 @@ class Portal {
  private:
   void handleRoot();
   void handleScan();
+  void handleNetworks();
   void handleConnect();
   void handleAdminSetup();
   void handleOther();

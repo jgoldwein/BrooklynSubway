@@ -8,6 +8,8 @@ bool formatClock(time_t utc, char *out, size_t capacity);
 void begin(uint8_t address, uint8_t contrast = 207);
 void setContrast(uint8_t contrast);
 void setEnabled(bool enabled);
+// Setup instructions replace the clock only while the provisioning AP is active.
+void setSetupMode(bool enabled);
 void showBrightness(bool oled, uint8_t value, uint8_t maximum);
 void clearBrightnessFeedback();
 void setTrackedTrains(uint32_t count, bool available);

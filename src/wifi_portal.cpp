@@ -3,6 +3,8 @@
 
 #include "wifi_portal.h"
 #include "admin_auth.h"
+#include "web_ui_assets.h"
+#include "wifi_setup_assets.h"
 
 #if BROOKLYN_NETWORK_ENABLED
 
@@ -128,6 +130,10 @@ bool Portal::begin(bool hasStored, uint32_t nowMs) {
     server_.on("/scan", HTTP_GET, [this]() { handleScan(); });
     server_.on("/connect", HTTP_POST, [this]() { handleConnect(); });
     server_.on("/admin/setup", HTTP_POST, [this]() { handleAdminSetup(); });
+    server_.on("/ui.css", HTTP_GET, [this]() { server_.send(200, "text/css", web::kWebUiCss); });
+    server_.on("/setup.css", HTTP_GET, [this]() { server_.send(200, "text/css", kSetupCss); });
+    server_.on("/setup.js", HTTP_GET, [this]() { server_.send(200, "text/javascript", kSetupScript); });
+    server_.on("/setup/networks", HTTP_GET, [this]() { handleNetworks(); });
     server_.on(UriGlob("*"), HTTP_ANY, [this]() { handleOther(); });
     server_.onNotFound([this]() { handleOther(); });
   }
@@ -166,18 +172,32 @@ void Portal::sendPage(PortalStatus status) {
       (status == PortalStatus::Saved || status == PortalStatus::SaveFailed) ? candidate_.ssid : nullptr;
   const char *connectedIp =
       (status == PortalStatus::Saved || status == PortalStatus::SaveFailed) ? connectedIp_ : nullptr;
-  renderPortalPage(page_, sizeof(page_), scan_, scanCount_, status, hasStored_,
+  const size_t length = renderPortalPage(page_, sizeof(page_), scan_, scanCount_, status, hasStored_,
                    connectedSsid, connectedIp, adminManager.configured());
+  if (!length) { server_.send(500, "text/plain", "Unable to render Wi-Fi setup page"); return; }
   server_.sendHeader("Cache-Control", "no-store");
   server_.send(200, "text/html", page_);
 }
 
 void Portal::startScan() {
-  if (scanPending_) return;
+  if (scanPending_ || connecting_ || saved_) return;
   WiFi.mode(WIFI_AP_STA);
   WiFi.disconnect(false);
   WiFi.scanNetworks(true);
   scanPending_ = true;
+}
+
+void Portal::handleNetworks() {
+  if (server_.args() > 1 || (server_.args() == 1 &&
+      (server_.argName(0) != "rescan" || server_.arg(0) != "1"))) {
+    server_.send(400, "text/plain", "Invalid scan request"); return;
+  }
+  if (server_.args() == 1) startScan();
+  const size_t length = renderScanJson(page_, sizeof(page_), scan_, scanCount_, scanPending_, connecting_ || saved_);
+  server_.sendHeader("Cache-Control", "no-store");
+  server_.sendHeader("X-Content-Type-Options", "nosniff");
+  if (!length) { server_.send(500, "text/plain", "Unable to list Wi-Fi networks"); return; }
+  server_.send(200, "application/json", page_);
 }
 
 void Portal::handleRoot() {

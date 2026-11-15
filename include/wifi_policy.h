@@ -131,8 +131,9 @@ enum class PortalStatus : uint8_t {
   InvalidInput,
 };
 
-// Writes NUL-terminated HTML into out (never overflows; truncates safely).
+// Writes complete NUL-terminated HTML, or returns 0 if the buffer is too small.
 // Returns the length. `hasStored` only toggles a hint; no password is rendered.
+size_t renderScanJson(char *out, size_t capacity, const ScanEntry *entries, size_t count, bool pending, bool busy);
 size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, size_t count,
                         PortalStatus status, bool hasStored, const char *connectedSsid = nullptr,
                         const char *connectedIp = nullptr,
@@ -142,7 +143,7 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
 size_t htmlEscape(char *out, size_t capacity, const char *in);
 
 // Pure path classification for the captive portal.
-enum class PortalRoute : uint8_t { Root, Scan, Connect, Probe, Redirect };
+enum class PortalRoute : uint8_t { Root, Scan, Connect, Probe, Redirect, Networks, Asset };
 PortalRoute classifyPath(const char *path);
 
 }  // namespace brooklyn::wifi
