@@ -5,6 +5,7 @@
 #include <Wire.h>
 #include <U8g2lib.h>
 #include <stdio.h>
+#include <string.h>
 namespace brooklyn::oled {
 namespace {
 // Wire already owns GPIO8/9. Passing those pins to U8g2 makes its GPIO
@@ -73,9 +74,19 @@ void draw(const char *clock) {
     const time_t now=time(nullptr);char date[24],localClock[24],outside[24];
     weather::Snapshot conditions;
     portENTER_CRITICAL(&screenDataMux);conditions=screenData.weather;portEXIT_CRITICAL(&screenDataMux);
-    formatDate(now,date,sizeof(date));formatClock(now,localClock,sizeof(localClock));
+    formatDate(now,date,sizeof(date));const bool clockKnown=formatClock(now,localClock,sizeof(localClock));
     weather::formatOutside(conditions,static_cast<uint32_t>(now),outside,sizeof(outside));
-    screen.setFont(u8g2_font_8x13_tf);screen.drawStr((128-screen.getStrWidth(localClock))/2,24,localClock);
+    char *suffix=clockKnown?strchr(localClock,' '):nullptr;
+    if(suffix) {
+      *suffix++=0;
+      screen.setFont(u8g2_font_helvB18_tn);const int digitsWidth=screen.getStrWidth(localClock);
+      screen.setFont(u8g2_font_8x13_tf);const int suffixWidth=screen.getStrWidth(suffix);
+      const int x=(128-digitsWidth-4-suffixWidth)/2;
+      screen.setFont(u8g2_font_helvB18_tn);screen.drawStr(x,24,localClock);
+      screen.setFont(u8g2_font_8x13_tf);screen.drawStr(x+digitsWidth+4,24,suffix);
+    } else {
+      screen.setFont(u8g2_font_8x13_tf);screen.drawStr((128-screen.getStrWidth(localClock))/2,24,localClock);
+    }
     screen.setFont(u8g2_font_6x12_tf);screen.drawStr((128-screen.getStrWidth(date))/2,42,date);
     screen.drawStr((128-screen.getStrWidth(outside))/2,58,outside);
     screen.drawFrame(0,0,128,64);
