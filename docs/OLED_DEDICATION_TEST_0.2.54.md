@@ -25,11 +25,16 @@ all eight complete names visible through scrolling, six-screen wrap and Lines
 context, dedication font bounds, 64-bit uptime across millis rollover and very
 large uptime text. The user confirmed 0.2.53's knob response is much improved.
 
-Prepared frozen dist/0.2.54/factory. Initial COM6 flash at 460800 baud lost the
-USB connection at 33% of the app write after verifying bootloader/partitions/
-OTA selector. A 115200-baud retry could not connect. COM6 still enumerates as
-28:84:85:34:1F:74, but installation is NOT verified. Operator was asked to hold
-BOOT, tap RESET, release BOOT to re-enter download mode; retry only after ready
-and re-identifying the port. Do not treat the partially written app as installed.
-COM5 remains untouched at 0.2.50 and was Fresh 8/8 during the failed COM6 upload.
-Build remains private, with no stable GitHub release/tag.
+Prepared frozen dist/0.2.54/factory. Initial COM6 flash at 460800 baud lost USB
+at 33% of the app write; the first 115200 retry could not connect. User requested
+another attempt after the BOOT/RESET recovery prompt. Re-identified COM6 serial
+28:84:85:34:1F:74 and retried the full bundle at 115200: all hashes verified,
+hard reset completed. Serial confirmed time sync, OTA health confirmation and
+live LED output resumed. 0.2.54 is now installed; the earlier partial image was
+fully rewritten. Logs: captures/flash-054-recovery.txt and startup-054-*COM6.txt.
+Operator still needs to verify the dedication appearance/scroll and uptime text.
+
+COM5 master was not flashed and remains 0.2.50. A read-only sample during
+recovery observed DegradedHold 7/8; retain this in stability observations rather
+than describe the master as continuously 8/8. Build remains private, with no
+stable GitHub release/tag.
