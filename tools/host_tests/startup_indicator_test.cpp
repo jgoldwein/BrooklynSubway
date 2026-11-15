@@ -72,7 +72,7 @@ void ledcAttachPin(uint8_t pin, uint8_t channel) {
   ++attachCalls;
 }
 void ledcWrite(uint8_t channel, uint32_t value) {
-  if (channel == 4) { CHECK(value == 0 || value == 8); feedDuty = value; return; }
+  if (channel == 4) { CHECK(value <= 8); feedDuty = value; return; }
   CHECK(channel == 7 && (value == 0 || value == 128));
   if (cueMode && value == 128) ++beepStarts;
   duty = value;
@@ -242,5 +242,18 @@ int main() {
   brooklyn::hardware::signalBrightness(16,16);CHECK(duty==0 && frequency==3200);
   serviceKnobClick(200,true);CHECK(duty==0 && frequency==3200); // No stale click cleanup interrupts priority cue.
   puts("Knob clicks: nonblocking 15ms/2000Hz, gap, bounded queue, cancellation, rollover, PWM failure and brightness priority PASS");
+  brooklyn::hardware::setQuiet(true);reset(false);feedReadyMode=true;
+  brooklyn::hardware::setFeedIndicator(true);CHECK(readyBeeps==0 && duty==0);
+  brooklyn::hardware::signalBrightness(16,16);CHECK(duty==0 && attachCalls==0);
+  requestKnobClick();serviceKnobClick(0,true);CHECK(duty==0 && attachCalls==0);
+  resetCue();CHECK(!brooklyn::hardware::signalDiagnosticChannel(brooklyn::led::PhysicalChannel::CH1)); // Recovery still wins over quiet bypass.
+  recoveryRequested=false;CHECK(brooklyn::hardware::signalDiagnosticChannel(brooklyn::led::PhysicalChannel::CH1));CHECK(duty==0 && setupCalls==0);
+  reset(false);brooklyn::hardware::indicateStartup(true);CHECK(notes==0 && pulses==2 && duty==0);
+  brooklyn::hardware::setQuiet(true,0);reset(false);brooklyn::hardware::indicateStartup(true);CHECK(pulses==0 && notes==0);
+  brooklyn::hardware::setQuiet(true,1);brooklyn::hardware::setFeedIndicatorAllowed(true,1);CHECK(feedDuty==1);
+  brooklyn::hardware::setFeedIndicatorAllowed(false,1);CHECK(feedDuty==0);
+  brooklyn::hardware::setFeedIndicatorAllowed(true,8);CHECK(feedDuty==8);
+  brooklyn::hardware::setQuiet(false);
+  puts("Quiet hours: startup/feed/brightness/rotary/diagnostic cues muted, visual tests preserved PASS");
   puts("Startup: U23 pulses, four rising notes plus descending pair, 2265 ms, 50%-duty PWM, DIM mute, failed-check silence, PWM failure cleanup, addressable outputs disabled PASS");
 }

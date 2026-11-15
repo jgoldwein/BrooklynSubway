@@ -17,5 +17,13 @@ CHECK(brooklyn::oled::formatClock(1793512800, text, sizeof(text))); CHECK(strcmp
 CHECK(brooklyn::oled::formatClock(1794632400, text, sizeof(text))); CHECK(strcmp(text,"12:00:00 AM")==0);
 CHECK(brooklyn::oled::formatClock(1805007600, text, sizeof(text))); CHECK(strcmp(text,"3:00:00 AM")==0);
 CHECK(!brooklyn::oled::formatClock(1794573786, text, 2));
+uint16_t minute=0;
+CHECK(!brooklyn::oled::newYorkMinutes(0,minute));
+CHECK(brooklyn::oled::newYorkMinutes(1768498496,minute) && minute==754);
+CHECK(brooklyn::oled::newYorkMinutes(1784133296,minute) && minute==754);
+CHECK(brooklyn::oled::newYorkMinutes(1772953199,minute) && minute==119);
+CHECK(brooklyn::oled::newYorkMinutes(1772953200,minute) && minute==180);
+CHECK(brooklyn::oled::newYorkMinutes(1793512799,minute) && minute==119);
+CHECK(brooklyn::oled::newYorkMinutes(1793512800,minute) && minute==60);
 puts("OLED clock: synchronization, winter/summer, DST boundaries, noon/midnight and buffer limits PASS");
 }

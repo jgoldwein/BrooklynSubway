@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "lan_web_ui.h"
+#include "hardware.h"
 #include "live_display.h"
 #include "led_backend.h"
 #include "controls.h"
@@ -254,6 +255,8 @@ void LanWebUi::registerRoutes() {
   server_.on("/config/oled", HTTP_POST, [this]() { handleOledAddress(); });
   server_.on("/config/colors", HTTP_POST, [this]() { handleTrainColors(); });
   server_.on("/config/unknown-timing", HTTP_POST, [this]() { handleUnknownTiming(); });
+  server_.on("/screen-options", HTTP_GET, [this]() { handleScreenOptions(); });
+  server_.on("/config/screen-options", HTTP_POST, [this]() { handleSaveScreenOptions(); });
   server_.on("/config/oled-return", HTTP_POST, [this]() { handleOledReturn(); });
   server_.on("/config/oled-dimmer", HTTP_POST, [this]() { handleOledDimmer(); });
   server_.on("/config/blue-hold", HTTP_POST, [this]() { handleBlueHold(); });
@@ -460,7 +463,7 @@ void LanWebUi::handleOledAddress() {
 
 void LanWebUi::handleTrainColors() {
   if (!authorizeRequest(true)) return;
-  uint8_t seen=0;
+  uint16_t seen=0;
   const char *names[]={"csrf","approaching","stopped","leaving","uncertain"};
   for (int i=0;i<server_.args();++i) {
     int field=-1;
@@ -507,6 +510,44 @@ void LanWebUi::handleUnknownTiming() {
   }
   Serial.printf("Uncertain trains: style %s, brightness %u/255, fade %lu seconds\n",mode.c_str(),brightness,static_cast<unsigned long>(seconds));
   server_.sendHeader("Location","/"); server_.send(303,"text/plain","Uncertain train settings saved");
+}
+
+void LanWebUi::handleScreenOptions() {
+  if(!authorizeRequest(false)) return;
+  if(server_.args()!=0) {server_.send(400,"text/plain","Invalid settings request");return;}
+  char csrf[96]{};
+  if(!requestSession(csrf,sizeof(csrf))) {sendSignInRequired();return;}
+  const size_t n=renderScreenOptionsPage(gPage,sizeof(gPage),configuration_.screenPreferences(),oled::quietHoursActive(time(nullptr)),csrf);
+  eraseBytes(csrf,sizeof(csrf));
+  if(!n) {server_.send(500,"text/plain","Unable to render screen settings");return;}
+  sendHtml(gPage,n);
+}
+void LanWebUi::handleSaveScreenOptions() {
+  if(!authorizeRequest(true)) return;
+  uint8_t seen=0;
+  for(int i=0;i<server_.args();++i) {
+    const String name=server_.argName(i);uint16_t bit=0;
+    if(name=="csrf") bit=1;else if(name=="start") bit=2;else if(name=="end") bit=4;
+    else if(name=="contrast") bit=8;else if(name=="quiet") bit=16;else if(name=="startup") bit=32;else if(name=="mapMode") bit=64;else if(name=="mapBrightness") bit=128;
+    if(!bit || (seen&bit)) {server_.send(400,"text/plain","Invalid screen settings");return;} seen|=bit;
+  }
+  const String start=server_.arg("start"),end=server_.arg("end"),contrast=server_.arg("contrast");
+  config::ScreenPreferences p;
+  if((seen&15)!=15 || !hasNoEmbeddedNull(start) || !hasNoEmbeddedNull(end) || !hasNoEmbeddedNull(contrast) ||
+      !config::parseClockMinute(start.c_str(),p.startMinute) || !config::parseClockMinute(end.c_str(),p.endMinute) ||
+      !parseBrightness(contrast.c_str(),p.quietContrast) || ((seen&16) && server_.arg("quiet")!="1") || ((seen&32) && server_.arg("startup")!="1")) {
+    server_.send(400,"text/plain","Choose valid times and OLED brightness 0-255");return;
+  }
+  const String mapMode=server_.arg("mapMode"),mapBrightness=server_.arg("mapBrightness");uint8_t level=0;
+  if((seen&192)!=192 || !hasNoEmbeddedNull(mapMode) || !hasNoEmbeddedNull(mapBrightness) || !parseBrightness(mapBrightness.c_str(),level) || level<1 || level>16 ||
+      (mapMode!="off" && mapMode!="dim" && mapMode!="normal")) {server_.send(400,"text/plain","Choose map Off, Dim (1-16), or normal");return;}
+  p.quietMapBrightness=mapMode=="off"?0:mapMode=="normal"?255:level;
+  p.quietEnabled=seen&16;p.startupDedication=seen&32;
+  const uint64_t word=config::packScreenPreferences(p);
+  if(!config::validScreenPreferences(word)) {server_.send(400,"text/plain","Start and end times must differ");return;}
+  if(!configuration_.setScreenPreferences(word)) {server_.send(500,"text/plain","Could not save screen settings");return;}
+  oled::setScreenPreferences(word);hardware::setQuiet(oled::quietHoursActive(time(nullptr)),oled::quietMapBrightness());
+  server_.sendHeader("Location","/screen-options");server_.send(303,"text/plain","Screen settings saved");
 }
 
 void LanWebUi::handleOledReturn() {
@@ -1891,6 +1932,8 @@ void LanWebUi::updateAdminStatus(StatusSnapshot &status) {
   status.unknownTiming = configuration_.unknownTiming();
   status.oledContrast = configuration_.oledContrast();
   status.oledReturnSeconds = configuration_.oledReturnSeconds();
+  status.screenPreferences = configuration_.screenPreferences();
+  status.quietHoursActive = oled::quietHoursActive(time(nullptr));
   status.blueHoldSeconds = configuration_.blueHoldSeconds();
   status.pollSeconds = configuration_.pollSeconds();
   status.oledAddress = configuration_.oledAddress();

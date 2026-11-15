@@ -60,6 +60,7 @@ class NetworkService {
   uint8_t oledAddress() const;
   uint8_t oledContrast() const;
   uint16_t oledReturnSeconds() const;
+  uint64_t screenPreferences() const;
   uint32_t unknownTiming() const;
   semantic::TrainColors trainColors() const;
   uint32_t routeVisibilityMask() const;

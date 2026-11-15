@@ -50,6 +50,7 @@ struct MemoryStore {
   uint32_t blueHold = 0;
   uint32_t oledContrast = UINT32_MAX;
   uint32_t oledReturn = UINT32_MAX;
+  uint64_t screenPrefs = UINT64_MAX;
   uint32_t unknownTiming = UINT32_MAX;
   bool colorsPresent=false;
   brooklyn::semantic::TrainColors colors=brooklyn::semantic::kDefaultTrainColors;
@@ -131,6 +132,8 @@ bool saveBlueHold(void *context, uint32_t value) {
   if (memory.failSave) return false;
   memory.blueHold = value; return true;
 }
+bool loadScreenPrefs(void *context,uint64_t &out) {out=static_cast<MemoryStore *>(context)->screenPrefs;return out!=UINT64_MAX;}
+bool saveScreenPrefs(void *context,uint64_t value) {auto &m=*static_cast<MemoryStore *>(context);if(m.failSave) return false;m.screenPrefs=value;return true;}
 bool loadReturn(void *context,uint32_t &out) {out=static_cast<MemoryStore *>(context)->oledReturn;return out!=UINT32_MAX;}
 bool saveReturn(void *context,uint32_t value) {auto &m=*static_cast<MemoryStore *>(context);if(m.failSave)return false;m.oledReturn=value;return true;}
 bool loadContrast(void *context, uint32_t &out) {
@@ -159,7 +162,7 @@ bool saveColors(void *context,const brooklyn::semantic::TrainColors &value) {
 }
 brooklyn::config::Store configStore(MemoryStore &memory) {
   return {&memory, loadBrightness, saveBrightness, loadRouteVisibilityMask,
-          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPoll, savePoll, loadOled, saveOled, loadBlueHold, saveBlueHold, loadContrast, saveContrast, loadUnknown, saveUnknown, loadColors, saveColors, loadReturn, saveReturn};
+          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPoll, savePoll, loadOled, saveOled, loadBlueHold, saveBlueHold, loadContrast, saveContrast, loadUnknown, saveUnknown, loadColors, saveColors, loadReturn, saveReturn, loadScreenPrefs, saveScreenPrefs};
 }
 
 void testTrainColors() {
@@ -201,6 +204,23 @@ void testBlueHoldConfiguration() {
   memory.failSave = false; CHECK(!config.setUnknownTiming(768));
   memory.unknownTiming = 1000; uncertain.load(); CHECK(uncertain.unknownTiming() == brooklyn::config::kDefaultUnknownTiming);
   CHECK(config.oledReturnSeconds()==60);
+  CHECK(config.screenPreferences()==kDefaultScreenPreferences);
+  ScreenPreferences pref;pref.quietEnabled=true;pref.startupDedication=false;pref.quietMapBrightness=4;
+  const uint64_t word=packScreenPreferences(pref);
+  CHECK(config.setScreenPreferences(word));DeviceConfiguration prefReloaded(configStore(memory));prefReloaded.load();CHECK(prefReloaded.screenPreferences()==word);
+  memory.failSave=true;CHECK(!config.setScreenPreferences(kDefaultScreenPreferences) && config.screenPreferences()==word);memory.failSave=false;
+  memory.screenPrefs=UINT64_MAX;prefReloaded.load();CHECK(prefReloaded.screenPreferences()==kDefaultScreenPreferences);
+  char screenPage[6144];
+  CHECK(brooklyn::web::renderScreenOptionsPage(screenPage,sizeof(screenPage),kDefaultScreenPreferences,false,"token<&>")>0);
+  CHECK(strstr(screenPage,"token&lt;&amp;&gt;")!=nullptr);
+  CHECK(strstr(screenPage,"name=\"startup\" value=\"1\" checked")!=nullptr);
+  CHECK(strstr(screenPage,"name=\"quiet\" value=\"1\" checked")==nullptr);
+  CHECK(strstr(screenPage,"22:00") && strstr(screenPage,"07:00"));
+  CHECK(brooklyn::web::renderScreenOptionsPage(screenPage,16,kDefaultScreenPreferences,false,"token")==0);
+  CHECK(brooklyn::web::renderScreenOptionsPage(screenPage,sizeof(screenPage),UINT32_MAX,false,"token")==0);
+  CHECK(strcmp(brooklyn::web::loginReturnPath("screen-options"),"/screen-options")==0);
+  CHECK(strcmp(brooklyn::web::loginTargetForRequest("/config/screen-options"),"screen-options")==0);
+
   CHECK(config.setOledReturnSeconds(0));
   DeviceConfiguration returned(configStore(memory));returned.load();CHECK(returned.oledReturnSeconds()==0);
   CHECK(config.setOledReturnSeconds(300));returned.load();CHECK(returned.oledReturnSeconds()==300);

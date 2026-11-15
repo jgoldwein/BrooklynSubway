@@ -64,6 +64,14 @@ bool saveUnknownTiming(void *, uint32_t value) {
   return written == sizeof(value);
 }
 
+bool loadScreenPreferences(void *,uint64_t &value) {
+  Preferences prefs;if(!prefs.begin(kNvsNamespace,true)) return false;
+  value=prefs.getULong64(kScreenPreferencesKey,UINT64_MAX);prefs.end();return value!=UINT64_MAX;
+}
+bool saveScreenPreferences(void *,uint64_t value) {
+  Preferences prefs;if(!prefs.begin(kNvsNamespace,false)) return false;
+  const size_t written=prefs.putULong64(kScreenPreferencesKey,value);prefs.end();return written==sizeof(value);
+}
 bool loadOledReturn(void *,uint32_t &value) {
   Preferences prefs;if(!prefs.begin(kNvsNamespace,true)) return false;
   value=prefs.getUInt(kOledReturnKey,UINT32_MAX);prefs.end();return value!=UINT32_MAX;
@@ -184,7 +192,7 @@ bool saveDnsOverride(void *, bool enabled, uint32_t ipv4) {
 
 Store nvsStore() {
   return {nullptr, loadBrightness, saveBrightness, loadRouteVisibilityMask,
-          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPollSeconds, savePollSeconds, loadOledAddress, saveOledAddress, loadBlueHoldSeconds, saveBlueHoldSeconds, loadOledContrast, saveOledContrast, loadUnknownTiming, saveUnknownTiming, loadTrainColors, saveTrainColors, loadOledReturn, saveOledReturn};
+          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPollSeconds, savePollSeconds, loadOledAddress, saveOledAddress, loadBlueHoldSeconds, saveBlueHoldSeconds, loadOledContrast, saveOledContrast, loadUnknownTiming, saveUnknownTiming, loadTrainColors, saveTrainColors, loadOledReturn, saveOledReturn, loadScreenPreferences, saveScreenPreferences};
 }
 
 }  // namespace brooklyn::config
@@ -203,6 +211,8 @@ bool loadTrainColors(void *, semantic::TrainColors &) { return false; }
 bool saveTrainColors(void *, const semantic::TrainColors &) { return false; }
 bool loadUnknownTiming(void *, uint32_t &) { return false; }
 bool saveUnknownTiming(void *, uint32_t) { return false; }
+bool loadScreenPreferences(void *, uint64_t &) { return false; }
+bool saveScreenPreferences(void *,uint64_t) {return false;}
 bool loadOledReturn(void *, uint32_t &) { return false; }
 bool saveOledReturn(void *, uint32_t) { return false; }
 bool loadOledContrast(void *, uint32_t &) { return false; }
@@ -220,7 +230,7 @@ bool saveDnsOverride(void *, bool, uint32_t) { return false; }
 
 Store nvsStore() {
   return {nullptr, loadBrightness, saveBrightness, loadRouteVisibilityMask,
-          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPollSeconds, savePollSeconds, loadOledAddress, saveOledAddress, loadBlueHoldSeconds, saveBlueHoldSeconds, loadOledContrast, saveOledContrast, loadUnknownTiming, saveUnknownTiming, loadTrainColors, saveTrainColors, loadOledReturn, saveOledReturn};
+          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPollSeconds, savePollSeconds, loadOledAddress, saveOledAddress, loadBlueHoldSeconds, saveBlueHoldSeconds, loadOledContrast, saveOledContrast, loadUnknownTiming, saveUnknownTiming, loadTrainColors, saveTrainColors, loadOledReturn, saveOledReturn, loadScreenPreferences, saveScreenPreferences};
 }
 
 }  // namespace brooklyn::config

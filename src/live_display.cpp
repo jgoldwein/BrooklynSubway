@@ -37,10 +37,18 @@ void stop(void *) { led::backend::stopLiveOutput(); }
 const Operations operations{nullptr, arm, transmit, stop};
 void run(void *) {
   wifi::HoldDetector recoveryHold;
+  uint32_t quietCheckedAt=0;bool quietChecked=false;
+  uint8_t quietCap=255;
   for (;;) {
     const uint32_t nowMs = millis();
+    if(!quietChecked || static_cast<uint32_t>(nowMs-quietCheckedAt)>=1000) {
+      quietChecked=true;quietCheckedAt=nowMs;
+      const bool quiet=oled::quietHoursActive(time(nullptr));quietCap=quiet?oled::quietMapBrightness():255;
+      hardware::setQuiet(quiet,quietCap);
+    }
     const bool recovery = recoveryHold.update(digitalRead(pins::ROTARY_PUSH) == LOW, nowMs);
     xSemaphoreTake(mutex, portMAX_DELAY);
+    controller.setQuietBrightness(quietCap);
     const bool testReleased = testButton.update(digitalRead(pins::BUTTON_TEST) == LOW, nowMs);
     const bool routeReleased = routeButton.update(digitalRead(pins::BUTTON_ROUTE) == LOW, nowMs);
     const bool rotaryReleased = rotaryButton.update(digitalRead(pins::ROTARY_PUSH) == LOW, nowMs);
@@ -83,7 +91,7 @@ void run(void *) {
       brightnessQueue[(brightnessHead + brightnessCount) % kBrightnessQueueSize] = request;
       ++brightnessCount;
     }
-    hardware::setFeedIndicatorAllowed(controller.ledsRequested());
+    hardware::setFeedIndicatorAllowed(controller.ledsRequested() && quietCap!=0,quietCap<8?quietCap:8);
     oled::setVisibleMapLights(controller.stats().visibleMapLeds);
     oled::setEnabled(controller.screenEnabled());
     xSemaphoreGive(mutex);

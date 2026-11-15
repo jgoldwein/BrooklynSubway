@@ -8,7 +8,7 @@ enum class IndicationEnd : uint8_t {
   NoIndication, Approaching, Leaving, Uncertain, StopWindowExpired,
   SourceExpired, RouteHidden, UncertainHidden, BrightnessOrColorZero,
   CurrentLimited, OutputDisabled, PowerButton, Recovery, NoUsableData,
-  OutputFailure, HardwareTest
+  OutputFailure, HardwareTest, QuietHours
 };
 inline const char *indicationName(Indication kind) {
   switch(kind) {
@@ -36,6 +36,7 @@ inline const char *indicationEndName(IndicationEnd reason) {
     case IndicationEnd::NoUsableData:return "No usable display frame";
     case IndicationEnd::OutputFailure:return "Output stopped after a rendering or driver failure";
     case IndicationEnd::HardwareTest:return "Hardware test paused live output";
+    case IndicationEnd::QuietHours:return "Quiet hours turned map lights off";
     default:return "No indication at this position in displayed frame";
   }
 }

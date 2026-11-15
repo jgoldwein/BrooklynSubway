@@ -772,6 +772,7 @@ size_t renderHomePage(char *out, size_t capacity,
     const unsigned seconds[]={0,30,60,120,300};const char *labels[]={"Stay on this screen","30 seconds","1 minute","2 minutes","5 minutes"};
     for(unsigned i=0;i<5;++i) writer.format("<option value=\"%u\"%s>%s</option>",seconds[i],status.oledReturnSeconds==seconds[i]?" selected":"",labels[i]);
     writer.append("</select></label><button>Save screen return</button></form>");
+    writer.append("<p><a href=\"/screen-options\">Quiet hours and startup greeting</a></p>");
   }
   writer.append("</section>");
   writer.format("<details class=\"card\" data-view=\"screen\"><summary>Screen connection details</summary><p>Saved I2C address: 0x%02X. Default: 0x38. Reboot after changing.</p>", status.oledAddress);
@@ -863,7 +864,7 @@ size_t renderHomePage(char *out, size_t capacity,
                 "const controller=new AbortController();timer=setTimeout(()=>controller.abort(),15000);"
                 "const r=await fetch('/api/status',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();"
                 "const s=await r.json();if(s.trainColors)document.querySelectorAll('[data-train-color]').forEach(e=>{const c=s.trainColors[e.dataset.trainColor];if(/^#[0-9a-f]{6}$/i.test(c))e.style.backgroundColor=c});s.feedSummary=s.feedsSucceeded+' / '+s.feedsTotal;s.connectionLabel=s.networkConnected?'Wi-Fi connected':'Wi-Fi disconnected';"
-                "s.downloadState=s.fetchingFeeds?'Fetching train data':'Waiting for next update';s.mapPower=s.physicalLedOutputEnabled?'Lights on':s.physicalPowerPaused?'Lights paused':'Lights off';"
+                "s.downloadState=s.fetchingFeeds?'Fetching train data':'Waiting for next update';s.mapPower=s.quietHoursActive&&s.quietMapBrightness===0?'Quiet hours: lights off':s.physicalLedOutputEnabled?'Lights on':s.physicalPowerPaused?'Lights paused':'Lights off';"
                 "s.friendlyState=s.displayState==='Fresh'?'Train data is up to date':s.displayState==='WaitingForData'?'Waiting for the first train update':s.displayState==='NoData'?'No current train data':'Some train updates are delayed';"
                 "document.querySelectorAll('[data-status]').forEach(e=>{const k=e.dataset.status;"
                 "if(!(k in s))return;const v=s[k];e.textContent=v===null?'Not available':"
@@ -878,6 +879,7 @@ size_t renderHomePage(char *out, size_t capacity,
 // Only fixed local GET pages are allowed; never redirect to submitted URLs or actions.
 const char *loginReturnPath(const char *target) {
   if (!target || !target[0]) return "/";
+  if (strcmp(target,"screen-options")==0) return "/screen-options";
   if (strcmp(target,"update")==0) return "/update";
   if (strcmp(target,"hardware-test")==0) return "/hardware-test";
   if (strcmp(target,"wifi-setup")==0) return "/wifi/setup";
@@ -890,6 +892,7 @@ const char *loginReturnPath(const char *target) {
 }
 const char *loginTargetForRequest(const char *path) {
   if (!path) return "";
+  if (strcmp(path,"/screen-options")==0 || strcmp(path,"/config/screen-options")==0) return "screen-options";
   if (strcmp(path,"/update")==0 || strncmp(path,"/update/",8)==0) return "update";
   if (strcmp(path,"/hardware-test")==0 || strcmp(path,"/hardware-test/run")==0) return "hardware-test";
   if (strcmp(path,"/wifi/setup")==0 || strcmp(path,"/wifi/setup/confirm")==0) return "wifi-setup";
@@ -899,6 +902,23 @@ const char *loginTargetForRequest(const char *path) {
   if (strncmp(path,"/config/",8)==0) return "lights";
   if (strcmp(path,"/network-diagnostics/run")==0 || strcmp(path,"/admin/password")==0 || strcmp(path,"/reboot")==0) return "advanced";
   return "overview";
+}
+
+size_t renderScreenOptionsPage(char *out,size_t capacity,uint64_t preferences,bool quietNow,const char *csrf) {
+  if(!config::validScreenPreferences(preferences) || !csrf || !*csrf) return 0;
+  const auto p=config::unpackScreenPreferences(preferences);Writer w(out,capacity);
+  w.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Brooklyn Subway</title><link rel=\"stylesheet\" href=\"/ui.css?v=038\"></head><body><header><div class=\"brand\"><span class=\"brand-mark\">BK</span><div><h1>Brooklyn Subway</h1><p class=\"subtitle\">Specially Designed for Avi Yao</p></div></div></header><main class=\"login-shell\"><section><h2>Quiet hours and startup greeting</h2>");
+  w.append(quietNow?"<p>Quiet hours are active. Beeps, OLED and map LEDs follow the settings below.</p>":"<p>Quiet hours are not active.</p>");
+  w.append("<form method=\"post\" action=\"/config/screen-options\"><input type=\"hidden\" name=\"csrf\" value=\"");w.html(csrf);
+  w.format("\"><label><input type=\"checkbox\" name=\"startup\" value=\"1\"%s>Show the dedication for 5 seconds at startup</label><p>Turn the knob to skip it. Wi-Fi setup and POWER take priority.</p>",p.startupDedication?" checked":"");
+  w.format("<h3>Quiet hours</h3><label><input type=\"checkbox\" name=\"quiet\" value=\"1\"%s>Enable quiet hours</label>",p.quietEnabled?" checked":"");
+  w.format("<label>Start <input name=\"start\" type=\"time\" value=\"%02u:%02u\" required></label><label>End <input name=\"end\" type=\"time\" value=\"%02u:%02u\" required></label>",p.startMinute/60,p.startMinute%60,p.endMinute/60,p.endMinute%60);
+  w.format("<label>Quiet OLED brightness (0-255)<input name=\"contrast\" type=\"number\" min=\"0\" max=\"255\" value=\"%u\" required></label>",p.quietContrast);
+  w.append("<label>Map LEDs during quiet hours<select name=\"mapMode\">");
+  w.format("<option value=\"off\"%s>Off</option><option value=\"dim\"%s>Dim to a brightness limit</option><option value=\"normal\"%s>Keep normal brightness</option></select></label>",p.quietMapBrightness==0?" selected":"",p.quietMapBrightness>0 && p.quietMapBrightness<255?" selected":"",p.quietMapBrightness==255?" selected":"");
+  w.format("<label>Map brightness limit when Dim is selected (1-16)<input name=\"mapBrightness\" type=\"number\" min=\"1\" max=\"16\" value=\"%u\" required></label>",p.quietMapBrightness>0 && p.quietMapBrightness<255?p.quietMapBrightness:1);
+  w.append("<p>Times use New York local time, including daylight saving. Overnight schedules are supported. Quiet hours mute all beeps and cap OLED brightness; map LEDs can be off, dimmed or unchanged. Normal brightness is preserved; POWER-off stays off. 0 is the dimmest OLED setting, not off. While the clock is unknown, enabled quiet hours stay quiet until time sync.</p><button>Save settings</button></form><p><a href=\"/#screen\">Back to Screen</a></p></section></main></body></html>");
+  return w.size();
 }
 
 size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken, const char *target) {
@@ -1196,6 +1216,8 @@ size_t renderStatusJson(char *out, size_t capacity,
       semantic::unknownTimingMode(status.unknownTiming)!=semantic::UnknownTimingMode::Hidden?"true":"false",status.unknownTiming&255,
       semantic::unknownTimingModeName(semantic::unknownTimingMode(status.unknownTiming)),semantic::lastReportedFadeSeconds(status.unknownTiming));
   writer.format(",\"oledContrast\":%u,\"oledReturnSeconds\":%u", status.oledContrast, status.oledReturnSeconds);
+  const auto preferences=config::unpackScreenPreferences(status.screenPreferences);
+  writer.format(",\"quietHoursEnabled\":%s,\"quietHoursActive\":%s,\"startupDedicationEnabled\":%s,\"quietMapBrightness\":%u",preferences.quietEnabled?"true":"false",status.quietHoursActive?"true":"false",preferences.startupDedication?"true":"false",unsigned(preferences.quietMapBrightness));
   writer.append(",\"stoppedPolicy\":\"fresh-evidence\",\"stoppedTimeLimitEnabled\":false");
   writer.format(",\"blueHoldSeconds\":%lu", static_cast<unsigned long>(status.blueHoldSeconds)); // legacy stored value, inactive
   writer.format(",\"pollSeconds\":%lu", static_cast<unsigned long>(status.pollSeconds));

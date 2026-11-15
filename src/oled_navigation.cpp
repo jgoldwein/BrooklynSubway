@@ -2,11 +2,16 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "oled_screens.h"
 namespace brooklyn::oled {
+void Navigation::startDedication(uint32_t nowMs) {
+  view_.screen=Screen::Dedication;view_.lineBrowsing=view_.automatic=false;
+  view_.changedAtMs=lastInputAtMs_=startupAtMs_=nowMs;startupActive_=true;
+}
 void Navigation::setReturnSeconds(uint16_t seconds, uint32_t nowMs) {
   if (returnSeconds_ != seconds) { returnSeconds_ = seconds; lastInputAtMs_ = nowMs; }
 }
 bool Navigation::input(Action action, uint32_t nowMs) {
   if ((action == Action::Select || action == Action::ToggleAuto) && view_.screen != Screen::Lines) return false;
+  startupActive_=false;
   lastInputAtMs_ = autoAtMs_ = nowMs;
   if (action == Action::NextScreen ||
       ((action==Action::TurnNext || action==Action::TurnPrevious) && !view_.lineBrowsing)) {
@@ -25,6 +30,9 @@ bool Navigation::input(Action action, uint32_t nowMs) {
   return true;
 }
 bool Navigation::update(uint32_t nowMs, bool active) {
+  if(startupActive_ && (!active || static_cast<uint32_t>(nowMs-startupAtMs_)>=5000)) {
+    startupActive_=false;view_.screen=Screen::Main;view_.changedAtMs=lastInputAtMs_=nowMs;return true;
+  }
   if (!active) { lastInputAtMs_=autoAtMs_=nowMs; return false; }
   if (view_.screen != Screen::Main && returnSeconds_ && static_cast<uint32_t>(nowMs-lastInputAtMs_) >= uint32_t(returnSeconds_)*1000) {
     view_.screen=Screen::Main;view_.automatic=false;view_.lineBrowsing=false;view_.changedAtMs=nowMs;return true;

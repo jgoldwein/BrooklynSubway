@@ -539,6 +539,7 @@ uint8_t NetworkService::brightness() const {
 }
 
 uint16_t NetworkService::oledReturnSeconds() const { return configuration_.oledReturnSeconds(); }
+uint64_t NetworkService::screenPreferences() const { return configuration_.screenPreferences(); }
 uint32_t NetworkService::routeVisibilityMask() const {
   return configuration_.routeVisibilityMask();
 }
@@ -1233,6 +1234,7 @@ uint8_t NetworkService::brightness() const {
 }
 
 uint16_t NetworkService::oledReturnSeconds() const { return config::kDefaultOledReturnSeconds; }
+uint64_t NetworkService::screenPreferences() const { return config::kDefaultScreenPreferences; }
 uint32_t NetworkService::routeVisibilityMask() const {
   return config::kDefaultRouteVisibilityMask;
 }

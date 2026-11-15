@@ -10,11 +10,10 @@ bool utcCalendar(const time_t &value, struct tm &out) {
 #endif
 }
 }
-bool formatClock(time_t utc, char *out, size_t capacity) {
-  if (!out || !capacity) return false;
-  if (utc < 1700000000) { snprintf(out, capacity, "Syncing time..."); return false; }
-  struct tm calendar{};
-  if (!utcCalendar(utc, calendar)) { out[0] = '\0'; return false; }
+namespace {
+bool newYorkCalendar(time_t utc,struct tm &calendar) {
+  if(utc<1700000000) return false;
+  if (!utcCalendar(utc, calendar)) { return false; }
   // US DST: second Sunday in March at 07:00 UTC to first Sunday in November at 06:00 UTC.
   const int firstSunday = 1 + (7 - (calendar.tm_wday - (calendar.tm_mday - 1) % 7 + 7) % 7) % 7;
   bool daylight = calendar.tm_mon > 2 && calendar.tm_mon < 10;
@@ -23,7 +22,19 @@ bool formatClock(time_t utc, char *out, size_t capacity) {
   if (calendar.tm_mon == 10) daylight = calendar.tm_mday < firstSunday ||
       (calendar.tm_mday == firstSunday && calendar.tm_hour < 6);
   const time_t local = utc - (daylight ? 4 : 5) * 3600;
-  if (!utcCalendar(local, calendar)) { out[0] = '\0'; return false; }
+  if (!utcCalendar(local, calendar)) { return false; }
+  return true;
+}
+}
+bool newYorkMinutes(time_t utc,uint16_t &minute) {
+  struct tm local{};if(!newYorkCalendar(utc,local)) return false;
+  minute=local.tm_hour*60+local.tm_min;return true;
+}
+bool formatClock(time_t utc, char *out, size_t capacity) {
+  if (!out || !capacity) return false;
+  if (utc < 1700000000) { snprintf(out, capacity, "Syncing time..."); return false; }
+  struct tm calendar{};
+  if(!newYorkCalendar(utc,calendar)) {out[0]=0;return false;}
   const int hour = calendar.tm_hour % 12 ? calendar.tm_hour % 12 : 12;
   const int written = snprintf(out, capacity, "%d:%02d:%02d %s", hour, calendar.tm_min,
       calendar.tm_sec, calendar.tm_hour < 12 ? "AM" : "PM");

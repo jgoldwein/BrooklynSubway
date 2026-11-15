@@ -29,7 +29,7 @@ void Controller::publish(const Snapshot &snapshot) {
 OutputStats Controller::stats() const {
   auto result = stats_;
   result.powerCanResume = powerCanResume_ && !enabled_ && !automaticStartPending_;
-  result.automaticStartPending = automaticStartPending_;
+  result.automaticStartPending = automaticStartPending_ || (quietSuppressed_ && quietRestore_);
   result.powerMode = powerMode_;
   if (!enabled_) { result.blinkingLeds = 0; result.visibleMapLeds = 0; result.darkOccupiedMapLeds = 0; for(auto &count:result.routeLights) count=0; }
   return result;
@@ -73,7 +73,7 @@ bool Controller::safe(uint32_t nowMs) const {
 
 bool Controller::enable(uint32_t nowMs) {
   // An old held frame cannot be used to start a new session.
-  if (!ledsRequested() || !safe(nowMs) || static_cast<uint32_t>(nowMs - snapshot_.frameAtMs) > kPartialGraceMs ||
+  if (quietBrightness_==0 || !ledsRequested() || !safe(nowMs) || static_cast<uint32_t>(nowMs - snapshot_.frameAtMs) > kPartialGraceMs ||
       (snapshot_.status.displayState != State::Fresh &&
                        snapshot_.status.displayState != State::DegradedPartial)) return false;
   enabled_ = true;
@@ -155,6 +155,7 @@ void Controller::disable(const Operations &operations, uint32_t nowMs, Indicatio
   enabled_ = false;
   automaticStartPending_ = false;
   powerCanResume_ = false;
+  quietSuppressed_=quietRestore_=false;
   if (armed_ && operations.stop) operations.stop(operations.context);
   armed_ = false;
 }
@@ -170,6 +171,22 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
   if (rebootPending_ || !ledsRequested()) {
     disable(operations,nowMs,IndicationEnd::PowerButton);
     return;
+  }
+  if(quietBrightness_==0) {
+    if(recovery || (hasSnapshot_ && !snapshot_.status.systemHealthy)) {
+      disable(operations,nowMs,recovery?IndicationEnd::Recovery:IndicationEnd::OutputFailure);return;
+    }
+    if(!quietSuppressed_) {quietRestore_=enabled_ || automaticStartPending_;quietSuppressed_=true;}
+    quietRestore_=quietRestore_ || automaticStartPending_;
+    stopIndications(nowMs,IndicationEnd::QuietHours);
+    enabled_=automaticStartPending_=powerCanResume_=false;
+    if(armed_ && operations.stop) operations.stop(operations.context);
+    armed_=false;return;
+  }
+  if(quietSuppressed_) {
+    quietSuppressed_=false;
+    if(quietRestore_ && ledsRequested()) automaticStartPending_=true;
+    quietRestore_=false;
   }
   if (!hasSnapshot_) return;
   // Keep startup LOW while waiting for the first usable cycle. POWER can
@@ -199,6 +216,7 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
   semantic::RenderConfig config{};
   config.brightness = snapshot_.brightness < led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP
       ? snapshot_.brightness : led::power::PRODUCTION_BRINGUP_BRIGHTNESS_CAP;
+  if(config.brightness>quietBrightness_) config.brightness=quietBrightness_;
   config.colors=snapshot_.colors;
   config.unknownTimingMode = semantic::unknownTimingMode(snapshot_.unknownTiming);
   config.showUnknownTiming = config.unknownTimingMode != semantic::UnknownTimingMode::Hidden;

@@ -301,8 +301,12 @@ void setup() {
   if (!hardwareReady) {
     Serial.println("ERROR: I2C initialization failed; LED outputs remain disabled.");
   }
+  brooklyn::oled::setScreenPreferences(networkService.screenPreferences());
+  brooklyn::oled::setSetupMode(networkService.state()==brooklyn::network::State::Provisioning || networkService.state()==brooklyn::network::State::NoCredentials);
+  brooklyn::hardware::setQuiet(brooklyn::oled::quietHoursActive(time(nullptr)),brooklyn::oled::quietMapBrightness());
   brooklyn::hardware::indicateStartup(systemHealthy);
   if (systemHealthy) (void)brooklyn::display::live::begin();
+  if(!brooklyn::display::live::available()) brooklyn::oled::setScreenPreferences(networkService.screenPreferences() & ~brooklyn::config::kStartupDedicationBit);
   if (hardwareReady) brooklyn::oled::begin(networkService.oledAddress(), networkService.oledContrast());
 #if defined(BROOKLYN_TARGET_XIAO)
   if (brooklyn::led::runSelfTest()) {
@@ -323,6 +327,7 @@ void publishOledScreenData(uint32_t nowMs) {
   data.uptimeSeconds = static_cast<uint64_t>(esp_timer_get_time())/1000000u;
   const auto live = brooklyn::display::live::stats();
   brooklyn::oled::setReturnSeconds(networkService.oledReturnSeconds());
+  brooklyn::oled::setScreenPreferences(networkService.screenPreferences());
   data.indications = live.indications;
   data.routeMask=networkService.routeVisibilityMask();
   brooklyn::oled::setLineCounts(data,operationalDisplay.frame(),live.routeLights);

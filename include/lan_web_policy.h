@@ -44,6 +44,8 @@ struct StatusSnapshot {
   uint32_t unknownTiming = 511;
   uint8_t oledContrast = 207;
   uint16_t oledReturnSeconds = config::kDefaultOledReturnSeconds;
+  uint64_t screenPreferences = config::kDefaultScreenPreferences;
+  bool quietHoursActive = false;
   uint32_t blueHoldSeconds = 20;
   uint32_t pollSeconds = 15;
   uint8_t oledAddress = config::kDefaultOledAddress;
@@ -141,6 +143,7 @@ size_t renderHomePage(char *out, size_t capacity,
                       const char *csrfToken = nullptr);
 const char *loginReturnPath(const char *target);
 const char *loginTargetForRequest(const char *path);
+size_t renderScreenOptionsPage(char *out,size_t capacity,uint64_t preferences,bool quietNow,const char *csrf);
 size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken, const char *target = "");
 size_t renderTrainMonitorPage(char *out, size_t capacity, const StatusSnapshot &status);
 size_t renderTrainMonitorJson(char *out, size_t capacity, const StatusSnapshot &status);

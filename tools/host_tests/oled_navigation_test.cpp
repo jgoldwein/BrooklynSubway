@@ -1,4 +1,5 @@
 #include "oled_screens.h"
+#include "screen_preferences.h"
 #include "rotary_policy.h"
 #include "test_button_policy.h"
 #include <stdio.h>
@@ -80,12 +81,32 @@ int main() {
   data.routeMask=0;formatScreen(Screen::Lines,data,0,text,view);
   CHECK(strstr(text.lines[2],"hidden")!=nullptr);
   CHECK(strstr(text.lines[4],"Turn:line")!=nullptr);
+  nav.startDedication(100000);CHECK(nav.view().screen==Screen::Dedication);
+  CHECK(!nav.update(104999));CHECK(nav.update(105000));CHECK(nav.view().screen==Screen::Main);
+  nav.startDedication(200000);nav.input(Action::TurnNext,200010);CHECK(nav.view().screen==Screen::Main);CHECK(!nav.update(205000));
+  nav.startDedication(300000);CHECK(nav.update(300010,false));CHECK(nav.view().screen==Screen::Main);
+  using namespace brooklyn::config;
+  ScreenPreferences preferences;preferences.quietEnabled=true;
+  auto schedule=packScreenPreferences(preferences);CHECK(validScreenPreferences(schedule));
+  CHECK(!quietActive(schedule,true,1319));CHECK(quietActive(schedule,true,1320));CHECK(quietActive(schedule,true,419));CHECK(!quietActive(schedule,true,420));
+  CHECK(quietActive(schedule,false,0));preferences.quietEnabled=false;CHECK(!quietActive(packScreenPreferences(preferences),false,0));
+  preferences.quietEnabled=true;preferences.startMinute=540;preferences.endMinute=1020;schedule=packScreenPreferences(preferences);
+  CHECK(!quietActive(schedule,true,539));CHECK(quietActive(schedule,true,540));CHECK(quietActive(schedule,true,1019));CHECK(!quietActive(schedule,true,1020));
+  preferences.startMinute=preferences.endMinute;CHECK(!validScreenPreferences(packScreenPreferences(preferences)));
+  preferences.startMinute=1440;CHECK(!validScreenPreferences(packScreenPreferences(preferences)));
+  preferences.startMinute=1320;preferences.endMinute=420;
+  preferences.quietMapBrightness=255;CHECK(validScreenPreferences(packScreenPreferences(preferences)));
+  CHECK(unpackScreenPreferences(packScreenPreferences(preferences)).quietMapBrightness==255);
+  preferences.quietMapBrightness=16;CHECK(validScreenPreferences(packScreenPreferences(preferences)));
+  preferences.quietMapBrightness=17;CHECK(!validScreenPreferences(packScreenPreferences(preferences)));
+  uint16_t minute=0;CHECK(parseClockMinute("22:00",minute) && minute==1320);
+  CHECK(!parseClockMinute("24:00",minute));CHECK(!parseClockMinute("12:60",minute));CHECK(!parseClockMinute("9:00",minute));CHECK(!parseClockMinute("09:00x",minute));
   const char *names[]={"Joel","Marlene","Marc","Kim","Juliana","Levi","Robbie","Eric"};
   bool seen[8]{};view.screen=Screen::Dedication;view.changedAtMs=0;
   for(uint32_t at=0;at<60000;at+=1000) {
     formatScreen(Screen::Dedication,data,at,text,view);
-    CHECK(strcmp(text.lines[0],"Happy Bar Mitzvah!")==0);
-    CHECK(strstr(text.lines[1],"Avi Yao")!=nullptr);
+    CHECK(strcmp(text.lines[0],"Happy Bar Mitsvah!")==0);
+    CHECK(strcmp(text.lines[1],"Avi")==0);
     CHECK(strcmp(text.lines[2],"From the Goldweins")==0);
     CHECK(strcmp(text.lines[3],"September 26, 2026")==0);
     for(auto &line:text.lines) CHECK(strlen(line)<=21);

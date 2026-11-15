@@ -6,6 +6,7 @@
 #include "semantic_api.h"
 #include "unknown_timing.h"
 #include "train_colors.h"
+#include "screen_preferences.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -21,6 +22,7 @@ constexpr uint32_t kDefaultBlueHoldSeconds = 20;
 constexpr uint32_t kMaxBlueHoldSeconds = 300;
 constexpr const char *kBlueHoldKey = "blue_hold_sec";
 constexpr const char *kOledReturnKey = "oled_return";
+constexpr const char *kScreenPreferencesKey = "screen_opts";
 constexpr uint16_t kDefaultOledReturnSeconds = 60;
 constexpr uint8_t kDefaultBrightness = 5;
 constexpr uint8_t kDefaultOledAddress = 0x38;
@@ -55,6 +57,8 @@ struct Store {
   bool (*saveTrainColors)(void *context, const semantic::TrainColors &value);
   bool (*loadOledReturn)(void *context, uint32_t &value);
   bool (*saveOledReturn)(void *context, uint32_t value);
+  bool (*loadScreenPreferences)(void *context, uint64_t &value);
+  bool (*saveScreenPreferences)(void *context, uint64_t value);
 };
 
 class DeviceConfiguration {
@@ -70,6 +74,8 @@ class DeviceConfiguration {
   bool setOledContrast(uint8_t contrast);
   bool setOledReturnSeconds(uint32_t seconds);
   uint16_t oledReturnSeconds() const { return oledReturnSeconds_; }
+  bool setScreenPreferences(uint64_t value);
+  uint64_t screenPreferences() const { return screenPreferences_; }
   uint8_t oledContrast() const { return oledContrast_; }
   bool setBlueHoldSeconds(uint32_t seconds);
   uint32_t blueHoldSeconds() const { return blueHoldSeconds_; }
@@ -86,17 +92,18 @@ class DeviceConfiguration {
 
  private:
   Store store_;
-  uint16_t oledReturnSeconds_ = kDefaultOledReturnSeconds;
+  uint64_t screenPreferences_ = kDefaultScreenPreferences;
   semantic::TrainColors trainColors_ = semantic::kDefaultTrainColors;
   uint32_t unknownTiming_ = kDefaultUnknownTiming;
-  uint8_t oledContrast_ = kDefaultOledContrast;
-  uint8_t oledAddress_ = kDefaultOledAddress;
   uint32_t blueHoldSeconds_ = kDefaultBlueHoldSeconds;
   uint32_t pollSeconds_ = 15;
-  uint8_t brightness_ = kDefaultBrightness;
   uint32_t routeVisibilityMask_ = kDefaultRouteVisibilityMask;
-  bool dnsOverrideEnabled_ = false;
   uint32_t dnsOverrideIpv4_ = 0;
+  uint16_t oledReturnSeconds_ = kDefaultOledReturnSeconds;
+  uint8_t oledContrast_ = kDefaultOledContrast;
+  uint8_t oledAddress_ = kDefaultOledAddress;
+  uint8_t brightness_ = kDefaultBrightness;
+  bool dnsOverrideEnabled_ = false;
 };
 
 bool validOledReturnSeconds(uint32_t seconds);

@@ -25,7 +25,7 @@ const char *screenName(Screen screen) {
     case Screen::Connection: return "Connection";
     case Screen::Device: return "Device";
     case Screen::Lines: return "Subway lines";
-    case Screen::Dedication: return "For Avi Yao";
+    case Screen::Dedication: return "For Avi";
     default: return "Main";
   }
 }
@@ -117,8 +117,8 @@ void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenT
       break;
     }
     case Screen::Dedication:
-      write(0,"Happy Bar Mitzvah!");
-      write(1,"Avi Yao           6/6");
+      write(0,"Happy Bar Mitsvah!");
+      write(1,"Avi");
       write(2,"From the Goldweins");
       write(3,"September 26, 2026");
       scrollText(kDedicationNames,sizeof(kDedicationNames)-1,static_cast<uint32_t>(nowMs-view.changedAtMs),out.lines[4]);

@@ -24,6 +24,10 @@ ScreenData screenData{};
 uint32_t feedbackWord = 0, feedbackSequence = 0;
 uint32_t requestedContrast = 207; // Accessed atomically; only the OLED worker touches I2C.
 uint32_t uiRevision = 0;
+uint64_t screenPreferencesWord=config::kDefaultScreenPreferences;
+uint64_t readScreenPreferences() {
+  portENTER_CRITICAL(&screenDataMux);const uint64_t word=screenPreferencesWord;portEXIT_CRITICAL(&screenDataMux);return word;
+}
 void requestRefresh() { __atomic_add_fetch(&uiRevision,1u,__ATOMIC_RELAXED); }
 uint32_t statusWord = 0; // Single atomic packed snapshot; no bus access by readers.
 void setStatus(State state, uint8_t error = 0) {
@@ -55,7 +59,10 @@ void draw(const char *clock) {
     ScreenText text;
     formatScreen(selected, data, millis(), text, view);
     screen.setFont(u8g2_font_6x12_tf);
-    for (uint8_t i = 0; i < 5; ++i) screen.drawStr(0, 11+i*12, text.lines[i]);
+    for (uint8_t i = 0; i < 5; ++i) {
+      const int x = selected==Screen::Dedication && i==1 ? (128-screen.getStrWidth(text.lines[i]))/2 : 0;
+      screen.drawStr(x, 11+i*12, text.lines[i]);
+    }
     screen.sendBuffer();
     return;
   }
@@ -68,6 +75,7 @@ void draw(const char *clock) {
   screen.drawStr((128 - screen.getStrWidth(count)) / 2, 34, count);
   screen.setFont(u8g2_font_8x13_tf);
   screen.drawStr((128 - screen.getStrWidth(clock)) / 2, 55, clock);
+  screen.drawFrame(0,0,128,64);
   screen.sendBuffer();
 }
 // The board initializes Wire once. Avoid U8g2's second Wire.begin() and
@@ -140,8 +148,17 @@ void run(void *) {
   screen.begin();
   uint8_t appliedContrast = 207;
   if (!transportFailed) {
-    const uint8_t desired = __atomic_load_n(&requestedContrast, __ATOMIC_RELAXED);
+    uint8_t desired = __atomic_load_n(&requestedContrast, __ATOMIC_RELAXED);
+    if(quietHoursActive(time(nullptr))) {
+      const uint8_t cap=config::unpackScreenPreferences(readScreenPreferences()).quietContrast;
+      if(desired>cap) desired=cap;
+    }
     if (desired != appliedContrast) { screen.setContrast(desired); appliedContrast = desired; }
+  }
+  if(!transportFailed && !__atomic_load_n(&setupMode,__ATOMIC_RELAXED) &&
+      (readScreenPreferences()&config::kStartupDedicationBit)) {
+    portENTER_CRITICAL(&screenDataMux);navigation.startDedication(millis());portEXIT_CRITICAL(&screenDataMux);
+    requestRefresh();Serial.println("OLED: five-second startup dedication; turn knob to skip");
   }
   if (!transportFailed) draw("Syncing time...");
   if (transportFailed) {
@@ -164,7 +181,11 @@ void run(void *) {
     const bool valid = formatClock(time(nullptr), text, sizeof(text));
     if (valid && !synchronized) Serial.println("OLED clock: New York time synchronized (automatic DST)");
     synchronized = valid;
-    const uint8_t desired = __atomic_load_n(&requestedContrast, __ATOMIC_RELAXED);
+    uint8_t desired = __atomic_load_n(&requestedContrast, __ATOMIC_RELAXED);
+    if(quietHoursActive(time(nullptr))) {
+      const uint8_t cap=config::unpackScreenPreferences(readScreenPreferences()).quietContrast;
+      if(desired>cap) desired=cap;
+    }
     if (desired != appliedContrast && !transportFailed) {
       screen.setContrast(desired); appliedContrast = desired;
       redraw=true;
@@ -204,6 +225,18 @@ void run(void *) {
   }
 }
 }
+void setScreenPreferences(uint64_t word) {
+  if(!config::validScreenPreferences(word)) return;
+  portENTER_CRITICAL(&screenDataMux);const bool changed=screenPreferencesWord!=word;screenPreferencesWord=word;portEXIT_CRITICAL(&screenDataMux);
+  if(changed) requestRefresh();
+}
+bool quietHoursActive(time_t utc) {
+  const uint64_t word=readScreenPreferences();
+  if(!(word&1)) return false;
+  uint16_t minute=0;const bool known=newYorkMinutes(utc,minute);
+  return config::quietActive(word,known,minute);
+}
+uint8_t quietMapBrightness() {return config::unpackScreenPreferences(readScreenPreferences()).quietMapBrightness;}
 void publishScreenData(const ScreenData &data) {
   portENTER_CRITICAL(&screenDataMux);
   screenData = data;
@@ -291,5 +324,5 @@ Status status() {
 }
 }
 #else
-namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void setSetupMode(bool) {} void publishScreenData(const ScreenData &) {} Screen selectedScreen() { return Screen::Main; } void advanceScreen() {} void navigate(Action,uint32_t) {} void serviceNavigation(uint32_t,bool) {} void setReturnSeconds(uint16_t) {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} void setTrackedTrains(uint32_t, bool) {} void setVisibleMapLights(uint16_t) {} Status status() { return {}; } }
+namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void setSetupMode(bool) {} void setScreenPreferences(uint64_t) {} bool quietHoursActive(time_t) {return false;} uint8_t quietMapBrightness() {return 255;} void publishScreenData(const ScreenData &) {} Screen selectedScreen() { return Screen::Main; } void advanceScreen() {} void navigate(Action,uint32_t) {} void serviceNavigation(uint32_t,bool) {} void setReturnSeconds(uint16_t) {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} void setTrackedTrains(uint32_t, bool) {} void setVisibleMapLights(uint16_t) {} Status status() { return {}; } }
 #endif

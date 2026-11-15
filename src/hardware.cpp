@@ -16,6 +16,10 @@ namespace brooklyn::hardware {
 #if defined(BROOKLYN_TARGET_PCB)
 namespace {
 bool startupMuted = false;
+uint32_t quietWord=0;
+uint32_t quietMapWord=255, feedCapWord=8;
+uint8_t lastFeedDuty=0;
+bool isQuiet() {return __atomic_load_n(&quietWord,__ATOMIC_RELAXED)!=0;}
 bool feedIndicatorAttached = false;
 bool feedIndicatorOn = false;
 bool feedIndicatorUnavailable = false;
@@ -27,8 +31,8 @@ void unlockIndicator();
 void beepFeedReadyOnce() {
   if (feedReadyBeepAttempted) return;
   feedReadyBeepAttempted = true;
-  if (startupMuted) {
-    Serial.println("Feed-ready buzzer: muted by DIM at boot"); return;
+  if (startupMuted || isQuiet()) {
+    Serial.println("Feed-ready buzzer: muted by DIM at boot or quiet hours"); return;
   }
   constexpr uint8_t kBuzzerChannel = 7; // Timer 3, independent of U23 timer 2.
   constexpr uint16_t kFrequencyHz = 2000;
@@ -68,8 +72,8 @@ void playStartupChime() {
   };
   constexpr uint8_t kNoteCount = sizeof(kNotes) / sizeof(kNotes[0]);
   digitalWrite(pins::BUZZER, LOW);
-  if (startupMuted) {
-    Serial.println("Startup buzzer: muted by DIM at boot; GPIO21 LOW");
+  if (startupMuted || isQuiet()) {
+    Serial.println("Startup buzzer: muted by DIM at boot or quiet hours; GPIO21 LOW");
     return;
   }
   Serial.println("Startup buzzer: BUZZER3 GPIO21, four rising notes then subway-style ding-dong, 50% PWM");
@@ -113,12 +117,14 @@ bool signalDiagnosticChannel(led::PhysicalChannel channel) {
   digitalWrite(pins::BUZZER, LOW);
   if (number < 1 || number > 8 || digitalRead(pins::BUTTON_POWER) == LOW ||
       controls::pollWifiRecoveryDuringDiagnostic()) return false;
+  if(isQuiet()) {Serial.println("Diagnostic buzzer: quiet hours; visual test continues");return true;}
   const auto wait = [](uint32_t ms) {
     constexpr uint32_t kSliceMs = 20;
     while (ms > 0) {
       if (digitalRead(pins::BUTTON_POWER) == LOW ||
           controls::pollWifiRecoveryDuringDiagnostic()) return false;
       const uint32_t slice = ms < kSliceMs ? ms : kSliceMs;
+      if(isQuiet()) ledcWrite(7,0);
       delay(slice);
       ms -= slice;
     }
@@ -133,7 +139,7 @@ bool signalDiagnosticChannel(led::PhysicalChannel channel) {
   ledcAttachPin(pins::BUZZER, kChannel);
   bool ok = true;
   for (uint8_t beep = 0; beep < number && ok; ++beep) {
-    ledcWrite(kChannel, 128);
+    ledcWrite(kChannel, isQuiet()?0:128);
     ok = wait(kBeepMs);
     ledcWrite(kChannel, 0);
     if (ok && beep + 1 < number) ok = wait(kGapMs);
@@ -160,6 +166,9 @@ void indicateStartup(bool checksPassed) {
     Serial.println("Startup indicator: local checks FAILED; U23/GPIO14 remains LOW");
     return;
   }
+  if(isQuiet() && __atomic_load_n(&quietMapWord,__ATOMIC_RELAXED)!=255) {
+    Serial.println("Startup indicator: quiet LED setting; U23 pulses omitted");return;
+  }
   Serial.println("Startup indicator: U23/GPIO14 two flashes; local checks passed (Wi-Fi/feed readiness is separate)");
   for (uint8_t pulse = 0; pulse < kPulseCount; ++pulse) {
     digitalWrite(pins::AVI_LOCATION_LED, HIGH);
@@ -177,8 +186,10 @@ void applyFeedIndicator(bool freshComplete) {
 #if defined(BROOKLYN_TARGET_PCB)
   // Channel 4 uses timer 2, separate from buzzer channel 7 / timer 3.
   constexpr uint8_t kIndicatorChannel = 4;
-  constexpr uint8_t kDimDuty = 8;  // 8/255, about 3% of the discrete LED's on-current
-  if (freshComplete == feedIndicatorOn) return;
+  const uint8_t cap=__atomic_load_n(&feedCapWord,__ATOMIC_RELAXED);
+  const uint8_t kDimDuty=cap<8?cap:8;
+  const uint8_t desiredDuty=freshComplete?kDimDuty:0;
+  if (freshComplete == feedIndicatorOn && desiredDuty==lastFeedDuty) return;
   if (freshComplete && feedIndicatorUnavailable) return;
   if (freshComplete && !feedIndicatorAttached) {
     if (ledcSetup(kIndicatorChannel, 2000, 8) == 0) {
@@ -193,8 +204,10 @@ void applyFeedIndicator(bool freshComplete) {
   }
   if (feedIndicatorAttached) ledcWrite(kIndicatorChannel, freshComplete ? kDimDuty : 0);
   else digitalWrite(pins::AVI_LOCATION_LED, LOW);
+  lastFeedDuty=desiredDuty;
   if (freshComplete != feedIndicatorOn) {
-    Serial.println(freshComplete ? "Feed indicator: U23/GPIO14 dim ON, duty 8/255" : "Feed indicator: U23/GPIO14 OFF (feed not fresh/complete)");
+    if(freshComplete) Serial.printf("Feed indicator: U23/GPIO14 dim ON, duty %u/255\n",unsigned(kDimDuty));
+    else Serial.println("Feed indicator: U23/GPIO14 OFF (feed not fresh/complete)");
     feedIndicatorOn = freshComplete;
     if (freshComplete) beepFeedReadyOnce();
   }
@@ -231,7 +244,12 @@ void setFeedIndicator(bool freshComplete) {
   applyFeedIndicator(indicatorRequested && indicatorAllowed);
   unlockIndicator();
 }
-void setFeedIndicatorAllowed(bool allowed) {
+void setFeedIndicatorAllowed(bool allowed,uint8_t brightnessCap) {
+#if defined(BROOKLYN_TARGET_PCB)
+  __atomic_store_n(&feedCapWord,uint32_t(brightnessCap),__ATOMIC_RELAXED);
+#else
+  (void)brightnessCap;
+#endif
   __atomic_store_n(&allowedWord,uint32_t(allowed),__ATOMIC_RELAXED);
   // Never stall input sampling behind a main-loop brightness/feed-ready cue.
   if(__atomic_exchange_n(&indicatorLock,1u,__ATOMIC_ACQUIRE)) return;
@@ -240,8 +258,18 @@ void setFeedIndicatorAllowed(bool allowed) {
   unlockIndicator();
 }
 
+void setQuiet(bool quiet,uint8_t mapBrightness) {
+#if defined(BROOKLYN_TARGET_PCB)
+  __atomic_store_n(&quietMapWord,uint32_t(quiet?mapBrightness:255),__ATOMIC_RELAXED);
+  if(__atomic_exchange_n(&quietWord,uint32_t(quiet),__ATOMIC_RELAXED)!=uint32_t(quiet))
+    Serial.println(quiet?"Quiet hours: buzzer muted":"Quiet hours: buzzer enabled");
+#else
+  (void)quiet;(void)mapBrightness;
+#endif
+}
 void requestKnobClick() {
 #if defined(BROOKLYN_TARGET_PCB)
+  if(isQuiet()) return;
   uint32_t pending=__atomic_load_n(&knobPending,__ATOMIC_RELAXED);
   while(pending<8 && !__atomic_compare_exchange_n(&knobPending,&pending,pending+1,false,__ATOMIC_RELAXED,__ATOMIC_RELAXED)) {}
 #endif
@@ -249,7 +277,7 @@ void requestKnobClick() {
 void serviceKnobClick(uint32_t nowMs,bool allowed) {
 #if defined(BROOKLYN_TARGET_PCB)
   if(__atomic_exchange_n(&indicatorLock,1u,__ATOMIC_ACQUIRE)) return;
-  if(!allowed) stopKnobToneLocked();
+  if(!allowed || isQuiet()) stopKnobToneLocked();
   else if(knobActive) {
     if(static_cast<int32_t>(nowMs-knobUntilMs)>=0) {
       ledcWrite(7,0);ledcDetachPin(pins::BUZZER);digitalWrite(pins::BUZZER,LOW);
@@ -273,6 +301,7 @@ void serviceKnobClick(uint32_t nowMs,bool allowed) {
 
 void signalBrightness(uint8_t value, uint8_t maximum) {
 #if defined(BROOKLYN_TARGET_PCB)
+  if(isQuiet()) return;
   // Main-loop caller; serialize with the feed-ready cue on the same PWM timer.
   lockIndicator();
   stopKnobToneLocked();
@@ -317,6 +346,7 @@ bool beginSafe() {
     feedIndicatorAttached = false;
   }
   feedIndicatorOn = false;
+  lastFeedDuty=0;
   feedIndicatorUnavailable = false;
   feedReadyBeepAttempted = false;
   pinMode(pins::AVI_LOCATION_LED, OUTPUT);

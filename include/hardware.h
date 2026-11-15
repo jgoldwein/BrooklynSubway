@@ -17,10 +17,11 @@ bool signalDiagnosticChannel(led::PhysicalChannel channel);
 // U23/GPIO14: dim PWM feed-health indicator, gated by the selected POWER mode.
 // First successful ON per boot emits a 100 ms GPIO21 beep unless DIM-muted.
 void setFeedIndicator(bool freshComplete);
-void setFeedIndicatorAllowed(bool allowed);
+void setFeedIndicatorAllowed(bool allowed,uint8_t brightnessCap=8);
 void signalBrightness(uint8_t value, uint8_t maximum);
 // Bounded, nonblocking knob feedback; serviced by the live input task.
 void requestKnobClick();
 void serviceKnobClick(uint32_t nowMs, bool allowed);
+void setQuiet(bool quiet,uint8_t mapBrightness=255);
 
 }  // namespace brooklyn::hardware

@@ -11,6 +11,8 @@ FakeSerial Serial; FakeWire Wire;
 uint32_t fakeNowMs=120000;
 uint32_t millis() { return fakeNowMs; }
 char lastScreenTitle[24]{};
+int borderDraws=0;
+extern "C" time_t time(time_t *out) {const time_t value=1768498496;if(out)*out=value;return value;}
 int setupTitles=0,setupNames=0,setupAddresses=0;
 int frames=0,titles=0,ends=0,starts=0,deletes=0,delays=0;
 char lastTrainText[24]={};
@@ -62,6 +64,10 @@ uint8_t FakeWire::endTransmission(){OLED_CHECK(open);open=false;++ends;
 }
 size_t FakeWire::write(uint8_t *,size_t n){OLED_CHECK(open);return scenario==4?0:n;}
 int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
+ brooklyn::oled::setScreenPreferences(brooklyn::config::kDefaultScreenPreferences & ~brooklyn::config::kStartupDedicationBit);
+ if(scenario==37) brooklyn::oled::setScreenPreferences(brooklyn::config::kDefaultScreenPreferences);
+ if(scenario==38) {brooklyn::config::ScreenPreferences p;p.quietEnabled=true;p.startupDedication=false;p.startMinute=600;p.endMinute=840;brooklyn::oled::setScreenPreferences(brooklyn::config::packScreenPreferences(p));}
+
  if(scenario==8){brooklyn::oled::begin(0x07); OLED_CHECK(!worker && starts==0); puts("OLED invalid address rejected PASS"); return 0;}
  if(scenario==21) brooklyn::oled::setTrackedTrains(132,true);
  if(scenario==22) brooklyn::oled::setTrackedTrains(0,true);
@@ -113,6 +119,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  OLED_CHECK(worker);brooklyn::oled::begin(preferred);
  if(setjmp(iterationEnd)==0) worker(nullptr);
  OLED_CHECK(!open);
+ if(scenario==0) OLED_CHECK(borderDraws==2);
  if(scenario==0){OLED_CHECK(brooklyn::oled::status().state==brooklyn::oled::State::Ready); OLED_CHECK(frames==2 && titles==2 && delays==1 && deletes==0);}
  if(scenario==7){OLED_CHECK(lastAddress==0x3c && frames==2 && titles==2 && delays==1);
  OLED_CHECK(brooklyn::oled::status().activeAddress==0x3c && brooklyn::oled::status().requestedAddress==0x38); }
@@ -144,6 +151,8 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==33) OLED_CHECK(frames==3 && titles==2 && strcmp(lastScreenTitle,"Map lights OFF   2/6")==0 && fakeNowMs==120040);
  if(scenario==34) OLED_CHECK(frames==3 && titles==0 && strcmp(lastScreenTitle,"Line 3 Paused 5/6")==0 && fakeNowMs==120040);
  if(scenario==35) OLED_CHECK(frames==3 && titles==3 && delays==51);
- if(scenario==36) OLED_CHECK(frames==2 && titles==0 && strcmp(lastScreenTitle,"Happy Bar Mitzvah!")==0);
+ if(scenario==36) OLED_CHECK(frames==2 && titles==0 && strcmp(lastScreenTitle,"Happy Bar Mitsvah!")==0);
+ if(scenario==37) OLED_CHECK(frames==2 && titles==0 && borderDraws==0 && strcmp(lastScreenTitle,"Happy Bar Mitsvah!")==0);
+ if(scenario==38) OLED_CHECK(contrastCalls==1 && lastContrast==1 && frames==2);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

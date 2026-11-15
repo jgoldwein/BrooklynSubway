@@ -8,6 +8,7 @@
 namespace brooklyn::config {
 
 bool DeviceConfiguration::load() {
+  screenPreferences_ = kDefaultScreenPreferences;
   oledReturnSeconds_ = kDefaultOledReturnSeconds;
   trainColors_ = semantic::kDefaultTrainColors;
   unknownTiming_ = kDefaultUnknownTiming;
@@ -23,6 +24,8 @@ bool DeviceConfiguration::load() {
 
   if (store_.loadTrainColors && store_.loadTrainColors(store_.context, trainColors_)) loaded = true;
   uint32_t stored = 0;
+  uint64_t screenStored=0;
+  if(store_.loadScreenPreferences && store_.loadScreenPreferences(store_.context,screenStored) && validScreenPreferences(screenStored)) {screenPreferences_=screenStored;loaded=true;}
   if (store_.loadOledReturn && store_.loadOledReturn(store_.context,stored) && validOledReturnSeconds(stored)) {oledReturnSeconds_=stored;loaded=true;}
   if (store_.loadUnknownTiming && store_.loadUnknownTiming(store_.context, stored) && semantic::validUnknownTiming(stored)) {
     unknownTiming_ = stored; loaded = true;
@@ -60,6 +63,10 @@ bool DeviceConfiguration::load() {
   return loaded;
 }
 
+bool DeviceConfiguration::setScreenPreferences(uint64_t word) {
+  if(!validScreenPreferences(word) || !store_.saveScreenPreferences || !store_.saveScreenPreferences(store_.context,word)) return false;
+  screenPreferences_=word;return true;
+}
 bool validOledReturnSeconds(uint32_t seconds) {
   return seconds==0 || seconds==30 || seconds==60 || seconds==120 || seconds==300;
 }

@@ -63,6 +63,7 @@ class Controller {
   bool ledsRequested() const { return (powerMode_ & 1) == 0 && !rebootPending_; }
   bool consumeRebootRequest() { const bool r = rebootRequested_; rebootRequested_ = false; return r; }
   void setOledScreen(uint8_t screen) { if (screen != oledScreen_) { oledScreen_ = screen; dirty_ = true; } }
+  void setQuietBrightness(uint8_t cap) {if(quietBrightness_!=cap){quietBrightness_=cap;dirty_=true;}}
  private:
   bool safe(uint32_t nowMs) const;
   bool powerPress(uint32_t nowMs, bool pressed);
@@ -87,6 +88,8 @@ class Controller {
   bool physicalPowerControl_ = false;
   uint8_t powerMode_ = 0;
   uint8_t oledScreen_ = 0;
+  uint8_t quietBrightness_ = 255;
+  bool quietSuppressed_=false, quietRestore_=false;
   bool rebootRequested_ = false, rebootPending_ = false;
   bool buttonArmed_ = false, longHandled_ = false;
   uint32_t pressedAtMs_ = 0;

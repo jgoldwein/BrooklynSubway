@@ -270,5 +270,25 @@ int main() {
     frame.status.provisioning=true;pages.publish(frame);pages.service(2,false,false,ops);
     CHECK(!pages.enabled()); // Recovery still disables physical LED output.
   }
+  {
+    live::Controller quiet(true);auto frame=snapshot();frame.brightness=12;quiet.publish(frame);quiet.service(0,false,false,ops);CHECK(quiet.enabled());
+    quiet.setQuietBrightness(0);quiet.service(1,false,false,ops);
+    CHECK(!quiet.enabled() && quiet.stats().automaticStartPending && quiet.stats().visibleMapLeds==0);
+    CHECK(!quiet.enable(2));quiet.setQuietBrightness(255);quiet.service(3,false,false,ops);CHECK(quiet.enabled());
+    quiet.setQuietBrightness(1);quiet.service(40,false,false,ops);CHECK(quiet.enabled());
+    for(const auto &pixel:last) CHECK(pixel.color.red<=1 && pixel.color.green<=1 && pixel.color.blue<=1);
+    quiet.setQuietBrightness(255);quiet.service(80,false,false,ops);
+    CHECK(quiet.enabled());
+    quiet.setQuietBrightness(0);quiet.service(100,false,false,ops);
+    quiet.service(110,true,false,ops);quiet.service(150,true,false,ops);quiet.service(200,false,false,ops);quiet.service(240,false,false,ops);
+    CHECK(quiet.stats().powerMode==1 && !quiet.enabled());
+    quiet.setQuietBrightness(255);quiet.service(280,false,false,ops);CHECK(!quiet.enabled()); // Manual POWER off survives end of schedule.
+    live::Controller fault;fault.publish(frame);CHECK(fault.enable(0));fault.setQuietBrightness(0);fault.service(1,false,false,ops);
+    fault.disable(ops,2,display::IndicationEnd::OutputFailure);fault.setQuietBrightness(255);fault.service(3,false,false,ops);CHECK(!fault.enabled());
+    live::Controller stale(true);stale.publish(frame);stale.service(0,false,false,ops);stale.setQuietBrightness(0);stale.service(1,false,false,ops);
+    stale.setQuietBrightness(255);stale.service(100000,false,false,ops);CHECK(!stale.enabled());
+    frame.frameAtMs=100001;stale.publish(frame);stale.service(100001,false,false,ops);CHECK(stale.enabled());
+    puts("Quiet LED policy: off/unarm, dim ceiling, normal restore, manual POWER/fault preservation and fresh-data gating PASS");
+  }
   puts("Live display: safe startup, automatic/manual enable, continuous color, four POWER modes, release debounce, 3-second reboot once, boot-held suppression, test restoration, maintenance/fault guards, stale timeout, brightness/current caps, MODE overlay and rollover PASS");
 }

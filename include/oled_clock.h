@@ -3,9 +3,14 @@
 #include <stdint.h>
 #include <time.h>
 #include "oled_screens.h"
+#include "screen_preferences.h"
 namespace brooklyn::oled {
 // New York civil time; independent of the UTC SNTP configuration.
 bool formatClock(time_t utc, char *out, size_t capacity);
+bool newYorkMinutes(time_t utc,uint16_t &minute);
+void setScreenPreferences(uint64_t word);
+bool quietHoursActive(time_t utc);
+uint8_t quietMapBrightness();
 void begin(uint8_t address, uint8_t contrast = 207);
 void setContrast(uint8_t contrast);
 void setEnabled(bool enabled);
