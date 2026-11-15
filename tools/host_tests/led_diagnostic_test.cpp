@@ -5,9 +5,11 @@
 #include "led_map.h"
 #include "hardware.h"
 #include "semantic_api.h"
+#include "oled_clock.h"
 #include <Arduino.h>
 #include <stdio.h>
 #include <stdlib.h>
+
 
 FakeSerial Serial;
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
@@ -23,7 +25,14 @@ int shows = 0;
 int coloredShows = 0;
 int delays = 0;
 int enableHighs = 0;
-bool routeMode = false;
+bool routeMode = false, wholeMode = false;
+uint32_t elapsed = 0;
+int overlayStarts=0, overlayClears=0;
+bool overlayActive=false;
+namespace brooklyn::oled {
+void showLineTest(semantic::Route,uint8_t,uint16_t,uint16_t,bool) {overlayActive=true;++overlayStarts;}
+void clearLineTest() {overlayActive=false;++overlayClears;}
+}
 uint32_t expectedRouteDwell = 250;
 int routeSteps = 0;
 int routeFramePixels = 0;
@@ -73,12 +82,16 @@ void observeStrip(uint8_t pin, const uint32_t *pixels, uint16_t count) {
   coloredShows += colored;
   ++shows;
   if (routeMode && shows % 8 == 0) {
-    CHECK(routeFramePixels <= 1);
+    if(wholeMode && routeFramePixels) {
+      int expected=0;
+      for(int i=0;i<306;++i) {const auto *m=brooklyn::semantic::semanticForLed(i);if(m && int(m->route)==lastRoute) ++expected;}
+      CHECK(routeFramePixels==expected && overlayActive);
+    } else CHECK(routeFramePixels <= 1);
     routeFramePixels = 0;
   }
 }
 void delay(uint32_t milliseconds) {
-  if (routeMode) { CHECK(milliseconds == expectedRouteDwell && enable == HIGH); ++delays; return; }
+  if (routeMode) { if(wholeMode) CHECK(milliseconds>0 && milliseconds<=20); else CHECK(milliseconds == expectedRouteDwell && enable == HIGH); elapsed+=milliseconds; ++delays; return; }
   CHECK(milliseconds == (expectedPixels == 1 ? 2000u : 500u));
   CHECK(shows == (delays + 2) * 8 && coloredShows == delays + 1 && enable == HIGH);
   ++delays;
@@ -206,29 +219,52 @@ int main() {
   routeMode = true;
   recoveryRequested = false;
   resetWalk(-1);
-  CHECK(backend::runAllRouteDiagnostics());
+  CHECK(backend::runAllRouteDiagnostics(backend::RouteDiagnosticSpeed::Normal,backend::RouteDiagnosticStyle::Individual));
   CHECK(routeSteps == 302 * 3 && delays == 302 * 3 && enable == LOW);
   for (int i = 0; i < 306; ++i)
     CHECK(routeSeen[i] == (brooklyn::semantic::semanticForLed(i) ? 3 : 0));
   resetWalk(3);
   lastRoute = 0;
-  CHECK(!backend::runAllRouteDiagnostics() && delays == 3 && enable == LOW);
+  CHECK(!backend::runAllRouteDiagnostics(backend::RouteDiagnosticSpeed::Normal,backend::RouteDiagnosticStyle::Individual) && delays == 3 && enable == LOW);
   recoveryRequested = true;
   resetWalk(-1);
-  CHECK(!backend::runAllRouteDiagnostics() && delays == 0 && enable == LOW);
+  CHECK(!backend::runAllRouteDiagnostics(backend::RouteDiagnosticSpeed::Normal,backend::RouteDiagnosticStyle::Individual) && delays == 0 && enable == LOW);
   backend::setDiagnosticSystemReady(false);
   shows = 0;
-  CHECK(!backend::runAllRouteDiagnostics() && shows == 0 && enable == LOW);
+  CHECK(!backend::runAllRouteDiagnostics(backend::RouteDiagnosticSpeed::Normal,backend::RouteDiagnosticStyle::Individual) && shows == 0 && enable == LOW);
   backend::setDiagnosticSystemReady(true);
   recoveryRequested = false;
   expectedRouteDwell = 25;
   routeSteps = lastRoute = routeFramePixels = shows = delays = 0;
   for (int &seen : routeSeen) seen = 0;
   abortAfter = -1;
-  CHECK(backend::runAllRouteDiagnostics(backend::RouteDiagnosticSpeed::Fast));
+  CHECK(backend::runAllRouteDiagnostics(backend::RouteDiagnosticSpeed::Fast,backend::RouteDiagnosticStyle::Individual));
   CHECK(routeSteps == 906 && delays == 906 && enable == LOW);
   for (int i = 0; i < 306; ++i)
     CHECK(routeSeen[i] == (brooklyn::semantic::semanticForLed(i) ? 3 : 0));
+  CHECK(parseSelection("routes-walk",selection) && selection.kind==Kind::RouteWalk);
+  wholeMode=true;
+  const backend::RouteDiagnosticSpeed speeds[]={backend::RouteDiagnosticSpeed::Normal,backend::RouteDiagnosticSpeed::Fast};
+  for(auto speed:speeds) {
+    routeSteps=lastRoute=routeFramePixels=shows=delays=0;elapsed=0;
+    for(int &seen:routeSeen) seen=0;
+    CHECK(backend::runAllRouteDiagnostics(speed));
+    CHECK(routeSteps==906 && enable==LOW && !overlayActive);
+    CHECK(elapsed==(speed==backend::RouteDiagnosticSpeed::Fast?8100u:45000u));
+    for(int i=0;i<306;++i) CHECK(routeSeen[i]==(brooklyn::semantic::semanticForLed(i)?3:0));
+  }
+  const int stopsWhole[]={0,3,114,115};
+  for(int stop:stopsWhole) {
+    routeSteps=lastRoute=routeFramePixels=shows=delays=0;elapsed=0;
+    for(int &seen:routeSeen) seen=0;
+    abortAfter=stop;
+    CHECK(!backend::runAllRouteDiagnostics() && enable==LOW && !overlayActive);
+    CHECK(delays==stop);
+  }
+  recoveryRequested=true;abortAfter=-1;delays=0;
+  CHECK(!backend::runAllRouteDiagnostics() && enable==LOW && !overlayActive && delays==0);
+  recoveryRequested=false;wholeMode=false;
+  CHECK(overlayStarts>0 && overlayClears>0);
   puts("Route diagnostic: all 18 lines, 302 map LEDs RGB, status exclusion, POWER/recovery abort and startup interlock PASS");
   puts("LED diagnostic: all 8 channel walks, exact counts/pins/order, CH8 status mapping, POWER abort, strict selection, startup interlock, black cleanup and normal-output lock PASS");
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1

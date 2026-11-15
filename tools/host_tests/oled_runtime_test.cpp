@@ -38,6 +38,7 @@ void delay(uint32_t ms){OLED_CHECK(ms==100);++retryDelays;}
 void vTaskDelete(void *) {++deletes;}
 void vTaskDelay(uint32_t ms) {
  OLED_CHECK(ms==20);++delays;fakeNowMs+=(scenario==19 || scenario==39)?1000:20;
+ if(scenario==40 && delays==1) {brooklyn::oled::clearLineTest();return;}
  if(scenario==33 && delays==1) {brooklyn::oled::advanceScreen();return;}
  if(scenario==34 && delays==1) {brooklyn::oled::navigate(brooklyn::oled::Action::TurnNext,fakeNowMs);return;}
  if(scenario==35 && delays<51) return;
@@ -119,6 +120,17 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
 
  if(scenario==34) brooklyn::oled::navigate(brooklyn::oled::Action::OpenLines,fakeNowMs);
  if(scenario==36) brooklyn::oled::navigate(brooklyn::oled::Action::TurnPrevious,fakeNowMs);
+ if(scenario>=40 && scenario<=42) {
+   using namespace brooklyn::oled;
+   showBrightness(false,5,16);
+   showLineTest(static_cast<brooklyn::semantic::Route>(9),1,12,12,false);
+   ScreenText text;LineTestView v;v.route=static_cast<brooklyn::semantic::Route>(9);v.total=12;v.color=1;
+   formatLineTest(v,text);OLED_CHECK(strcmp(text.lines[0],"Testing line F")==0 && strcmp(text.lines[1],"Whole line GREEN")==0);
+   v.individual=true;v.current=2;formatLineTest(v,text);OLED_CHECK(strcmp(text.lines[2],"Light 2 / 12")==0);
+   for(auto &line:text.lines) OLED_CHECK(strlen(line)<=21);
+   if(scenario==41) setSetupMode(true);
+   if(scenario==42) setEnabled(false);
+ }
  const uint8_t preferred=scenario==11?0x3c:0x38;
  brooklyn::oled::begin(preferred,scenario==12||scenario==13?32:207);OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
  if(scenario==6){OLED_CHECK(worker==nullptr);puts("OLED task allocation failure isolated PASS");return 0;}
@@ -161,5 +173,8 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==37) OLED_CHECK(frames==2 && titles==0 && borderDraws==0 && strcmp(lastScreenTitle,"Happy Bar Mitsvah!")==0);
  if(scenario==38) OLED_CHECK(contrastCalls==1 && lastContrast==1 && frames==2);
  if(scenario==39) OLED_CHECK(titles==1 && frames==8 && brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Main);
+ if(scenario==40) OLED_CHECK(frames==3 && titles==1 && borderDraws==1 && brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Main);
+ if(scenario==41) OLED_CHECK(frames==2 && setupTitles==2 && titles==0);
+ if(scenario==42) OLED_CHECK(frames==1 && powerCommands==1 && titles==0);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

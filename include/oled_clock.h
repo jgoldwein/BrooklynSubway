@@ -17,6 +17,8 @@ void setEnabled(bool enabled);
 // Setup instructions replace the clock only while the provisioning AP is active.
 void setSetupMode(bool enabled);
 void publishScreenData(const ScreenData &data);
+void showLineTest(semantic::Route route,uint8_t color,uint16_t current,uint16_t total,bool individual);
+void clearLineTest();
 Screen selectedScreen();
 void advanceScreen();
 void navigate(Action action, uint32_t nowMs);

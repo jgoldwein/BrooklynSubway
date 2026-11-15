@@ -29,6 +29,16 @@ const char *screenName(Screen screen) {
     default: return "Main";
   }
 }
+void formatLineTest(const LineTestView &test,ScreenText &out) {
+  out={};const TextWriter write(out);
+  const char *colors[]={"RED","GREEN","BLUE"};
+  write(0,"Testing line %s",semantic::routeName(test.route));
+  write(1,"%s %s",test.individual?"LED walk":"Whole line",colors[test.color<3?test.color:0]);
+  if(test.individual) write(2,"Light %u / %u",unsigned(test.current),unsigned(test.total));
+  else write(2,"All %u map lights",unsigned(test.total));
+  write(3,"Line %u of %u",unsigned(test.route),unsigned(semantic::kRouteCount));
+  write(4,"POWER: stop test");
+}
 void setLineCounts(ScreenData &data, const semantic::TrainFrame &frame,
                    const uint16_t (&lights)[semantic::kRouteCount+1]) {
   for(uint8_t line=0;line<=semantic::kRouteCount;++line) {data.lines[line]={};data.lines[line].lights=lights[line];}

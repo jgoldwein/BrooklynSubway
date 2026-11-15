@@ -286,7 +286,8 @@ void LanWebUi::service(const StatusSnapshot &status) {
   status_ = status;
   server_.handleClient();
   if (allDiagnosticState_ == AllDiagnosticState::Pending) {
-    allDiagnosticState_ = (routeDiagnostic_ ? led::backend::runAllRouteDiagnostics()
+    allDiagnosticState_ = (routeDiagnostic_ ? led::backend::runAllRouteDiagnostics(led::backend::RouteDiagnosticSpeed::Normal,
+        routeWalkDiagnostic_ ? led::backend::RouteDiagnosticStyle::Individual : led::backend::RouteDiagnosticStyle::WholeLine)
                                           : led::backend::runAllChannelDiagnostics())
                               ? AllDiagnosticState::Complete : AllDiagnosticState::Stopped;
   }
@@ -1755,13 +1756,14 @@ void LanWebUi::handleLedDiagnosticPage() {
       "<p>Startup gives two brief Avi-marker flashes, four rising notes, then a subway-style ding-dong. Hold DIM while powering on or resetting to mute that startup.</p>"
       "<p>LED42 is the F-line 18 Av station light, between Ditmas Av and Avenue I in the lower-middle map area. "
       "CH1, index 0: dim red (4/255) for two seconds, then black and outputs disabled. "
-      "The physical TEST button runs all subway lines at a faster pace (about 35 seconds). "
+      "The physical TEST button runs all subway lines at a faster pace (about 10 seconds). "
       "Observe the result; software cannot confirm illumination.</p>"
       "<form method=\"post\" action=\"/hardware-test/run\">"
       "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"
       "<label>Test <select name=\"test\"><option value=\"first\">LED42 only (2 seconds)</option>"
       "<option value=\"all\">All channels: numbered beeps before each (about 3 minutes)</option>"
-      "<option value=\"routes\">All subway lines: dim red, green, blue (about 4 minutes)</option>"
+      "<option value=\"routes\">All subway lines: whole-line RGB (about 50 seconds)</option>"
+      "<option value=\"routes-walk\">Individual LED walk by line (about 4 minutes)</option>"
       "<option value=\"ch1\">CH1: 37 LEDs (about 19 seconds)</option>"
       "<option value=\"ch2\">CH2: 38 LEDs (about 19 seconds)</option>"
       "<option value=\"ch3\">CH3: 37 LEDs (about 19 seconds)</option>"
@@ -1776,7 +1778,7 @@ void LanWebUi::handleLedDiagnosticPage() {
       "<p>All channels runs CH1 through CH8 once: 1 beep before CH1, 2 before CH2, through 8 before CH8. "
       "Only one LED is lit at a time. POWER stops the entire sequence, including beeps. Leave this page open until the result returns.</p>"
       "<p>All subway lines runs 2, 3, 4, 5, A, B, C, D, F, G, J, L, M, N, Q, R, S, Z. "
-      "Each mapped LED cycles red, green, blue at 4/255, 0.25 seconds each, one LED at a time. "
+      "Each entire line lights red, green, then blue at 4/255 before the next line starts. The OLED identifies the line. The separate individual walk follows PCB wiring order, one light at a time. "
       "Status lights are excluded. Serial output identifies each line and LED. Channel-number beeps apply only to the channel test. POWER aborts either full test.</p>"
       "<button type=\"submit\">Run selected test</button></form><p><a href=\"/\">Status</a></p></html>", allResult, csrf);
   if (length <= 0 || static_cast<size_t>(length) >= kPageCapacity) {
@@ -1799,14 +1801,14 @@ void LanWebUi::handleLedDiagnosticRun() {
     server_.send(400, "text/plain", "Choose a valid test");
     return;
   }
-  if (selection.kind == led::diagnostic::Kind::AllRoutes) {
+  if (selection.kind == led::diagnostic::Kind::AllRoutes || selection.kind == led::diagnostic::Kind::RouteWalk) {
+    routeWalkDiagnostic_ = selection.kind == led::diagnostic::Kind::RouteWalk;
     routeDiagnostic_ = true;
     allDiagnosticState_ = AllDiagnosticState::Pending;
     sendNotice(202, "Subway-line test starting",
-               "Watch each subway line: one dim LED at a time, red then green then blue. "
-               "Allow about 4 minutes; feeds and page servicing pause. Hold POWER to stop. "
-               "The diagnostics page will reopen after the sequence.",
-               1, 250, "/hardware-test", "Return to hardware diagnostics");
+               routeWalkDiagnostic_ ? "Watch each line one LED at a time in PCB wiring order, red then green then blue. Allow about 4 minutes. Feeds and page servicing pause. POWER stops the test."
+                                    : "Watch each whole line turn red, green, then blue before the next line starts. Allow about 50 seconds. The OLED identifies the line. Feeds and page servicing pause. POWER stops the test.",
+               1, routeWalkDiagnostic_ ? 250 : 55, "/hardware-test", "Return to hardware diagnostics");
     return;
   }
   if (selection.kind == led::diagnostic::Kind::AllChannels) {

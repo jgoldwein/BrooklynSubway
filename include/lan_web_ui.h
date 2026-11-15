@@ -93,6 +93,7 @@ class LanWebUi {
   enum class AllDiagnosticState : uint8_t { NotRun, Pending, Complete, Stopped };
   AllDiagnosticState allDiagnosticState_ = AllDiagnosticState::NotRun;
   bool routeDiagnostic_ = false;
+  bool routeWalkDiagnostic_ = false;
   ota::WebOtaSession otaSession_;
   int updateDeniedStatus_ = 0;
   bool updateStarted_ = false;

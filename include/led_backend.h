@@ -25,7 +25,9 @@ bool runChannelOneDiagnostic();
 bool runChannelDiagnostic(PhysicalChannel channel);
 bool runAllChannelDiagnostics();
 enum class RouteDiagnosticSpeed : uint8_t { Normal, Fast };
-bool runAllRouteDiagnostics(RouteDiagnosticSpeed speed = RouteDiagnosticSpeed::Normal);
+enum class RouteDiagnosticStyle : uint8_t { WholeLine, Individual };
+bool runAllRouteDiagnostics(RouteDiagnosticSpeed speed = RouteDiagnosticSpeed::Normal,
+                           RouteDiagnosticStyle style = RouteDiagnosticStyle::WholeLine);
 void setDiagnosticSystemReady(bool ready);
 // Dedicated live-service entry points. Normal arm/transmit APIs remain locked.
 bool armLiveOutput();

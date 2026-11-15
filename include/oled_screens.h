@@ -52,6 +52,13 @@ struct ScreenData {
   LineData lines[semantic::kRouteCount+1]{};
 };
 struct ScreenText { char lines[5][22]{}; };
+struct LineTestView {
+  semantic::Route route=semantic::Route::None;
+  uint16_t current=0,total=0;
+  uint8_t color=0;
+  bool active=false, individual=false;
+};
+void formatLineTest(const LineTestView &test,ScreenText &out);
 // Five 6x12-font lines, each <=21 characters (126 pixels).
 void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenText &out,
                   const NavigationView &view = {});

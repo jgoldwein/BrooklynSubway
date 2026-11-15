@@ -11,6 +11,7 @@
 #include "led_power.h"
 #include "physical_output_safety.h"
 #include "live_display.h"
+#include "oled_clock.h"
 
 #include <Arduino.h>
 
@@ -324,7 +325,7 @@ bool runAllChannelDiagnostics() {
 #endif
 }
 
-bool runAllRouteDiagnostics(RouteDiagnosticSpeed speed) {
+bool runAllRouteDiagnostics(RouteDiagnosticSpeed speed, RouteDiagnosticStyle style) {
 #if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
   display::live::DiagnosticGuard diagnosticGuard;
@@ -333,25 +334,57 @@ bool runAllRouteDiagnostics(RouteDiagnosticSpeed speed) {
   disarmLedOutputs();
   if (!diagnosticSystemReady || !semantic::selfCheck()) return false;
   DisplayState frame[map::TOTAL_LED_COUNT]{};
+  struct OverlayGuard {~OverlayGuard(){oled::clearLineTest();}} overlayGuard;
   constexpr Rgb colors[] = {{4, 0, 0}, {0, 4, 0}, {0, 0, 4}};
   const uint16_t dwellMs = speed == RouteDiagnosticSpeed::Fast ? 25 : 250;
+  const bool wholeLine=style==RouteDiagnosticStyle::WholeLine;
+  const uint16_t wholeDwellMs=speed==RouteDiagnosticSpeed::Fast?125:750;
+  const uint16_t gapMs=speed==RouteDiagnosticSpeed::Fast?75:250;
+  const auto wait=[&](uint32_t ms) {
+    while(ms) {
+      if(digitalRead(pins::BUTTON_POWER)==LOW || controls::pollWifiRecoveryDuringDiagnostic()) return false;
+      const uint32_t slice=ms<20?ms:20;delay(slice);ms-=slice;
+    }
+    return digitalRead(pins::BUTTON_POWER)!=LOW && !controls::pollWifiRecoveryDuringDiagnostic();
+  };
   bool ok = true;
+  uint16_t verifiedLights=0;
   for (uint8_t number = 1; number <= semantic::kRouteCount && ok; ++number) {
     const auto route = static_cast<semantic::Route>(number);
+    uint16_t count=0;
+    for(uint16_t i=0;i<map::TOTAL_LED_COUNT;++i) {const auto *m=semantic::semanticForLed(i);if(m && m->route==route) ++count;}
+    if(!count) {ok=false;break;}
+    Serial.printf("Route diagnostic: %s; %u mapped LEDs; %s\n",semantic::routeName(route),count,wholeLine?"complete-line RGB":"individual walk in PCB wiring order");
     Serial.printf("Route diagnostic: line %s; RGB 4/255; %u ms per colour; POWER aborts\n",
-                  semantic::routeName(route), dwellMs);
+                  semantic::routeName(route), wholeLine ? wholeDwellMs : dwellMs);
     if (!outputController.initialize(kOutputOperations, true) ||
         !outputController.arm(kOutputOperations, true)) {
       disarmLedOutputs();
       return false;
     }
+    if(wholeLine) {
+      for(uint8_t phase=0;phase<3 && ok;++phase) {
+        if(digitalRead(pins::BUTTON_POWER)==LOW || controls::pollWifiRecoveryDuringDiagnostic()) {ok=false;break;}
+        for(uint16_t i=0;i<map::TOTAL_LED_COUNT;++i) {
+          const auto *m=semantic::semanticForLed(i);frame[i].color=(m && m->route==route)?colors[phase]:Rgb{0,0,0};
+        }
+        oled::showLineTest(route,phase,count,count,false);
+        if(power::estimateFrameCurrentMa(frame,map::TOTAL_LED_COUNT,255)>power::FIRMWARE_LED_CURRENT_BUDGET_MA) {ok=false;break;}
+        ok=outputController.transmit(kOutputOperations,true,frame,map::TOTAL_LED_COUNT) && wait(wholeDwellMs);
+      }
+      for(auto &pixel:frame) pixel.color={0,0,0};
+    } else {
+    uint16_t position=0;
     for (uint16_t index = 0; index < map::TOTAL_LED_COUNT && ok; ++index) {
       const auto *mapped = semantic::semanticForLed(index);
       if (!mapped || mapped->route != route) continue;
+      ++position;
       Serial.printf("Route diagnostic: line %s LED%u CH%u index %u\n",
                     semantic::routeName(route), mapped->designator,
                     mapped->channel, mapped->channelIndex);
-      for (const auto &color : colors) {
+      for (uint8_t phase=0;phase<3;++phase) {
+        const auto &color=colors[phase];
+        oled::showLineTest(route,phase,position,count,true);
         if (digitalRead(pins::BUTTON_POWER) == LOW ||
             controls::pollWifiRecoveryDuringDiagnostic()) { ok = false; break; }
         frame[index].color = color;
@@ -364,15 +397,19 @@ bool runAllRouteDiagnostics(RouteDiagnosticSpeed speed) {
       if (ok) ok = outputController.transmit(kOutputOperations, true, frame,
                                              map::TOTAL_LED_COUNT);
     }
+    }
     const bool cleared = outputController.transmit(kOutputOperations, true, frame, map::TOTAL_LED_COUNT);
     disarmLedOutputs();
     ok = ok && cleared;
+    if(ok) {verifiedLights+=count;if(wholeLine) ok=wait(gapMs);}
   }
+  ok=ok && verifiedLights==semantic::kMapLedCount;
+  Serial.printf("Route diagnostic coverage: %u / %u mapped LEDs, status LEDs excluded\n",verifiedLights,unsigned(semantic::kMapLedCount));
   Serial.printf("Route diagnostic %s; GPIO1 LOW; visual confirmation required\n",
                 ok ? "complete" : "stopped/failed");
   return ok;
 #else
-  (void)speed;
+  (void)speed;(void)style;
   return false;
 #endif
 }

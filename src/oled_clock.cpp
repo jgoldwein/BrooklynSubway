@@ -21,6 +21,7 @@ Navigation navigation;
 uint32_t returnSeconds = 60;
 portMUX_TYPE screenDataMux = portMUX_INITIALIZER_UNLOCKED;
 ScreenData screenData{};
+LineTestView lineTest{};
 uint32_t feedbackWord = 0, feedbackSequence = 0;
 uint32_t requestedContrast = 207; // Accessed atomically; only the OLED worker touches I2C.
 uint32_t uiRevision = 0;
@@ -45,6 +46,13 @@ void draw(const char *clock) {
     screen.drawStr((128-screen.getStrWidth("192.168.4.1"))/2, 60, "192.168.4.1");
     screen.sendBuffer();
     return;
+  }
+  LineTestView diagnostic;
+  portENTER_CRITICAL(&screenDataMux);diagnostic=lineTest;portEXIT_CRITICAL(&screenDataMux);
+  if(diagnostic.active) {
+    ScreenText text;formatLineTest(diagnostic,text);screen.setFont(u8g2_font_6x12_tf);
+    for(uint8_t i=0;i<5;++i) screen.drawStr(0,11+i*12,text.lines[i]);
+    screen.sendBuffer();return;
   }
   NavigationView view;
   portENTER_CRITICAL(&screenDataMux);
@@ -244,6 +252,14 @@ void publishScreenData(const ScreenData &data) {
   portEXIT_CRITICAL(&screenDataMux);
   requestRefresh();
 }
+void showLineTest(semantic::Route route,uint8_t color,uint16_t current,uint16_t total,bool individual) {
+  LineTestView view;view.route=route;view.color=color;view.current=current;view.total=total;view.individual=individual;view.active=true;
+  portENTER_CRITICAL(&screenDataMux);lineTest=view;portEXIT_CRITICAL(&screenDataMux);
+  clearBrightnessFeedback();requestRefresh();
+}
+void clearLineTest() {
+  portENTER_CRITICAL(&screenDataMux);lineTest={};portEXIT_CRITICAL(&screenDataMux);requestRefresh();
+}
 Screen selectedScreen() {
   portENTER_CRITICAL(&screenDataMux);
   const auto selected = navigation.view().screen;
@@ -325,5 +341,5 @@ Status status() {
 }
 }
 #else
-namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void setSetupMode(bool) {} void setScreenPreferences(uint64_t) {} bool quietHoursActive(time_t) {return false;} uint8_t quietMapBrightness() {return 255;} void publishScreenData(const ScreenData &) {} Screen selectedScreen() { return Screen::Main; } void advanceScreen() {} void navigate(Action,uint32_t) {} void serviceNavigation(uint32_t,bool) {} void setReturnSeconds(uint16_t) {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} void setTrackedTrains(uint32_t, bool) {} void setVisibleMapLights(uint16_t) {} Status status() { return {}; } }
+namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void setSetupMode(bool) {} void setScreenPreferences(uint64_t) {} bool quietHoursActive(time_t) {return false;} uint8_t quietMapBrightness() {return 255;} void publishScreenData(const ScreenData &) {} void showLineTest(semantic::Route,uint8_t,uint16_t,uint16_t,bool) {} void clearLineTest() {} Screen selectedScreen() { return Screen::Main; } void advanceScreen() {} void navigate(Action,uint32_t) {} void serviceNavigation(uint32_t,bool) {} void setReturnSeconds(uint16_t) {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} void setTrackedTrains(uint32_t, bool) {} void setVisibleMapLights(uint16_t) {} Status status() { return {}; } }
 #endif
