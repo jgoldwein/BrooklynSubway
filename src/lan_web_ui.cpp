@@ -525,7 +525,7 @@ void LanWebUi::handleScreenOptions() {
 }
 void LanWebUi::handleSaveScreenOptions() {
   if(!authorizeRequest(true)) return;
-  uint8_t seen=0;
+  uint16_t seen=0;
   for(int i=0;i<server_.args();++i) {
     const String name=server_.argName(i);uint16_t bit=0;
     if(name=="csrf") bit=1;else if(name=="start") bit=2;else if(name=="end") bit=4;
