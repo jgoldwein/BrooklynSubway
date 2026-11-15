@@ -338,8 +338,8 @@ bool runAllRouteDiagnostics(RouteDiagnosticSpeed speed, RouteDiagnosticStyle sty
   constexpr Rgb colors[] = {{4, 0, 0}, {0, 4, 0}, {0, 0, 4}};
   const uint16_t dwellMs = speed == RouteDiagnosticSpeed::Fast ? 25 : 250;
   const bool wholeLine=style==RouteDiagnosticStyle::WholeLine;
-  const uint16_t wholeDwellMs=speed==RouteDiagnosticSpeed::Fast?125:750;
-  const uint16_t gapMs=speed==RouteDiagnosticSpeed::Fast?75:250;
+  const uint16_t wholeDwellMs=speed==RouteDiagnosticSpeed::Fast?200:750;
+  const uint16_t gapMs=speed==RouteDiagnosticSpeed::Fast?100:250;
   const auto wait=[&](uint32_t ms) {
     while(ms) {
       if(digitalRead(pins::BUTTON_POWER)==LOW || controls::pollWifiRecoveryDuringDiagnostic()) return false;

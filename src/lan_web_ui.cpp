@@ -1756,7 +1756,7 @@ void LanWebUi::handleLedDiagnosticPage() {
       "<p>Startup gives two brief Avi-marker flashes, four rising notes, then a subway-style ding-dong. Hold DIM while powering on or resetting to mute that startup.</p>"
       "<p>LED42 is the F-line 18 Av station light, between Ditmas Av and Avenue I in the lower-middle map area. "
       "CH1, index 0: dim red (4/255) for two seconds, then black and outputs disabled. "
-      "The physical TEST button runs all subway lines at a faster pace (about 10 seconds). "
+      "The physical TEST button runs all subway lines at a faster pace (about 15 seconds). "
       "Observe the result; software cannot confirm illumination.</p>"
       "<form method=\"post\" action=\"/hardware-test/run\">"
       "<input type=\"hidden\" name=\"csrf\" value=\"%s\">"

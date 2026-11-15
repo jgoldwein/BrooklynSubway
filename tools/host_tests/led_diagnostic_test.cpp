@@ -250,7 +250,7 @@ int main() {
     for(int &seen:routeSeen) seen=0;
     CHECK(backend::runAllRouteDiagnostics(speed));
     CHECK(routeSteps==906 && enable==LOW && !overlayActive);
-    CHECK(elapsed==(speed==backend::RouteDiagnosticSpeed::Fast?8100u:45000u));
+    CHECK(elapsed==(speed==backend::RouteDiagnosticSpeed::Fast?12600u:45000u));
     for(int i=0;i<306;++i) CHECK(routeSeen[i]==(brooklyn::semantic::semanticForLed(i)?3:0));
   }
   const int stopsWhole[]={0,3,114,115};
