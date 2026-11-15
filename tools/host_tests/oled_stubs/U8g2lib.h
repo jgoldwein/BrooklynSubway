@@ -23,7 +23,7 @@ struct U8G2_SSD1306_128X64_NONAME_F_HW_I2C {
  void drawFrame(int x,int y,int w,int h) {OLED_CHECK(x==0 && y==0 && w==128 && h==64);++borderDraws;}
  void clearBuffer() {} void setFont(const uint8_t *font) {fontWidth=font==u8g2_font_6x12_tf?6:8;}
  int getStrWidth(const char *s) {return strlen(s)*fontWidth;}
- void drawStr(int x,int y,const char *s) {OLED_CHECK(x>=0 && x+getStrWidth(s)<=128 && y<=64); if(y==11) {strncpy(lastScreenTitle,s,23);lastScreenTitle[23]=0;} if(strcmp(s,"Wi-Fi setup")==0)++setupTitles; if(strcmp(s,"Join BrooklynMap-Avi")==0)++setupNames; if(strcmp(s,"192.168.4.1")==0)++setupAddresses;if(strncmp(s,"Brooklyn Subway",15)==0)++titles; if(strncmp(s,"Trains:",7)==0) {strncpy(lastTrainText,s,23);lastTrainText[23]=0;}}
+ void drawStr(int x,int y,const char *s) {OLED_CHECK(x>=0 && x+getStrWidth(s)<=128 && y<=64); if(strcmp(s,"Happy Bar Mitsvah!")==0 || strcmp(s,"Avi")==0 || strcmp(s,"From the Goldweins")==0 || strcmp(s,"September 26, 2026")==0) OLED_CHECK(x==(128-getStrWidth(s))/2); if(y==11) {strncpy(lastScreenTitle,s,23);lastScreenTitle[23]=0;} if(strcmp(s,"Wi-Fi setup")==0)++setupTitles; if(strcmp(s,"Join BrooklynMap-Avi")==0)++setupNames; if(strcmp(s,"192.168.4.1")==0)++setupAddresses;if(strncmp(s,"Brooklyn Subway",15)==0)++titles; if(strncmp(s,"Trains:",7)==0) {strncpy(lastTrainText,s,23);lastTrainText[23]=0;}}
  void transfer() { uint8_t b=0; d.byte_cb(&d,2,0,nullptr); d.byte_cb(&d,3,1,&b); d.byte_cb(&d,4,0,nullptr); }
  void sendBuffer() { ++frames; for(int i=0;i<16;++i)transfer(); }
  void setI2CAddress(uint8_t a) {d.address=a;}

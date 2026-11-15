@@ -528,14 +528,14 @@ void LanWebUi::handleSaveScreenOptions() {
   for(int i=0;i<server_.args();++i) {
     const String name=server_.argName(i);uint16_t bit=0;
     if(name=="csrf") bit=1;else if(name=="start") bit=2;else if(name=="end") bit=4;
-    else if(name=="contrast") bit=8;else if(name=="quiet") bit=16;else if(name=="startup") bit=32;else if(name=="mapMode") bit=64;else if(name=="mapBrightness") bit=128;
+    else if(name=="contrast") bit=8;else if(name=="quiet") bit=16;else if(name=="startup") bit=32;else if(name=="mapMode") bit=64;else if(name=="mapBrightness") bit=128;else if(name=="waitWifi") bit=256;
     if(!bit || (seen&bit)) {server_.send(400,"text/plain","Invalid screen settings");return;} seen|=bit;
   }
-  const String start=server_.arg("start"),end=server_.arg("end"),contrast=server_.arg("contrast");
+  const String start=server_.arg("start"),end=server_.arg("end"),contrast=server_.arg("contrast"),quietFlag=server_.arg("quiet"),startupFlag=server_.arg("startup"),waitFlag=server_.arg("waitWifi");
   config::ScreenPreferences p;
   if((seen&15)!=15 || !hasNoEmbeddedNull(start) || !hasNoEmbeddedNull(end) || !hasNoEmbeddedNull(contrast) ||
       !config::parseClockMinute(start.c_str(),p.startMinute) || !config::parseClockMinute(end.c_str(),p.endMinute) ||
-      !parseBrightness(contrast.c_str(),p.quietContrast) || ((seen&16) && server_.arg("quiet")!="1") || ((seen&32) && server_.arg("startup")!="1")) {
+      !parseBrightness(contrast.c_str(),p.quietContrast) || ((seen&16) && (!hasNoEmbeddedNull(quietFlag) || quietFlag!="1")) || ((seen&32) && (!hasNoEmbeddedNull(startupFlag) || startupFlag!="1")) || ((seen&256) && (!hasNoEmbeddedNull(waitFlag) || waitFlag!="1"))) {
     server_.send(400,"text/plain","Choose valid times and OLED brightness 0-255");return;
   }
   const String mapMode=server_.arg("mapMode"),mapBrightness=server_.arg("mapBrightness");uint8_t level=0;
@@ -543,6 +543,7 @@ void LanWebUi::handleSaveScreenOptions() {
       (mapMode!="off" && mapMode!="dim" && mapMode!="normal")) {server_.send(400,"text/plain","Choose map Off, Dim (1-16), or normal");return;}
   p.quietMapBrightness=mapMode=="off"?0:mapMode=="normal"?255:level;
   p.quietEnabled=seen&16;p.startupDedication=seen&32;
+  p.startupUntilWifi=seen&256;
   const uint64_t word=config::packScreenPreferences(p);
   if(!config::validScreenPreferences(word)) {server_.send(400,"text/plain","Start and end times must differ");return;}
   if(!configuration_.setScreenPreferences(word)) {server_.send(500,"text/plain","Could not save screen settings");return;}

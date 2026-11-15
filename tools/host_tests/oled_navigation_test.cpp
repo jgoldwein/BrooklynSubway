@@ -85,8 +85,19 @@ int main() {
   CHECK(!nav.update(104999));CHECK(nav.update(105000));CHECK(nav.view().screen==Screen::Main);
   nav.startDedication(200000);nav.input(Action::TurnNext,200010);CHECK(nav.view().screen==Screen::Main);CHECK(!nav.update(205000));
   nav.startDedication(300000);CHECK(nav.update(300010,false));CHECK(nav.view().screen==Screen::Main);
+  nav.startDedication(400000,true);CHECK(!nav.update(404999,true,true));
+  CHECK(!nav.update(520000,true,false));CHECK(nav.view().screen==Screen::Dedication);
+  CHECK(nav.update(520001,true,true));CHECK(nav.view().screen==Screen::Main);
+  CHECK(!nav.update(520002,true,false));CHECK(nav.view().screen==Screen::Main); // Later Wi-Fi drop does not restart greeting.
+  nav.startDedication(600000,true);nav.input(Action::TurnNext,600001);CHECK(nav.view().screen==Screen::Main);
+  nav.startDedication(700000,true);CHECK(nav.update(700001,false,false));CHECK(nav.view().screen==Screen::Main);
   using namespace brooklyn::config;
   ScreenPreferences preferences;preferences.quietEnabled=true;
+  preferences.startupUntilWifi=false;
+  const auto brief=packScreenPreferences(preferences);CHECK(!unpackScreenPreferences(brief).startupUntilWifi);
+  const auto legacy=brief & ~(kScreenPreferencesSchemaBit|kStartupWaitForWifiBit);
+  CHECK(validScreenPreferences(legacy) && unpackScreenPreferences(legacy).startupUntilWifi);
+  preferences.startupUntilWifi=true;
   auto schedule=packScreenPreferences(preferences);CHECK(validScreenPreferences(schedule));
   CHECK(!quietActive(schedule,true,1319));CHECK(quietActive(schedule,true,1320));CHECK(quietActive(schedule,true,419));CHECK(!quietActive(schedule,true,420));
   CHECK(quietActive(schedule,false,0));preferences.quietEnabled=false;CHECK(!quietActive(packScreenPreferences(preferences),false,0));

@@ -910,7 +910,8 @@ size_t renderScreenOptionsPage(char *out,size_t capacity,uint64_t preferences,bo
   w.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Brooklyn Subway</title><link rel=\"stylesheet\" href=\"/ui.css?v=038\"></head><body><header><div class=\"brand\"><span class=\"brand-mark\">BK</span><div><h1>Brooklyn Subway</h1><p class=\"subtitle\">Specially Designed for Avi Yao</p></div></div></header><main class=\"login-shell\"><section><h2>Quiet hours and startup greeting</h2>");
   w.append(quietNow?"<p>Quiet hours are active. Beeps, OLED and map LEDs follow the settings below.</p>":"<p>Quiet hours are not active.</p>");
   w.append("<form method=\"post\" action=\"/config/screen-options\"><input type=\"hidden\" name=\"csrf\" value=\"");w.html(csrf);
-  w.format("\"><label><input type=\"checkbox\" name=\"startup\" value=\"1\"%s>Show the dedication for 5 seconds at startup</label><p>Turn the knob to skip it. Wi-Fi setup and POWER take priority.</p>",p.startupDedication?" checked":"");
+  w.format("\"><label><input type=\"checkbox\" name=\"startup\" value=\"1\"%s>Show the dedication at startup</label>",p.startupDedication?" checked":"");
+  w.format("<label><input type=\"checkbox\" name=\"waitWifi\" value=\"1\"%s>Keep it until Wi-Fi connects</label><p>The greeting stays for at least 5 seconds. Uncheck the Wi-Fi option for a brief greeting. Turn the knob to skip; Wi-Fi setup and POWER take priority.</p>",p.startupUntilWifi?" checked":"");
   w.format("<h3>Quiet hours</h3><label><input type=\"checkbox\" name=\"quiet\" value=\"1\"%s>Enable quiet hours</label>",p.quietEnabled?" checked":"");
   w.format("<label>Start <input name=\"start\" type=\"time\" value=\"%02u:%02u\" required></label><label>End <input name=\"end\" type=\"time\" value=\"%02u:%02u\" required></label>",p.startMinute/60,p.startMinute%60,p.endMinute/60,p.endMinute%60);
   w.format("<label>Quiet OLED brightness (0-255)<input name=\"contrast\" type=\"number\" min=\"0\" max=\"255\" value=\"%u\" required></label>",p.quietContrast);
@@ -1217,6 +1218,7 @@ size_t renderStatusJson(char *out, size_t capacity,
       semantic::unknownTimingModeName(semantic::unknownTimingMode(status.unknownTiming)),semantic::lastReportedFadeSeconds(status.unknownTiming));
   writer.format(",\"oledContrast\":%u,\"oledReturnSeconds\":%u", status.oledContrast, status.oledReturnSeconds);
   const auto preferences=config::unpackScreenPreferences(status.screenPreferences);
+  writer.format(",\"startupDedicationUntilWifi\":%s",preferences.startupUntilWifi?"true":"false");
   writer.format(",\"quietHoursEnabled\":%s,\"quietHoursActive\":%s,\"startupDedicationEnabled\":%s,\"quietMapBrightness\":%u",preferences.quietEnabled?"true":"false",status.quietHoursActive?"true":"false",preferences.startupDedication?"true":"false",unsigned(preferences.quietMapBrightness));
   writer.append(",\"stoppedPolicy\":\"fresh-evidence\",\"stoppedTimeLimitEnabled\":false");
   writer.format(",\"blueHoldSeconds\":%lu", static_cast<unsigned long>(status.blueHoldSeconds)); // legacy stored value, inactive

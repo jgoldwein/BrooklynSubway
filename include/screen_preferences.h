@@ -5,23 +5,27 @@
 #include <string.h>
 namespace brooklyn::config {
 constexpr uint64_t kStartupDedicationBit=2ull;
-constexpr uint64_t kDefaultScreenPreferences=kStartupDedicationBit|(1320u<<2)|(420u<<13)|(1u<<24);
+constexpr uint64_t kStartupWaitForWifiBit=1ull<<40;
+constexpr uint64_t kScreenPreferencesSchemaBit=1ull<<41;
+constexpr uint64_t kDefaultScreenPreferences=kStartupDedicationBit|kStartupWaitForWifiBit|kScreenPreferencesSchemaBit|(1320u<<2)|(420u<<13)|(1u<<24);
 struct ScreenPreferences {
   bool quietEnabled=false, startupDedication=true;
+  bool startupUntilWifi=true;
   uint16_t startMinute=1320, endMinute=420;
   uint8_t quietContrast=1, quietMapBrightness=0; // 0=off, 1..16=dim ceiling, 255=unchanged.
 };
 inline ScreenPreferences unpackScreenPreferences(uint64_t word) {
   ScreenPreferences p;p.quietEnabled=word&1;p.startupDedication=word&2;
+  p.startupUntilWifi=(word&kStartupWaitForWifiBit) || !(word&kScreenPreferencesSchemaBit);
   p.startMinute=(word>>2)&2047;p.endMinute=(word>>13)&2047;p.quietContrast=(word>>24)&255;p.quietMapBrightness=(word>>32)&255;return p;
 }
 inline uint64_t packScreenPreferences(const ScreenPreferences &p) {
-  return uint64_t(p.quietEnabled)|(uint64_t(p.startupDedication)<<1)|(uint64_t(p.startMinute)<<2)|
+  return kScreenPreferencesSchemaBit|(p.startupUntilWifi?kStartupWaitForWifiBit:0)|uint64_t(p.quietEnabled)|(uint64_t(p.startupDedication)<<1)|(uint64_t(p.startMinute)<<2)|
       (uint64_t(p.endMinute)<<13)|(uint64_t(p.quietContrast)<<24)|(uint64_t(p.quietMapBrightness)<<32);
 }
 inline bool validScreenPreferences(uint64_t word) {
   const auto p=unpackScreenPreferences(word);
-  return !(word>>40) && p.startMinute<1440 && p.endMinute<1440 && p.startMinute!=p.endMinute && (p.quietMapBrightness<=16 || p.quietMapBrightness==255);
+  return !(word>>42) && p.startMinute<1440 && p.endMinute<1440 && p.startMinute!=p.endMinute && (p.quietMapBrightness<=16 || p.quietMapBrightness==255);
 }
 inline bool quietActive(uint64_t word,bool clockKnown,uint16_t minute) {
   const auto p=unpackScreenPreferences(word);

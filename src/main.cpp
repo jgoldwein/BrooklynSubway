@@ -349,7 +349,7 @@ void publishOledScreenData(uint32_t nowMs) {
     default: break;
   }
 #if BROOKLYN_NETWORK_ENABLED
-  data.wifiConnected = WiFi.status() == WL_CONNECTED;
+  data.wifiConnected = WiFi.status() == WL_CONNECTED && static_cast<uint32_t>(WiFi.localIP())!=0;
   data.wifiConnecting = networkService.state()==brooklyn::network::State::WifiConnecting ||
       networkService.state()==brooklyn::network::State::TemporarilyUnavailable;
   if (data.wifiConnected) {

@@ -215,6 +215,7 @@ void testBlueHoldConfiguration() {
   CHECK(strstr(screenPage,"token&lt;&amp;&gt;")!=nullptr);
   CHECK(strstr(screenPage,"name=\"startup\" value=\"1\" checked")!=nullptr);
   CHECK(strstr(screenPage,"name=\"quiet\" value=\"1\" checked")==nullptr);
+  CHECK(strstr(screenPage,"name=\"waitWifi\" value=\"1\" checked")!=nullptr);
   CHECK(strstr(screenPage,"22:00") && strstr(screenPage,"07:00"));
   CHECK(brooklyn::web::renderScreenOptionsPage(screenPage,16,kDefaultScreenPreferences,false,"token")==0);
   CHECK(brooklyn::web::renderScreenOptionsPage(screenPage,sizeof(screenPage),UINT32_MAX,false,"token")==0);

@@ -37,10 +37,16 @@ int xTaskCreatePinnedToCore(void (*f)(void *),const char *,uint32_t stack,void *
 void delay(uint32_t ms){OLED_CHECK(ms==100);++retryDelays;}
 void vTaskDelete(void *) {++deletes;}
 void vTaskDelay(uint32_t ms) {
- OLED_CHECK(ms==20);++delays;fakeNowMs+=scenario==19?1000:20;
+ OLED_CHECK(ms==20);++delays;fakeNowMs+=(scenario==19 || scenario==39)?1000:20;
  if(scenario==33 && delays==1) {brooklyn::oled::advanceScreen();return;}
  if(scenario==34 && delays==1) {brooklyn::oled::navigate(brooklyn::oled::Action::TurnNext,fakeNowMs);return;}
  if(scenario==35 && delays<51) return;
+ if(scenario==39 && delays<7) {
+   if(delays==6) {brooklyn::oled::ScreenData data;data.wifiConnected=true;brooklyn::oled::publishScreenData(data);}
+   brooklyn::oled::serviceNavigation(fakeNowMs,true);
+   if(delays==5) OLED_CHECK(brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Dedication);
+   return;
+ }
  if(scenario==26 && delays==1) {brooklyn::oled::setSetupMode(false);return;}
  if(scenario==19 && delays<5) return;
  if(scenario==20 && delays==1) {brooklyn::oled::clearBrightnessFeedback();return;}
@@ -65,7 +71,7 @@ uint8_t FakeWire::endTransmission(){OLED_CHECK(open);open=false;++ends;
 size_t FakeWire::write(uint8_t *,size_t n){OLED_CHECK(open);return scenario==4?0:n;}
 int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  brooklyn::oled::setScreenPreferences(brooklyn::config::kDefaultScreenPreferences & ~brooklyn::config::kStartupDedicationBit);
- if(scenario==37) brooklyn::oled::setScreenPreferences(brooklyn::config::kDefaultScreenPreferences);
+ if(scenario==37 || scenario==39) brooklyn::oled::setScreenPreferences(brooklyn::config::kDefaultScreenPreferences);
  if(scenario==38) {brooklyn::config::ScreenPreferences p;p.quietEnabled=true;p.startupDedication=false;p.startMinute=600;p.endMinute=840;brooklyn::oled::setScreenPreferences(brooklyn::config::packScreenPreferences(p));}
 
  if(scenario==8){brooklyn::oled::begin(0x07); OLED_CHECK(!worker && starts==0); puts("OLED invalid address rejected PASS"); return 0;}
@@ -154,5 +160,6 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==36) OLED_CHECK(frames==2 && titles==0 && strcmp(lastScreenTitle,"Happy Bar Mitsvah!")==0);
  if(scenario==37) OLED_CHECK(frames==2 && titles==0 && borderDraws==0 && strcmp(lastScreenTitle,"Happy Bar Mitsvah!")==0);
  if(scenario==38) OLED_CHECK(contrastCalls==1 && lastContrast==1 && frames==2);
+ if(scenario==39) OLED_CHECK(titles==1 && frames==8 && brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Main);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "oled_screens.h"
 namespace brooklyn::oled {
-void Navigation::startDedication(uint32_t nowMs) {
+void Navigation::startDedication(uint32_t nowMs, bool waitForWifi) {
   view_.screen=Screen::Dedication;view_.lineBrowsing=view_.automatic=false;
   view_.changedAtMs=lastInputAtMs_=startupAtMs_=nowMs;startupActive_=true;
+  startupWaitForWifi_=waitForWifi;
 }
 void Navigation::setReturnSeconds(uint16_t seconds, uint32_t nowMs) {
   if (returnSeconds_ != seconds) { returnSeconds_ = seconds; lastInputAtMs_ = nowMs; }
@@ -29,10 +30,11 @@ bool Navigation::input(Action action, uint32_t nowMs) {
   view_.changedAtMs=nowMs;
   return true;
 }
-bool Navigation::update(uint32_t nowMs, bool active) {
-  if(startupActive_ && (!active || static_cast<uint32_t>(nowMs-startupAtMs_)>=5000)) {
+bool Navigation::update(uint32_t nowMs, bool active, bool wifiConnected) {
+  if(startupActive_ && (!active || (static_cast<uint32_t>(nowMs-startupAtMs_)>=5000 && (!startupWaitForWifi_ || wifiConnected)))) {
     startupActive_=false;view_.screen=Screen::Main;view_.changedAtMs=lastInputAtMs_=nowMs;return true;
   }
+  if(startupActive_) return false; // Neither ordinary idle return nor line auto-browse ends the greeting.
   if (!active) { lastInputAtMs_=autoAtMs_=nowMs; return false; }
   if (view_.screen != Screen::Main && returnSeconds_ && static_cast<uint32_t>(nowMs-lastInputAtMs_) >= uint32_t(returnSeconds_)*1000) {
     view_.screen=Screen::Main;view_.automatic=false;view_.lineBrowsing=false;view_.changedAtMs=nowMs;return true;

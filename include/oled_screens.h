@@ -22,15 +22,16 @@ struct NavigationView {
 class Navigation {
  public:
   bool input(Action action, uint32_t nowMs);
-  bool update(uint32_t nowMs, bool active = true);
+  bool update(uint32_t nowMs, bool active = true, bool wifiConnected = false);
   void setReturnSeconds(uint16_t seconds, uint32_t nowMs);
-  void startDedication(uint32_t nowMs);
+  void startDedication(uint32_t nowMs, bool waitForWifi = false);
   NavigationView view() const { return view_; }
  private:
   NavigationView view_{};
   uint32_t lastInputAtMs_ = 0, autoAtMs_ = 0;
   uint16_t returnSeconds_ = 60;
   bool startupActive_=false;
+  bool startupWaitForWifi_=false;
   uint32_t startupAtMs_=0;
 };
 struct LineData { uint32_t trains = 0; uint16_t lights = 0; bool atLeast = false; };

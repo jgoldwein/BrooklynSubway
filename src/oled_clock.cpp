@@ -60,7 +60,7 @@ void draw(const char *clock) {
     formatScreen(selected, data, millis(), text, view);
     screen.setFont(u8g2_font_6x12_tf);
     for (uint8_t i = 0; i < 5; ++i) {
-      const int x = selected==Screen::Dedication && i==1 ? (128-screen.getStrWidth(text.lines[i]))/2 : 0;
+      const int x = selected==Screen::Dedication && i<4 ? (128-screen.getStrWidth(text.lines[i]))/2 : 0;
       screen.drawStr(x, 11+i*12, text.lines[i]);
     }
     screen.sendBuffer();
@@ -157,8 +157,9 @@ void run(void *) {
   }
   if(!transportFailed && !__atomic_load_n(&setupMode,__ATOMIC_RELAXED) &&
       (readScreenPreferences()&config::kStartupDedicationBit)) {
-    portENTER_CRITICAL(&screenDataMux);navigation.startDedication(millis());portEXIT_CRITICAL(&screenDataMux);
-    requestRefresh();Serial.println("OLED: five-second startup dedication; turn knob to skip");
+    const bool wait=config::unpackScreenPreferences(readScreenPreferences()).startupUntilWifi;
+    portENTER_CRITICAL(&screenDataMux);navigation.startDedication(millis(),wait);portEXIT_CRITICAL(&screenDataMux);
+    requestRefresh();Serial.println(wait?"OLED: startup dedication until Wi-Fi has an IP, minimum 5 seconds; turn to skip":"OLED: five-second startup dedication; turn knob to skip");
   }
   if (!transportFailed) draw("Syncing time...");
   if (transportFailed) {
@@ -267,7 +268,7 @@ void serviceNavigation(uint32_t nowMs, bool active) {
   const uint16_t timeout=__atomic_load_n(&returnSeconds,__ATOMIC_RELAXED);
   portENTER_CRITICAL(&screenDataMux);
   navigation.setReturnSeconds(timeout,nowMs);
-  const bool changed=navigation.update(nowMs,usable);
+  const bool changed=navigation.update(nowMs,usable,screenData.wifiConnected);
   const auto view=navigation.view();
   portEXIT_CRITICAL(&screenDataMux);
   if(changed) {requestRefresh();Serial.printf("OLED navigation: %s, line %s %s\n",screenName(view.screen),
