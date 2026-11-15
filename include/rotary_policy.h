@@ -3,7 +3,8 @@
 #pragma once
 #include <stdint.h>
 namespace brooklyn::controls {
-// Four valid Gray-code transitions per step; bounce reversals cancel.
+// Two-transition policy for the reported half-step detents. Supports either
+// resting Gray-code phase; bounce reversals cancel.
 class RotaryEncoder {
  public:
   void reset(bool a, bool b) { previous_=(uint8_t(a)<<1)|uint8_t(b);accumulator_=0;initialized_=true; }
@@ -14,8 +15,8 @@ class RotaryEncoder {
     if ((next^previous_)==3) {previous_=next;accumulator_=0;return 0;}
     static const int8_t transitions[]={0,-1,1,0,1,0,0,-1,-1,0,0,1,0,1,-1,0};
     accumulator_+=transitions[(previous_<<2)|next];previous_=next;
-    if (accumulator_>=4) {accumulator_=0;return 1;}
-    if (accumulator_<=-4) {accumulator_=0;return -1;}
+    if (accumulator_>=2) {accumulator_=0;return 1;}
+    if (accumulator_<=-2) {accumulator_=0;return -1;}
     return 0;
   }
  private:

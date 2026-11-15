@@ -23,6 +23,8 @@ portMUX_TYPE screenDataMux = portMUX_INITIALIZER_UNLOCKED;
 ScreenData screenData{};
 uint32_t feedbackWord = 0, feedbackSequence = 0;
 uint32_t requestedContrast = 207; // Accessed atomically; only the OLED worker touches I2C.
+uint32_t uiRevision = 0;
+void requestRefresh() { __atomic_add_fetch(&uiRevision,1u,__ATOMIC_RELAXED); }
 uint32_t statusWord = 0; // Single atomic packed snapshot; no bus access by readers.
 void setStatus(State state, uint8_t error = 0) {
   __atomic_store_n(&statusWord, static_cast<uint32_t>(state) | (uint32_t(requestedAddress) << 8) |
@@ -152,8 +154,12 @@ void run(void *) {
   bool synchronized = false;
   bool awake = true;
   uint32_t lastFeedback = 0;
-  uint8_t feedbackFrames = 0;
+  bool feedbackActive = false, firstRefresh = true;
+  uint32_t feedbackAtMs = 0, lastRenderAtMs = 0, lastRevision = 0;
   for (;;) {
+    const uint32_t nowMs = millis();
+    const uint32_t revision = __atomic_load_n(&uiRevision,__ATOMIC_RELAXED);
+    bool redraw=firstRefresh || revision!=lastRevision || static_cast<uint32_t>(nowMs-lastRenderAtMs)>=1000;
     char text[24]{};
     const bool valid = formatClock(time(nullptr), text, sizeof(text));
     if (valid && !synchronized) Serial.println("OLED clock: New York time synchronized (automatic DST)");
@@ -161,35 +167,40 @@ void run(void *) {
     const uint8_t desired = __atomic_load_n(&requestedContrast, __ATOMIC_RELAXED);
     if (desired != appliedContrast && !transportFailed) {
       screen.setContrast(desired); appliedContrast = desired;
+      redraw=true;
       Serial.printf("OLED clock: contrast %u/255\n", desired);
     }
     const uint32_t feedback = __atomic_load_n(&feedbackWord, __ATOMIC_RELAXED);
     if (feedback != lastFeedback) {
-      lastFeedback = feedback; feedbackFrames = feedback ? 3 : 0;
+      lastFeedback = feedback; feedbackActive=feedback!=0;feedbackAtMs=nowMs;redraw=true;
     }
-    const bool desiredEnabled = __atomic_load_n(&requestedEnabled, __ATOMIC_RELAXED) != 0 || feedbackFrames != 0;
+    if(feedbackActive && static_cast<uint32_t>(nowMs-feedbackAtMs)>=3000) {feedbackActive=false;redraw=true;}
+    const bool desiredEnabled = __atomic_load_n(&requestedEnabled, __ATOMIC_RELAXED) != 0 || feedbackActive;
     if (!transportFailed && desiredEnabled != awake) {
       screen.setPowerSave(desiredEnabled ? 0 : 1);
       awake = desiredEnabled;
+      redraw=true;
       Serial.println(awake ? "OLED clock: POWER display ON" : "OLED clock: POWER display OFF");
     }
-    if (!transportFailed && awake) {
-      if (feedbackFrames) {
+    if (!transportFailed && awake && redraw) {
+      if (feedbackActive) {
         char level[24];
         snprintf(level, sizeof(level), "%u / %u", unsigned(feedback & 255), unsigned((feedback >> 8) & 255));
         const char *label = (feedback & (1u << 16)) ? "OLED brightness" : "LED brightness";
         screen.clearBuffer(); screen.setFont(u8g2_font_6x12_tf);
         screen.drawStr((128-screen.getStrWidth(label))/2,22,label);
         screen.setFont(u8g2_font_8x13_tf); screen.drawStr((128-screen.getStrWidth(level))/2,47,level);
-        screen.sendBuffer(); --feedbackFrames;
+        screen.sendBuffer();
       } else draw(text);
     }
+    if(redraw) {lastRevision=revision;lastRenderAtMs=nowMs;firstRefresh=false;}
     if (transportFailed) {
       setStatus(State::TransferFailed, transferError);
       Serial.println("OLED clock: transfer failed; OLED stopped, map continues");
       vTaskDelete(nullptr); return;
     }
-    vTaskDelay(pdMS_TO_TICKS(1000));
+    // Notice input promptly, but keep idle clock/data redraws at one per second.
+    vTaskDelay(pdMS_TO_TICKS(20));
   }
 }
 }
@@ -197,6 +208,7 @@ void publishScreenData(const ScreenData &data) {
   portENTER_CRITICAL(&screenDataMux);
   screenData = data;
   portEXIT_CRITICAL(&screenDataMux);
+  requestRefresh();
 }
 Screen selectedScreen() {
   portENTER_CRITICAL(&screenDataMux);
@@ -213,8 +225,9 @@ void navigate(Action action, uint32_t nowMs) {
   const bool changed = navigation.input(action, nowMs);
   const auto view = navigation.view();
   portEXIT_CRITICAL(&screenDataMux);
-  if(changed) Serial.printf("OLED screen: %s (%u/5), line %s %s\n", screenName(view.screen), unsigned(view.screen)+1,
+  if(changed) {requestRefresh();Serial.printf("OLED screen: %s (%u/5), line %s %s\n", screenName(view.screen), unsigned(view.screen)+1,
       semantic::routeName(static_cast<semantic::Route>(view.line)),view.automatic?"Auto":"Paused");
+  }
 }
 void serviceNavigation(uint32_t nowMs, bool active) {
   const bool usable=active && !__atomic_load_n(&setupMode,__ATOMIC_RELAXED);
@@ -224,20 +237,24 @@ void serviceNavigation(uint32_t nowMs, bool active) {
   const bool changed=navigation.update(nowMs,usable);
   const auto view=navigation.view();
   portEXIT_CRITICAL(&screenDataMux);
-  if(changed) Serial.printf("OLED navigation: %s, line %s %s\n",screenName(view.screen),
+  if(changed) {requestRefresh();Serial.printf("OLED navigation: %s, line %s %s\n",screenName(view.screen),
       semantic::routeName(static_cast<semantic::Route>(view.line)),view.automatic?"Auto":"Paused");
+  }
 }
 void setReturnSeconds(uint16_t seconds) { __atomic_store_n(&returnSeconds,uint32_t(seconds),__ATOMIC_RELAXED); }
 void setSetupMode(bool enabled) {
   const uint32_t value = enabled ? 1u : 0u;
-  if (__atomic_exchange_n(&setupMode, value, __ATOMIC_RELAXED) != value)
+  if (__atomic_exchange_n(&setupMode, value, __ATOMIC_RELAXED) != value) {
+    requestRefresh();
     Serial.println(enabled ? "OLED clock: setup instructions, join BrooklynMap-Avi then open 192.168.4.1" : "OLED clock: normal clock display resumed");
+  }
 }
-void setVisibleMapLights(uint16_t count) { __atomic_store_n(&visibleMapLights,uint32_t(count),__ATOMIC_RELAXED); }
+void setVisibleMapLights(uint16_t count) { if(__atomic_exchange_n(&visibleMapLights,uint32_t(count),__ATOMIC_RELAXED)!=count) requestRefresh(); }
 void setTrackedTrains(uint32_t count, bool available) {
   const uint32_t value = available ? (0x80000000u | (count & 0x7fffffffu)) : 0;
   const uint32_t previous = __atomic_exchange_n(&trackedTrainsWord, value, __ATOMIC_RELAXED);
   if (previous != value) {
+    requestRefresh();
     if (available) Serial.printf("OLED clock: tracked trains %lu\n", static_cast<unsigned long>(count));
     else Serial.println("OLED clock: tracked count unavailable; waiting for current data");
   }
@@ -246,10 +263,11 @@ void showBrightness(bool oled, uint8_t value, uint8_t maximum) {
   const uint32_t sequence = __atomic_add_fetch(&feedbackSequence, 1u, __ATOMIC_RELAXED);
   __atomic_store_n(&feedbackWord, (sequence << 18) | (1u << 17) | (uint32_t(oled) << 16) |
       (uint32_t(maximum) << 8) | value, __ATOMIC_RELAXED);
+  requestRefresh();
 }
-void clearBrightnessFeedback() { __atomic_store_n(&feedbackWord, 0u, __ATOMIC_RELAXED); }
-void setEnabled(bool enabled) { __atomic_store_n(&requestedEnabled, uint32_t(enabled), __ATOMIC_RELAXED); }
-void setContrast(uint8_t contrast) { __atomic_store_n(&requestedContrast, uint32_t(contrast), __ATOMIC_RELAXED); }
+void clearBrightnessFeedback() { if(__atomic_exchange_n(&feedbackWord, 0u, __ATOMIC_RELAXED)) requestRefresh(); }
+void setEnabled(bool enabled) { if(__atomic_exchange_n(&requestedEnabled, uint32_t(enabled), __ATOMIC_RELAXED)!=uint32_t(enabled)) requestRefresh(); }
+void setContrast(uint8_t contrast) { if(__atomic_exchange_n(&requestedContrast, uint32_t(contrast), __ATOMIC_RELAXED)!=contrast) requestRefresh(); }
 void begin(uint8_t configuredAddress, uint8_t contrast) {
   if (clockTask) return;
   setContrast(contrast);

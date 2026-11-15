@@ -15,6 +15,7 @@ bool buzzerOutput = false;
 bool cueMode = false;
 bool feedReadyMode = false;
 bool brightnessMode = false;
+bool knobMode=false,probePriority=false;
 int readyBeeps = 0;
 int beepStarts = 0, cueMs = 0, cueOnMs = 0, abortAtMs = -1;
 bool recoveryRequested = false;
@@ -54,7 +55,8 @@ uint32_t ledcSetup(uint8_t channel, uint32_t hz, uint8_t resolution) {
     ++feedSetups; return failFeedSetup ? 0 : hz;
   }
   CHECK(channel == 7 && resolution == 8 && duty == 0);
-  if (brightnessMode) { CHECK(hz >= 800 && hz <= 3200); }
+  if (knobMode) {CHECK(hz==2000);}
+  else if (brightnessMode) { CHECK(hz >= 800 && hz <= 3200); }
   else if (feedReadyMode) { CHECK(hz == 2000 && feedDuty == 8); }
   else if (cueMode) { CHECK(setupCalls == 0 && hz == 4000); }
   else { CHECK(setupCalls < 6 && hz == expectedHz[setupCalls]); }
@@ -82,7 +84,11 @@ void ledcDetachPin(uint8_t pin) {
 }
 void delay(uint32_t ms) {
   CHECK(enable == LOW);
-  if (brightnessMode) { CHECK(ms == 45 && duty == 128); return; }
+  if (brightnessMode) { CHECK(ms == 45 && duty == 128);
+    if(probePriority) {const auto before=frequency;brooklyn::hardware::serviceKnobClick(100,true);brooklyn::hardware::setFeedIndicatorAllowed(true);CHECK(frequency==before && duty==128);}
+    return;
+  }
+  CHECK(!knobMode); // Click feedback must never call delay().
   if (feedReadyMode) { CHECK(ms == 100 && duty == 128 && feedDuty == 8); ++readyBeeps; return; }
   if (cueMode) {
     CHECK(ms <= 20 && indicator == LOW);
@@ -105,6 +111,7 @@ void delay(uint32_t ms) {
   }
 }
 void reset(bool muted, int failAt = -1) {
+  knobMode=false;probePriority=false;
   brightnessMode = false;
   cueMode = false;
   feedReadyMode = false;
@@ -211,5 +218,29 @@ int main() {
   brooklyn::hardware::signalBrightness(5,16);
   CHECK(attachCalls==0 && duty==0 && buzzer==LOW);
   puts("Brightness cue: scaled pitch, bounded 45 ms tone, PWM cleanup and setup failure PASS");
+  using brooklyn::hardware::requestKnobClick;using brooklyn::hardware::serviceKnobClick;
+  reset(false);knobMode=true;
+  requestKnobClick();serviceKnobClick(0,true);CHECK(duty==128 && frequency==2000 && attachCalls==1);
+  serviceKnobClick(14,true);CHECK(duty==128);
+  serviceKnobClick(15,true);CHECK(duty==0 && detachCalls==1);
+  requestKnobClick();serviceKnobClick(20,true);CHECK(duty==0);
+  serviceKnobClick(30,true);CHECK(duty==128 && attachCalls==2);
+  serviceKnobClick(45,false);CHECK(duty==0 && detachCalls==2);
+  requestKnobClick();serviceKnobClick(50,false);serviceKnobClick(55,true);CHECK(duty==0 && attachCalls==2);
+  requestKnobClick();serviceKnobClick(UINT32_MAX-5,true);serviceKnobClick(8,true);CHECK(duty==128);
+  serviceKnobClick(9,true);CHECK(duty==0);
+  serviceKnobClick(10,false);
+  reset(false);knobMode=true;
+  for(int i=0;i<30;++i) requestKnobClick();
+  for(uint32_t ms=0;ms<=400;ms+=15) serviceKnobClick(ms,true);
+  CHECK(attachCalls==8 && detachCalls==8 && duty==0); // Bounded queue, no long tail.
+  serviceKnobClick(405,false);
+  reset(false,0);knobMode=true;requestKnobClick();serviceKnobClick(0,true);
+  CHECK(duty==0 && attachCalls==0 && buzzer==LOW);
+  reset(false);knobMode=true;requestKnobClick();serviceKnobClick(0,true);CHECK(duty==128);
+  knobMode=false;brightnessMode=true;probePriority=true;
+  brooklyn::hardware::signalBrightness(16,16);CHECK(duty==0 && frequency==3200);
+  serviceKnobClick(200,true);CHECK(duty==0 && frequency==3200); // No stale click cleanup interrupts priority cue.
+  puts("Knob clicks: nonblocking 15ms/2000Hz, gap, bounded queue, cancellation, rollover, PWM failure and brightness priority PASS");
   puts("Startup: U23 pulses, four rising notes plus descending pair, 2265 ms, 50%-duty PWM, DIM mute, failed-check silence, PWM failure cleanup, addressable outputs disabled PASS");
 }

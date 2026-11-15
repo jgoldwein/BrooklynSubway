@@ -19,5 +19,8 @@ bool signalDiagnosticChannel(led::PhysicalChannel channel);
 void setFeedIndicator(bool freshComplete);
 void setFeedIndicatorAllowed(bool allowed);
 void signalBrightness(uint8_t value, uint8_t maximum);
+// Bounded, nonblocking knob feedback; serviced by the live input task.
+void requestKnobClick();
+void serviceKnobClick(uint32_t nowMs, bool allowed);
 
 }  // namespace brooklyn::hardware

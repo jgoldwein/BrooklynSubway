@@ -20,6 +20,9 @@ bool feedIndicatorAttached = false;
 bool feedIndicatorOn = false;
 bool feedIndicatorUnavailable = false;
 bool feedReadyBeepAttempted = false;
+void stopKnobToneLocked();
+void lockIndicator();
+void unlockIndicator();
 
 void beepFeedReadyOnce() {
   if (feedReadyBeepAttempted) return;
@@ -30,6 +33,7 @@ void beepFeedReadyOnce() {
   constexpr uint8_t kBuzzerChannel = 7; // Timer 3, independent of U23 timer 2.
   constexpr uint16_t kFrequencyHz = 2000;
   constexpr uint16_t kDurationMs = 100;
+  stopKnobToneLocked();
   digitalWrite(pins::BUZZER, LOW);
   if (ledcSetup(kBuzzerChannel, kFrequencyHz, 8) == 0) {
     Serial.println("Feed-ready buzzer: PWM setup failed; GPIO21 LOW"); return;
@@ -105,6 +109,7 @@ bool signalDiagnosticChannel(led::PhysicalChannel channel) {
   constexpr uint32_t kGapMs = 80;
   constexpr uint32_t kLeadInMs = 300;
   const uint8_t number = static_cast<uint8_t>(channel);
+  lockIndicator();stopKnobToneLocked();unlockIndicator();
   digitalWrite(pins::BUZZER, LOW);
   if (number < 1 || number > 8 || digitalRead(pins::BUTTON_POWER) == LOW ||
       controls::pollWifiRecoveryDuringDiagnostic()) return false;
@@ -201,6 +206,19 @@ void applyFeedIndicator(bool freshComplete) {
 namespace {
 uint32_t indicatorLock = 0;
 bool indicatorRequested = false, indicatorAllowed = true;
+uint32_t allowedWord = 1;
+#if defined(BROOKLYN_TARGET_PCB)
+uint32_t knobPending = 0;
+bool knobActive = false, knobGap = false;
+uint32_t knobUntilMs = 0;
+void stopKnobToneLocked() {
+  if(knobActive) {
+    ledcWrite(7,0);ledcDetachPin(pins::BUZZER);digitalWrite(pins::BUZZER,LOW);
+  }
+  knobActive=knobGap=false;
+  __atomic_store_n(&knobPending,0u,__ATOMIC_RELAXED);
+}
+#endif
 void lockIndicator() {
   while (__atomic_exchange_n(&indicatorLock, 1u, __ATOMIC_ACQUIRE)) delay(1);
 }
@@ -209,20 +227,55 @@ void unlockIndicator() { __atomic_store_n(&indicatorLock, 0u, __ATOMIC_RELEASE);
 void setFeedIndicator(bool freshComplete) {
   lockIndicator();
   indicatorRequested = freshComplete;
+  indicatorAllowed = __atomic_load_n(&allowedWord,__ATOMIC_RELAXED)!=0;
   applyFeedIndicator(indicatorRequested && indicatorAllowed);
   unlockIndicator();
 }
 void setFeedIndicatorAllowed(bool allowed) {
-  lockIndicator();
-  indicatorAllowed = allowed;
+  __atomic_store_n(&allowedWord,uint32_t(allowed),__ATOMIC_RELAXED);
+  // Never stall input sampling behind a main-loop brightness/feed-ready cue.
+  if(__atomic_exchange_n(&indicatorLock,1u,__ATOMIC_ACQUIRE)) return;
+  indicatorAllowed = __atomic_load_n(&allowedWord,__ATOMIC_RELAXED)!=0;
   applyFeedIndicator(indicatorRequested && indicatorAllowed);
   unlockIndicator();
+}
+
+void requestKnobClick() {
+#if defined(BROOKLYN_TARGET_PCB)
+  uint32_t pending=__atomic_load_n(&knobPending,__ATOMIC_RELAXED);
+  while(pending<8 && !__atomic_compare_exchange_n(&knobPending,&pending,pending+1,false,__ATOMIC_RELAXED,__ATOMIC_RELAXED)) {}
+#endif
+}
+void serviceKnobClick(uint32_t nowMs,bool allowed) {
+#if defined(BROOKLYN_TARGET_PCB)
+  if(__atomic_exchange_n(&indicatorLock,1u,__ATOMIC_ACQUIRE)) return;
+  if(!allowed) stopKnobToneLocked();
+  else if(knobActive) {
+    if(static_cast<int32_t>(nowMs-knobUntilMs)>=0) {
+      ledcWrite(7,0);ledcDetachPin(pins::BUZZER);digitalWrite(pins::BUZZER,LOW);
+      knobActive=false;knobGap=true;knobUntilMs=nowMs+15;
+    }
+  } else if(!knobGap || static_cast<int32_t>(nowMs-knobUntilMs)>=0) {
+    knobGap=false;
+    if(__atomic_load_n(&knobPending,__ATOMIC_RELAXED)) {
+      __atomic_sub_fetch(&knobPending,1u,__ATOMIC_RELAXED);
+      if(ledcSetup(7,2000,8)!=0) {
+        ledcWrite(7,0);ledcAttachPin(pins::BUZZER,7);ledcWrite(7,128);
+        knobActive=true;knobUntilMs=nowMs+15;
+      } else digitalWrite(pins::BUZZER,LOW);
+    }
+  }
+  unlockIndicator();
+#else
+  (void)nowMs;(void)allowed;
+#endif
 }
 
 void signalBrightness(uint8_t value, uint8_t maximum) {
 #if defined(BROOKLYN_TARGET_PCB)
   // Main-loop caller; serialize with the feed-ready cue on the same PWM timer.
   lockIndicator();
+  stopKnobToneLocked();
   constexpr uint8_t channel = 7;
   const uint8_t bounded = value < maximum ? value : maximum;
   const uint16_t frequency = 800 + (maximum ? uint32_t(bounded) * 2400 / maximum : 0);

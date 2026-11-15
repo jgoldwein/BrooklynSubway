@@ -21,7 +21,6 @@ Controller controller(true);
 bool recoveryRequested = false;
 bool recoveryPending = false;
 controls::TestButton testButton;
-controls::TestButton modeButton;
 controls::TestButton routeButton, rotaryButton;
 controls::RotaryEncoder rotaryEncoder;
 controls::BrightnessButtons brightnessButtons;
@@ -43,7 +42,6 @@ void run(void *) {
     const bool recovery = recoveryHold.update(digitalRead(pins::ROTARY_PUSH) == LOW, nowMs);
     xSemaphoreTake(mutex, portMAX_DELAY);
     const bool testReleased = testButton.update(digitalRead(pins::BUTTON_TEST) == LOW, nowMs);
-    const bool modeReleased = modeButton.update(digitalRead(pins::BUTTON_MODE) == LOW, nowMs);
     const bool routeReleased = routeButton.update(digitalRead(pins::BUTTON_ROUTE) == LOW, nowMs);
     const bool rotaryReleased = rotaryButton.update(digitalRead(pins::ROTARY_PUSH) == LOW, nowMs);
     const int8_t rotaryStep=rotaryEncoder.update(digitalRead(pins::ROTARY_A)!=LOW,digitalRead(pins::ROTARY_B)!=LOW);
@@ -51,15 +49,18 @@ void run(void *) {
     if (recovery) recoveryRequested = recoveryPending = true;
     if (!recoveryRequested && digitalRead(pins::ROTARY_PUSH) != LOW) recoveryPending = false;
     if (!diagnosticDepth && !recoveryPending && !recovery) {
-      if (modeReleased) oled::navigate(oled::Action::NextScreen,nowMs);
       if (rotaryReleased && rotaryButton.heldMs()<1000) oled::navigate(oled::Action::Select,nowMs);
       if (routeReleased) oled::navigate(oled::selectedScreen()==oled::Screen::Lines?oled::Action::ToggleAuto:oled::Action::OpenLines,nowMs);
-      if (rotaryStep) oled::navigate(rotaryStep>0?oled::Action::TurnNext:oled::Action::TurnPrevious,nowMs);
+      if (rotaryStep) {
+        oled::navigate(rotaryStep>0?oled::Action::TurnNext:oled::Action::TurnPrevious,nowMs);
+        hardware::requestKnobClick();
+      }
     }
+    hardware::serviceKnobClick(nowMs,!diagnosticDepth && !recoveryPending && !recovery);
     oled::serviceNavigation(nowMs,!diagnosticDepth && !recoveryPending && controller.screenEnabled() &&
         digitalRead(pins::ROTARY_PUSH)!=LOW && digitalRead(pins::BUTTON_POWER)!=LOW &&
         digitalRead(pins::BUTTON_BRIGHT)!=LOW && digitalRead(pins::BUTTON_DIM)!=LOW &&
-        digitalRead(pins::BUTTON_MODE)!=LOW && digitalRead(pins::BUTTON_ROUTE)!=LOW && digitalRead(pins::BUTTON_TEST)!=LOW);
+        digitalRead(pins::BUTTON_ROUTE)!=LOW && digitalRead(pins::BUTTON_TEST)!=LOW);
     controller.setOledScreen(static_cast<uint8_t>(oled::selectedScreen()));
     const bool wasEnabled = controller.enabled();
     controller.service(nowMs, digitalRead(pins::BUTTON_POWER) == LOW,
@@ -103,7 +104,8 @@ bool begin() {
     return false;
   }
   Serial.println("Live display ready: GPIO1 enable; GPIO4/5/6/7/10/11/12/13 data; auto-start after healthy fresh data; cap 16/255; POWER cycles LEDs/OLED; hold 3 seconds to reboot");
-  Serial.println("OLED controls: rotary GPIO15/16 turn=screen; GPIO17 press on Lines=enter/leave line browsing, 10s hold=Wi-Fi setup; ROUTE GPIO38=Lines/Auto/Pause; MODE GPIO41=alternate screen; MODE LED307 ch8 index3 off/cyan/green/purple/amber");
+  Serial.println("OLED controls: rotary GPIO15/16 turn=screen; GPIO17 press on Lines=enter/leave line browsing, 10s hold=Wi-Fi setup; ROUTE GPIO38=Lines/Auto/Pause; MODE button unassigned; MODE LED307 ch8 index3 off/cyan/green/purple/amber");
+  Serial.println("Rotary feedback: two transitions per detent; GPIO21 2000 Hz / 15 ms click with 15 ms gap, nonblocking");
   return true;
 }
 bool available() { return task != nullptr; }
@@ -207,7 +209,6 @@ void endDiagnostic() {
   if (diagnosticDepth) --diagnosticDepth;
   if (!diagnosticDepth) {
     testButton.reset(digitalRead(pins::BUTTON_TEST) == LOW, millis());
-    modeButton.reset(digitalRead(pins::BUTTON_MODE) == LOW, millis());
     routeButton.reset(digitalRead(pins::BUTTON_ROUTE) == LOW, millis());
     rotaryButton.reset(digitalRead(pins::ROTARY_PUSH) == LOW, millis());
     rotaryEncoder.reset(digitalRead(pins::ROTARY_A)!=LOW,digitalRead(pins::ROTARY_B)!=LOW);

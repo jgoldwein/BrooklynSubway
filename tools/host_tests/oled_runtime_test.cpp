@@ -8,7 +8,9 @@
 #include <setjmp.h>
 jmp_buf iterationEnd;
 FakeSerial Serial; FakeWire Wire;
-uint32_t millis() { return 120000; }
+uint32_t fakeNowMs=120000;
+uint32_t millis() { return fakeNowMs; }
+char lastScreenTitle[24]{};
 int setupTitles=0,setupNames=0,setupAddresses=0;
 int frames=0,titles=0,ends=0,starts=0,deletes=0,delays=0;
 char lastTrainText[24]={};
@@ -32,7 +34,18 @@ int xTaskCreatePinnedToCore(void (*f)(void *),const char *,uint32_t stack,void *
 }
 void delay(uint32_t ms){OLED_CHECK(ms==100);++retryDelays;}
 void vTaskDelete(void *) {++deletes;}
-void vTaskDelay(uint32_t ms) { OLED_CHECK(ms==1000); ++delays; if(scenario==26 && delays==1) { brooklyn::oled::setSetupMode(false); return; } if(scenario==19 && delays<5) return; if(scenario==20 && delays==1) { brooklyn::oled::clearBrightnessFeedback(); return; } if(scenario==16 && delays==1) { brooklyn::oled::setEnabled(true); return; } longjmp(iterationEnd,1); }
+void vTaskDelay(uint32_t ms) {
+ OLED_CHECK(ms==20);++delays;fakeNowMs+=scenario==19?1000:20;
+ if(scenario==33 && delays==1) {brooklyn::oled::advanceScreen();return;}
+ if(scenario==34 && delays==1) {brooklyn::oled::navigate(brooklyn::oled::Action::TurnNext,fakeNowMs);return;}
+ if(scenario==35 && delays<51) return;
+ if(scenario==26 && delays==1) {brooklyn::oled::setSetupMode(false);return;}
+ if(scenario==19 && delays<5) return;
+ if(scenario==20 && delays==1) {brooklyn::oled::clearBrightnessFeedback();return;}
+ if(scenario==16 && delays==1) {brooklyn::oled::setEnabled(true);return;}
+ longjmp(iterationEnd,1);
+}
+
 void FakeWire::setTimeOut(uint16_t ms){OLED_CHECK(ms==50);}
 void FakeWire::setClock(uint32_t hz){OLED_CHECK(hz==100000);}
 void FakeWire::beginTransmission(uint8_t a){OLED_CHECK(!open); OLED_CHECK(a==0x38||a==0x3c||a==0x3d);lastAddress=a;open=true;++starts;}
@@ -55,7 +68,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==23) {brooklyn::oled::setTrackedTrains(132,true);brooklyn::oled::setTrackedTrains(132,false);}
  if(scenario==24) {brooklyn::oled::setTrackedTrains(80,true);brooklyn::oled::setVisibleMapLights(12);}
  if(scenario==25||scenario==26) brooklyn::oled::setSetupMode(true);
- if(scenario>=27) {
+ if(scenario>=27 && scenario<=32) {
    brooklyn::oled::ScreenData d; d.wifiConnected=true; d.hasUpdate=true; d.updateAgeSeconds=15;
    d.sampledAtMs=119000; d.indications={10,20,3,5}; d.lightsEnabled=true;
    d.feedsSucceeded=8; d.feedsTotal=8; d.feedHealth=brooklyn::oled::FeedHealth::Fresh;
@@ -92,6 +105,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
    if(scenario==31) brooklyn::oled::setEnabled(false);
  }
 
+ if(scenario==34) brooklyn::oled::navigate(brooklyn::oled::Action::OpenLines,fakeNowMs);
  const uint8_t preferred=scenario==11?0x3c:0x38;
  brooklyn::oled::begin(preferred,scenario==12||scenario==13?32:207);OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
  if(scenario==6){OLED_CHECK(worker==nullptr);puts("OLED task allocation failure isolated PASS");return 0;}
@@ -126,5 +140,8 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario>=27 && scenario<=29) OLED_CHECK(frames==2 && titles==0 && setupTitles==0);
  if(scenario==30) OLED_CHECK(frames==2 && setupTitles==2 && titles==0);
  if(scenario==31) OLED_CHECK(frames==1 && powerCommands==1 && titles==0);
+ if(scenario==33) OLED_CHECK(frames==3 && titles==2 && strcmp(lastScreenTitle,"Map lights OFF   2/5")==0 && fakeNowMs==120040);
+ if(scenario==34) OLED_CHECK(frames==3 && titles==0 && strcmp(lastScreenTitle,"Line 3 Paused 5/5")==0 && fakeNowMs==120040);
+ if(scenario==35) OLED_CHECK(frames==3 && titles==3 && delays==51);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

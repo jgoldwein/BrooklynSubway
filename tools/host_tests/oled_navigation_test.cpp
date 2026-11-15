@@ -42,12 +42,15 @@ int main() {
   using brooklyn::controls::RotaryEncoder;
   RotaryEncoder knob;knob.reset(true,true);
   CHECK(knob.update(false,true)==0);CHECK(knob.update(true,true)==0); // Bounce cancels.
-  CHECK(knob.update(false,true)==0);CHECK(knob.update(false,false)==0);
+  CHECK(knob.update(false,true)==0);CHECK(knob.update(false,false)==1);
   CHECK(knob.update(true,false)==0);CHECK(knob.update(true,true)==1);
-  CHECK(knob.update(true,false)==0);CHECK(knob.update(false,false)==0);
+  CHECK(knob.update(true,false)==0);CHECK(knob.update(false,false)==-1);
   CHECK(knob.update(false,true)==0);CHECK(knob.update(true,true)==-1);
   CHECK(knob.update(false,false)==0); // Invalid two-bit jump cancels partial motion.
   CHECK(knob.update(true,true)==0);
+  knob.reset(false,true); // Also support encoders resting at 01 / 10.
+  CHECK(knob.update(false,false)==0);CHECK(knob.update(true,false)==1);
+  CHECK(knob.update(true,true)==0);CHECK(knob.update(false,true)==1);
   brooklyn::controls::TestButton push;
   push.reset(true,0);CHECK(!push.update(false,10));CHECK(!push.update(false,50));
   CHECK(!push.update(true,100));CHECK(!push.update(true,140));
