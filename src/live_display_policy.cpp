@@ -5,6 +5,7 @@
 namespace brooklyn::display::live {
 
 void Controller::publish(const Snapshot &snapshot) {
+  if(snapshot.status.provisioning) clearRouteFocus();
   if ((memcmp(snapshot_.frame.occupancy, snapshot.frame.occupancy,
               sizeof(snapshot.frame.occupancy)) != 0 ||
        memcmp(snapshot_.frame.approachingOnly, snapshot.frame.approachingOnly,
@@ -28,6 +29,9 @@ void Controller::publish(const Snapshot &snapshot) {
 
 OutputStats Controller::stats() const {
   auto result = stats_;
+  result.routeFocusActive=routeFocusActive_;
+  result.focusedRoute=routeFocusActive_?focusedRoute_:semantic::Route::None;
+  result.effectiveRouteMask=effectiveRouteMask();
   result.powerCanResume = powerCanResume_ && !enabled_ && !automaticStartPending_;
   result.automaticStartPending = automaticStartPending_ || (quietSuppressed_ && quietRestore_);
   result.powerMode = powerMode_;
@@ -162,6 +166,7 @@ void Controller::disable(const Operations &operations, uint32_t nowMs, Indicatio
 
 void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
                          const Operations &operations) {
+  if(recovery) clearRouteFocus();
   const bool releasedEvent = powerPress(nowMs, powerPressed);
   if (releasedEvent && !rebootPending_) {
     powerMode_ = (powerMode_ + 1) % 4;
@@ -222,7 +227,7 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
   config.showUnknownTiming = config.unknownTimingMode != semantic::UnknownTimingMode::Hidden;
   config.lastReportedFadeSeconds = semantic::lastReportedFadeSeconds(snapshot_.unknownTiming);
   config.unknownTimingBrightness = snapshot_.unknownTiming & 255;
-  config.routeVisibilityMask = snapshot_.routeMask;
+  config.routeVisibilityMask = effectiveRouteMask();
   config.animateTraffic = true;
   config.animationTimeMs = nowMs;
   config.nowUnix = snapshot_.clockUnix ? snapshot_.clockUnix +

@@ -864,7 +864,7 @@ size_t renderHomePage(char *out, size_t capacity,
                 "const controller=new AbortController();timer=setTimeout(()=>controller.abort(),15000);"
                 "const r=await fetch('/api/status',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();"
                 "const s=await r.json();if(s.trainColors)document.querySelectorAll('[data-train-color]').forEach(e=>{const c=s.trainColors[e.dataset.trainColor];if(/^#[0-9a-f]{6}$/i.test(c))e.style.backgroundColor=c});s.feedSummary=s.feedsSucceeded+' / '+s.feedsTotal;s.connectionLabel=s.networkConnected?'Wi-Fi connected':'Wi-Fi disconnected';"
-                "s.downloadState=s.fetchingFeeds?'Fetching train data':'Waiting for next update';s.mapPower=s.quietHoursActive&&s.quietMapBrightness===0?'Quiet hours: lights off':s.physicalLedOutputEnabled?'Lights on':s.physicalPowerPaused?'Lights paused':'Lights off';"
+                "s.downloadState=s.fetchingFeeds?'Fetching train data':'Waiting for next update';s.mapPower=s.quietHoursActive&&s.quietMapBrightness===0?'Quiet hours: lights off':s.physicalLedOutputEnabled?'Lights on':s.physicalPowerPaused?'Lights paused':'Lights off';if(s.routeFocusActive)s.mapPower+=' - Line '+s.routeFocusRoute+' only';"
                 "s.friendlyState=s.displayState==='Fresh'?'Train data is up to date':s.displayState==='WaitingForData'?'Waiting for the first train update':s.displayState==='NoData'?'No current train data':'Some train updates are delayed';"
                 "document.querySelectorAll('[data-status]').forEach(e=>{const k=e.dataset.status;"
                 "if(!(k in s))return;const v=s[k];e.textContent=v===null?'Not available':"
@@ -994,7 +994,7 @@ void monitorRows(Writer &w,const StatusSnapshot &s) {
   for(uint8_t route=1;route<=semantic::kRouteCount;++route) {
     const auto id=static_cast<semantic::Route>(route);const auto &r=s.blueReport.monitoring[route];
     w.append("<tr><th scope=\"row\">");w.html(semantic::routeName(id));
-    if(!semantic::routeVisible(s.routeVisibilityMask,id))w.append(" (hidden)");
+    if(!semantic::routeVisible(effectiveRouteMask(s),id))w.append(" (hidden)");
     w.format("</th><td>%u</td><td>%u</td><td>%u</td><td>%u</td><td>%s</td></tr>",r.mapped,r.moving,r.estimated,r.uncertain,monitorFeedState(s,id));
   }
 }
@@ -1098,7 +1098,7 @@ size_t renderTrainMonitorJson(char *out,size_t capacity,const StatusSnapshot &s)
   for(uint8_t route=1;route<=semantic::kRouteCount;++route) {
     if(route>1)w.append(",");const auto id=static_cast<semantic::Route>(route);const auto &q=r.monitoring[route];
     w.append("{\"line\":");monitorString(w,semantic::routeName(id));
-    w.format(",\"shown\":%s,\"mapped\":%u,\"moving\":%u,\"estimated\":%u,\"uncertain\":%u,\"feedState\":\"%s\"}",semantic::routeVisible(s.routeVisibilityMask,id)?"true":"false",q.mapped,q.moving,q.estimated,q.uncertain,monitorFeedState(s,id));
+    w.format(",\"shown\":%s,\"mapped\":%u,\"moving\":%u,\"estimated\":%u,\"uncertain\":%u,\"feedState\":\"%s\"}",semantic::routeVisible(effectiveRouteMask(s),id)?"true":"false",q.mapped,q.moving,q.estimated,q.uncertain,monitorFeedState(s,id));
   }
   w.format("],\"decodeFailures\":%lu,\"lastFeedFailure\":",static_cast<unsigned long>(r.decodeFailures));
   if(s.hasLastFeedFailure) {w.append("{\"feed\":");monitorString(w,s.lastFeedFailureName);w.append(",\"reason\":");monitorString(w,s.lastFeedFailureCategory);w.append("}");}else w.append("null");
@@ -1220,6 +1220,9 @@ size_t renderStatusJson(char *out, size_t capacity,
   const auto preferences=config::unpackScreenPreferences(status.screenPreferences);
   writer.format(",\"startupDedicationUntilWifi\":%s",preferences.startupUntilWifi?"true":"false");
   writer.format(",\"quietHoursEnabled\":%s,\"quietHoursActive\":%s,\"startupDedicationEnabled\":%s,\"quietMapBrightness\":%u",preferences.quietEnabled?"true":"false",status.quietHoursActive?"true":"false",preferences.startupDedication?"true":"false",unsigned(preferences.quietMapBrightness));
+  writer.format(",\"routeFocusActive\":%s,\"routeFocusRoute\":\"%s\",\"effectiveRouteMask\":%lu",
+      status.routeFocusActive?"true":"false",status.routeFocusActive?semantic::routeName(status.focusedRoute):"",
+      static_cast<unsigned long>(status.routeFocusActive?semantic::routeVisibilityBit(status.focusedRoute):(routeVisibilityMask & semantic::kAllRoutesVisibleMask)));
   writer.append(",\"stoppedPolicy\":\"fresh-evidence\",\"stoppedTimeLimitEnabled\":false");
   writer.format(",\"blueHoldSeconds\":%lu", static_cast<unsigned long>(status.blueHoldSeconds)); // legacy stored value, inactive
   writer.format(",\"pollSeconds\":%lu", static_cast<unsigned long>(status.pollSeconds));

@@ -12,7 +12,6 @@ namespace {
 
 constexpr semantic::Rgb kBlack{0, 0, 0};
 constexpr semantic::Rgb kGreen{0, 255, 0};
-constexpr semantic::Rgb kBlue{0, 0, 255};
 constexpr semantic::Rgb kRed{255, 0, 0};
 constexpr semantic::Rgb kAmber{255, 128, 0};
 constexpr semantic::Rgb kCyan{0, 255, 255};
@@ -40,7 +39,7 @@ semantic::Rgb networkColor(WifiIndicator wifi, bool provisioning) {
     case WifiIndicator::Unavailable: return kRed;
     case WifiIndicator::Connecting: return kRed;
     case WifiIndicator::TimeSyncing: return kAmber;
-    case WifiIndicator::Associated: return kBlue;
+    case WifiIndicator::Associated: return kGreen;
   }
   return kRed;
 }

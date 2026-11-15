@@ -51,6 +51,17 @@ void setLineCounts(ScreenData &data, const semantic::TrainFrame &frame,
     if(frame.occupancy[i]==semantic::kOccupancyMax) data.lines[line].atLeast=true;
   }
 }
+void formatRouteFocus(semantic::Route route,const ScreenData &data,ScreenText &out) {
+  out={};const TextWriter write(out);
+  const uint8_t line=static_cast<uint8_t>(route);
+  if(!line || line>semantic::kRouteCount) return;
+  const auto &counts=data.lines[line];
+  write(0,"Line %s only",semantic::routeName(route));
+  if(data.hasUpdate) write(1,"Trains mapped: %s%lu",counts.atLeast?">=":"",static_cast<unsigned long>(counts.trains>99999?99999:counts.trains));
+  else write(1,"Waiting for trains");
+  write(2,"Map lights: %u%s",unsigned(counts.lights),data.lightsEnabled?"":" off");
+  write(3,"Turn knob: pick line");write(4,"MODE: all saved lines");
+}
 namespace {
 void scrollText(const char *text, unsigned limit, uint32_t elapsedMs, char (&out)[22]) {
   unsigned length=0;
@@ -112,7 +123,7 @@ void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenT
         else write(3,"Uptime %lud %02u:%02u:%02u",static_cast<unsigned long>(days),
             unsigned((uptime/3600)%24),unsigned((uptime/60)%60),unsigned(uptime%60));
       }
-      write(4, "Turn knob: screen");
+      write(4,"MAC %.17s",data.mac[0]?data.mac:"unavailable");
       break;
     case Screen::Lines: {
       const uint8_t line=view.line>=1 && view.line<=semantic::kRouteCount?view.line:1;

@@ -56,6 +56,7 @@ struct ScreenData {
   FeedHealth feedHealth = FeedHealth::Waiting;
   char ip[16]{};
   char firmware[16]{};
+  char mac[18]{};
   char ssid[33]{};
   uint32_t routeMask = semantic::kAllRoutesVisibleMask;
   LineData lines[semantic::kRouteCount+1]{};
@@ -68,6 +69,7 @@ struct LineTestView {
   bool active=false, individual=false;
 };
 void formatLineTest(const LineTestView &test,ScreenText &out);
+void formatRouteFocus(semantic::Route route,const ScreenData &data,ScreenText &out);
 // Five 6x12-font lines, each <=21 characters (126 pixels).
 void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenText &out,
                   const NavigationView &view = {});

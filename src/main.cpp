@@ -331,7 +331,7 @@ void publishOledScreenData(uint32_t nowMs) {
   brooklyn::oled::setReturnSeconds(networkService.oledReturnSeconds());
   brooklyn::oled::setScreenPreferences(networkService.screenPreferences());
   data.indications = live.indications;
-  data.routeMask=networkService.routeVisibilityMask();
+  data.routeMask=live.routeFocusActive?live.effectiveRouteMask:networkService.routeVisibilityMask();
   brooklyn::oled::setLineCounts(data,operationalDisplay.frame(),live.routeLights);
   data.lightsEnabled = brooklyn::display::live::enabled();
   data.hasUpdate = operationalDisplay.hasFrame();
@@ -351,6 +351,9 @@ void publishOledScreenData(uint32_t nowMs) {
     default: break;
   }
 #if BROOKLYN_NETWORK_ENABLED
+  uint8_t mac[6]{};WiFi.macAddress(mac);
+  if(mac[0]||mac[1]||mac[2]||mac[3]||mac[4]||mac[5])
+    snprintf(data.mac,sizeof(data.mac),"%02X:%02X:%02X:%02X:%02X:%02X",mac[0],mac[1],mac[2],mac[3],mac[4],mac[5]);
   data.wifiConnected = WiFi.status() == WL_CONNECTED && static_cast<uint32_t>(WiFi.localIP())!=0;
   data.wifiConnecting = networkService.state()==brooklyn::network::State::WifiConnecting ||
       networkService.state()==brooklyn::network::State::TemporarilyUnavailable;

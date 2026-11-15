@@ -306,7 +306,7 @@ void testStatusOverlayAndRenderingBoundary() {
                                    true, display::State::Fresh, 255};
   CHECK(display::applyStatusOverlay(frame, normal));
   CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::System)], {0, 255, 0}));
-  CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::Network)], {0, 0, 255}));
+  CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::Network)], {0, 255, 0}));
   CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::MtaFeed)], {0, 255, 0}));
   CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::Mode)], {0, 0, 0}));
   const semantic::Rgb modeColors[]={{0,0,0},{0,255,255},{0,255,0},{160,0,255},{255,128,0},{255,80,160},{255,255,255},{0,0,255}};

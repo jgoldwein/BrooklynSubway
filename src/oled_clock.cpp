@@ -18,6 +18,7 @@ uint32_t trackedTrainsWord = 0;
 uint32_t visibleMapLights = 0;
 uint32_t requestedEnabled = 1;
 uint32_t setupMode = 0;
+uint32_t routeFocusWord=0;
 Navigation navigation;
 uint32_t returnSeconds = 60;
 portMUX_TYPE screenDataMux = portMUX_INITIALIZER_UNLOCKED;
@@ -62,6 +63,14 @@ void draw(const char *clock) {
   portENTER_CRITICAL(&screenDataMux);diagnostic=lineTest;portEXIT_CRITICAL(&screenDataMux);
   if(diagnostic.active) {
     ScreenText text;formatLineTest(diagnostic,text);screen.setFont(u8g2_font_6x12_tf);
+    for(uint8_t i=0;i<5;++i) screen.drawStr(0,11+i*12,text.lines[i]);
+    screen.sendBuffer();return;
+  }
+  const uint32_t focus=__atomic_load_n(&routeFocusWord,__ATOMIC_RELAXED);
+  if(focus) {
+    ScreenData data;portENTER_CRITICAL(&screenDataMux);data=screenData;portEXIT_CRITICAL(&screenDataMux);
+    ScreenText text;formatRouteFocus(static_cast<semantic::Route>(focus),data,text);
+    screen.setFont(u8g2_font_6x12_tf);
     for(uint8_t i=0;i<5;++i) screen.drawStr(0,11+i*12,text.lines[i]);
     screen.sendBuffer();return;
   }
@@ -309,6 +318,10 @@ void showEasterEgg(const ScreenText &text) {
 void clearEasterEgg() {
   portENTER_CRITICAL(&screenDataMux);easterActive=false;portEXIT_CRITICAL(&screenDataMux);requestRefresh();
 }
+void setRouteFocus(bool active,semantic::Route route) {
+  const uint32_t word=active && semantic::routeVisibilityBit(route)?static_cast<uint32_t>(route):0;
+  if(__atomic_exchange_n(&routeFocusWord,word,__ATOMIC_RELAXED)!=word) {clearBrightnessFeedback();requestRefresh();}
+}
 Screen selectedScreen() {
   portENTER_CRITICAL(&screenDataMux);
   const auto selected = navigation.view().screen;
@@ -400,5 +413,5 @@ Status status() {
 }
 }
 #else
-namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void setSetupMode(bool) {} void setScreenPreferences(uint64_t) {} bool quietHoursActive(time_t) {return false;} uint8_t quietMapBrightness() {return 255;} void publishScreenData(const ScreenData &) {} void showLineTest(semantic::Route,uint8_t,uint16_t,uint16_t,bool) {} void clearLineTest() {} void showEasterEgg(const ScreenText &) {} void clearEasterEgg() {} Screen selectedScreen() { return Screen::Main; } void advanceScreen() {} void navigate(Action,uint32_t) {} void serviceNavigation(uint32_t,bool) {} void setReturnSeconds(uint16_t) {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} void setTrackedTrains(uint32_t, bool) {} void setVisibleMapLights(uint16_t) {} Status status() { return {}; } }
+namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void setSetupMode(bool) {} void setScreenPreferences(uint64_t) {} bool quietHoursActive(time_t) {return false;} uint8_t quietMapBrightness() {return 255;} void publishScreenData(const ScreenData &) {} void showLineTest(semantic::Route,uint8_t,uint16_t,uint16_t,bool) {} void clearLineTest() {} void showEasterEgg(const ScreenText &) {} void clearEasterEgg() {} void setRouteFocus(bool,semantic::Route) {} Screen selectedScreen() { return Screen::Main; } void advanceScreen() {} void navigate(Action,uint32_t) {} void serviceNavigation(uint32_t,bool) {} void setReturnSeconds(uint16_t) {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} void setTrackedTrains(uint32_t, bool) {} void setVisibleMapLights(uint16_t) {} Status status() { return {}; } }
 #endif

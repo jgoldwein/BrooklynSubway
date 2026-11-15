@@ -137,3 +137,24 @@ stays displayed until you turn away; weather retains the ordinary return timeout
 Both screens have a thin border. Clock also shows valid outside temperature.
 Screen order ends with Lines, Clock, Weather, then Happy Bar Mitzvah.
 Alarm clock is a future feature, not included in this preview.
+
+
+### MODE button: temporary line focus (private COM6 preview)
+
+Press MODE to show one subway line, then turn the rotary knob to choose among
+all 18 lines. The OLED shows that line and its mapped train/light counts. Press
+MODE again to restore the current saved route selection and normal screen
+browsing. The last focused line is remembered only until reboot. Focus can show
+a line hidden by saved settings; it never writes or replaces those settings.
+Changes saved on the web page during focus take effect when focus ends.
+
+POWER, brightness, quiet hours, diagnostics, the TEST+ROUTE easter-egg chord,
+and the ten-second rotary Wi-Fi recovery hold retain their functions. Recovery
+exits focus; ROUTE exits focus and opens/toggles the normal Lines browser.
+Short rotary press has no action during focus. The prior OLED page/line-browser
+state resumes after MODE exits, with idle timers paused during focus. MODE
+indicator LED307 is amber during focus, within existing brightness limits.
+
+NETWORK LED251 now shows green once connected/ready; connecting/unavailable
+remain red, time synchronization amber, and setup cyan. Device OLED page shows
+the Wi-Fi MAC address, matching the station interface displayed by UniFi.

@@ -23,6 +23,7 @@ void showLineTest(semantic::Route route,uint8_t color,uint16_t current,uint16_t 
 void clearLineTest();
 void showEasterEgg(const ScreenText &text);
 void clearEasterEgg();
+void setRouteFocus(bool active,semantic::Route route);
 Screen selectedScreen();
 void advanceScreen();
 void navigate(Action action, uint32_t nowMs);

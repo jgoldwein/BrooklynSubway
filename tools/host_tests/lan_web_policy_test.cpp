@@ -1178,6 +1178,11 @@ int main() {
   {brooklyn::web::StatusSnapshot busy;CHECK(!brooklyn::web::otaTransportBusy(busy));
    busy.networkBusy=true;CHECK(brooklyn::web::otaTransportBusy(busy));
    busy.networkBusy=false;busy.fetchingFeeds=true;CHECK(brooklyn::web::otaTransportBusy(busy));}
+  {brooklyn::web::StatusSnapshot focus;focus.routeVisibilityMask=0;focus.routeFocusActive=true;focus.focusedRoute=brooklyn::semantic::Route::RouteF;
+   char result[6144];CHECK(brooklyn::web::effectiveRouteMask(focus)==256);
+   CHECK(brooklyn::web::renderStatusJson(result,sizeof(result),focus,5,0)>0);
+   CHECK(strstr(result,"\"routeVisibilityMask\":0") && strstr(result,"\"routeFocusActive\":true") && strstr(result,"\"routeFocusRoute\":\"F\"") && strstr(result,"\"effectiveRouteMask\":256"));
+   focus.routeFocusActive=false;CHECK(brooklyn::web::effectiveRouteMask(focus)==0);}
   testPersistentConfiguration();
   testDnsConfigurationAndValidation();
   testDnsSettingsFormParsing();

@@ -26,6 +26,9 @@ struct Operations {
 };
 
 struct OutputStats {
+  uint32_t effectiveRouteMask=semantic::kAllRoutesVisibleMask;
+  semantic::Route focusedRoute=semantic::Route::None;
+  bool routeFocusActive=false;
   uint32_t framesWritten = 0;
   uint32_t lastWriteAtMs = 0;
   uint32_t mapChanges = 0;
@@ -64,6 +67,17 @@ class Controller {
   bool consumeRebootRequest() { const bool r = rebootRequested_; rebootRequested_ = false; return r; }
   void setOledScreen(uint8_t screen) { if (screen != oledScreen_) { oledScreen_ = screen; dirty_ = true; } }
   void setQuietBrightness(uint8_t cap) {if(quietBrightness_!=cap){quietBrightness_=cap;dirty_=true;}}
+  void toggleRouteFocus() {routeFocusActive_=!routeFocusActive_;dirty_=true;}
+  void turnRouteFocus(int8_t direction) {
+    if(!routeFocusActive_ || !direction) return;
+    const uint8_t route=static_cast<uint8_t>(focusedRoute_);
+    focusedRoute_=static_cast<semantic::Route>(direction>0?(route==semantic::kRouteCount?1:route+1):(route==1?semantic::kRouteCount:route-1));
+    dirty_=true;
+  }
+  void clearRouteFocus() {if(routeFocusActive_){routeFocusActive_=false;dirty_=true;}}
+  bool routeFocusActive() const {return routeFocusActive_;}
+  semantic::Route focusedRoute() const {return focusedRoute_;}
+  uint32_t effectiveRouteMask() const {return routeFocusActive_?semantic::routeVisibilityBit(focusedRoute_):snapshot_.routeMask;}
  private:
   bool safe(uint32_t nowMs) const;
   bool powerPress(uint32_t nowMs, bool pressed);
@@ -77,6 +91,8 @@ class Controller {
   uint32_t indicationSequence_=0, lastObservationAtMs_=0;
   uint8_t indicationHead_=0, indicationSize_=0;
   Snapshot snapshot_{};
+  bool routeFocusActive_=false;
+  semantic::Route focusedRoute_=static_cast<semantic::Route>(1);
   bool enabled_ = false;
   bool armed_ = false;
   bool dirty_ = true;

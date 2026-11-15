@@ -140,6 +140,10 @@ int main() {
   data.sampledAtMs=UINT32_MAX-499;
   formatScreen(Screen::Device,data,500,text);CHECK(strcmp(text.lines[3],"Uptime 49d 02:03:05")==0);
   data.uptimeSeconds=UINT64_MAX;formatScreen(Screen::Device,data,500,text);CHECK(strcmp(text.lines[3],"Uptime >9999 days")==0);
+  strcpy(data.mac,"28:84:85:34:1F:74");formatScreen(Screen::Device,data,2000,text);CHECK(strcmp(text.lines[4],"MAC 28:84:85:34:1F:74")==0);
+  data.hasUpdate=true;data.lightsEnabled=true;data.lines[9].trains=12;data.lines[9].lights=8;data.lines[9].atLeast=false;
+  formatRouteFocus(brooklyn::semantic::Route::RouteF,data,text);CHECK(strcmp(text.lines[0],"Line F only")==0 && strcmp(text.lines[1],"Trains mapped: 12")==0);
+  CHECK(strcmp(text.lines[4],"MODE: all saved lines")==0);for(const auto &line:text.lines) CHECK(strlen(line)<=21);
   puts("Dedication text, all eight scrolling names, 64-bit uptime and millis rollover PASS");
   puts("OLED navigation: turn screens / press to browse lines, context exit, auto pause, remembered line, timeout/Stay, rollover, rotary bounce, long press, SSID scrolling and shared-light counts PASS");
 }

@@ -290,5 +290,36 @@ int main() {
     frame.frameAtMs=100001;stale.publish(frame);stale.service(100001,false,false,ops);CHECK(stale.enabled());
     puts("Quiet LED policy: off/unarm, dim ceiling, normal restore, manual POWER/fault preservation and fresh-data gating PASS");
   }
+  {
+    live::Controller focus;auto s=snapshot();semantic::clearFrame(s.frame);
+    for(uint16_t i=0;i<306;++i) if(semantic::semanticForLed(i)) CHECK(semantic::addValidatedLed(s.frame,i));
+    s.routeMask=0;focus.publish(s);CHECK(focus.enable(0));focus.service(0,false,false,ops);
+    CHECK(focus.stats().visibleMapLeds==0 && !focus.routeFocusActive());
+    focus.toggleRouteFocus();
+    for(uint8_t r=1;r<=semantic::kRouteCount;++r) {
+      CHECK(static_cast<uint8_t>(focus.focusedRoute())==r);
+      focus.service(r,false,false,ops);
+      CHECK(focus.stats().routeFocusActive && focus.stats().effectiveRouteMask==(1u<<(r-1)));
+      CHECK(focus.stats().visibleMapLeds>0);
+      for(uint16_t i=0;i<306;++i) {
+        const auto *mapped=semantic::semanticForLed(i);
+        if(mapped) CHECK(lit(i)==(static_cast<uint8_t>(mapped->route)==r));
+      }
+      focus.turnRouteFocus(1);
+    }
+    focus.turnRouteFocus(-1);CHECK(static_cast<uint8_t>(focus.focusedRoute())==18);
+    const auto selected=focus.focusedRoute();
+    s.routeMask=semantic::routeVisibilityBit(semantic::Route::RouteF);focus.publish(s);
+    CHECK(focus.effectiveRouteMask()==semantic::routeVisibilityBit(selected));
+    focus.toggleRouteFocus();focus.service(20,false,false,ops);
+    CHECK(!focus.routeFocusActive() && focus.effectiveRouteMask()==s.routeMask);
+    for(uint16_t i=0;i<306;++i) {const auto *m=semantic::semanticForLed(i);if(m) CHECK(lit(i)==(m->route==semantic::Route::RouteF));}
+    focus.toggleRouteFocus();CHECK(focus.focusedRoute()==selected);
+    focus.setQuietBrightness(0);focus.service(21,false,false,ops);CHECK(!focus.enabled() && focus.routeFocusActive());
+    focus.setQuietBrightness(255);focus.service(22,false,false,ops);CHECK(focus.enabled() && focus.routeFocusActive());
+    focus.service(23,false,true,ops);CHECK(!focus.routeFocusActive() && !focus.enabled());
+    focus.toggleRouteFocus();s.status.provisioning=true;focus.publish(s);CHECK(!focus.routeFocusActive());
+    puts("Route focus: all 18 actual map filters, wrap, saved-zero override, latest saved restore, quiet preservation and recovery/setup exit PASS");
+  }
   puts("Live display: safe startup, automatic/manual enable, continuous color, four POWER modes, release debounce, 3-second reboot once, boot-held suppression, test restoration, maintenance/fault guards, stale timeout, brightness/current caps, MODE overlay and rollover PASS");
 }

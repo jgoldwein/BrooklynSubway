@@ -22,7 +22,7 @@ Controller controller(true);
 bool recoveryRequested = false;
 bool recoveryPending = false;
 controls::TestButton testButton;
-controls::TestButton routeButton, rotaryButton;
+controls::TestButton routeButton, rotaryButton, modeButton;
 controls::RotaryEncoder rotaryEncoder;
 controls::BrightnessButtons brightnessButtons;
 constexpr uint8_t kBrightnessQueueSize = 8;
@@ -54,6 +54,7 @@ void run(void *) {
     controller.setQuietBrightness(quietCap);
     const bool testReleased = testButton.update(digitalRead(pins::BUTTON_TEST) == LOW, nowMs);
     const bool routeReleased = routeButton.update(digitalRead(pins::BUTTON_ROUTE) == LOW, nowMs);
+    const bool modeReleased=modeButton.update(digitalRead(pins::BUTTON_MODE)==LOW,nowMs);
     const bool rotaryReleased = rotaryButton.update(digitalRead(pins::ROTARY_PUSH) == LOW, nowMs);
     const int8_t rotaryStep=rotaryEncoder.update(digitalRead(pins::ROTARY_A)!=LOW,digitalRead(pins::ROTARY_B)!=LOW);
     const bool eggReleased=easterChord.update(digitalRead(pins::BUTTON_TEST)==LOW,digitalRead(pins::BUTTON_ROUTE)==LOW,nowMs);
@@ -62,19 +63,29 @@ void run(void *) {
     if (recovery) recoveryRequested = recoveryPending = true;
     if (!recoveryRequested && digitalRead(pins::ROTARY_PUSH) != LOW) recoveryPending = false;
     if (!diagnosticDepth && !recoveryPending && !recovery) {
-      if (rotaryReleased && rotaryButton.heldMs()<1000) oled::navigate(oled::Action::Select,nowMs);
-      if (routeReleased && !easterChord.suppressed()) oled::navigate(oled::selectedScreen()==oled::Screen::Lines?oled::Action::ToggleAuto:oled::Action::OpenLines,nowMs);
+      if(modeReleased) {
+        controller.toggleRouteFocus();
+        Serial.printf("Route focus: %s; line %s; saved routes unchanged\n",controller.routeFocusActive()?"ON":"OFF",semantic::routeName(controller.focusedRoute()));
+      }
+      if (rotaryReleased && !controller.routeFocusActive() && rotaryButton.heldMs()<1000) oled::navigate(oled::Action::Select,nowMs);
+      if (routeReleased && !easterChord.suppressed()) {
+        controller.clearRouteFocus();
+        oled::navigate(oled::selectedScreen()==oled::Screen::Lines?oled::Action::ToggleAuto:oled::Action::OpenLines,nowMs);
+      }
       if (rotaryStep) {
-        oled::navigate(rotaryStep>0?oled::Action::TurnNext:oled::Action::TurnPrevious,nowMs);
+        if(controller.routeFocusActive()) {
+          controller.turnRouteFocus(rotaryStep);
+          Serial.printf("Route focus: line %s\n",semantic::routeName(controller.focusedRoute()));
+        } else oled::navigate(rotaryStep>0?oled::Action::TurnNext:oled::Action::TurnPrevious,nowMs);
         hardware::requestKnobClick();
       }
     }
     hardware::serviceKnobClick(nowMs,!diagnosticDepth && !recoveryPending && !recovery);
-    oled::serviceNavigation(nowMs,!diagnosticDepth && !recoveryPending && controller.screenEnabled() &&
+    oled::serviceNavigation(nowMs,!diagnosticDepth && !recoveryPending && !controller.routeFocusActive() && controller.screenEnabled() &&
         digitalRead(pins::ROTARY_PUSH)!=LOW && digitalRead(pins::BUTTON_POWER)!=LOW &&
         digitalRead(pins::BUTTON_BRIGHT)!=LOW && digitalRead(pins::BUTTON_DIM)!=LOW &&
         digitalRead(pins::BUTTON_ROUTE)!=LOW && digitalRead(pins::BUTTON_TEST)!=LOW);
-    controller.setOledScreen(static_cast<uint8_t>(oled::selectedScreen()));
+    controller.setOledScreen(static_cast<uint8_t>(controller.routeFocusActive()?oled::Screen::Lines:oled::selectedScreen()));
     const bool wasEnabled = controller.enabled();
     controller.service(nowMs, digitalRead(pins::BUTTON_POWER) == LOW,
                        recoveryPending, operations);
@@ -82,6 +93,7 @@ void run(void *) {
         ? "Live display paused by POWER; press POWER again to resume"
         : "Live display stopped; GPIO1 LOW; press POWER when fresh data returns");
     if (!wasEnabled && controller.enabled()) Serial.println("Live display started/resumed after checks");
+    oled::setRouteFocus(controller.routeFocusActive(),controller.focusedRoute());
     const uint8_t powerMode = controller.stats().powerMode;
     if (powerMode != previousPowerMode) {
       previousPowerMode = powerMode;
@@ -117,7 +129,7 @@ bool begin() {
     return false;
   }
   Serial.println("Live display ready: GPIO1 enable; GPIO4/5/6/7/10/11/12/13 data; auto-start after healthy fresh data; cap 16/255; POWER cycles LEDs/OLED; hold 3 seconds to reboot");
-  Serial.println("OLED controls: rotary GPIO15/16 turn=screen; GPIO17 press on Lines=enter/leave line browsing, 10s hold=Wi-Fi setup; ROUTE GPIO38=Lines/Auto/Pause; MODE button unassigned; MODE LED307 ch8 index3 off/cyan/green/purple/amber/pink/white/blue");
+  Serial.println("OLED controls: rotary GPIO15/16 turn=screen; GPIO17 press on Lines=enter/leave line browsing, 10s hold=Wi-Fi setup; ROUTE GPIO38=Lines/Auto/Pause; MODE GPIO41=temporary line focus; turn=pick line; press MODE=restore saved routes; MODE LED307 ch8 index3 off/cyan/green/purple/amber/pink/white/blue");
   Serial.println("Rotary feedback: two transitions per detent; GPIO21 2000 Hz / 15 ms click with 15 ms gap, nonblocking");
   return true;
 }
@@ -228,6 +240,7 @@ void endDiagnostic() {
   if (!diagnosticDepth) {
     easterRequested=false;
     easterChord=eggs::Chord{};
+    modeButton.reset(digitalRead(pins::BUTTON_MODE)==LOW,millis());
     testButton.reset(digitalRead(pins::BUTTON_TEST) == LOW, millis());
     routeButton.reset(digitalRead(pins::BUTTON_ROUTE) == LOW, millis());
     rotaryButton.reset(digitalRead(pins::ROTARY_PUSH) == LOW, millis());

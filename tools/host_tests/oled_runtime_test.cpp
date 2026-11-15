@@ -14,6 +14,7 @@ char lastScreenTitle[24]{};
 int borderDraws=0;
 int clockOnlyDraws=0,dateOnlyDraws=0;
 char lastOutside[24]{};
+char lastMac[24]{};
 extern int scenario;
 extern "C" time_t time(time_t *out) {const time_t value=scenario==46?1790395200:1768498496;if(out)*out=value;return value;}
 int setupTitles=0,setupNames=0,setupAddresses=0;
@@ -41,6 +42,8 @@ void delay(uint32_t ms){OLED_CHECK(ms==100);++retryDelays;}
 void vTaskDelete(void *) {++deletes;}
 void vTaskDelay(uint32_t ms) {
  OLED_CHECK(ms==20);++delays;fakeNowMs+=(scenario==19 || scenario==39)?1000:20;
+ if(scenario==50 && delays==1) {brooklyn::oled::setRouteFocus(false,brooklyn::semantic::Route::None);return;}
+ if(scenario==53 && delays==1) {brooklyn::oled::clearLineTest();return;}
  if(scenario==43 && delays==1) {brooklyn::oled::clearEasterEgg();return;}
  if(scenario==46 && delays<=2) {
    using namespace brooklyn::oled;
@@ -153,6 +156,19 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
    if(scenario==47 || scenario==49) navigate(Action::TurnPrevious,fakeNowMs);
    if(scenario==48 || scenario==49) {ScreenData data;data.sampledAtMs=fakeNowMs;data.unixTime=1768498496;data.weather={1768498200,486,2,true,true,false};publishScreenData(data);}
  }
+ if(scenario>=50 && scenario<=53) {
+   using namespace brooklyn::oled;
+   if(scenario==50) for(int i=0;i<3;++i) navigate(Action::TurnPrevious,fakeNowMs);
+   ScreenData data;data.hasUpdate=true;data.lightsEnabled=true;data.lines[9].trains=13;data.lines[9].lights=5;publishScreenData(data);
+   setRouteFocus(true,brooklyn::semantic::Route::RouteF);
+   if(scenario==51) setSetupMode(true);
+   if(scenario==52) setEnabled(false);
+   if(scenario==53) showLineTest(brooklyn::semantic::Route::RouteF,0,12,12,false);
+ }
+ if(scenario==54) {
+   brooklyn::oled::ScreenData data;strcpy(data.mac,"28:84:85:34:1F:74");brooklyn::oled::publishScreenData(data);
+   for(int i=0;i<3;++i) brooklyn::oled::advanceScreen();
+ }
  const uint8_t preferred=scenario==11?0x3c:0x38;
  brooklyn::oled::begin(preferred,scenario==12||scenario==13?32:207);OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
  if(scenario==6){OLED_CHECK(worker==nullptr);puts("OLED task allocation failure isolated PASS");return 0;}
@@ -205,5 +221,10 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==47) OLED_CHECK(frames==2 && titles==0 && clockOnlyDraws==2 && dateOnlyDraws==2 && borderDraws==2);
  if(scenario==48) OLED_CHECK(frames==2 && titles==0 && strcmp(lastScreenTitle,"Brooklyn weather 7/8")==0 && borderDraws==2);
  if(scenario==49) OLED_CHECK(frames==2 && borderDraws==2 && strcmp(lastOutside,"Outside: 48.6 F")==0);
+ if(scenario==50) OLED_CHECK(frames==3 && clockOnlyDraws==1 && brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Clock);
+ if(scenario==51) OLED_CHECK(frames==2 && setupTitles==2);
+ if(scenario==52) OLED_CHECK(frames==1 && powerCommands==1);
+ if(scenario==53) OLED_CHECK(frames==3 && strcmp(lastScreenTitle,"Line F only")==0);
+ if(scenario==54) OLED_CHECK(frames==2 && strcmp(lastMac,"MAC 28:84:85:34:1F:74")==0);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

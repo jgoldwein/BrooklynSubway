@@ -1942,6 +1942,8 @@ void LanWebUi::updateAdminStatus(StatusSnapshot &status) {
   status.oledAddress = configuration_.oledAddress();
   status.oledStatus = oled::status();
   const auto output = display::live::stats();
+  status.routeFocusActive=output.routeFocusActive;
+  status.focusedRoute=output.focusedRoute;
   status.physicalPowerPaused = output.powerCanResume;
   status.physicalFramesWritten = output.framesWritten;
   status.physicalMapChanges = output.mapChanges;

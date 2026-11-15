@@ -73,6 +73,8 @@ struct StatusSnapshot {
   bool physicalLiveAvailable = false;
   bool physicalLedOutputEnabled = false;
   bool physicalPowerPaused = false;
+  bool routeFocusActive=false;
+  semantic::Route focusedRoute=semantic::Route::None;
   uint32_t physicalFramesWritten = 0;
   uint32_t physicalMapChanges = 0;
   uint32_t physicalFrameAgeSeconds = 0;
@@ -121,6 +123,9 @@ struct StatusSnapshot {
 };
 
 inline bool otaTransportBusy(const StatusSnapshot &status) {return status.fetchingFeeds || status.networkBusy;}
+inline uint32_t effectiveRouteMask(const StatusSnapshot &status) {
+  return status.routeFocusActive?semantic::routeVisibilityBit(status.focusedRoute):status.routeVisibilityMask;
+}
 size_t renderRuntimeJson(char *out, size_t capacity, const observation::RuntimeReport &report);
 
 bool parseIndicationCursor(const char *text, uint32_t &after);

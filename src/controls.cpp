@@ -84,7 +84,7 @@ void begin() {
     // The production live worker owns TEST sampling during blocking fetches.
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
     if (button.pin == brooklyn::pins::BUTTON_TEST || button.pin == brooklyn::pins::BUTTON_ROUTE || button.pin == brooklyn::pins::ROTARY_PUSH || button.pin == brooklyn::pins::BUTTON_DIM ||
-        button.pin == brooklyn::pins::BUTTON_BRIGHT) continue;
+        button.pin == brooklyn::pins::BUTTON_BRIGHT || button.pin == brooklyn::pins::BUTTON_MODE) continue;
 #endif
     const bool pressed = isPressed(button.pin);
     button.stablePressed = pressed;
@@ -102,7 +102,7 @@ void update() {
   for (Button &button : buttons) {
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
     if (button.pin == brooklyn::pins::BUTTON_TEST || button.pin == brooklyn::pins::BUTTON_ROUTE || button.pin == brooklyn::pins::ROTARY_PUSH || button.pin == brooklyn::pins::BUTTON_DIM ||
-        button.pin == brooklyn::pins::BUTTON_BRIGHT) continue;
+        button.pin == brooklyn::pins::BUTTON_BRIGHT || button.pin == brooklyn::pins::BUTTON_MODE) continue;
 #endif
     const bool pressed = isPressed(button.pin);
     if (pressed != button.lastReadingPressed) {
