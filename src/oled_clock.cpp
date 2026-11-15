@@ -69,6 +69,13 @@ void draw(const char *clock) {
   view = navigation.view();
   portEXIT_CRITICAL(&screenDataMux);
   const Screen selected = view.screen;
+  if(selected==Screen::Clock) {
+    const time_t now=time(nullptr);char date[24],localClock[24];
+    formatDate(now,date,sizeof(date));formatClock(now,localClock,sizeof(localClock));
+    screen.setFont(u8g2_font_8x13_tf);screen.drawStr((128-screen.getStrWidth(localClock))/2,29,localClock);
+    screen.setFont(u8g2_font_6x12_tf);screen.drawStr((128-screen.getStrWidth(date))/2,50,date);
+    screen.sendBuffer();return;
+  }
   if (selected != Screen::Main) {
     ScreenData data;
     portENTER_CRITICAL(&screenDataMux);
@@ -85,7 +92,7 @@ void draw(const char *clock) {
     return;
   }
   screen.setFont(u8g2_font_6x12_tf);
-  screen.drawStr((128 - screen.getStrWidth("Brooklyn Subway 1/6")) / 2, 16, "Brooklyn Subway 1/6");
+  screen.drawStr((128 - screen.getStrWidth("Brooklyn Subway 1/8")) / 2, 16, "Brooklyn Subway 1/8");
   const uint32_t trains = __atomic_load_n(&trackedTrainsWord, __ATOMIC_RELAXED);
   char count[24];
   if (trains & 0x80000000u) snprintf(count, sizeof(count), "Trains:%lu Lit:%u", static_cast<unsigned long>(trains & 0x7fffffffu), unsigned(__atomic_load_n(&visibleMapLights,__ATOMIC_RELAXED)));

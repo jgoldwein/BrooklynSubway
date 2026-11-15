@@ -501,6 +501,11 @@ HttpsFeedConnection &connection() {
   static HttpsFeedConnection instance(kDefaultNetworkConfig);
   return instance;
 }
+HttpsFeedConnection &weatherConnection() {
+  static const NetworkConfig config=[](){auto c=kDefaultNetworkConfig;c.connectTimeoutMs=2500;c.readIdleTimeoutMs=2500;c.feedDeadlineMs=6000;return c;}();
+  static HttpsFeedConnection instance(config);
+  return instance;
+}
 
 const char *stateName(State s) {
   switch (s) {
@@ -832,6 +837,19 @@ void NetworkService::pollWorker(void *context) {
   auto &self=*static_cast<NetworkService *>(context);
   for (;;) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    if(self.workerWeather_) {
+      size_t length=0;
+      const auto status=transport::downloadFeed(weatherConnection(),weather::kUrl,
+          {self.buffer_.data,1024},true,length);
+      self.workerWeatherOk_=status==transport::DownloadStatus::Ok &&
+          weather::parseCsv(self.buffer_.data,length,self.workerWeatherResult_);
+      const uint32_t now=static_cast<uint32_t>(time(nullptr));
+      if(self.workerWeatherOk_ && self.workerWeatherResult_.sourceUnix>now+300) self.workerWeatherOk_=false;
+      self.workerCompletedAtMs_=millis();
+      Serial.printf("Brooklyn weather: %s; download %s; bytes %u; source Open-Meteo\n",
+          self.workerWeatherOk_?"updated":"unavailable",transport::downloadStatusName(status),unsigned(length));
+      self.pollHandoff_.finish();continue;
+    }
     static const MillisClock clock;
     FailureLogger logger(self.workerFailures_,connection());
     DeferredPipelineSink sink(self.pipeline_, self.workerConfig_);
@@ -859,6 +877,7 @@ void NetworkService::pollNow(uint32_t nowMs) {
     Serial.println("Network: bounded feed worker ready; loop remains available for web and controls");
   }
   workerConfig_={};
+  workerWeather_=false;
   workerConfig_.brightness=configuration_.brightness();
   workerConfig_.blueHoldSeconds=configuration_.blueHoldSeconds();
   workerCounters_=counters_;
@@ -869,6 +888,12 @@ void NetworkService::pollNow(uint32_t nowMs) {
 
 void NetworkService::collectPollResult() {
   if (!pollHandoff_.take()) return;
+  if(workerWeather_) {
+    weatherAttemptAtMs_=workerCompletedAtMs_;
+    if(workerWeatherOk_) weather_=workerWeatherResult_;
+    weather_.attempted=true;weather_.lastFailed=!workerWeatherOk_;
+    return;
+  }
   counters_=workerCounters_;
   completedCycle_=workerResult_;
   completedCycleAtMs_=workerCompletedAtMs_;
@@ -928,7 +953,13 @@ void NetworkService::update(uint32_t nowMs) {
         state_ = State::WifiConnecting;
         return;
       }
-      if (!fetchingFeeds() && !recoveryRequested_ && networkDiagnostics_.snapshot().state != diagnostics::RunState::Running && scheduler_.due(nowMs)) pollNow(nowMs);
+      if (!fetchingFeeds() && !recoveryRequested_ && networkDiagnostics_.snapshot().state != diagnostics::RunState::Running) {
+        if(scheduler_.due(nowMs)) pollNow(nowMs);
+        else if(hasLatestCycle_ && pollTask_ && weather::due(weather_.attempted,weatherAttemptAtMs_,nowMs,completedCycleAtMs_)) {
+          workerWeather_=true;workerWeatherOk_=false;workerWeatherResult_={};
+          if(pollHandoff_.start()) xTaskNotifyGive(static_cast<TaskHandle_t>(pollTask_));
+        }
+      }
       return;
   }
 }
@@ -1074,7 +1105,8 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
   webStatus_.psramFeedBufferPresent = buffer_.data != nullptr;
   webStatus_.transportCounters = counters_;
   webStatus_.networkDiagnostics = networkDiagnostics_.snapshot();
-  webStatus_.fetchingFeeds=fetchingFeeds();
+  webStatus_.networkBusy=fetchingFeeds();
+  webStatus_.fetchingFeeds=webStatus_.networkBusy && !workerWeather_;
   lanWebUi_.service(webStatus_);
   applyDnsOverride();
 

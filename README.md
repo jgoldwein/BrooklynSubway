@@ -111,3 +111,26 @@ release and security workflow.
 The full license texts are in `LICENSES/`.
 
 The production scaffold deliberately leaves all 306 map/status LED outputs disabled. LED bring-up should be a separate reviewed step after the assembled board is electrically checked.
+
+
+### Brooklyn weather (private OLED preview)
+
+The OLED Weather screen uses Open-Meteo model-based current conditions for
+central Brooklyn (40.6782, -73.9442), in Fahrenheit. Data attribution:
+[Open-Meteo](https://open-meteo.com/) / [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
+API details: https://open-meteo.com/en/docs . This gift/prototype uses the free
+non-commercial endpoint without an API key. Weather is not a board thermometer.
+
+Requests run approximately every 15 minutes, only in the idle window after an
+MTA cycle, through the same background worker. Certificate validation uses the
+existing framework CA bundle; no insecure mode or extra TLS task is added.
+A 1024-byte bounded CSV response is checked for Fahrenheit units, timestamps,
+valid numbers and a complete terminated row. HTTP/1.0 weather responses without
+Content-Length are accepted until close; MTA unknown-length policy is unchanged.
+Existing shared PSRAM buffer is reused. Weather errors do not alter MTA counters
+or map data. Previous weather remains visibly aged; after an hour it is labeled
+old and after three hours the numbers are hidden. No weather is saved to NVS.
+
+Clock/date and weather screens respect OLED POWER/quiet-hour settings and the
+existing screen return timeout; choose Stay on this screen to leave a clock up.
+Alarm clock is a future feature, not included in this preview.

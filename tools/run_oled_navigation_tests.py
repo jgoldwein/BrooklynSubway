@@ -8,7 +8,7 @@ def main():
     with tempfile.TemporaryDirectory() as tmp:
         exe = Path(tmp) / "oled_navigation_test.exe"
         if h.build(h.ROOT / "tools/host_tests/oled_navigation_test.cpp", exe,
-                   extra=[h.ROOT / "src/oled_navigation.cpp", h.ROOT / "src/oled_screens.cpp"]):
+                   extra=[h.ROOT / "src/oled_navigation.cpp", h.ROOT / "src/weather.cpp", h.ROOT / "src/oled_screens.cpp"]):
             return 1
         return subprocess.call([str(exe)])
 

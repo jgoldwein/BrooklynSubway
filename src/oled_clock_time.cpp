@@ -45,4 +45,13 @@ bool formatClock(time_t utc, char *out, size_t capacity) {
       calendar.tm_sec, calendar.tm_hour < 12 ? "AM" : "PM");
   return written > 0 && static_cast<size_t>(written) < capacity;
 }
+bool formatDate(time_t utc,char *out,size_t capacity) {
+  if(!out || !capacity) return false;
+  struct tm local{};
+  if(!newYorkCalendar(utc,local)) {snprintf(out,capacity,"Waiting for time");return false;}
+  constexpr const char *days[]={"Sun","Mon","Tue","Wed","Thu","Fri","Sat"};
+  constexpr const char *months[]={"Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"};
+  const int n=snprintf(out,capacity,"%s, %s %d, %d",days[local.tm_wday],months[local.tm_mon],local.tm_mday,local.tm_year+1900);
+  return n>0 && size_t(n)<capacity;
+}
 }

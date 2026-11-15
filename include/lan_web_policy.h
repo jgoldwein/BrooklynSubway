@@ -88,6 +88,7 @@ struct StatusSnapshot {
   uint32_t unixTime = 0;
   display::State displayState = display::State::WaitingForData;
   bool fetchingFeeds = false;
+  bool networkBusy = false; // Shared background worker, including weather TLS.
   bool hasCycle = false;
   transport::CycleOutcome cycleOutcome = transport::CycleOutcome::NoFeeds;
   uint16_t processedFeedMask = 0;
@@ -119,6 +120,7 @@ struct StatusSnapshot {
   network::diagnostics::Snapshot networkDiagnostics{};
 };
 
+inline bool otaTransportBusy(const StatusSnapshot &status) {return status.fetchingFeeds || status.networkBusy;}
 size_t renderRuntimeJson(char *out, size_t capacity, const observation::RuntimeReport &report);
 
 bool parseIndicationCursor(const char *text, uint32_t &after);

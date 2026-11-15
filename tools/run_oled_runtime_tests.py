@@ -21,7 +21,7 @@ def main():
             f"-I{h.ROOT / 'tools/host_tests/oled_stubs'}", f"-I{h.ROOT / 'include'}",
             str(h.ROOT / "tools/host_tests/oled_runtime_test.cpp"),
             str(h.ROOT / "src/oled_clock.cpp"),
-            str(h.ROOT / "src/oled_clock_time.cpp"), str(h.ROOT / "src/oled_screens.cpp"), str(h.ROOT / "src/oled_navigation.cpp"), str(h.ROOT / "src/semantic_api.cpp"), str(h.ROOT / "src/generated/semantic_tables.cpp"), str(h.ROOT / "src/led_map.cpp"), "-o", str(exe),
+            str(h.ROOT / "src/oled_clock_time.cpp"), str(h.ROOT / "src/weather.cpp"),str(h.ROOT / "src/oled_screens.cpp"), str(h.ROOT / "src/oled_navigation.cpp"), str(h.ROOT / "src/semantic_api.cpp"), str(h.ROOT / "src/generated/semantic_tables.cpp"), str(h.ROOT / "src/led_map.cpp"), "-o", str(exe),
         ]
         build = subprocess.run(command, capture_output=True, text=True)
         if build.returncode != 0:
@@ -29,7 +29,7 @@ def main():
             print(build.stderr, end="")
             return build.returncode
 
-        for scenario in range(47):
+        for scenario in range(49):
             run = subprocess.run([str(exe), str(scenario)], capture_output=True, text=True)
             print(run.stdout, end="")
             print(run.stderr, end="")

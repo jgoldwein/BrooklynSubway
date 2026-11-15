@@ -1305,7 +1305,7 @@ void LanWebUi::handleUpdateReboot() {
 }
 
 void LanWebUi::serviceFirmwareUpdates(uint32_t nowMs) {
-  if (status_.fetchingFeeds) return; // no simultaneous MTA and OTA TLS/flash work
+  if (otaTransportBusy(status_)) return; // No background download overlaps OTA TLS/flash.
   if (installReleaseRequested_) {
     installReleaseRequested_ = false;
     installPhase_ = 1;
@@ -1647,7 +1647,7 @@ void LanWebUi::handleUpdateRaw() {
     case RAW_START: {
       updateStarted_ = true;
       updateDeniedStatus_ = installPhase_ == 1 ? 409 : updateAuthorizationStatus();
-      if (!updateDeniedStatus_ && status_.fetchingFeeds) updateDeniedStatus_=503;
+      if (!updateDeniedStatus_ && otaTransportBusy(status_)) updateDeniedStatus_=503;
       updateResult_ = ota::Result::NotStarted;
       if (updateDeniedStatus_ != 0) {
         Serial.printf("OTA: upload denied (HTTP %d)\n", updateDeniedStatus_);

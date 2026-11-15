@@ -7,6 +7,7 @@
 namespace brooklyn::oled {
 // New York civil time; independent of the UTC SNTP configuration.
 bool formatClock(time_t utc, char *out, size_t capacity);
+bool formatDate(time_t utc,char *out,size_t capacity);
 bool newYorkMinutes(time_t utc,uint16_t &minute);
 uint16_t newYorkAnniversaryYear(time_t utc);
 void setScreenPreferences(uint64_t word);

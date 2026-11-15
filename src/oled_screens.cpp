@@ -26,6 +26,8 @@ const char *screenName(Screen screen) {
     case Screen::Device: return "Device";
     case Screen::Lines: return "Subway lines";
     case Screen::Dedication: return "For Avi";
+    case Screen::Clock: return "Time & Date";
+    case Screen::Weather: return "Brooklyn weather";
     default: return "Main";
   }
 }
@@ -78,14 +80,14 @@ void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenT
   const uint32_t elapsed = static_cast<uint32_t>(nowMs-data.sampledAtMs)/1000;
   switch (screen) {
     case Screen::Activity:
-      write(0, data.lightsEnabled ? "Map lights       2/6" : "Map lights OFF   2/6");
+      write(0, data.lightsEnabled ? "Map lights       2/8" : "Map lights OFF   2/8");
       write(1, "Approaching: %u", unsigned(data.indications.approaching));
       write(2, "Stopped: %u", unsigned(data.indications.stopped));
       write(3, "Leaving: %u", unsigned(data.indications.leaving));
       write(4, "Uncertain: %u", unsigned(data.indications.uncertain));
       break;
     case Screen::Connection: {
-      write(0, "Connection       3/6");
+      write(0, "Connection       3/8");
       if(data.wifiConnected) scrollName(data.ssid[0]?data.ssid:"Wi-Fi connected",static_cast<uint32_t>(nowMs-view.changedAtMs),out.lines[1]);
       else write(1,data.wifiConnecting?"Connecting to Wi-Fi":"Wi-Fi not connected");
       if(data.wifiConnected) write(2,"%ddBm Feeds %u/%u",int(data.rssi),unsigned(data.feedsSucceeded),unsigned(data.feedsTotal));
@@ -99,7 +101,7 @@ void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenT
       break;
     }
     case Screen::Device:
-      write(0, "Device           4/6");
+      write(0, "Device           4/8");
       write(1, "Firmware %.12s", data.firmware[0] ? data.firmware : "unknown");
       if (data.wifiConnected && data.ip[0]) write(2, "IP %.15s", data.ip);
       else write(2, "IP: not connected");
@@ -115,7 +117,7 @@ void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenT
     case Screen::Lines: {
       const uint8_t line=view.line>=1 && view.line<=semantic::kRouteCount?view.line:1;
       const auto &counts=data.lines[line];
-      write(0,"Line %s %s 5/6",semantic::routeName(static_cast<semantic::Route>(line)),view.automatic?"Auto":"Paused");
+      write(0,"Line %s %s 5/8",semantic::routeName(static_cast<semantic::Route>(line)),view.automatic?"Auto":"Paused");
       write(1,"Trains mapped: %s%lu",counts.atLeast?">=":"",static_cast<unsigned long>(counts.trains>99999?99999:counts.trains));
       const bool visible=semantic::routeVisible(data.routeMask,static_cast<semantic::Route>(line));
       write(2,"Map lights: %u%s",unsigned(counts.lights),!visible?" hidden":!data.lightsEnabled?" off":"");
@@ -134,6 +136,23 @@ void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenT
       write(3,"September 26, 2026");
       scrollDedicationNames(static_cast<uint32_t>(nowMs-view.changedAtMs),out.lines[4]);
       break;
+    case Screen::Weather: {
+      write(0,"Brooklyn weather 8/8");
+      const uint32_t now=data.unixTime>UINT32_MAX-elapsed?UINT32_MAX:data.unixTime+elapsed;
+      const auto &conditions=data.weather;
+      const bool known=now>=1700000000 && conditions.sourceUnix<=now;
+      const uint32_t age=known?now-conditions.sourceUnix:UINT32_MAX;
+      if(!conditions.available || age>10800) {
+        write(1,conditions.attempted?"Weather unavailable":"Waiting for weather");
+        write(2,conditions.attempted?"Will retry later":"Needs Wi-Fi and time");
+      } else {
+        const int value=conditions.fahrenheitTenths;
+        write(1,"%s%d.%d F",value<0?"-":"",(value<0?-value:value)/10,(value<0?-value:value)%10);
+        write(2,"%s",weather::description(conditions.code));
+        write(3,"%s %lum old",age>3600?"Old data:":conditions.lastFailed?"Delayed:":"Data:",static_cast<unsigned long>(age/60));
+      }
+      write(4,"Source: Open-Meteo");break;
+    }
     default: break; // Main keeps the existing title / trains / large clock layout.
   }
 }

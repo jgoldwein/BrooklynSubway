@@ -30,5 +30,9 @@ CHECK(brooklyn::oled::newYorkAnniversaryYear(1790395199)==0);
 CHECK(brooklyn::oled::newYorkAnniversaryYear(1790395200)==2026);
 CHECK(brooklyn::oled::newYorkAnniversaryYear(1790481599)==2026);
 CHECK(brooklyn::oled::newYorkAnniversaryYear(1790481600)==0);
+CHECK(brooklyn::oled::formatDate(1768498496,text,sizeof(text)) && strcmp(text,"Thu, Jan 15, 2026")==0);
+CHECK(brooklyn::oled::formatDate(1794632400,text,sizeof(text)) && strcmp(text,"Sat, Nov 14, 2026")==0);
+CHECK(!brooklyn::oled::formatDate(0,text,sizeof(text)) && strcmp(text,"Waiting for time")==0);
+CHECK(!brooklyn::oled::formatDate(1768498496,text,2));CHECK(!brooklyn::oled::formatDate(1768498496,nullptr,0));
 puts("OLED clock: synchronization, winter/summer, DST boundaries, noon/midnight and buffer limits PASS");
 }

@@ -12,6 +12,10 @@ void Navigation::setReturnSeconds(uint16_t seconds, uint32_t nowMs) {
 }
 bool Navigation::input(Action action, uint32_t nowMs) {
   if ((action == Action::Select || action == Action::ToggleAuto) && view_.screen != Screen::Lines) return false;
+  if(startupActive_ && (action==Action::NextScreen || action==Action::TurnNext || action==Action::TurnPrevious)) {
+    startupActive_=false;view_.screen=Screen::Main;view_.automatic=view_.lineBrowsing=false;
+    view_.changedAtMs=lastInputAtMs_=autoAtMs_=nowMs;return true;
+  }
   startupActive_=false;
   lastInputAtMs_ = autoAtMs_ = nowMs;
   if (action == Action::NextScreen ||

@@ -117,7 +117,7 @@ bool begin() {
     return false;
   }
   Serial.println("Live display ready: GPIO1 enable; GPIO4/5/6/7/10/11/12/13 data; auto-start after healthy fresh data; cap 16/255; POWER cycles LEDs/OLED; hold 3 seconds to reboot");
-  Serial.println("OLED controls: rotary GPIO15/16 turn=screen; GPIO17 press on Lines=enter/leave line browsing, 10s hold=Wi-Fi setup; ROUTE GPIO38=Lines/Auto/Pause; MODE button unassigned; MODE LED307 ch8 index3 off/cyan/green/purple/amber/pink");
+  Serial.println("OLED controls: rotary GPIO15/16 turn=screen; GPIO17 press on Lines=enter/leave line browsing, 10s hold=Wi-Fi setup; ROUTE GPIO38=Lines/Auto/Pause; MODE button unassigned; MODE LED307 ch8 index3 off/cyan/green/purple/amber/pink/white/blue");
   Serial.println("Rotary feedback: two transitions per detent; GPIO21 2000 Hz / 15 ms click with 15 ms gap, nonblocking");
   return true;
 }

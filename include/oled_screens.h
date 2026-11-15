@@ -4,10 +4,11 @@
 #include "indication_types.h"
 #include "semantic_api.h"
 #include "train_frame.h"
+#include "weather.h"
 #include <stdint.h>
 namespace brooklyn::oled {
-enum class Screen : uint8_t { Main, Activity, Connection, Device, Lines, Dedication };
-constexpr uint8_t kScreenCount = static_cast<uint8_t>(Screen::Dedication)+1;
+enum class Screen : uint8_t { Main, Activity, Connection, Device, Lines, Dedication, Clock, Weather };
+constexpr uint8_t kScreenCount = static_cast<uint8_t>(Screen::Weather)+1;
 constexpr Screen nextScreen(Screen screen) {
   return static_cast<Screen>((static_cast<uint8_t>(screen) + 1u) % kScreenCount);
 }
@@ -37,6 +38,8 @@ class Navigation {
 struct LineData { uint32_t trains = 0; uint16_t lights = 0; bool atLeast = false; };
 enum class FeedHealth : uint8_t { Waiting, Fresh, Partial, Held, Stale, NoData };
 struct ScreenData {
+  weather::Snapshot weather{};
+  uint32_t unixTime=0;
   display::IndicationCounts indications{};
   uint32_t sampledAtMs = 0, updateAgeSeconds = 0;
   uint64_t uptimeSeconds = 0;

@@ -27,6 +27,8 @@ semantic::Rgb modeColor(const StatusIndicators &status) {
     case 3: return kPurple;
     case 4: return kAmber;
     case 5: return {255,80,160};
+    case 6: return kWhite;
+    case 7: return {0,0,255};
     default: return kBlack;
   }
 }

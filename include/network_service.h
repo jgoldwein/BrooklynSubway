@@ -17,6 +17,7 @@
 #include "normal_config.h"
 #include "poll_handoff.h"
 #include "runtime_observation.h"
+#include "weather.h"
 
 #if BROOKLYN_NETWORK_ENABLED
 #include "lan_web_policy.h"
@@ -55,6 +56,7 @@ class NetworkService {
   void finishCycleReporting();
   const pipeline::Counters &pipelineCounters() const { return publishedPipelineCounters_; }
   bool fetchingFeeds() const;
+  const weather::Snapshot &weatherStatus() const {return weather_;}
   uint8_t brightness() const;
   bool setPhysicalBrightness(bool oled, uint8_t value);
   uint8_t oledAddress() const;
@@ -106,7 +108,11 @@ class NetworkService {
   transport::CycleResult completedCycle_{};
   uint32_t completedCycleAtMs_ = 0;
   bool completedCyclePending_ = false;
+  weather::Snapshot weather_{};
 #if BROOKLYN_NETWORK_ENABLED
+  bool workerWeather_=false,workerWeatherOk_=false;
+  weather::Snapshot workerWeatherResult_{};
+  uint32_t weatherAttemptAtMs_=0;
   transport::PollHandoff pollHandoff_;
   void *pollTask_ = nullptr;
   semantic::RenderConfig workerConfig_{};

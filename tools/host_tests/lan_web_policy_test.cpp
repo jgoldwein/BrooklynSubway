@@ -1175,6 +1175,9 @@ int main() {
     CHECK(brooklyn::web::renderStatusJson(json,sizeof(json),s,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
     CHECK(strstr(json,"\"oledActiveAddress\":60")!=nullptr);
   }
+  {brooklyn::web::StatusSnapshot busy;CHECK(!brooklyn::web::otaTransportBusy(busy));
+   busy.networkBusy=true;CHECK(brooklyn::web::otaTransportBusy(busy));
+   busy.networkBusy=false;busy.fetchingFeeds=true;CHECK(brooklyn::web::otaTransportBusy(busy));}
   testPersistentConfiguration();
   testDnsConfigurationAndValidation();
   testDnsSettingsFormParsing();
