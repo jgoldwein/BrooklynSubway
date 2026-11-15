@@ -100,7 +100,7 @@ int main() {
   preferences.startupUntilWifi=true;
   auto schedule=packScreenPreferences(preferences);CHECK(validScreenPreferences(schedule));
   CHECK(!quietActive(schedule,true,1319));CHECK(quietActive(schedule,true,1320));CHECK(quietActive(schedule,true,419));CHECK(!quietActive(schedule,true,420));
-  CHECK(quietActive(schedule,false,0));preferences.quietEnabled=false;CHECK(!quietActive(packScreenPreferences(preferences),false,0));
+  CHECK(!quietActive(schedule,false,0));CHECK(!quietActive(schedule,false,1320));preferences.quietEnabled=false;CHECK(!quietActive(packScreenPreferences(preferences),false,0));
   preferences.quietEnabled=true;preferences.startMinute=540;preferences.endMinute=1020;schedule=packScreenPreferences(preferences);
   CHECK(!quietActive(schedule,true,539));CHECK(quietActive(schedule,true,540));CHECK(quietActive(schedule,true,1019));CHECK(!quietActive(schedule,true,1020));
   preferences.startMinute=preferences.endMinute;CHECK(!validScreenPreferences(packScreenPreferences(preferences)));

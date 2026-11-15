@@ -30,7 +30,7 @@ inline bool validScreenPreferences(uint64_t word) {
 inline bool quietActive(uint64_t word,bool clockKnown,uint16_t minute) {
   const auto p=unpackScreenPreferences(word);
   if(!p.quietEnabled) return false;
-  if(!clockKnown) return true; // Respect enabled quiet hours before time sync.
+  if(!clockKnown) return false; // Apply the schedule only after the clock is known.
   return p.startMinute<p.endMinute ? minute>=p.startMinute && minute<p.endMinute : minute>=p.startMinute || minute<p.endMinute;
 }
 inline bool parseClockMinute(const char *text,uint16_t &minute) {
