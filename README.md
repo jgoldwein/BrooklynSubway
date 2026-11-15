@@ -121,7 +121,8 @@ central Brooklyn (40.6782, -73.9442), in Fahrenheit. Data attribution:
 API details: https://open-meteo.com/en/docs . This gift/prototype uses the free
 non-commercial endpoint without an API key. Weather is not a board thermometer.
 
-Requests run approximately every 15 minutes, only in the idle window after an
+Successful requests run approximately every 15 minutes; failed attempts retry
+after at least one minute, only in the idle window after an
 MTA cycle, through the same background worker. Certificate validation uses the
 existing framework CA bundle; no insecure mode or extra TLS task is added.
 A 1024-byte bounded CSV response is checked for Fahrenheit units, timestamps,
@@ -131,6 +132,8 @@ Existing shared PSRAM buffer is reused. Weather errors do not alter MTA counters
 or map data. Previous weather remains visibly aged; after an hour it is labeled
 old and after three hours the numbers are hidden. No weather is saved to NVS.
 
-Clock/date and weather screens respect OLED POWER/quiet-hour settings and the
-existing screen return timeout; choose Stay on this screen to leave a clock up.
+Clock/date and weather screens respect OLED POWER/quiet-hour settings. The clock
+stays displayed until you turn away; weather retains the ordinary return timeout.
+Both screens have a thin border. Clock also shows valid outside temperature.
+Screen order ends with Lines, Clock, Weather, then Happy Bar Mitzvah.
 Alarm clock is a future feature, not included in this preview.

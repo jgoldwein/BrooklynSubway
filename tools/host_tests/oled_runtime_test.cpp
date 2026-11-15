@@ -13,6 +13,7 @@ uint32_t millis() { return fakeNowMs; }
 char lastScreenTitle[24]{};
 int borderDraws=0;
 int clockOnlyDraws=0,dateOnlyDraws=0;
+char lastOutside[24]{};
 extern int scenario;
 extern "C" time_t time(time_t *out) {const time_t value=scenario==46?1790395200:1768498496;if(out)*out=value;return value;}
 int setupTitles=0,setupNames=0,setupAddresses=0;
@@ -116,7 +117,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
          for(auto &line : out.lines) OLED_CHECK(strlen(line)<=21);
        }
      }
-     OLED_CHECK(nextScreen(Screen::Dedication)==Screen::Clock);
+     OLED_CHECK(nextScreen(Screen::Dedication)==Screen::Main);
      puts("OLED page formatting, age rollover, unavailable data and text bounds PASS"); return 0;
    }
    brooklyn::oled::advanceScreen();
@@ -127,7 +128,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  }
 
  if(scenario==34) brooklyn::oled::navigate(brooklyn::oled::Action::OpenLines,fakeNowMs);
- if(scenario==36) for(int i=0;i<3;++i) brooklyn::oled::navigate(brooklyn::oled::Action::TurnPrevious,fakeNowMs);
+ if(scenario==36) for(int i=0;i<1;++i) brooklyn::oled::navigate(brooklyn::oled::Action::TurnPrevious,fakeNowMs);
  if(scenario>=40 && scenario<=42) {
    using namespace brooklyn::oled;
    showBrightness(false,5,16);
@@ -140,16 +141,17 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
    if(scenario==42) setEnabled(false);
  }
  if(scenario>=43 && scenario<=45) {
-   brooklyn::oled::ScreenText text;strcpy(text.lines[0],"Happy Bar Mitsvah!");strcpy(text.lines[1],"Avi Yao");
+   brooklyn::oled::ScreenText text;strcpy(text.lines[0],"Happy Bar Mitzvah!");strcpy(text.lines[1],"Avi Yao");
    brooklyn::oled::showEasterEgg(text);
    if(scenario==44) brooklyn::oled::setSetupMode(true);
    if(scenario==45) brooklyn::oled::setEnabled(false);
  }
- if(scenario==47 || scenario==48) {
+ if(scenario==47 || scenario==48 || scenario==49) {
    using namespace brooklyn::oled;
    navigate(Action::TurnPrevious,fakeNowMs);
-   if(scenario==47) navigate(Action::TurnPrevious,fakeNowMs);
-   else {ScreenData data;data.sampledAtMs=fakeNowMs;data.unixTime=1768498496;data.weather={1768498200,486,2,true,true,false};publishScreenData(data);}
+   navigate(Action::TurnPrevious,fakeNowMs);
+   if(scenario==47 || scenario==49) navigate(Action::TurnPrevious,fakeNowMs);
+   if(scenario==48 || scenario==49) {ScreenData data;data.sampledAtMs=fakeNowMs;data.unixTime=1768498496;data.weather={1768498200,486,2,true,true,false};publishScreenData(data);}
  }
  const uint8_t preferred=scenario==11?0x3c:0x38;
  brooklyn::oled::begin(preferred,scenario==12||scenario==13?32:207);OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
@@ -189,8 +191,8 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==33) OLED_CHECK(frames==3 && titles==2 && strcmp(lastScreenTitle,"Map lights OFF   2/8")==0 && fakeNowMs==120040);
  if(scenario==34) OLED_CHECK(frames==3 && titles==0 && strcmp(lastScreenTitle,"Line 3 Paused 5/8")==0 && fakeNowMs==120040);
  if(scenario==35) OLED_CHECK(frames==3 && titles==3 && delays==51);
- if(scenario==36) OLED_CHECK(frames==2 && titles==0 && strcmp(lastScreenTitle,"Happy Bar Mitsvah!")==0);
- if(scenario==37) OLED_CHECK(frames==2 && titles==0 && borderDraws==0 && strcmp(lastScreenTitle,"Happy Bar Mitsvah!")==0);
+ if(scenario==36) OLED_CHECK(frames==2 && titles==0 && strcmp(lastScreenTitle,"Happy Bar Mitzvah!")==0);
+ if(scenario==37) OLED_CHECK(frames==2 && titles==0 && borderDraws==0 && strcmp(lastScreenTitle,"Happy Bar Mitzvah!")==0);
  if(scenario==38) OLED_CHECK(contrastCalls==1 && lastContrast==1 && frames==2);
  if(scenario==39) OLED_CHECK(titles==1 && frames==8 && brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Main);
  if(scenario==40) OLED_CHECK(frames==3 && titles==1 && borderDraws==1 && brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Main);
@@ -200,7 +202,8 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==44) OLED_CHECK(frames==2 && setupTitles==2 && titles==0);
  if(scenario==45) OLED_CHECK(frames==1 && powerCommands==1 && titles==0);
  if(scenario==46) OLED_CHECK(frames==4 && titles==3 && brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Main);
- if(scenario==47) OLED_CHECK(frames==2 && titles==0 && clockOnlyDraws==2 && dateOnlyDraws==2);
- if(scenario==48) OLED_CHECK(frames==2 && titles==0 && strcmp(lastScreenTitle,"Brooklyn weather 8/8")==0);
+ if(scenario==47) OLED_CHECK(frames==2 && titles==0 && clockOnlyDraws==2 && dateOnlyDraws==2 && borderDraws==2);
+ if(scenario==48) OLED_CHECK(frames==2 && titles==0 && strcmp(lastScreenTitle,"Brooklyn weather 7/8")==0 && borderDraws==2);
+ if(scenario==49) OLED_CHECK(frames==2 && borderDraws==2 && strcmp(lastOutside,"Outside: 48.6 F")==0);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

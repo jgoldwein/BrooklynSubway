@@ -403,7 +403,7 @@ class ObservedSecureClient : public WiFiClientSecure {
 };
 class HttpsFeedConnection : public transport::FeedConnection {
  public:
-  explicit HttpsFeedConnection(const NetworkConfig &config) : config_(config) {}
+  explicit HttpsFeedConnection(const NetworkConfig &config,uint8_t handshakeSeconds=0) : config_(config),handshakeSeconds_(handshakeSeconds) {}
 
   transport::OpenResult open(const char *url, int32_t &contentLength) override {
     details_={};details_.captured=true;details_.startedAtMs=millis();
@@ -415,7 +415,7 @@ class HttpsFeedConnection : public transport::FeedConnection {
     if (WiFi.status() != WL_CONNECTED) return transport::OpenResult::WifiUnavailable;
 
     client_.setCACertBundle(rootca_crt_bundle_start);
-    client_.setHandshakeTimeout((config_.connectTimeoutMs + 999) / 1000);
+    client_.setHandshakeTimeout(handshakeSeconds_?handshakeSeconds_:(config_.connectTimeoutMs + 999) / 1000);
     http_.setReuse(false);       // one connection per feed
     http_.useHTTP10(true);       // no chunked bodies: completeness stays provable
     http_.setConnectTimeout(static_cast<int32_t>(config_.connectTimeoutMs));
@@ -478,6 +478,7 @@ class HttpsFeedConnection : public transport::FeedConnection {
 
  private:
   const NetworkConfig &config_;
+  uint8_t handshakeSeconds_;
   ObservedSecureClient client_;
   transport::AttemptDiagnostics details_{};
   HTTPClient http_;
@@ -502,8 +503,8 @@ HttpsFeedConnection &connection() {
   return instance;
 }
 HttpsFeedConnection &weatherConnection() {
-  static const NetworkConfig config=[](){auto c=kDefaultNetworkConfig;c.connectTimeoutMs=2500;c.readIdleTimeoutMs=2500;c.feedDeadlineMs=6000;return c;}();
-  static HttpsFeedConnection instance(config);
+  static const NetworkConfig config=[](){auto c=kDefaultNetworkConfig;c.connectTimeoutMs=2500;c.readIdleTimeoutMs=2500;c.feedDeadlineMs=12000;return c;}();
+  static HttpsFeedConnection instance(config,8);
   return instance;
 }
 
@@ -848,6 +849,12 @@ void NetworkService::pollWorker(void *context) {
       self.workerCompletedAtMs_=millis();
       Serial.printf("Brooklyn weather: %s; download %s; bytes %u; source Open-Meteo\n",
           self.workerWeatherOk_?"updated":"unavailable",transport::downloadStatusName(status),unsigned(length));
+      const auto detail=weatherConnection().diagnostics();
+      Serial.printf("Weather connection: HTTP %ld TLS %ld; elapsed %lu ms; heap/largest before %lu/%lu; before close %lu/%lu\n",
+          static_cast<long>(detail.httpCode),static_cast<long>(detail.tlsError),
+          static_cast<unsigned long>(millis()-detail.startedAtMs),static_cast<unsigned long>(detail.heapBefore),
+          static_cast<unsigned long>(detail.largestBefore),static_cast<unsigned long>(detail.heapBeforeClose),
+          static_cast<unsigned long>(detail.largestBeforeClose));
       self.pollHandoff_.finish();continue;
     }
     static const MillisClock clock;
@@ -955,7 +962,7 @@ void NetworkService::update(uint32_t nowMs) {
       }
       if (!fetchingFeeds() && !recoveryRequested_ && networkDiagnostics_.snapshot().state != diagnostics::RunState::Running) {
         if(scheduler_.due(nowMs)) pollNow(nowMs);
-        else if(hasLatestCycle_ && pollTask_ && weather::due(weather_.attempted,weatherAttemptAtMs_,nowMs,completedCycleAtMs_)) {
+        else if(hasLatestCycle_ && pollTask_ && weather::due(weather_.attempted,weatherAttemptAtMs_,nowMs,completedCycleAtMs_,weather_.lastFailed)) {
           workerWeather_=true;workerWeatherOk_=false;workerWeatherResult_={};
           if(pollHandoff_.start()) xTaskNotifyGive(static_cast<TaskHandle_t>(pollTask_));
         }

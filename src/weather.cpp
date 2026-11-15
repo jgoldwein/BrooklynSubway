@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #include "weather.h"
 #include <string.h>
+#include <stdio.h>
 namespace brooklyn::weather {
 const char *description(uint8_t code) {
   switch(code) {
@@ -58,7 +59,17 @@ bool parseCsv(const uint8_t *data,size_t length,Snapshot &out) {
   next.sourceUnix=stamp;next.fahrenheitTenths=temperature;next.code=code;
   next.available=next.attempted=true;out=next;return true;
 }
-bool due(bool attempted,uint32_t lastAttempt,uint32_t now,uint32_t cycleFinished) {
-  return uint32_t(now-cycleFinished)<1000 && (!attempted || uint32_t(now-lastAttempt)>=kPollMs);
+bool due(bool attempted,uint32_t lastAttempt,uint32_t now,uint32_t cycleFinished,bool lastFailed) {
+  const uint32_t spacing=lastFailed?60000:kPollMs;
+  return uint32_t(now-cycleFinished)<1000 && (!attempted || uint32_t(now-lastAttempt)>=spacing);
+}
+void formatOutside(const Snapshot &snapshot,uint32_t now,char *out,size_t capacity) {
+  if(!out || !capacity) return;
+  if(!snapshot.available || now<snapshot.sourceUnix || now<1700000000) {
+    snprintf(out,capacity,"Outside: %s",snapshot.attempted?"unavailable":"waiting");return;
+  }
+  if(now-snapshot.sourceUnix>3600) {snprintf(out,capacity,"Outside: old data");return;}
+  const int value=snapshot.fahrenheitTenths;
+  snprintf(out,capacity,"Outside: %s%d.%d F",value<0?"-":"",(value<0?-value:value)/10,(value<0?-value:value)%10);
 }
 }

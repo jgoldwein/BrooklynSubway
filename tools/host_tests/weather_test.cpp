@@ -23,9 +23,15 @@ int main() {
   CHECK(weather::due(false,0,10000,10000));CHECK(!weather::due(false,0,11000,10000));
   CHECK(!weather::due(true,10000,909999,909999));CHECK(weather::due(true,10000,910000,910000));
   CHECK(weather::due(true,UINT32_MAX-899999,0,0));
+  CHECK(weather::due(true,0,60000,60000,true));CHECK(!weather::due(true,0,59999,59999,true));
+  char outside[24];weather::Snapshot validOutside{1794774600,486,2,true,true,false};
+  weather::formatOutside(validOutside,1794774900,outside,sizeof(outside));CHECK(strcmp(outside,"Outside: 48.6 F")==0);
+  weather::formatOutside(validOutside,1794778201,outside,sizeof(outside));CHECK(strcmp(outside,"Outside: old data")==0);
+  weather::formatOutside({},1794774900,outside,sizeof(outside));CHECK(strcmp(outside,"Outside: waiting")==0);
   oled::ScreenData data;data.unixTime=1794774900;data.sampledAtMs=1000;data.weather={1794774600,486,2,true,true,false};
   oled::ScreenText text;oled::formatScreen(oled::Screen::Weather,data,1000,text);
   CHECK(strcmp(text.lines[1],"48.6 F")==0 && strcmp(text.lines[2],"Partly cloudy")==0 && strcmp(text.lines[3],"Data: 5m old")==0);
+  CHECK(text.lines[4][0]==0);
   data.weather.lastFailed=true;oled::formatScreen(oled::Screen::Weather,data,1000,text);CHECK(strstr(text.lines[3],"Delayed:"));
   data.unixTime+=3601;oled::formatScreen(oled::Screen::Weather,data,1000,text);CHECK(strstr(text.lines[3],"Old data:"));
   data.unixTime+=10800;oled::formatScreen(oled::Screen::Weather,data,1000,text);CHECK(strcmp(text.lines[1],"Weather unavailable")==0);

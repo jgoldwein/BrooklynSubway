@@ -19,7 +19,7 @@ bool sample(Kind kind,uint32_t elapsed,Sample &out) {
   snprintf(lines[4],sizeof(lines[4]),"POWER: exit");
   switch(kind) {
     case Kind::Celebration: {
-      snprintf(lines[0],sizeof(lines[0]),"Happy Bar Mitsvah!");
+      snprintf(lines[0],sizeof(lines[0]),"Happy Bar Mitzvah!");
       snprintf(lines[1],sizeof(lines[1]),"Avi Yao!");
       snprintf(lines[2],sizeof(lines[2]),"Let's celebrate!");
       out.visual=Visual::Line;
@@ -39,7 +39,7 @@ bool sample(Kind kind,uint32_t elapsed,Sample &out) {
       snprintf(lines[2],sizeof(lines[2]),"the Goldweins");
       oled::scrollDedicationNames(elapsed*3,lines[3]);break;
     case Kind::Anniversary:
-      snprintf(lines[0],sizeof(lines[0]),"Happy Bar Mitsvah!");
+      snprintf(lines[0],sizeof(lines[0]),"Happy Bar Mitzvah!");
       snprintf(lines[1],sizeof(lines[1]),"Avi Yao");
       snprintf(lines[2],sizeof(lines[2]),"September 26, 2026");
       snprintf(lines[3],sizeof(lines[3]),"A day to remember!");break;

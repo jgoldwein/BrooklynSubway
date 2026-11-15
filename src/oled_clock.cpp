@@ -70,10 +70,15 @@ void draw(const char *clock) {
   portEXIT_CRITICAL(&screenDataMux);
   const Screen selected = view.screen;
   if(selected==Screen::Clock) {
-    const time_t now=time(nullptr);char date[24],localClock[24];
+    const time_t now=time(nullptr);char date[24],localClock[24],outside[24];
+    weather::Snapshot conditions;
+    portENTER_CRITICAL(&screenDataMux);conditions=screenData.weather;portEXIT_CRITICAL(&screenDataMux);
     formatDate(now,date,sizeof(date));formatClock(now,localClock,sizeof(localClock));
-    screen.setFont(u8g2_font_8x13_tf);screen.drawStr((128-screen.getStrWidth(localClock))/2,29,localClock);
-    screen.setFont(u8g2_font_6x12_tf);screen.drawStr((128-screen.getStrWidth(date))/2,50,date);
+    weather::formatOutside(conditions,static_cast<uint32_t>(now),outside,sizeof(outside));
+    screen.setFont(u8g2_font_8x13_tf);screen.drawStr((128-screen.getStrWidth(localClock))/2,24,localClock);
+    screen.setFont(u8g2_font_6x12_tf);screen.drawStr((128-screen.getStrWidth(date))/2,42,date);
+    screen.drawStr((128-screen.getStrWidth(outside))/2,58,outside);
+    screen.drawFrame(0,0,128,64);
     screen.sendBuffer();return;
   }
   if (selected != Screen::Main) {
@@ -83,6 +88,14 @@ void draw(const char *clock) {
     portEXIT_CRITICAL(&screenDataMux);
     ScreenText text;
     formatScreen(selected, data, millis(), text, view);
+    if(selected==Screen::Weather) {
+      for(uint8_t i=0;i<4;++i) {
+        const char first=text.lines[i][0];
+        screen.setFont(i==1 && (first=='-' || (first>='0' && first<='9'))?u8g2_font_8x13_tf:u8g2_font_6x12_tf);
+        screen.drawStr((128-screen.getStrWidth(text.lines[i]))/2,13+i*14,text.lines[i]);
+      }
+      screen.drawFrame(0,0,128,64);screen.sendBuffer();return;
+    }
     screen.setFont(u8g2_font_6x12_tf);
     for (uint8_t i = 0; i < 5; ++i) {
       const int x = selected==Screen::Dedication && i<4 ? (128-screen.getStrWidth(text.lines[i]))/2 : 0;
@@ -299,7 +312,7 @@ void navigate(Action action, uint32_t nowMs) {
   const bool changed = navigation.input(action, nowMs);
   const auto view = navigation.view();
   portEXIT_CRITICAL(&screenDataMux);
-  if(changed) {requestRefresh();Serial.printf("OLED screen: %s (%u/%u), line %s %s\n", screenName(view.screen), unsigned(view.screen)+1, unsigned(kScreenCount),
+  if(changed) {requestRefresh();Serial.printf("OLED screen: %s (%u/%u), line %s %s\n", screenName(view.screen), unsigned(screenPosition(view.screen))+1, unsigned(kScreenCount),
       semantic::routeName(static_cast<semantic::Route>(view.line)),view.automatic?"Auto":"Paused");
   }
 }

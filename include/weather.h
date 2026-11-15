@@ -16,5 +16,6 @@ struct Snapshot {
 bool parseCsv(const uint8_t *data,size_t length,Snapshot &out);
 const char *description(uint8_t code);
 // Only schedule after a completed MTA cycle, in its first second of idle time.
-bool due(bool attempted,uint32_t lastAttempt,uint32_t now,uint32_t cycleFinished);
+bool due(bool attempted,uint32_t lastAttempt,uint32_t now,uint32_t cycleFinished,bool lastFailed=false);
+void formatOutside(const Snapshot &snapshot,uint32_t nowUnix,char *out,size_t capacity);
 }

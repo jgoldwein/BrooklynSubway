@@ -130,14 +130,14 @@ void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenT
       break;
     }
     case Screen::Dedication:
-      write(0,"Happy Bar Mitsvah!");
+      write(0,"Happy Bar Mitzvah!");
       write(1,"Avi");
       write(2,"From the Goldweins");
       write(3,"September 26, 2026");
       scrollDedicationNames(static_cast<uint32_t>(nowMs-view.changedAtMs),out.lines[4]);
       break;
     case Screen::Weather: {
-      write(0,"Brooklyn weather 8/8");
+      write(0,"Brooklyn weather 7/8");
       const uint32_t now=data.unixTime>UINT32_MAX-elapsed?UINT32_MAX:data.unixTime+elapsed;
       const auto &conditions=data.weather;
       const bool known=now>=1700000000 && conditions.sourceUnix<=now;
@@ -151,7 +151,7 @@ void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenT
         write(2,"%s",weather::description(conditions.code));
         write(3,"%s %lum old",age>3600?"Old data:":conditions.lastFailed?"Delayed:":"Data:",static_cast<unsigned long>(age/60));
       }
-      write(4,"Source: Open-Meteo");break;
+      break;
     }
     default: break; // Main keeps the existing title / trains / large clock layout.
   }

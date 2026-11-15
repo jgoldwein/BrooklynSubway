@@ -9,9 +9,15 @@
 namespace brooklyn::oled {
 enum class Screen : uint8_t { Main, Activity, Connection, Device, Lines, Dedication, Clock, Weather };
 constexpr uint8_t kScreenCount = static_cast<uint8_t>(Screen::Weather)+1;
-constexpr Screen nextScreen(Screen screen) {
-  return static_cast<Screen>((static_cast<uint8_t>(screen) + 1u) % kScreenCount);
+constexpr Screen kScreenOrder[]={Screen::Main,Screen::Activity,Screen::Connection,Screen::Device,
+    Screen::Lines,Screen::Clock,Screen::Weather,Screen::Dedication};
+constexpr uint8_t screenPosition(Screen screen,uint8_t at=0) {
+  return at>=kScreenCount?0:kScreenOrder[at]==screen?at:screenPosition(screen,at+1);
 }
+constexpr Screen nextScreen(Screen screen) {
+  return kScreenOrder[(screenPosition(screen)+1u)%kScreenCount];
+}
+constexpr Screen previousScreen(Screen screen) {return kScreenOrder[(screenPosition(screen)+kScreenCount-1u)%kScreenCount];}
 enum class Action : uint8_t { NextScreen, OpenLines, TurnPrevious, TurnNext, Select, ToggleAuto };
 struct NavigationView {
   Screen screen = Screen::Main;
