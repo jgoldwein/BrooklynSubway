@@ -216,3 +216,29 @@ Stopped-color time starts at candidate publication, with an independent epoch.
 Held partial candidates do not arm a new visit. Source/motion clocks are retained;
 original source freshness can shorten the configured stopped-color maximum.
 Repeated reports do not renew the same visit. No blink or palette change.
+
+
+## Live indication history (0.2.47)
+
+Train monitor shows counts by indication (not literal RGB color), ongoing stopped
+lights and the 12 most recent endings. These are nonzero pixels from successful
+transmissions, after output limits. Status lights/tests do not count. Timings have
+the live rendering cadence (about 40 ms), not optical measurement precision.
+History tracks a continuous LED indication, potentially shared by several trains.
+It cannot independently prove a train left a station.
+
+The last 64 ending events are RAM-only. GET /api/indications returns recent
+records; GET /api/indications?after=0 starts at the oldest retained record, in
+pages of 12. Follow nextAfter while more is true. historyGap means records before
+the oldest retained sequence were overwritten. Reset the cursor when the device
+reboots; uptime and event sequences restart. activeTotal may exceed the 12 active
+examples returned. Schema version 1 includes end Unix time for approximate video
+correlation and monotonic start/end uptime for duration, including millis rollover.
+Counts are also available as indications in /api/status and /api/monitor.
+
+Example bounded collector (read-only):
+python tools/monitor_indications.py --url http://10.1.1.56 --seconds 180
+
+Stopped-color time limit and source-age limit are reported separately. Other
+reasons describe the observed replacement or an output/filter/test action.
+No timing or confidence policy was changed by adding this observation path.

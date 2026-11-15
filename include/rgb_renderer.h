@@ -8,6 +8,7 @@
 #include "train_frame.h"
 #include "unknown_timing.h"
 #include "train_colors.h"
+#include "indication_types.h"
 
 #include <stdint.h>
 
@@ -77,10 +78,15 @@ enum class StationMotion : uint8_t { Approaching, Stopped, Departing };
 Rgb stationMotionColor(StationMotion motion, const StationTiming &timing,
                        uint32_t elapsedSeconds, const TrainColors &colors=kDefaultTrainColors);
 
+struct RenderTrace {
+  display::Indication kind[kFrameLedCount]{};
+  display::IndicationEnd reason[kFrameLedCount]{};
+};
+
 // Clears `output`, then paints every valid occupied, visible map LED. Hidden
 // routes remain in `input`; visibility affects only this final RGB rendering.
 // Pure function of `input` and `config`; `input` is never modified.
 RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
-                              const RenderConfig &config = RenderConfig{});
+                              const RenderConfig &config = RenderConfig{}, RenderTrace *trace = nullptr);
 
 }  // namespace brooklyn::semantic

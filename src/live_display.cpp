@@ -93,11 +93,11 @@ void publish(const Snapshot &snapshot) {
   controller.publish(snapshot);
   xSemaphoreGive(mutex);
 }
-void disable() {
+void disable(IndicationEnd reason) {
   hardware::setFeedIndicator(false);
   if (!available()) return;
   xSemaphoreTake(mutex, portMAX_DELAY);
-  controller.disable(operations);
+  controller.disable(operations,millis(),reason);
   xSemaphoreGive(mutex);
 }
 bool enabled() {
@@ -128,6 +128,12 @@ OutputStats stats() {
   const auto result = controller.stats();
   xSemaphoreGive(mutex);
   return result;
+}
+void readIndications(IndicationReport &report,uint32_t after,bool latest) {
+  report={};if(!available())return;
+  xSemaphoreTake(mutex,portMAX_DELAY);
+  controller.readIndications(report,millis(),after,latest);
+  xSemaphoreGive(mutex);
 }
 void restoreAfterSuccessfulTest(bool start) {
   if (!available()) return;
@@ -193,7 +199,8 @@ namespace brooklyn::display::live {
 bool begin() { return false; }
 bool available() { return false; }
 void publish(const Snapshot &) {}
-void disable() {}
+void disable(IndicationEnd) {}
+void readIndications(IndicationReport &report,uint32_t,bool) {report={};}
 bool enabled() { return false; }
 OutputStats stats() { return {}; }
 void restoreAfterSuccessfulTest(bool) {}

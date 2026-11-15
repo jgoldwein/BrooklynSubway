@@ -438,9 +438,10 @@ void TrainPipeline::finishCycle(uint32_t stoppedPublicationUnix, bool publishSto
         blueEvidence_[i].stopKey, stoppedNow,
         (blueEvidence_[i].flags & RecentMatchingArrival) != 0 &&
         (!blueEvidence_[i].stoppedFreshUntil || stoppedNow < blueEvidence_[i].stoppedFreshUntil), publishStops) : 0;
+    bool freshnessLimited=false;
     if (remaining && blueEvidence_[i].stoppedFreshUntil && stoppedNow < blueEvidence_[i].stoppedFreshUntil) {
       const uint32_t freshRemaining = blueEvidence_[i].stoppedFreshUntil - stoppedNow;
-      if (remaining > freshRemaining) remaining = static_cast<uint16_t>(freshRemaining);
+      if (remaining >= freshRemaining) { remaining = static_cast<uint16_t>(freshRemaining); freshnessLimited=true; }
     }
     if (bucket == kApproaching || bucket == kSegment) {
       for (auto &visit : stopVisits_) if (visit.h1 == e.h1 && visit.h2 == e.h2) visit = {};
@@ -474,8 +475,12 @@ void TrainPipeline::finishCycle(uint32_t stoppedPublicationUnix, bool publishSto
       // Explicit removal/conflict or a changed unmapped stop must not leave a ghost.
       forgetLocation(e.h1,e.h2);
     }
-    if (bucket == kStation && !uncertain && remaining > frame_.blueSecondsRemaining[index])
+    if (bucket == kStation && !uncertain && remaining > frame_.blueSecondsRemaining[index]) {
       frame_.blueSecondsRemaining[index] = remaining;
+      const uint8_t bit=uint8_t{1}<<(index%8);
+      if (freshnessLimited) frame_.stoppedFreshnessLimited[index/8]|=bit;
+      else frame_.stoppedFreshnessLimited[index/8]&=~bit;
+    }
     bumpBucket(bucket);
     if (bucket == kStation) {
       const uint16_t led = e.outcome & 0x1FF;

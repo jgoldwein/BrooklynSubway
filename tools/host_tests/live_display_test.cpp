@@ -37,7 +37,57 @@ live::Snapshot snapshot(uint32_t at = 0) {
   CHECK(semantic::addValidatedLed(s.frame, 0, true));
   return s;
 }
+void testIndicationHistory() {
+  live::Controller c;
+  auto s=snapshot();semantic::clearFrame(s.frame);
+  CHECK(semantic::addValidatedLed(s.frame,0));
+  s.frame.animationEpochUnix=100;s.frame.stoppedEpochUnix=100;s.frame.blueSecondsRemaining[0]=20;
+  s.clockUnix=100;s.clockAtMs=0;s.brightness=5;
+  c.publish(s);CHECK(c.enable(0));c.service(0,false,false,ops);
+  CHECK(c.stats().indications.stopped==1);
+  display::IndicationReport report{};c.readIndications(report,1234);
+  CHECK(report.activeTotal==1 && report.active[0].durationMs==1234 && report.eventCount==0);
+  c.service(19960,false,false,ops);CHECK(c.stats().indications.stopped==1);
+  c.service(20000,false,false,ops);c.readIndications(report,20000);
+  CHECK(report.counts.stopped==0 && report.counts.uncertain==1);
+  CHECK(report.eventCount==1 && report.events[0].endedAtMs-report.events[0].startedAtMs==20000);
+  CHECK(report.events[0].reason==display::IndicationEnd::StopWindowExpired);
+  c.service(20040,false,false,ops);c.readIndications(report,20040);CHECK(report.newestSequence==1);
+  // Same configured RGB for two states must not merge their meaning.
+  s.frame.stoppedEpochUnix=121;s.frame.stoppedFreshnessLimited[0]=1;s.clockUnix=121;s.clockAtMs=21000;
+  s.colors.uncertain=s.colors.stopped;c.publish(s);c.service(21000,false,false,ops);
+  c.service(41000,false,false,ops);c.readIndications(report,41000);
+  CHECK(report.events[1].reason==display::IndicationEnd::SourceExpired);
+  CHECK(report.counts.uncertain==1 && report.counts.stopped==0);
+  // Brief changes between HTTP polls remain in history; route filtering is explicit.
+  s.frame.stoppedEpochUnix=142;s.clockUnix=142;s.clockAtMs=42000;c.publish(s);c.service(42000,false,false,ops);
+  s.routeMask=0;c.publish(s);c.service(42280,false,false,ops);c.readIndications(report,42280);
+  CHECK(report.events[2].endedAtMs-report.events[2].startedAtMs==280);
+  CHECK(report.events[2].reason==display::IndicationEnd::RouteHidden);
+  // Failed transmissions never start a stopped indication.
+  s.routeMask=semantic::kAllRoutesVisibleMask;c.publish(s);writeOk=false;c.service(42320,false,false,ops);
+  c.readIndications(report,42320);CHECK(report.activeTotal==0 && report.newestSequence==3);writeOk=true;
+  CHECK(c.enable(42360));c.service(42360,false,false,ops);c.disable(ops,42400,display::IndicationEnd::HardwareTest);
+  c.readIndications(report,42400);CHECK(report.events[3].reason==display::IndicationEnd::HardwareTest);
+  CHECK(report.counts.stopped==0);
+  // Fill/overwrite the bounded ring, then retrieve all retained endings in pages.
+  for(unsigned n=0;n<80;++n) {
+    const uint32_t t=43000+n*80;s.frameAtMs=t;s.frame.stoppedEpochUnix=0;s.frame.animationEpochUnix=0;
+    c.publish(s);CHECK(c.enable(t));c.service(t,false,false,ops);c.disable(ops,t+40);
+  }
+  c.readIndications(report,50000,0,false);CHECK(report.gap && report.more && report.eventCount==12);
+  CHECK(report.oldestSequence==21 && report.newestSequence==84);
+  unsigned count=0;uint32_t cursor=report.oldestSequence-1;
+  do {c.readIndications(report,50000,cursor,false);CHECK(!report.gap);count+=report.eventCount;cursor=report.nextAfter;}while(report.more);
+  CHECK(count==display::kIndicationHistoryCapacity && cursor==84);
+  // Monotonic duration subtraction survives millis rollover.
+  live::Controller wrap;auto w=snapshot(0xfffffff0u);semantic::clearFrame(w.frame);
+  CHECK(semantic::addValidatedLed(w.frame,0));wrap.publish(w);CHECK(wrap.enable(0xfffffff0u));
+  wrap.service(0xfffffff0u,false,false,ops);wrap.disable(ops,40);wrap.readIndications(report,40);
+  CHECK(report.events[0].endedAtMs-report.events[0].startedAtMs==56);
+}
 int main() {
+  testIndicationHistory();
   {
     live::Controller automatic(true);
     automatic.service(0, false, false, ops);

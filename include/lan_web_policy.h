@@ -75,6 +75,7 @@ struct StatusSnapshot {
   uint16_t physicalBlinkingLeds = 0;
   uint16_t visibleMapLeds = 0;
   uint16_t darkOccupiedMapLeds = 0;
+  display::IndicationCounts indications{};
   uint32_t routeVisibilityMask = semantic::kAllRoutesVisibleMask;
   char availableVersion[33] = {};  // empty when no newer release is known
   int16_t rssi = -127;
@@ -110,6 +111,9 @@ struct StatusSnapshot {
   uint32_t lastFeedFailureElapsedMs = 0;
   network::diagnostics::Snapshot networkDiagnostics{};
 };
+
+bool parseIndicationCursor(const char *text, uint32_t &after);
+size_t renderIndicationJson(char *out, size_t capacity, const display::IndicationReport &report);
 
 bool parseBrightness(const char *text, uint8_t &brightness);
 struct DnsSettingsParam {

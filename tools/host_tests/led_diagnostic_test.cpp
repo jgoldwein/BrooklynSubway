@@ -1,4 +1,5 @@
 #include "led_backend.h"
+#include "indication_types.h"
 #include "board_pins.h"
 #include "led_diagnostic_policy.h"
 #include "led_map.h"
@@ -11,7 +12,7 @@
 FakeSerial Serial;
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
 namespace brooklyn::display::live {
-void disable() {}
+void disable(brooklyn::display::IndicationEnd) {}
 void beginDiagnostic() {}
 void endDiagnostic() {}
 }

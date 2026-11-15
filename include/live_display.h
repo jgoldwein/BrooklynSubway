@@ -6,7 +6,8 @@ namespace brooklyn::display::live {
 bool begin();
 bool available();
 void publish(const Snapshot &snapshot);
-void disable();
+void disable(IndicationEnd reason=IndicationEnd::OutputDisabled);
+void readIndications(IndicationReport &report, uint32_t after=0, bool latest=true);
 bool enabled();
 OutputStats stats();
 void restoreAfterSuccessfulTest(bool start);

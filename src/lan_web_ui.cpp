@@ -51,6 +51,7 @@ constexpr size_t kReleaseMetadataLimit = 8192;
 constexpr size_t kMaxFirmwarePackageSize = 0x640000u + 148u;
 char gPage[kPageCapacity];
 char gJson[kJsonCapacity];
+display::IndicationReport gIndicationReport;
 char gNetworkDiagnosticsJson[kNetworkDiagnosticsJsonCapacity];
 
 constexpr const char *kSetupStarting =
@@ -224,6 +225,17 @@ void LanWebUi::registerRoutes() {
     current.physicalLedOutputEnabled=display::live::enabled();
     const size_t length=renderTrainMonitorJson(gJson,sizeof(gJson),current);
     if (!length) { server_.send(500,"text/plain","Unable to render train monitor data"); return; }
+    server_.sendHeader("Cache-Control","no-store");server_.sendHeader("X-Content-Type-Options","nosniff");
+    server_.send(200,"application/json",gJson);
+  });
+  server_.on("/api/indications",HTTP_GET,[this]() {
+    uint32_t after=0;const bool latest=server_.args()==0;
+    if(!latest && (server_.args()!=1 || server_.argName(0)!="after" || !parseIndicationCursor(server_.arg("after").c_str(),after))) {
+      server_.send(400,"text/plain","Use one numeric after cursor, or no query for recent events.");return;
+    }
+    display::live::readIndications(gIndicationReport,after,latest);
+    const size_t length=renderIndicationJson(gJson,sizeof(gJson),gIndicationReport);
+    if(!length) {server_.send(500,"text/plain","Unable to render indication history");return;}
     server_.sendHeader("Cache-Control","no-store");server_.sendHeader("X-Content-Type-Options","nosniff");
     server_.send(200,"application/json",gJson);
   });
@@ -1881,6 +1893,7 @@ void LanWebUi::updateAdminStatus(StatusSnapshot &status) {
   status.physicalBlinkingLeds = output.blinkingLeds;
   status.visibleMapLeds = output.visibleMapLeds;
   status.darkOccupiedMapLeds = output.darkOccupiedMapLeds;
+  status.indications=output.indications;
   status.physicalFrameAgeSeconds = (millis() - output.lastWriteAtMs) / 1000;
   status.adminConfigured = auth_.configured();
   String cookieHeader = server_.header("Cookie");

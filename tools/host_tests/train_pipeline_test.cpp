@@ -532,6 +532,7 @@ void testStoppedPublicationTiming() {
   CHECK(p.frame().blueSecondsRemaining[index]==20); // Rejected stale publication did not arm.
   report("FRESHNESS_CAP",kNow+200,kNow+255,true);
   CHECK(p.frame().blueSecondsRemaining[index]==6); // Prediction/feed age still expires at 60 s.
+  CHECK(p.frame().stoppedFreshnessLimited[index/8]&(uint8_t{1}<<(index%8)));
   c.nowUnix=kNow+260;sem::renderTrainFrame(p.frame(),rgb,c);CHECK(rgb.pixels[index].red==255);
   c.nowUnix=kNow+261;sem::renderTrainFrame(p.frame(),rgb,c);CHECK(rgb.pixels[index].red==0);
   report("ROLLBACK",kNow+300,kNow+318,true);

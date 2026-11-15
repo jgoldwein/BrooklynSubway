@@ -83,7 +83,32 @@ void checkStatusBlack(const RgbFrame &f) {
 
 }  // namespace
 
+void testTracePreservesOutput() {
+  TrainFrame f{};clearFrame(f);f.animationEpochUnix=f.stoppedEpochUnix=1000;
+  for(uint16_t i=0;i<306;++i) {
+    if(!semanticForLed(i))continue;
+    if(i%3==0)addValidatedLed(f,i,true);
+    else if(i%3==1)addValidatedLed(f,i);
+    else addUncertainLed(f,i);
+    f.blueSecondsRemaining[i]=20;f.timing[i].arrivalSecondsPlusOne=31;
+    f.lastReportedFadeStartUnix[i]=1000;
+  }
+  const uint8_t levels[]={0,1,5,255};const uint32_t times[]={1000,1005,1020,1091,1301};
+  const UnknownTimingMode modes[]={UnknownTimingMode::Hidden,UnknownTimingMode::Orange,UnknownTimingMode::LastReported};
+  for(auto brightness:levels)for(auto now:times)for(auto mode:modes)for(unsigned hidden=0;hidden<2;++hidden) {
+    RenderConfig c{};c.animateTraffic=true;c.brightness=brightness;c.nowUnix=now;c.unknownTimingMode=mode;
+    c.routeVisibilityMask=hidden?0:kAllRoutesVisibleMask;
+    RgbFrame plain{},observed{};RenderTrace trace{};
+    renderTrainFrame(f,plain,c);renderTrainFrame(f,observed,c,&trace);
+    CHECK(memcmp(&plain,&observed,sizeof(plain))==0);
+    for(uint16_t i=0;i<306;++i) {
+      const bool visible=observed.pixels[i].red||observed.pixels[i].green||observed.pixels[i].blue;
+      CHECK(visible==(trace.kind[i]!=brooklyn::display::Indication::Off));
+    }
+  }
+}
 int main() {
+  testTracePreservesOutput();
   static_assert(sizeof(Rgb) == 3, "");
   printf("sizeof(Rgb)=%zu sizeof(RgbFrame)=%zu sizeof(RenderConfig)=%zu sizeof(TrainFrame)=%zu\n",
          sizeof(Rgb), sizeof(RgbFrame), sizeof(RenderConfig), sizeof(TrainFrame));

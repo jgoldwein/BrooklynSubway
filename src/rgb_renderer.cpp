@@ -97,7 +97,8 @@ Rgb stationMotionColor(StationMotion motion, const StationTiming &timing,
 }
 
 RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
-                              const RenderConfig &config) {
+                              const RenderConfig &config, RenderTrace *trace) {
+  if (trace) *trace={};
   memset(&output, 0, sizeof output);
   RenderResult result{};
   const bool timed = config.animateTraffic && input.animationEpochUnix &&
@@ -126,15 +127,23 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
       ++result.rejectedLeds;
       continue;
     }
-    if (!routeVisible(config.routeVisibilityMask, semantic->route)) continue;
+    if (!routeVisible(config.routeVisibilityMask, semantic->route)) {
+      if(trace)trace->reason[i]=display::IndicationEnd::RouteHidden;
+      continue;
+    }
     // Arrival/departure indication is continuous color only: no off phase.
 
+    auto kind=display::Indication::Approaching;
+    auto reason=display::IndicationEnd::Approaching;
     Rgb color = nominalRouteColor(semantic->route);
     if (config.animateTraffic && semantic->role == Role::Station) {
       const auto motion = isApproachingOnly(input, i) || approachOverlay
           ? StationMotion::Approaching : !occupied && departure
           ? StationMotion::Departing : StationMotion::Stopped;
       color = stationMotionColor(motion, timing, elapsed, config.colors);
+      kind=motion==StationMotion::Stopped?display::Indication::Stopped:
+          motion==StationMotion::Departing?display::Indication::Leaving:display::Indication::Approaching;
+      reason=motion==StationMotion::Departing?display::IndicationEnd::Leaving:display::IndicationEnd::Approaching;
     }
     if (config.animateTraffic && semantic->role==Role::Segment) color=config.colors.approaching;
     const bool uncertain = isUncertainOnly(input, i) ||
@@ -147,7 +156,17 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
         (hintStart ? config.nowUnix>=hintStart : elapsed>90);
     const bool unknown = hintOverlay || staleSegment || (config.animateTraffic && semantic->role == Role::Station &&
         (uncertain || unknownApproach));
-    if (unknown && (!config.showUnknownTiming || config.unknownTimingMode==UnknownTimingMode::Hidden)) continue;
+    if (unknown) {
+      kind=display::Indication::Uncertain;reason=display::IndicationEnd::Uncertain;
+      if (occupied && !isApproachingOnly(input,i) && input.blueSecondsRemaining[i] && stoppedElapsed>=input.blueSecondsRemaining[i])
+        reason=(input.stoppedFreshnessLimited[i/8]&(uint8_t{1}<<(i%8)))?
+            display::IndicationEnd::SourceExpired:display::IndicationEnd::StopWindowExpired;
+    }
+    if(trace)trace->reason[i]=reason;
+    if (unknown && (!config.showUnknownTiming || config.unknownTimingMode==UnknownTimingMode::Hidden)) {
+      if(trace)trace->reason[i]=reason==display::IndicationEnd::Uncertain?display::IndicationEnd::UncertainHidden:reason;
+      continue;
+    }
     if (unknown) color=config.colors.uncertain;
     if (config.animateTraffic && uncertain) color=scaleBrightness(config.colors.uncertain,128);
     const uint8_t brightness = unknown && config.unknownTimingBrightness < config.brightness
@@ -161,6 +180,11 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
       const uint8_t level=(uint32_t(limit)*remaining+config.lastReportedFadeSeconds-1)/config.lastReportedFadeSeconds;
       output.pixels[i]=scaleBrightness(config.colors.uncertain,level);
     } else output.pixels[i] = scaleBrightness(color, brightness);
+    if(trace) {
+      const auto &pixel=output.pixels[i];
+      trace->kind[i]=(pixel.red||pixel.green||pixel.blue)?kind:display::Indication::Off;
+      trace->reason[i]=(pixel.red||pixel.green||pixel.blue)?reason:display::IndicationEnd::BrightnessOrColorZero;
+    }
     ++result.renderedLeds;
     if (semantic->role == Role::Station) ++result.stationLeds;
     else ++result.segmentLeds;

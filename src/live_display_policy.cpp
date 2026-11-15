@@ -83,7 +83,75 @@ bool Controller::enable(uint32_t nowMs) {
   return true;
 }
 
-void Controller::disable(const Operations &operations) {
+uint32_t Controller::indicationClock(uint32_t nowMs) const {
+  return snapshot_.clockUnix ? snapshot_.clockUnix+uint32_t(nowMs-snapshot_.clockAtMs)/1000 : 0;
+}
+
+void Controller::endIndication(uint16_t led,uint32_t nowMs,IndicationEnd reason,Indication next) {
+  const uint8_t bit=uint8_t{1}<<(led%8);
+  if (!(stoppedActive_[led/8]&bit)) return;
+  stoppedActive_[led/8]&=~bit;
+  if(indicationSequence_==UINT32_MAX) return; // saturated sequence never wraps into duplicate IDs
+  auto &event=indicationEvents_[indicationHead_];
+  event={++indicationSequence_,stoppedAtMs_[led],nowMs,indicationClock(nowMs),led,reason,next};
+  indicationHead_=(indicationHead_+1)%kIndicationHistoryCapacity;
+  if(indicationSize_<kIndicationHistoryCapacity)++indicationSize_;
+}
+
+void Controller::stopIndications(uint32_t nowMs,IndicationEnd reason) {
+  for(uint16_t i=0;i<semantic::kFrameLedCount;++i)endIndication(i,nowMs,reason,Indication::Off);
+  stats_.indications={};
+  lastObservationAtMs_=nowMs;
+}
+
+void Controller::observeIndications(const semantic::RenderTrace &trace,const led::DisplayState *frame,uint32_t nowMs) {
+  stats_.indications={};
+  for(uint16_t i=0;i<semantic::kFrameLedCount;++i) {
+    if(!semantic::semanticForLed(i))continue;
+    const auto &color=frame[i].color;
+    const bool visible=color.red||color.green||color.blue;
+    const auto kind=visible?trace.kind[i]:Indication::Off;
+    const auto reason=!visible && trace.kind[i]!=Indication::Off?IndicationEnd::CurrentLimited:trace.reason[i];
+    switch(kind) {
+      case Indication::Approaching:++stats_.indications.approaching;break;
+      case Indication::Stopped:++stats_.indications.stopped;break;
+      case Indication::Leaving:++stats_.indications.leaving;break;
+      case Indication::Uncertain:++stats_.indications.uncertain;break;
+      default:break;
+    }
+    const uint8_t bit=uint8_t{1}<<(i%8);
+    if(kind==Indication::Stopped) {
+      if(!(stoppedActive_[i/8]&bit)) { stoppedAtMs_[i]=nowMs;stoppedActive_[i/8]|=bit; }
+    } else endIndication(i,nowMs,reason,kind);
+  }
+  lastObservationAtMs_=nowMs;
+}
+
+void Controller::readIndications(IndicationReport &out,uint32_t nowMs,uint32_t after,bool latest) const {
+  out={};out.available=true;out.outputEnabled=enabled_&&armed_;out.counts=stats_.indications;
+  out.nowMs=nowMs;out.observedAtMs=lastObservationAtMs_;out.observedUnix=indicationClock(nowMs);
+  out.newestSequence=indicationSequence_;
+  const uint8_t oldest=(indicationHead_+kIndicationHistoryCapacity-indicationSize_)%kIndicationHistoryCapacity;
+  if(indicationSize_)out.oldestSequence=indicationEvents_[oldest].sequence;
+  out.gap=!latest && out.oldestSequence && after<out.oldestSequence-1;
+  const uint8_t begin=latest && indicationSize_>kIndicationHistoryPage?indicationSize_-kIndicationHistoryPage:0;
+  out.nextAfter=after;
+  for(uint8_t j=begin;j<indicationSize_;++j) {
+    const auto &e=indicationEvents_[(oldest+j)%kIndicationHistoryCapacity];
+    if(!latest && e.sequence<=after)continue;
+    if(out.eventCount==kIndicationHistoryPage) {out.more=true;break;}
+    out.events[out.eventCount++]=e;out.nextAfter=e.sequence;
+  }
+  for(uint16_t i=0;i<semantic::kFrameLedCount;++i) {
+    if(!(stoppedActive_[i/8]&(uint8_t{1}<<(i%8))))continue;
+    ++out.activeTotal;
+    if(out.activeCount<kActiveIndicationPage)
+      out.active[out.activeCount++]={stoppedAtMs_[i],uint32_t(nowMs-stoppedAtMs_[i]),i};
+  }
+}
+
+void Controller::disable(const Operations &operations, uint32_t nowMs, IndicationEnd reason) {
+  stopIndications(nowMs==UINT32_MAX?lastObservationAtMs_:nowMs,reason);
   enabled_ = false;
   automaticStartPending_ = false;
   powerCanResume_ = false;
@@ -97,10 +165,10 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
   if (releasedEvent && !rebootPending_) {
     powerMode_ = (powerMode_ + 1) % 4;
     if (ledsRequested()) automaticStartPending_ = true;
-    else disable(operations);
+    else disable(operations,nowMs,IndicationEnd::PowerButton);
   }
   if (rebootPending_ || !ledsRequested()) {
-    disable(operations);
+    disable(operations,nowMs,IndicationEnd::PowerButton);
     return;
   }
   if (!hasSnapshot_) return;
@@ -111,13 +179,14 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
   if (automaticStartPending_ && !powerPressed && !recovery) (void)enable(nowMs);
   if (recovery || !safe(nowMs) || !operations.arm ||
       !operations.transmit || !operations.stop) {
-    disable(operations);
+    disable(operations,nowMs,recovery?IndicationEnd::Recovery:IndicationEnd::NoUsableData);
     return;
   }
   if (!enabled_) return;
   if (!armed_) {
     if (!operations.arm(operations.context)) {
       operations.stop(operations.context);
+      stopIndications(nowMs,IndicationEnd::OutputFailure);
       enabled_ = false;
       powerCanResume_ = false;
       return;
@@ -141,11 +210,12 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
   config.nowUnix = snapshot_.clockUnix ? snapshot_.clockUnix +
       static_cast<uint32_t>(nowMs - snapshot_.clockAtMs) / 1000 : 0;
   semantic::RgbFrame rgb{};
-  const auto result = semantic::renderTrainFrame(snapshot_.frame, rgb, config);
+  semantic::RenderTrace trace{};
+  const auto result = semantic::renderTrainFrame(snapshot_.frame, rgb, config, &trace);
   auto status = snapshot_.status;
   status.brightness = config.brightness;
   if (result.rejectedLeds != 0 || !applyStatusOverlay(rgb, status)) {
-    disable(operations);
+    disable(operations,nowMs,IndicationEnd::OutputFailure);
     return;
   }
   led::DisplayState source[semantic::kFrameLedCount]{};
@@ -156,9 +226,10 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
   led::power::limitFrameToBudget(source, semantic::kFrameLedCount, 255, 255,
                                 limited, report);
   if (!operations.transmit(operations.context, limited, semantic::kFrameLedCount)) {
-    disable(operations);
+    disable(operations,nowMs,IndicationEnd::OutputFailure);
     return;
   }
+  observeIndications(trace,limited,nowMs);
   stats_.visibleMapLeds = stats_.darkOccupiedMapLeds = 0;
   for (uint16_t i=0;i<semantic::kFrameLedCount;++i) {
     if (!semantic::semanticForLed(i)) continue; // Exclude the four status LEDs.

@@ -974,6 +974,59 @@ void monitorRows(Writer &w,const StatusSnapshot &s) {
   }
 }
 }
+namespace {
+constexpr const char *kLiveIndicationSection=R"HTML(<section aria-labelledby="lights-title"><h2 id="lights-title">What the map lights are doing</h2>
+<p id="light-counts" role="status">Loading live light counts...</p>
+<p class="hint">Counts follow your color settings: approaching, stopped, leaving and uncertain. These are nonzero colors successfully sent to map LEDs, not a physical light sensor. A shared light can represent several trains.</p>
+<h3>Stopped lights now</h3><ul id="active-stops"><li>Loading...</li></ul><p id="active-note" class="hint"></p>
+<h3>Why stopped lights changed</h3><p class="hint">Recent completed indications, newest first. A change is not proof a train departed. Times cover one continuous light, even if several trains share it. History is held in memory since restart; the last 64 endings are retained.</p>
+<div style="overflow:auto"><table><thead><tr><th scope="col">Station</th><th scope="col">Lasted</th><th scope="col">Why it ended</th></tr></thead><tbody id="stop-history"></tbody></table></div>
+<p id="light-refresh" class="hint">Loading indication history...</p><p><a href="/api/indications" download="brooklyn-light-history.json">Download light snapshot</a></p>
+</section><script>(()=>{const by=id=>document.getElementById(id),seconds=ms=>(ms/1000).toFixed(1)+' s',location=e=>e.line+' '+e.station+' (LED'+e.led+')';async function update(){let timer;try{if(!document.hidden){const controller=new AbortController();timer=setTimeout(()=>controller.abort(),8000);const r=await fetch('/api/indications',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();const s=await r.json(),c=s.counts;by('light-counts').textContent=!s.available?'Live light monitoring is unavailable.':!s.outputEnabled?'Map lights are off.':'Approaching: '+c.approaching+' | Stopped: '+c.stopped+' | Leaving: '+c.leaving+' | Uncertain: '+c.uncertain;const active=document.createDocumentFragment();s.active.forEach(e=>{const li=document.createElement('li');li.textContent=location(e)+' - '+seconds(e.durationMs);active.append(li)});if(!s.active.length){const li=document.createElement('li');li.textContent='No stopped lights currently shown.';active.append(li)}by('active-stops').replaceChildren(active);by('active-note').textContent=s.activeShown<s.activeTotal?'Showing '+s.activeShown+' of '+s.activeTotal+' stopped lights.':'';const rows=document.createDocumentFragment();[...s.events].reverse().forEach(e=>{const tr=document.createElement('tr');[location(e),seconds(e.durationMs),e.reason].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.append(td)});rows.append(tr)});if(!s.events.length){const tr=document.createElement('tr'),td=document.createElement('td');td.colSpan=3;td.textContent='No stopped-light endings recorded yet.';tr.append(td);rows.append(tr)}by('stop-history').replaceChildren(rows);by('light-refresh').textContent=s.sampleAgeMs>5000&&s.outputEnabled?'LED output sample is delayed.':'Updated '+new Date().toLocaleTimeString()+' - recent '+s.events.length+' endings.';}}catch(e){by('light-refresh').textContent='Light history refresh delayed; retrying.';}finally{clearTimeout(timer);setTimeout(update,2000)}}setTimeout(update,500)})();</script>)HTML";
+}
+
+bool parseIndicationCursor(const char *text,uint32_t &after) {
+  if(!text || !*text)return false;
+  uint32_t value=0;
+  for(const char *p=text;*p;++p) {
+    if(*p<'0'||*p>'9')return false;
+    const uint32_t digit=*p-'0';if(value>(UINT32_MAX-digit)/10)return false;
+    value=value*10+digit;
+  }
+  after=value;return true;
+}
+namespace {
+void indicationCounts(Writer &w,const display::IndicationCounts &c) {
+  w.format("{\"approaching\":%u,\"stopped\":%u,\"leaving\":%u,\"uncertain\":%u}",c.approaching,c.stopped,c.leaving,c.uncertain);
+}
+void indicationLocation(Writer &w,uint16_t led) {
+  const auto *m=semantic::semanticForLed(led);
+  w.format("\"index\":%u,\"led\":%u,\"line\":",led,m?m->designator:0);
+  monitorString(w,m?semantic::routeName(m->route):"");w.append(",\"station\":");
+  const char *name=m?semantic::stationName(m->stationId):nullptr;monitorString(w,name?name:"");
+}
+}
+size_t renderIndicationJson(char *out,size_t capacity,const display::IndicationReport &r) {
+  Writer w(out,capacity);
+  w.format("{\"schemaVersion\":1,\"available\":%s,\"outputEnabled\":%s,\"uptimeMs\":%lu,\"unixTime\":%lu,\"sampleAgeMs\":%lu,\"counts\":",
+      r.available?"true":"false",r.outputEnabled?"true":"false",static_cast<unsigned long>(r.nowMs),static_cast<unsigned long>(r.observedUnix),static_cast<unsigned long>(r.nowMs-r.observedAtMs));
+  indicationCounts(w,r.counts);
+  w.format(",\"newestSequence\":%lu,\"oldestSequence\":%lu,\"nextAfter\":%lu,\"historyGap\":%s,\"more\":%s,\"activeTotal\":%u,\"activeShown\":%u,\"active\":[",
+      static_cast<unsigned long>(r.newestSequence),static_cast<unsigned long>(r.oldestSequence),static_cast<unsigned long>(r.nextAfter),r.gap?"true":"false",r.more?"true":"false",r.activeTotal,r.activeCount);
+  for(uint8_t i=0;i<r.activeCount && i<display::kActiveIndicationPage;++i) {
+    const auto &a=r.active[i];if(i)w.append(",");w.append("{");indicationLocation(w,a.led);
+    w.format(",\"startedAtUptimeMs\":%lu,\"durationMs\":%lu}",static_cast<unsigned long>(a.startedAtMs),static_cast<unsigned long>(a.durationMs));
+  }
+  w.append("],\"events\":[");
+  for(uint8_t i=0;i<r.eventCount && i<display::kIndicationHistoryPage;++i) {
+    const auto &e=r.events[i];if(i)w.append(",");w.format("{\"sequence\":%lu,",static_cast<unsigned long>(e.sequence));indicationLocation(w,e.led);
+    w.format(",\"startedAtUptimeMs\":%lu,\"endedAtUptimeMs\":%lu,\"durationMs\":%lu,\"endedUnix\":%lu,\"reasonCode\":%u,\"reason\":",
+        static_cast<unsigned long>(e.startedAtMs),static_cast<unsigned long>(e.endedAtMs),static_cast<unsigned long>(uint32_t(e.endedAtMs-e.startedAtMs)),static_cast<unsigned long>(e.endedUnix),unsigned(e.reason));
+    monitorString(w,display::indicationEndName(e.reason));w.append(",\"next\":");monitorString(w,display::indicationName(e.next));w.append("}");
+  }
+  w.append("]}");return w.size();
+}
+
 size_t renderTrainMonitorJson(char *out,size_t capacity,const StatusSnapshot &s) {
   Writer w(out,capacity);const auto &r=s.blueReport;
   w.format("{\"reportTimestamp\":%lu,\"mappedTrains\":%lu,\"occupiedMapLeds\":%u,\"visibleMapLeds\":%u,\"darkOccupiedMapLeds\":%u,\"outputEnabled\":%s,\"feedsSucceeded\":%u,\"feedsTotal\":%u,\"sourceOldestUnix\":%lu,\"sourceNewestUnix\":%lu,\"sourceAgeSeconds\":",
@@ -982,6 +1035,7 @@ size_t renderTrainMonitorJson(char *out,size_t capacity,const StatusSnapshot &s)
   w.format(",\"latestPollMappedTrains\":%lu",static_cast<unsigned long>(monitorLatestCount(s)));w.append(",\"reportAgeSeconds\":");monitorAge(w,s.unixTime,r.timestamp);
   w.append(",\"mapAgeSeconds\":");if(s.hasDataAge)w.format("%lu",static_cast<unsigned long>(s.dataAgeSeconds));else w.append("null");
   w.format(",\"fetchingFeeds\":%s",s.fetchingFeeds?"true":"false");
+  w.append(",\"indications\":");indicationCounts(w,s.indications);
   w.append(",\"health\":");monitorString(w,monitorHealth(s));
   w.format(",\"staleVehicles\":%lu,\"unmappedPositions\":%lu,\"conflictedTrips\":%lu,\"predictionConflicts\":%lu,\"capacityDrops\":%lu,\"uncertainMode\":",
       static_cast<unsigned long>(r.staleVehicles),static_cast<unsigned long>(r.unmappedPositions),static_cast<unsigned long>(r.conflictedTrips),static_cast<unsigned long>(r.predictionConflicts),static_cast<unsigned long>(r.capacityDrops));
@@ -1015,7 +1069,9 @@ size_t renderTrainMonitorPage(char *out,size_t capacity,const StatusSnapshot &s)
   w.format("%lu</strong> mapped train reports.</p>",static_cast<unsigned long>(monitorLatestCount(s)));
   w.append("<p class=\"hint\">Counts are before fading and route filters. Est. means an estimated departure; Unsure means an unclear report. Columns overlap. The map may hold an older update. Zero does not prove no trains are running: check Feed. Missing or Partial means some data was unavailable.</p><div style=\"overflow:auto\"><table><thead><tr><th scope=\"col\">Line</th><th scope=\"col\">Trains</th><th scope=\"col\">Moving</th><th scope=\"col\"><abbr title=\"Estimated departures\">Est.</abbr></th><th scope=\"col\">Unsure</th><th scope=\"col\">Feed</th></tr></thead><tbody id=\"lines\">");
   monitorRows(w,s);
-  w.append("</tbody></table></div><p id=\"refresh\" class=\"hint\">Live values refresh automatically.</p></section></main><script>(function(){const by=id=>document.getElementById(id);function text(id,v){by(id).textContent=v}const age=v=>v===null?'Not available':v+' seconds';async function refresh(){let timer;try{const controller=new AbortController();timer=setTimeout(()=>controller.abort(),15000);const r=await fetch('/api/monitor',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();const s=await r.json();text('health',s.health);text('mapped',s.mappedTrains);text('pollCount',s.latestPollMappedTrains);text('lit',s.visibleMapLeds);text('occupied',s.occupiedMapLeds);text('dark',s.outputEnabled?s.darkOccupiedMapLeds:'Map lights are off');text('feeds',s.feedsSucceeded+' / '+s.feedsTotal);text('mapAge',age(s.mapAgeSeconds));text('sourceAge',age(s.sourceAgeSeconds));text('reportAge',age(s.reportAgeSeconds));text('policy',s.uncertainMode==='Last reported'?'Last reported: fades after '+s.fadeSeconds+' seconds, at most 2/255 brightness':s.uncertainMode+' (ceiling '+s.uncertainBrightness+'/255)');text('stale',s.staleVehicles);text('unmapped',s.unmappedPositions);text('conflicts',s.conflictedTrips);text('predictions',s.predictionConflicts);text('capacity',s.capacityDrops);text('decode',s.decodeFailures);text('failure',s.lastFeedFailure?s.lastFeedFailure.feed+': '+s.lastFeedFailure.reason:'None recorded');const rows=document.createDocumentFragment();s.routes.forEach(q=>{const tr=document.createElement('tr');[q.line+(q.shown?'':' (hidden)'),q.mapped,q.moving,q.estimated,q.uncertain,q.feedState].forEach((v,i)=>{const cell=document.createElement(i?'td':'th');if(!i)cell.scope='row';cell.textContent=v;tr.append(cell)});rows.append(tr)});by('lines').replaceChildren(rows);text('refresh','Updated '+new Date().toLocaleTimeString());}catch(e){text('refresh','Refresh delayed; values may be old. Retrying...')}finally{clearTimeout(timer);setTimeout(refresh,5000)}}setTimeout(refresh,500)})();</script></body></html>");
+  w.append("</tbody></table></div><p id=\"refresh\" class=\"hint\">Live values refresh automatically.</p></section>");
+  w.append(kLiveIndicationSection);
+  w.append("</main><script>(function(){const by=id=>document.getElementById(id);function text(id,v){by(id).textContent=v}const age=v=>v===null?'Not available':v+' seconds';async function refresh(){let timer;try{const controller=new AbortController();timer=setTimeout(()=>controller.abort(),15000);const r=await fetch('/api/monitor',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();const s=await r.json();text('health',s.health);text('mapped',s.mappedTrains);text('pollCount',s.latestPollMappedTrains);text('lit',s.visibleMapLeds);text('occupied',s.occupiedMapLeds);text('dark',s.outputEnabled?s.darkOccupiedMapLeds:'Map lights are off');text('feeds',s.feedsSucceeded+' / '+s.feedsTotal);text('mapAge',age(s.mapAgeSeconds));text('sourceAge',age(s.sourceAgeSeconds));text('reportAge',age(s.reportAgeSeconds));text('policy',s.uncertainMode==='Last reported'?'Last reported: fades after '+s.fadeSeconds+' seconds, at most 2/255 brightness':s.uncertainMode+' (ceiling '+s.uncertainBrightness+'/255)');text('stale',s.staleVehicles);text('unmapped',s.unmappedPositions);text('conflicts',s.conflictedTrips);text('predictions',s.predictionConflicts);text('capacity',s.capacityDrops);text('decode',s.decodeFailures);text('failure',s.lastFeedFailure?s.lastFeedFailure.feed+': '+s.lastFeedFailure.reason:'None recorded');const rows=document.createDocumentFragment();s.routes.forEach(q=>{const tr=document.createElement('tr');[q.line+(q.shown?'':' (hidden)'),q.mapped,q.moving,q.estimated,q.uncertain,q.feedState].forEach((v,i)=>{const cell=document.createElement(i?'td':'th');if(!i)cell.scope='row';cell.textContent=v;tr.append(cell)});rows.append(tr)});by('lines').replaceChildren(rows);text('refresh','Updated '+new Date().toLocaleTimeString());}catch(e){text('refresh','Refresh delayed; values may be old. Retrying...')}finally{clearTimeout(timer);setTimeout(refresh,5000)}}setTimeout(refresh,500)})();</script></body></html>");
   return w.size();
 }
 
@@ -1032,7 +1088,8 @@ size_t renderStatusJson(char *out, size_t capacity,
   writer.json(status.deviceName);
   writer.append("\",\"target\":\"");
   writer.json(status.target);
-  writer.append("\",\"resetReason\":\"");
+  writer.append("\",\"indications\":");indicationCounts(writer,status.indications);
+  writer.append(",\"resetReason\":\"");
   writer.json(status.resetReason);
   writer.format("\",\"uptimeSeconds\":%lu,\"networkConnected\":%s,"
                 "\"ssid\":\"",

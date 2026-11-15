@@ -797,6 +797,31 @@ void testLoginPageCsrfRendering() {
 
 }
 
+void testIndicationApi() {
+  uint32_t cursor=17;
+  CHECK(brooklyn::web::parseIndicationCursor("0",cursor)&&cursor==0);
+  CHECK(brooklyn::web::parseIndicationCursor("4294967295",cursor)&&cursor==UINT32_MAX);
+  const char *badInputs[]={"","-1"," 1","1x","4294967296","1&after=2"};
+  for(const char *bad:badInputs)CHECK(!brooklyn::web::parseIndicationCursor(bad,cursor));
+  brooklyn::display::IndicationReport r{};r.available=r.outputEnabled=true;r.nowMs=50000;
+  r.counts={5,12,3,20};r.activeTotal=20;r.activeCount=brooklyn::display::kActiveIndicationPage;
+  r.eventCount=brooklyn::display::kIndicationHistoryPage;r.gap=r.more=true;
+  for(unsigned i=0;i<r.activeCount;++i)r.active[i]={1000,49000,static_cast<uint16_t>(i)};
+  for(unsigned i=0;i<r.eventCount;++i)r.events[i]={i+1,1000,21000,100000,static_cast<uint16_t>(i),brooklyn::display::IndicationEnd::StopWindowExpired,brooklyn::display::Indication::Uncertain};
+  char json[6144];CHECK(brooklyn::web::renderIndicationJson(json,sizeof(json),r)>0);
+  CHECK(strstr(json,"\"schemaVersion\":1")&&strstr(json,"\"historyGap\":true"));
+  CHECK(strstr(json,"\"durationMs\":20000")&&strstr(json,"Stopped-color time limit expired"));
+  CHECK(strstr(json,"\"stopped\":12")&&strstr(json,"\"activeTotal\":20"));
+  CHECK(brooklyn::web::renderIndicationJson(json,40,r)==0);
+  // Every mapped station must fit even with full active/history pages and max-width integers.
+  for(uint16_t led=0;led<306;++led) {
+    if(!brooklyn::semantic::semanticForLed(led))continue;
+    for(auto &a:r.active)a={UINT32_MAX,UINT32_MAX,led};
+    for(auto &e:r.events)e={UINT32_MAX,UINT32_MAX,UINT32_MAX-1,UINT32_MAX,led,brooklyn::display::IndicationEnd::OutputFailure,brooklyn::display::Indication::Uncertain};
+    CHECK(brooklyn::web::renderIndicationJson(json,sizeof(json),r)>0);
+  }
+}
+
 void testTrainMonitor() {
   auto status=sampleStatus();status.blueReport.timestamp=1000;status.unixTime=1015;
   status.visibleMapLeds=12;status.resolvedTrains=80;
@@ -1079,7 +1104,8 @@ int main() {
   testPageEscapingAndRequiredContent();
   testInlineLoginOnStatusPage();
   testLoginPageCsrfRendering();
-  testTrainMonitor();  testJsonStatusIsEscapedAndSecretFree();
+  testTrainMonitor();
+  testIndicationApi();  testJsonStatusIsEscapedAndSecretFree();
   testRouteVisibilityApiMasks();
   testRouteSelectionParsing();
   testServerOwnershipTransitions();

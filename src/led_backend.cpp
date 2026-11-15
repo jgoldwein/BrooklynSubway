@@ -183,7 +183,7 @@ bool diagnosticSystemReady = false;
 void setDiagnosticSystemReady(bool ready) {
   diagnosticSystemReady = ready;
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
-  if (!ready) display::live::disable();
+  if (!ready) display::live::disable(display::IndicationEnd::OutputFailure);
 #endif
   if (!ready) disarmLedOutputs();
 }
@@ -193,7 +193,7 @@ bool runDiagnostic(PhysicalChannel channel, bool walkChannel) {
 #if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
   display::live::DiagnosticGuard diagnosticGuard;
-  display::live::disable();
+  display::live::disable(display::IndicationEnd::HardwareTest);
 #endif
   const uint32_t durationMs = walkChannel ? 500 : 2000;
   const uint8_t channelNumber = static_cast<uint8_t>(channel);
@@ -303,7 +303,7 @@ bool runAllChannelDiagnostics() {
 #if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
   display::live::DiagnosticGuard diagnosticGuard;
-  display::live::disable();
+  display::live::disable(display::IndicationEnd::HardwareTest);
 #endif
   disarmLedOutputs();
   if (!diagnosticSystemReady) return false;
@@ -328,7 +328,7 @@ bool runAllRouteDiagnostics(RouteDiagnosticSpeed speed) {
 #if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LED_DIAGNOSTIC == 1
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
   display::live::DiagnosticGuard diagnosticGuard;
-  display::live::disable();
+  display::live::disable(display::IndicationEnd::HardwareTest);
 #endif
   disarmLedOutputs();
   if (!diagnosticSystemReady || !semantic::selfCheck()) return false;
