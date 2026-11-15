@@ -80,10 +80,11 @@ void draw(const char *clock) {
     if(suffix) {
       *suffix++=0;
       screen.setFont(u8g2_font_helvB18_tn);const int digitsWidth=screen.getStrWidth(localClock);
-      screen.setFont(u8g2_font_8x13_tf);const int suffixWidth=screen.getStrWidth(suffix);
-      const int x=(128-digitsWidth-4-suffixWidth)/2;
+      // Reserve the widest hh:mm:ss layout; AM/PM never follows glyph width.
+      constexpr int kSuffixX=103;
+      const int x=kSuffixX-4-digitsWidth;
       screen.setFont(u8g2_font_helvB18_tn);screen.drawStr(x,24,localClock);
-      screen.setFont(u8g2_font_8x13_tf);screen.drawStr(x+digitsWidth+4,24,suffix);
+      screen.setFont(u8g2_font_8x13_tf);screen.drawStr(kSuffixX,24,suffix);
     } else {
       screen.setFont(u8g2_font_8x13_tf);screen.drawStr((128-screen.getStrWidth(localClock))/2,24,localClock);
     }
