@@ -2,6 +2,7 @@
 #include "brightness_button_policy.h"
 #include "led_power.h"
 #include "semantic_api.h"
+#include "led_map.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -254,5 +255,18 @@ int main() {
     CHECK(counts.stats().visibleMapLeds==0 && counts.stats().darkOccupiedMapLeds==1);
     counts.disable(ops);CHECK(counts.stats().visibleMapLeds==0);
   }
-  puts("Live display: safe startup, automatic/manual enable, continuous color, four POWER modes, release debounce, 3-second reboot once, boot-held suppression, test restoration, maintenance/fault guards, stale timeout, brightness/current caps and rollover PASS");
+  {
+    live::Controller pages;auto frame=snapshot();pages.publish(frame);CHECK(pages.enable(0));
+    led::PhysicalAddress address{};led::GlobalPhysicalIndex index{};
+    CHECK(led::map::statusLedAddress(led::StatusLed::Mode,address));
+    CHECK(led::map::toGlobalIndex(address,index));
+    pages.service(0,false,false,ops);CHECK(!lit(index.value));
+    const auto before=last[0].color;
+    pages.setOledScreen(1);pages.service(1,false,false,ops); // Even within the same render tick.
+    CHECK(last[index.value].color.green==16 && last[index.value].color.blue==16);
+    CHECK(last[0].color.red==before.red && last[0].color.green==before.green && last[0].color.blue==before.blue);
+    frame.status.provisioning=true;pages.publish(frame);pages.service(2,false,false,ops);
+    CHECK(!pages.enabled()); // Recovery still disables physical LED output.
+  }
+  puts("Live display: safe startup, automatic/manual enable, continuous color, four POWER modes, release debounce, 3-second reboot once, boot-held suppression, test restoration, maintenance/fault guards, stale timeout, brightness/current caps, MODE overlay and rollover PASS");
 }

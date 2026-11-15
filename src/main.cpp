@@ -21,6 +21,9 @@
 #include <Arduino.h>
 
 #include <string.h>
+#if BROOKLYN_NETWORK_ENABLED
+#include <WiFi.h>
+#endif
 
 #if defined(BROOKLYN_NETWORK_ENABLED)
 // The HTTPS release download runs a TLS handshake on the loop task; the 8 KB default overflowed.
@@ -172,6 +175,7 @@ void updateLogicalDisplay(uint32_t nowMs) {
       operationalDisplay.feedAttempted(),
       operationalDisplay.state(),
       brightness,
+      static_cast<uint8_t>(brooklyn::oled::selectedScreen()),
   };
   brooklyn::hardware::setFeedIndicator(systemHealthy &&
       operationalDisplay.state() == brooklyn::display::State::Fresh &&
@@ -186,6 +190,7 @@ void updateLogicalDisplay(uint32_t nowMs) {
       previousStatus.provisioning != status.provisioning ||
       previousStatus.feedAttempted != status.feedAttempted ||
       previousStatus.displayState != status.displayState ||
+      previousStatus.oledScreen != status.oledScreen ||
       previousStatus.brightness != status.brightness;
   changed = changed || statusChanged;
   static bool reportedStatusMapFailure = false;
@@ -307,6 +312,46 @@ void setup() {
 }
 
 namespace {
+void publishOledScreenData(uint32_t nowMs) {
+  static bool published = false;
+  static uint32_t lastAtMs = 0;
+  if (published && static_cast<uint32_t>(nowMs-lastAtMs) < 1000) return;
+  published = true; lastAtMs = nowMs;
+  brooklyn::oled::ScreenData data;
+  data.sampledAtMs = nowMs;
+  const auto live = brooklyn::display::live::stats();
+  data.indications = live.indications;
+  data.lightsEnabled = brooklyn::display::live::enabled();
+  data.hasUpdate = operationalDisplay.hasFrame();
+  data.updateAgeSeconds = operationalDisplay.dataAgeMs(nowMs)/1000;
+  if (hasLastCycle) {
+    data.feedsSucceeded = lastCycle.processed;
+    data.feedsTotal = brooklyn::network::kFeedCount;
+  }
+  using brooklyn::oled::FeedHealth;
+  using brooklyn::display::State;
+  switch (operationalDisplay.state()) {
+    case State::Fresh: data.feedHealth=FeedHealth::Fresh; break;
+    case State::DegradedPartial: data.feedHealth=FeedHealth::Partial; break;
+    case State::DegradedHold: data.feedHealth=FeedHealth::Held; break;
+    case State::StaleHold: data.feedHealth=FeedHealth::Stale; break;
+    case State::NoData: data.feedHealth=FeedHealth::NoData; break;
+    default: break;
+  }
+#if BROOKLYN_NETWORK_ENABLED
+  data.wifiConnected = WiFi.status() == WL_CONNECTED;
+  if (data.wifiConnected) {
+    data.rssi = WiFi.RSSI();
+    const auto ip = WiFi.localIP();
+    snprintf(data.ip, sizeof(data.ip), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);
+  }
+  snprintf(data.firmware, sizeof(data.firmware), "%s", brooklyn::ota::WebOtaSession::firmwareVersion());
+#else
+  snprintf(data.firmware, sizeof(data.firmware), "offline build");
+#endif
+  brooklyn::oled::publishScreenData(data);
+}
+
 void serviceBrightnessButtons() {
   brooklyn::controls::BrightnessRequest request;
   // Bounded queue; input is sampled by the live task during network fetches.
@@ -398,6 +443,7 @@ void loop() {
   const brooklyn::display::Event agingEvent = operationalDisplay.update(displayNowMs);
   reportDisplayTransition(beforeAging, agingEvent, displayNowMs);
   updateLogicalDisplay(displayNowMs);
+  publishOledScreenData(displayNowMs);
   publishTelemetrySnapshot(displayNowMs);
 #if BROOKLYN_NETWORK_ENABLED
   brooklyn::web::StatusSnapshot webStatus{};

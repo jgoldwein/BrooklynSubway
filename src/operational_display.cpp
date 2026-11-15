@@ -17,6 +17,17 @@ constexpr semantic::Rgb kRed{255, 0, 0};
 constexpr semantic::Rgb kAmber{255, 128, 0};
 constexpr semantic::Rgb kCyan{0, 255, 255};
 constexpr semantic::Rgb kWhite{255, 255, 255};
+constexpr semantic::Rgb kPurple{160, 0, 255};
+
+semantic::Rgb modeColor(const StatusIndicators &status) {
+  if (status.provisioning) return kWhite;
+  switch (status.oledScreen) {
+    case 1: return kCyan;
+    case 2: return kGreen;
+    case 3: return kPurple;
+    default: return kBlack;
+  }
+}
 
 semantic::Rgb networkColor(WifiIndicator wifi, bool provisioning) {
   if (provisioning) return kCyan;
@@ -149,7 +160,7 @@ bool applyStatusOverlay(semantic::RgbFrame &frame, const StatusIndicators &statu
       status.systemHealthy ? kGreen : kRed,
       networkColor(status.wifi, status.provisioning),
       feedColor(status.displayState, status.feedAttempted),
-      status.provisioning ? kWhite : kBlack,
+      modeColor(status),
   };
 
   uint16_t indices[4]{};

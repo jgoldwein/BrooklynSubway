@@ -20,6 +20,7 @@ Controller controller(true);
 bool recoveryRequested = false;
 bool recoveryPending = false;
 controls::TestButton testButton;
+controls::TestButton modeButton;
 controls::BrightnessButtons brightnessButtons;
 constexpr uint8_t kBrightnessQueueSize = 8;
 controls::BrightnessRequest brightnessQueue[kBrightnessQueueSize];
@@ -39,6 +40,9 @@ void run(void *) {
     const bool recovery = recoveryHold.update(digitalRead(pins::ROTARY_PUSH) == LOW, nowMs);
     xSemaphoreTake(mutex, portMAX_DELAY);
     const bool testReleased = testButton.update(digitalRead(pins::BUTTON_TEST) == LOW, nowMs);
+    const bool modeReleased = modeButton.update(digitalRead(pins::BUTTON_MODE) == LOW, nowMs);
+    if (modeReleased && diagnosticDepth == 0 && !recoveryPending) oled::advanceScreen();
+    controller.setOledScreen(static_cast<uint8_t>(oled::selectedScreen()));
     if (testReleased && diagnosticDepth == 0) testRequested = true;
     if (recovery) recoveryRequested = recoveryPending = true;
     if (!recoveryRequested && digitalRead(pins::ROTARY_PUSH) != LOW) recoveryPending = false;
@@ -84,6 +88,7 @@ bool begin() {
     return false;
   }
   Serial.println("Live display ready: GPIO1 enable; GPIO4/5/6/7/10/11/12/13 data; auto-start after healthy fresh data; cap 16/255; POWER cycles LEDs/OLED; hold 3 seconds to reboot");
+  Serial.println("MODE GPIO41: release cycles OLED Main/Activity/Connection/Device; MODE status channel 8 index 3: off/cyan/green/purple, white for setup");
   return true;
 }
 bool available() { return task != nullptr; }
@@ -187,6 +192,7 @@ void endDiagnostic() {
   if (diagnosticDepth) --diagnosticDepth;
   if (!diagnosticDepth) {
     testButton.reset(digitalRead(pins::BUTTON_TEST) == LOW, millis());
+    modeButton.reset(digitalRead(pins::BUTTON_MODE) == LOW, millis());
     testRequested = false;
     // A test stays OFF until restored by its caller or a new POWER press.
     // Fresh-data and driver guards still apply to that explicit restart.

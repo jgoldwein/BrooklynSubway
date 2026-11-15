@@ -213,6 +213,7 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
   semantic::RenderTrace trace{};
   const auto result = semantic::renderTrainFrame(snapshot_.frame, rgb, config, &trace);
   auto status = snapshot_.status;
+  status.oledScreen = oledScreen_;
   status.brightness = config.brightness;
   if (result.rejectedLeds != 0 || !applyStatusOverlay(rgb, status)) {
     disable(operations,nowMs,IndicationEnd::OutputFailure);

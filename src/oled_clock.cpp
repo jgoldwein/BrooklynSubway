@@ -17,6 +17,9 @@ uint32_t trackedTrainsWord = 0;
 uint32_t visibleMapLights = 0;
 uint32_t requestedEnabled = 1;
 uint32_t setupMode = 0;
+uint32_t screenWord = 0;
+portMUX_TYPE screenDataMux = portMUX_INITIALIZER_UNLOCKED;
+ScreenData screenData{};
 uint32_t feedbackWord = 0, feedbackSequence = 0;
 uint32_t requestedContrast = 207; // Accessed atomically; only the OLED worker touches I2C.
 uint32_t statusWord = 0; // Single atomic packed snapshot; no bus access by readers.
@@ -33,6 +36,19 @@ void draw(const char *clock) {
     screen.drawStr((128-screen.getStrWidth("Open in browser:"))/2, 44, "Open in browser:");
     screen.setFont(u8g2_font_8x13_tf);
     screen.drawStr((128-screen.getStrWidth("192.168.4.1"))/2, 60, "192.168.4.1");
+    screen.sendBuffer();
+    return;
+  }
+  const Screen selected = selectedScreen();
+  if (selected != Screen::Main) {
+    ScreenData data;
+    portENTER_CRITICAL(&screenDataMux);
+    data = screenData;
+    portEXIT_CRITICAL(&screenDataMux);
+    ScreenText text;
+    formatScreen(selected, data, millis(), text);
+    screen.setFont(u8g2_font_6x12_tf);
+    for (uint8_t i = 0; i < 5; ++i) screen.drawStr(0, 11+i*12, text.lines[i]);
     screen.sendBuffer();
     return;
   }
@@ -172,6 +188,20 @@ void run(void *) {
   }
 }
 }
+void publishScreenData(const ScreenData &data) {
+  portENTER_CRITICAL(&screenDataMux);
+  screenData = data;
+  portEXIT_CRITICAL(&screenDataMux);
+}
+Screen selectedScreen() {
+  return static_cast<Screen>(__atomic_load_n(&screenWord, __ATOMIC_RELAXED));
+}
+void advanceScreen() {
+  if (__atomic_load_n(&setupMode, __ATOMIC_RELAXED)) return;
+  const Screen next = nextScreen(selectedScreen());
+  __atomic_store_n(&screenWord, static_cast<uint32_t>(next), __ATOMIC_RELAXED);
+  Serial.printf("OLED screen: %s (%u/4), MODE GPIO41\n", screenName(next), unsigned(next)+1);
+}
 void setSetupMode(bool enabled) {
   const uint32_t value = enabled ? 1u : 0u;
   if (__atomic_exchange_n(&setupMode, value, __ATOMIC_RELAXED) != value)
@@ -217,5 +247,5 @@ Status status() {
 }
 }
 #else
-namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void setSetupMode(bool) {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} void setTrackedTrains(uint32_t, bool) {} void setVisibleMapLights(uint16_t) {} Status status() { return {}; } }
+namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void setSetupMode(bool) {} void publishScreenData(const ScreenData &) {} Screen selectedScreen() { return Screen::Main; } void advanceScreen() {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} void setTrackedTrains(uint32_t, bool) {} void setVisibleMapLights(uint16_t) {} Status status() { return {}; } }
 #endif

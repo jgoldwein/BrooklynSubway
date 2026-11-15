@@ -45,12 +45,18 @@ enum class WifiIndicator : uint8_t {
 };
 
 struct StatusIndicators {
+  StatusIndicators(bool healthy = false, WifiIndicator network = WifiIndicator::Disabled,
+      bool setup = false, bool attempted = false, State state = State::WaitingForData,
+      uint8_t level = 0, uint8_t screen = 0)
+      : systemHealthy(healthy), wifi(network), provisioning(setup),
+        feedAttempted(attempted), displayState(state), brightness(level), oledScreen(screen) {}
   bool systemHealthy;
   WifiIndicator wifi;
   bool provisioning;
   bool feedAttempted;
   State displayState;
   uint8_t brightness;
+  uint8_t oledScreen; // Main=off; Activity=cyan; Connection=green; Device=purple.
 };
 
 class Controller {

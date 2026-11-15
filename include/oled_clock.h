@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <time.h>
+#include "oled_screens.h"
 namespace brooklyn::oled {
 // New York civil time; independent of the UTC SNTP configuration.
 bool formatClock(time_t utc, char *out, size_t capacity);
@@ -10,6 +11,9 @@ void setContrast(uint8_t contrast);
 void setEnabled(bool enabled);
 // Setup instructions replace the clock only while the provisioning AP is active.
 void setSetupMode(bool enabled);
+void publishScreenData(const ScreenData &data);
+Screen selectedScreen();
+void advanceScreen();
 void showBrightness(bool oled, uint8_t value, uint8_t maximum);
 void clearBrightnessFeedback();
 void setTrackedTrains(uint32_t count, bool available);

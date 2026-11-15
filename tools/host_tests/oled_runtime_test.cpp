@@ -8,6 +8,7 @@
 #include <setjmp.h>
 jmp_buf iterationEnd;
 FakeSerial Serial; FakeWire Wire;
+uint32_t millis() { return 120000; }
 int setupTitles=0,setupNames=0,setupAddresses=0;
 int frames=0,titles=0,ends=0,starts=0,deletes=0,delays=0;
 char lastTrainText[24]={};
@@ -53,7 +54,44 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==22) brooklyn::oled::setTrackedTrains(0,true);
  if(scenario==23) {brooklyn::oled::setTrackedTrains(132,true);brooklyn::oled::setTrackedTrains(132,false);}
  if(scenario==24) {brooklyn::oled::setTrackedTrains(80,true);brooklyn::oled::setVisibleMapLights(12);}
- if(scenario>=25) brooklyn::oled::setSetupMode(true);
+ if(scenario==25||scenario==26) brooklyn::oled::setSetupMode(true);
+ if(scenario>=27) {
+   brooklyn::oled::ScreenData d; d.wifiConnected=true; d.hasUpdate=true; d.updateAgeSeconds=15;
+   d.sampledAtMs=119000; d.indications={10,20,3,5}; d.lightsEnabled=true;
+   d.feedsSucceeded=8; d.feedsTotal=8; d.feedHealth=brooklyn::oled::FeedHealth::Fresh;
+   d.rssi=-70; strcpy(d.ip,"255.255.255.255");strcpy(d.firmware,"0.2.51");
+   brooklyn::oled::publishScreenData(d);
+   if(scenario==32) {
+     using namespace brooklyn::oled;
+     ScreenText out; formatScreen(Screen::Connection,d,120000,out);
+     OLED_CHECK(strcmp(out.lines[3],"Updated 16 sec ago")==0);
+     d.sampledAtMs=UINT32_MAX-499; d.updateAgeSeconds=60;
+     formatScreen(Screen::Connection,d,500,out);
+     OLED_CHECK(strcmp(out.lines[3],"Updated 61 sec ago")==0);
+     d.updateAgeSeconds=UINT32_MAX; formatScreen(Screen::Connection,d,500,out);
+     OLED_CHECK(strcmp(out.lines[3],"Updated >1 hour ago")==0);
+     d.wifiConnected=false;d.hasUpdate=false;d.feedsTotal=0;
+     formatScreen(Screen::Connection,d,500,out);
+     OLED_CHECK(strcmp(out.lines[1],"Wi-Fi: not connected")==0 && strcmp(out.lines[3],"No usable update yet")==0);
+     const FeedHealth healthValues[]={FeedHealth::Waiting, FeedHealth::Fresh, FeedHealth::Partial, FeedHealth::Held, FeedHealth::Stale, FeedHealth::NoData};
+     for(auto health : healthValues) {
+       d.feedHealth=health;d.feedsTotal=255;d.feedsSucceeded=255;
+       const Screen pages[]={Screen::Activity, Screen::Connection, Screen::Device};
+       for(auto page : pages) {
+         formatScreen(page,d,UINT32_MAX,out);
+         for(auto &line : out.lines) OLED_CHECK(strlen(line)<=21);
+       }
+     }
+     OLED_CHECK(nextScreen(Screen::Device)==Screen::Main);
+     puts("OLED page formatting, age rollover, unavailable data and text bounds PASS"); return 0;
+   }
+   brooklyn::oled::advanceScreen();
+   if(scenario==28) brooklyn::oled::advanceScreen();
+   if(scenario==29) { brooklyn::oled::advanceScreen(); brooklyn::oled::advanceScreen(); }
+   if(scenario==30) {brooklyn::oled::setSetupMode(true);brooklyn::oled::advanceScreen();OLED_CHECK(brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Activity);}
+   if(scenario==31) brooklyn::oled::setEnabled(false);
+ }
+
  const uint8_t preferred=scenario==11?0x3c:0x38;
  brooklyn::oled::begin(preferred,scenario==12||scenario==13?32:207);OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
  if(scenario==6){OLED_CHECK(worker==nullptr);puts("OLED task allocation failure isolated PASS");return 0;}
@@ -85,5 +123,8 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==24) OLED_CHECK(strcmp(lastTrainText,"Trains:80 Lit:12")==0);
  if(scenario==25) OLED_CHECK(setupTitles==2 && setupNames==2 && setupAddresses==2 && titles==0);
  if(scenario==26) OLED_CHECK(setupTitles==2 && setupNames==2 && setupAddresses==2 && titles==1 && frames==3);
+ if(scenario>=27 && scenario<=29) OLED_CHECK(frames==2 && titles==0 && setupTitles==0);
+ if(scenario==30) OLED_CHECK(frames==2 && setupTitles==2 && titles==0);
+ if(scenario==31) OLED_CHECK(frames==1 && powerCommands==1 && titles==0);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }
