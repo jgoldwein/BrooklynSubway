@@ -87,12 +87,16 @@ void run(void *) {
         digitalRead(pins::BUTTON_ROUTE)!=LOW && digitalRead(pins::BUTTON_TEST)!=LOW);
     controller.setOledScreen(static_cast<uint8_t>(controller.routeFocusActive()?oled::Screen::Lines:oled::selectedScreen()));
     const bool wasEnabled = controller.enabled();
+    const bool hadStartupIndicators=controller.stats().startupIndicatorsActive;
     controller.service(nowMs, digitalRead(pins::BUTTON_POWER) == LOW,
                        recoveryPending, operations);
     if (wasEnabled && !controller.enabled()) Serial.println(controller.stats().powerCanResume
         ? "Live display paused by POWER; press POWER again to resume"
         : "Live display stopped; GPIO1 LOW; press POWER when fresh data returns");
     if (!wasEnabled && controller.enabled()) Serial.println("Live display started/resumed after checks");
+    if(!hadStartupIndicators && controller.stats().startupIndicatorsActive) Serial.println("Startup indicators: status-only update; station LEDs remain dark until usable data");
+    const auto readiness=controller.stats();
+    if(readiness.framesWritten || diagnosticDepth || recoveryPending) hardware::observeStatusGreen(readiness.greenStatusBits);
     oled::setRouteFocus(controller.routeFocusActive(),controller.focusedRoute());
     const uint8_t powerMode = controller.stats().powerMode;
     if (powerMode != previousPowerMode) {

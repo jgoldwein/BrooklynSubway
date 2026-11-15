@@ -37,7 +37,7 @@ semantic::Rgb networkColor(WifiIndicator wifi, bool provisioning) {
   switch (wifi) {
     case WifiIndicator::Disabled: return kBlack;
     case WifiIndicator::Unavailable: return kRed;
-    case WifiIndicator::Connecting: return kRed;
+    case WifiIndicator::Connecting: return kAmber;
     case WifiIndicator::TimeSyncing: return kAmber;
     case WifiIndicator::Associated: return kGreen;
   }
@@ -45,7 +45,7 @@ semantic::Rgb networkColor(WifiIndicator wifi, bool provisioning) {
 }
 
 semantic::Rgb feedColor(State state, bool attempted) {
-  if (!attempted) return kBlack;
+  if (!attempted) return kRed;
   switch (state) {
     case State::Fresh: return kGreen;
     case State::DegradedHold:
@@ -183,6 +183,18 @@ bool applyStatusOverlay(semantic::RgbFrame &frame, const StatusIndicators &statu
     frame.pixels[indices[i]] = semantic::scaleBrightness(colors[i], status.brightness);
   }
   return true;
+}
+uint8_t greenStatusBits(const led::DisplayState *frame) {
+  if(!frame) return 0;
+  constexpr led::StatusLed leds[]={led::StatusLed::System,led::StatusLed::Network,led::StatusLed::MtaFeed};
+  uint8_t bits=0;
+  for(uint8_t i=0;i<3;++i) {
+    led::PhysicalAddress address{};led::GlobalPhysicalIndex index{};
+    if(!led::map::statusLedAddress(leds[i],address) || !led::map::toGlobalIndex(address,index)) return 0;
+    const auto c=frame[index.value].color;
+    if(c.green && !c.red && !c.blue) bits|=1u<<i;
+  }
+  return bits;
 }
 
 }  // namespace brooklyn::display

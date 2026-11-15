@@ -45,8 +45,9 @@ void draw(const char *clock) {
   if (__atomic_load_n(&setupMode, __ATOMIC_RELAXED)) {
     screen.setFont(u8g2_font_6x12_tf);
     screen.drawStr((128-screen.getStrWidth("Wi-Fi setup"))/2, 12, "Wi-Fi setup");
-    screen.drawStr((128-screen.getStrWidth("Join BrooklynMap-Avi"))/2, 28, "Join BrooklynMap-Avi");
-    screen.drawStr((128-screen.getStrWidth("Open in browser:"))/2, 44, "Open in browser:");
+    screen.drawStr((128-screen.getStrWidth("On your phone:"))/2, 24, "On your phone:");
+    screen.drawStr((128-screen.getStrWidth("Join BrooklynMap-Avi"))/2, 36, "Join BrooklynMap-Avi");
+    screen.drawStr((128-screen.getStrWidth("Open in browser:"))/2, 48, "Open in browser:");
     screen.setFont(u8g2_font_8x13_tf);
     screen.drawStr((128-screen.getStrWidth("192.168.4.1"))/2, 60, "192.168.4.1");
     screen.sendBuffer();
@@ -88,12 +89,12 @@ void draw(const char *clock) {
     char *suffix=clockKnown?strchr(localClock,' '):nullptr;
     if(suffix) {
       *suffix++=0;
-      screen.setFont(u8g2_font_helvB18_tn);const int digitsWidth=screen.getStrWidth(localClock);
-      // Reserve the widest hh:mm:ss layout; AM/PM never follows glyph width.
-      constexpr int kSuffixX=103;
-      const int x=kSuffixX-4-digitsWidth;
-      screen.setFont(u8g2_font_helvB18_tn);screen.drawStr(x,24,localClock);
-      screen.setFont(u8g2_font_8x13_tf);screen.drawStr(kSuffixX,24,suffix);
+      char fixedTime[9]="        ";
+      const size_t length=strlen(localClock);
+      if(length<=8) memcpy(fixedTime+8-length,localClock,length);
+      // Eight fixed cells: hours, colons and seconds never shift horizontally.
+      screen.setFont(u8g2_font_spleen12x24_mn);screen.drawStr(3,24,fixedTime);
+      screen.setFont(u8g2_font_8x13_tf);screen.drawStr(103,24,suffix);
     } else {
       screen.setFont(u8g2_font_8x13_tf);screen.drawStr((128-screen.getStrWidth(localClock))/2,24,localClock);
     }

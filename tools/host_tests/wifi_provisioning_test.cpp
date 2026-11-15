@@ -215,6 +215,8 @@ void testPortal() {
   }
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::None, false);
   CHECK(strstr(page, "Set the initial administrator password") != nullptr);
+  CHECK(strstr(page, "Use without internet") != nullptr);
+  CHECK(strstr(page, "No app or account is needed") != nullptr);
   CHECK(strstr(page, "name=\"password\" type=\"password\"") != nullptr);
   CHECK(strstr(page, "value=\"password") == nullptr);
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::None, true,
@@ -228,6 +230,12 @@ void testPortal() {
   CHECK(strstr(page, "Reconnect your phone to the same Wi-Fi") != nullptr);
   CHECK(strstr(page, "go to <a href=\"http://192.168.4.1/\">192.168.4.1</a>") != nullptr);
   CHECK(strstr(page, "The setup network closes shortly.") != nullptr);
+  CHECK(strstr(page, "This is normal; the map keeps using your home Wi-Fi.") != nullptr);
+  CHECK(strstr(page, "Close the setup pop-up") != nullptr);
+  CHECK(strstr(page, "Bookmark this page") != nullptr);
+  CHECK(strstr(page, "Wait about 10 seconds") != nullptr);
+  CHECK(strstr(page, "setTimeout(probe,10000)") != nullptr);
+  CHECK(strstr(page, "Use without internet") == nullptr);
   CHECK(strstr(page, "No administrator password is set") != nullptr);
   CHECK(strstr(page, kSecret) == nullptr);
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "TestNetwork", "192.168.1.42", true);

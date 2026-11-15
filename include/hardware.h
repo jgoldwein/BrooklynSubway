@@ -19,11 +19,15 @@ bool signalDiagnosticChannel(led::PhysicalChannel channel);
 void setFeedIndicator(bool freshComplete);
 void setFeedIndicatorAllowed(bool allowed,uint8_t brightnessCap=8);
 void signalBrightness(uint8_t value, uint8_t maximum);
+// One 120 ms confirmation after the setup AP successfully starts; quiet-aware.
+void signalSetupReady();
 // Bounded, nonblocking knob feedback; serviced by the live input task.
 void requestKnobClick();
 void serviceKnobClick(uint32_t nowMs, bool allowed);
 void setQuiet(bool quiet,uint8_t mapBrightness=255);
 // Manual easter-egg tone; zero stops. Shared timer/quiet policy, no delay.
 void setEasterEggTone(uint16_t frequency);
+void enableStatusReadyCues();
+void observeStatusGreen(uint8_t bits);
 
 }  // namespace brooklyn::hardware

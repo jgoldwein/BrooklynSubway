@@ -22,6 +22,7 @@ void endDiagnostic() {}
 OutputStats stats() {OutputStats s;s.powerMode=eggPowerMode;return s;}
 }
 #endif
+bool startupMode=false, startupGreen=false;int startupPixels=0;
 bool failAllocation = false;
 int enable = LOW;
 int shows = 0;
@@ -63,6 +64,16 @@ void observeStrip(uint8_t pin, const uint32_t *pixels, uint16_t count) {
   int colored = 0;
   for (uint16_t i = 0; i < count; ++i) {
     if (pixels[i]) {
+      if(startupMode) {
+        int channel=0;while(kExpectedPins[channel]!=pin) ++channel;
+        int global=i;for(int c=0;c<channel;++c) global+=kExpectedCounts[c];
+        brooklyn::led::map::PhysicalLed physical{};
+        CHECK(brooklyn::led::map::physicalLed(brooklyn::led::GlobalPhysicalIndex{static_cast<uint16_t>(global)},physical));
+        const unsigned designator=physical.designator.value;
+        CHECK(designator==252 || designator==251 || designator==306);
+        CHECK(pixels[i]==(startupGreen && designator==252?0x000400u:0x040000u));
+        ++startupPixels;continue;
+      }
       if(eggMode) {
         int channel=0;while(kExpectedPins[channel]!=pin) ++channel;
         int global=i;for(int c=0;c<channel;++c) global+=kExpectedCounts[c];
@@ -325,6 +336,14 @@ int main() {
   CHECK(!backend::armLedOutputs());
   backend::setDiagnosticSystemReady(false);
   CHECK(!backend::armLiveOutput() && enable == LOW);
+  startupMode=true;routeMode=false;eggMode=false;shows=coloredShows=0;startupPixels=0;
+  CHECK(backend::showStartupStatus(true,false,255) && enable==HIGH && startupPixels==3);
+  startupGreen=true;
+  CHECK(backend::showStartupStatus(true,true,4) && startupPixels==6);
+  backend::setDiagnosticSystemReady(false);CHECK(enable==LOW);
+  CHECK(!backend::showStartupStatus(false,false,4) && enable==LOW);
+  CHECK(backend::showStartupStatus(true,false,0) && enable==LOW);
+  puts("Boot preview: only SYSTEM/NETWORK/MTA red, SYSTEM green after checks, cap4, black cleanup and failure/zero interlocks PASS");
   puts("Live backend: black-first, cap rejection, frame validation, black-last shutdown, startup guard and normal API lock PASS");
 #endif
 }

@@ -90,6 +90,34 @@ void testIndicationHistory() {
 int main() {
   testIndicationHistory();
   {
+    live::Controller boot(true);live::Snapshot waiting;waiting.status.systemHealthy=true;waiting.brightness=6;
+    waiting.status.wifi=display::WifiIndicator::Unavailable;
+    boot.publish(waiting);boot.service(0,false,false,ops);
+    CHECK(!boot.enabled() && boot.stats().startupIndicatorsActive && boot.stats().greenStatusBits==1);
+    for(uint16_t i=0;i<306;++i) if(semantic::semanticForLed(i)) CHECK(!lit(i));
+    CHECK(boot.stats().visibleMapLeds==0);
+    waiting.status.wifi=display::WifiIndicator::Connecting;boot.publish(waiting);boot.service(1,false,false,ops);
+    CHECK(boot.stats().greenStatusBits==1);
+    waiting.status.wifi=display::WifiIndicator::Associated;boot.publish(waiting);boot.service(2,false,false,ops);
+    CHECK(boot.stats().greenStatusBits==3);
+    boot.setQuietBrightness(0);boot.service(3,false,false,ops);CHECK(!boot.stats().startupIndicatorsActive);
+    boot.setQuietBrightness(1);boot.service(4,false,false,ops);CHECK(boot.stats().startupIndicatorsActive);
+    waiting=snapshot(5);waiting.status.wifi=display::WifiIndicator::Associated;waiting.status.feedAttempted=true;
+    boot.publish(waiting);boot.service(5,false,false,ops);
+    CHECK(boot.enabled() && !boot.stats().startupIndicatorsActive && boot.stats().greenStatusBits==7);
+    boot.disable(ops);CHECK(!boot.stats().startupIndicatorsActive && boot.stats().greenStatusBits==0);
+    live::Controller cancelled(true);live::Snapshot empty;empty.status.systemHealthy=true;empty.brightness=5;
+    cancelled.publish(empty);cancelled.service(0,false,false,ops);CHECK(cancelled.stats().startupIndicatorsActive);
+    cancelled.service(100,true,false,ops);cancelled.service(140,true,false,ops);
+    cancelled.service(180,false,false,ops);cancelled.service(220,false,false,ops);
+    CHECK(cancelled.stats().powerMode==1 && !cancelled.stats().startupIndicatorsActive);
+    live::Controller recovery(true);recovery.publish(empty);recovery.service(0,false,false,ops);recovery.service(1,false,true,ops);
+    CHECK(!recovery.stats().startupIndicatorsActive && !recovery.enabled());
+    empty.status.provisioning=true;live::Controller setup(true);setup.publish(empty);setup.service(0,false,false,ops);
+    CHECK(!setup.stats().startupIndicatorsActive);
+    puts("Startup status-only: map dark, ready bits, quiet cap/off/restore, first-frame handoff, POWER/recovery/setup guards PASS");
+  }
+  {
     live::Controller automatic(true);
     automatic.service(0, false, false, ops);
     CHECK(!automatic.enabled());

@@ -6,6 +6,7 @@
 
 #include "network_service.h"
 #include "live_display.h"
+#include "hardware.h"
 
 #include "diagnostics.h"
 #include "wifi_policy.h"
@@ -658,6 +659,7 @@ void NetworkService::startProvisioning(uint32_t nowMs) {
   }
   if (portal().begin(gActiveFromNvs, nowMs)) {
     state_ = State::Provisioning;
+    hardware::signalSetupReady();
     Serial.println("Provisioning: setup AP \"BrooklynMap-Avi\" at http://192.168.4.1/ (2.4 GHz only)");
   } else {
     serverOwnership_.stop();

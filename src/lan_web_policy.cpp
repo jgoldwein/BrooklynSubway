@@ -669,8 +669,7 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.append("\"><button type=\"submit\">Run Network Diagnostics</button>"
                   "</form>");
   }
-  writer.append("<p class=\"muted\">Read-only connectivity checks; raw TCP "
-                "success does not verify TLS or HTTPS.</p></details>"
+  writer.append("<p class=\"muted\">Read-only checks. TCP success does not verify HTTPS.</p></details>"
                 "");
   writer.append("<section class=\"train-colors wide\" data-view=\"lights\" id=\"lights\"><h2>Train colors</h2>"
                 "<p>Pick a color for each state. Defaults: approaching yellow, stopped red, leaving green, uncertain blue.</p>");
@@ -826,6 +825,7 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.append("</div><button type=\"submit\">Save subway lines</button></form>");
   }
   writer.append("<p class=\"muted\">You can hide every line. The small status lights keep working.</p></section>");
+  writer.append("<details class=\"card wide\" data-view=\"advanced\"><summary>Get help</summary><a href=\"/support\">Make a support report</a></details>");
   writer.append("<details class=\"card wide\" data-view=\"advanced\"><summary>Memory diagnostics</summary><dl>"
                 "<dt>Free internal heap</dt><dd>");
   writer.format("%lu B", static_cast<unsigned long>(status.freeInternalHeap));
@@ -864,7 +864,7 @@ size_t renderHomePage(char *out, size_t capacity,
                 "const controller=new AbortController();timer=setTimeout(()=>controller.abort(),15000);"
                 "const r=await fetch('/api/status',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();"
                 "const s=await r.json();if(s.trainColors)document.querySelectorAll('[data-train-color]').forEach(e=>{const c=s.trainColors[e.dataset.trainColor];if(/^#[0-9a-f]{6}$/i.test(c))e.style.backgroundColor=c});s.feedSummary=s.feedsSucceeded+' / '+s.feedsTotal;s.connectionLabel=s.networkConnected?'Wi-Fi connected':'Wi-Fi disconnected';"
-                "s.downloadState=s.fetchingFeeds?'Fetching train data':'Waiting for next update';s.mapPower=s.quietHoursActive&&s.quietMapBrightness===0?'Quiet hours: lights off':s.physicalLedOutputEnabled?'Lights on':s.physicalPowerPaused?'Lights paused':'Lights off';if(s.routeFocusActive)s.mapPower+=' - Line '+s.routeFocusRoute+' only';"
+                "s.downloadState=s.fetchingFeeds?'Fetching train data':'Waiting for next update';s.mapPower=s.startupIndicatorsActive?'Starting: status lights':s.quietHoursActive&&s.quietMapBrightness===0?'Quiet hours: lights off':s.physicalLedOutputEnabled?'Lights on':s.physicalPowerPaused?'Lights paused':'Lights off';if(s.routeFocusActive)s.mapPower+=' - Line '+s.routeFocusRoute+' only';"
                 "s.friendlyState=s.displayState==='Fresh'?'Train data is up to date':s.displayState==='WaitingForData'?'Waiting for the first train update':s.displayState==='NoData'?'No current train data':'Some train updates are delayed';"
                 "document.querySelectorAll('[data-status]').forEach(e=>{const k=e.dataset.status;"
                 "if(!(k in s))return;const v=s[k];e.textContent=v===null?'Not available':"
@@ -1223,6 +1223,7 @@ size_t renderStatusJson(char *out, size_t capacity,
   writer.format(",\"routeFocusActive\":%s,\"routeFocusRoute\":\"%s\",\"effectiveRouteMask\":%lu",
       status.routeFocusActive?"true":"false",status.routeFocusActive?semantic::routeName(status.focusedRoute):"",
       static_cast<unsigned long>(status.routeFocusActive?semantic::routeVisibilityBit(status.focusedRoute):(routeVisibilityMask & semantic::kAllRoutesVisibleMask)));
+  writer.format(",\"startupIndicatorsActive\":%s",status.startupIndicatorsActive?"true":"false");
   writer.append(",\"stoppedPolicy\":\"fresh-evidence\",\"stoppedTimeLimitEnabled\":false");
   writer.format(",\"blueHoldSeconds\":%lu", static_cast<unsigned long>(status.blueHoldSeconds)); // legacy stored value, inactive
   writer.format(",\"pollSeconds\":%lu", static_cast<unsigned long>(status.pollSeconds));

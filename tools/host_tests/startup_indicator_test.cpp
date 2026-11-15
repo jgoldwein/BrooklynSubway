@@ -15,7 +15,8 @@ bool buzzerOutput = false;
 bool cueMode = false;
 bool feedReadyMode = false;
 bool brightnessMode = false;
-bool knobMode=false,probePriority=false,eggMode=false;
+bool knobMode=false,probePriority=false,eggMode=false,readyMode=false;
+uint32_t lastFeedbackMs=0;
 int readyBeeps = 0;
 int beepStarts = 0, cueMs = 0, cueOnMs = 0, abortAtMs = -1;
 bool recoveryRequested = false;
@@ -55,7 +56,8 @@ uint32_t ledcSetup(uint8_t channel, uint32_t hz, uint8_t resolution) {
     ++feedSetups; return failFeedSetup ? 0 : hz;
   }
   CHECK(channel == 7 && resolution == 8 && duty == 0);
-  if(eggMode) {CHECK(hz>=100 && hz<=4000);}
+  if(readyMode) {CHECK(hz==1000 || hz==1500 || hz==2000);}
+  else if(eggMode) {CHECK(hz>=100 && hz<=4000);}
   else if (knobMode) {CHECK(hz==2000);}
   else if (brightnessMode) { CHECK(hz >= 800 && hz <= 3200); }
   else if (feedReadyMode) { CHECK(hz == 2000 && feedDuty == 8); }
@@ -84,8 +86,9 @@ void ledcDetachPin(uint8_t pin) {
   ++detachCalls;
 }
 void delay(uint32_t ms) {
+  CHECK(!readyMode);
   CHECK(enable == LOW);
-  if (brightnessMode) { CHECK(ms == 45 && duty == 128);
+  if (brightnessMode) { CHECK((ms == 45 || ms == 120) && duty == 128);lastFeedbackMs=ms;
     if(probePriority) {const auto before=frequency;brooklyn::hardware::serviceKnobClick(100,true);brooklyn::hardware::setFeedIndicatorAllowed(true);CHECK(frequency==before && duty==128);}
     return;
   }
@@ -112,7 +115,7 @@ void delay(uint32_t ms) {
   }
 }
 void reset(bool muted, int failAt = -1) {
-  knobMode=false;probePriority=false;
+  knobMode=false;probePriority=false;readyMode=false;
   brightnessMode = false;
   cueMode = false;
   feedReadyMode = false;
@@ -268,5 +271,25 @@ int main() {
   reset(false,0);eggMode=true;brooklyn::hardware::setEasterEggTone(700);CHECK(duty==0 && attachCalls==0);
   brooklyn::hardware::setEasterEggTone(0);
   puts("Easter tone: shared PWM ownership, repeated pitch, quiet suppression, bounds and failure cleanup PASS");
+  reset(false);readyMode=true;
+  using brooklyn::hardware::observeStatusGreen;using brooklyn::hardware::enableStatusReadyCues;
+  enableStatusReadyCues();observeStatusGreen(1);serviceKnobClick(0,true);CHECK(duty==128 && frequency==1000);
+  observeStatusGreen(1);serviceKnobClick(90,true);CHECK(duty==0);serviceKnobClick(170,true);CHECK(attachCalls==1);
+  observeStatusGreen(3);serviceKnobClick(171,true);CHECK(duty==128 && frequency==1500);
+  serviceKnobClick(261,true);observeStatusGreen(7);serviceKnobClick(341,true);CHECK(duty==128 && frequency==2000);
+  serviceKnobClick(441,true);brooklyn::hardware::setFeedIndicator(true);CHECK(readyBeeps==0 && attachCalls==3);
+  observeStatusGreen(7);serviceKnobClick(600,true);CHECK(attachCalls==3);
+  observeStatusGreen(3);observeStatusGreen(7);serviceKnobClick(601,true);CHECK(duty==128 && frequency==2000);
+  observeStatusGreen(0);serviceKnobClick(605,true);CHECK(duty==0);
+  const int cues=attachCalls;
+  brooklyn::hardware::setQuiet(true);observeStatusGreen(7);serviceKnobClick(700,true);CHECK(duty==0);
+  brooklyn::hardware::setQuiet(false);observeStatusGreen(7);serviceKnobClick(800,true);CHECK(attachCalls==cues);
+  observeStatusGreen(0);observeStatusGreen(7);serviceKnobClick(900,false);serviceKnobClick(1000,true);CHECK(duty==0 && attachCalls==cues);
+  reset(false,0);readyMode=true;enableStatusReadyCues();observeStatusGreen(2);serviceKnobClick(0,true);CHECK(duty==0 && attachCalls==0);
+  reset(true);readyMode=true;enableStatusReadyCues();observeStatusGreen(7);serviceKnobClick(0,true);CHECK(duty==0 && attachCalls==0);
+  reset(false);brightnessMode=true;brooklyn::hardware::signalSetupReady();CHECK(lastFeedbackMs==120 && frequency==1600 && duty==0 && buzzer==LOW && attachCalls==1 && detachCalls==1);
+  brooklyn::hardware::setQuiet(true);brooklyn::hardware::signalSetupReady();CHECK(attachCalls==1 && duty==0);brooklyn::hardware::setQuiet(false);
+  reset(false,0);brightnessMode=true;brooklyn::hardware::signalSetupReady();CHECK(duty==0 && buzzer==LOW && attachCalls==0);
+  puts("Ready cues: three pitches, green-edge only, repeated recovery, no U23 duplicate, quiet/DIM/maintenance/power cancellation and PWM failure PASS");
   puts("Startup: U23 pulses, four rising notes plus descending pair, 2265 ms, 50%-duty PWM, DIM mute, failed-check silence, PWM failure cleanup, addressable outputs disabled PASS");
 }

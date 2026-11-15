@@ -188,7 +188,26 @@ void setDiagnosticSystemReady(bool ready) {
 #if BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
   if (!ready) display::live::disable(display::IndicationEnd::OutputFailure);
 #endif
-  if (!ready) disarmLedOutputs();
+  if (!ready) {stopLiveOutput();disarmLedOutputs();}
+}
+
+bool showStartupStatus(bool hardwareReady,bool checksPassed,uint8_t brightness) {
+#if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+  if(!hardwareReady || !semantic::selfCheck()) {stopLiveOutput();return false;}
+  if(!brightness) {stopLiveOutput();return true;}
+  if(brightness>4) brightness=4;
+  semantic::RgbFrame rgb{};
+  display::StatusIndicators status{checksPassed,display::WifiIndicator::Unavailable,false,false,display::State::WaitingForData,brightness};
+  if(!display::applyStatusOverlay(rgb,status)) {stopLiveOutput();return false;}
+  DisplayState frame[map::TOTAL_LED_COUNT]{};
+  for(uint16_t i=0;i<map::TOTAL_LED_COUNT;++i) frame[i].color=rgb.pixels[i];
+  if(!physicalLedOutputsArmed() && (!outputController.initialize(kOutputOperations,true) || !outputController.arm(kOutputOperations,true))) {stopLiveOutput();return false;}
+  if(!outputController.transmit(kOutputOperations,true,frame,map::TOTAL_LED_COUNT)) {stopLiveOutput();return false;}
+  Serial.printf("Startup indicators: SYSTEM %s, NETWORK red, MTA red; station/MODE pixels black; cap %u/255\n",checksPassed?"green":"red",unsigned(brightness));
+  return true;
+#else
+  (void)hardwareReady;(void)checksPassed;(void)brightness;return false;
+#endif
 }
 
 namespace {

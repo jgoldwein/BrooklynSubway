@@ -29,6 +29,8 @@ struct OutputStats {
   uint32_t effectiveRouteMask=semantic::kAllRoutesVisibleMask;
   semantic::Route focusedRoute=semantic::Route::None;
   bool routeFocusActive=false;
+  bool startupIndicatorsActive=false;
+  uint8_t greenStatusBits=0;
   uint32_t framesWritten = 0;
   uint32_t lastWriteAtMs = 0;
   uint32_t mapChanges = 0;
@@ -94,6 +96,7 @@ class Controller {
   bool routeFocusActive_=false;
   semantic::Route focusedRoute_=static_cast<semantic::Route>(1);
   bool enabled_ = false;
+  bool startupIndicatorsActive_=false;
   bool armed_ = false;
   bool dirty_ = true;
   uint32_t animationTick_ = UINT32_MAX;

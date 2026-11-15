@@ -73,6 +73,7 @@ struct StatusSnapshot {
   bool physicalLiveAvailable = false;
   bool physicalLedOutputEnabled = false;
   bool physicalPowerPaused = false;
+  bool startupIndicatorsActive=false;
   bool routeFocusActive=false;
   semantic::Route focusedRoute=semantic::Route::None;
   uint32_t physicalFramesWritten = 0;

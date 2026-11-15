@@ -70,6 +70,6 @@ void formatOutside(const Snapshot &snapshot,uint32_t now,char *out,size_t capaci
   }
   if(now-snapshot.sourceUnix>3600) {snprintf(out,capacity,"Outside: old data");return;}
   const int value=snapshot.fahrenheitTenths;
-  snprintf(out,capacity,"Outside: %s%d.%d F",value<0?"-":"",(value<0?-value:value)/10,(value<0?-value:value)%10);
+  snprintf(out,capacity,"Outside: %s%d.%d \xB0" "F",value<0?"-":"",(value<0?-value:value)/10,(value<0?-value:value)%10);
 }
 }

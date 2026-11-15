@@ -18,6 +18,7 @@ namespace {
 bool startupMuted = false;
 uint32_t quietWord=0;
 uint32_t quietMapWord=255, feedCapWord=8;
+uint32_t statusCuesEnabled=0,observedGreen=0,readyPending=0;
 uint8_t lastFeedDuty=0;
 bool isQuiet() {return __atomic_load_n(&quietWord,__ATOMIC_RELAXED)!=0;}
 bool feedIndicatorAttached = false;
@@ -31,6 +32,9 @@ void unlockIndicator();
 void beepFeedReadyOnce() {
   if (feedReadyBeepAttempted) return;
   feedReadyBeepAttempted = true;
+  if(__atomic_load_n(&statusCuesEnabled,__ATOMIC_RELAXED)) {
+    Serial.println("Feed-ready buzzer: delegated to green MTA status cue");return;
+  }
   if (startupMuted || isQuiet()) {
     Serial.println("Feed-ready buzzer: muted by DIM at boot or quiet hours"); return;
   }
@@ -223,12 +227,15 @@ uint32_t allowedWord = 1;
 #if defined(BROOKLYN_TARGET_PCB)
 uint32_t knobPending = 0;
 bool knobActive = false, knobGap = false;
+bool knobReady=false;
 uint32_t knobUntilMs = 0;
 void stopKnobToneLocked() {
   if(knobActive) {
     ledcWrite(7,0);ledcDetachPin(pins::BUZZER);digitalWrite(pins::BUZZER,LOW);
   }
   knobActive=knobGap=false;
+  knobReady=false;
+  __atomic_store_n(&readyPending,0u,__ATOMIC_RELAXED);
   __atomic_store_n(&knobPending,0u,__ATOMIC_RELAXED);
 }
 #endif
@@ -291,18 +298,45 @@ void requestKnobClick() {
   while(pending<8 && !__atomic_compare_exchange_n(&knobPending,&pending,pending+1,false,__ATOMIC_RELAXED,__ATOMIC_RELAXED)) {}
 #endif
 }
+void enableStatusReadyCues() {
+#if defined(BROOKLYN_TARGET_PCB)
+  __atomic_store_n(&statusCuesEnabled,1u,__ATOMIC_RELAXED);
+#endif
+}
+void observeStatusGreen(uint8_t bits) {
+#if defined(BROOKLYN_TARGET_PCB)
+  if(!__atomic_load_n(&statusCuesEnabled,__ATOMIC_RELAXED)) return;
+  bits&=7;
+  const uint32_t prior=__atomic_exchange_n(&observedGreen,uint32_t(bits),__ATOMIC_RELAXED);
+  __atomic_fetch_and(&readyPending,uint32_t(bits),__ATOMIC_RELAXED);
+  if(!isQuiet() && !startupMuted) __atomic_fetch_or(&readyPending,uint32_t(bits)&~prior,__ATOMIC_RELAXED);
+#else
+  (void)bits;
+#endif
+}
 void serviceKnobClick(uint32_t nowMs,bool allowed) {
 #if defined(BROOKLYN_TARGET_PCB)
   if(__atomic_exchange_n(&indicatorLock,1u,__ATOMIC_ACQUIRE)) return;
-  if(!allowed || isQuiet()) stopKnobToneLocked();
+  if(!allowed || isQuiet() || (knobReady && !__atomic_load_n(&observedGreen,__ATOMIC_RELAXED))) stopKnobToneLocked();
   else if(knobActive) {
     if(static_cast<int32_t>(nowMs-knobUntilMs)>=0) {
       ledcWrite(7,0);ledcDetachPin(pins::BUZZER);digitalWrite(pins::BUZZER,LOW);
-      knobActive=false;knobGap=true;knobUntilMs=nowMs+15;
+      const uint32_t gap=knobReady?80:15;
+      knobActive=knobReady=false;knobGap=true;knobUntilMs=nowMs+gap;
     }
   } else if(!knobGap || static_cast<int32_t>(nowMs-knobUntilMs)>=0) {
     knobGap=false;
-    if(__atomic_load_n(&knobPending,__ATOMIC_RELAXED)) {
+    const uint32_t ready=__atomic_load_n(&readyPending,__ATOMIC_RELAXED);
+    if(ready) {
+      const uint32_t bit=ready&(~ready+1u);
+      __atomic_fetch_and(&readyPending,~bit,__ATOMIC_RELAXED);
+      const uint16_t hz=bit==1?1000:bit==2?1500:2000;
+      if(ledcSetup(7,hz,8)!=0) {
+        ledcWrite(7,0);ledcAttachPin(pins::BUZZER,7);ledcWrite(7,128);
+        knobActive=knobReady=true;knobUntilMs=nowMs+(bit==4?100:90);
+        Serial.printf("Ready beep: %s green, %u Hz\n",bit==1?"SYSTEM":bit==2?"NETWORK":"MTA",unsigned(hz));
+      } else digitalWrite(pins::BUZZER,LOW);
+    } else if(__atomic_load_n(&knobPending,__ATOMIC_RELAXED)) {
       __atomic_sub_fetch(&knobPending,1u,__ATOMIC_RELAXED);
       if(ledcSetup(7,2000,8)!=0) {
         ledcWrite(7,0);ledcAttachPin(pins::BUZZER,7);ledcWrite(7,128);
@@ -316,7 +350,7 @@ void serviceKnobClick(uint32_t nowMs,bool allowed) {
 #endif
 }
 
-void signalBrightness(uint8_t value, uint8_t maximum) {
+static void signalFeedback(uint8_t value, uint8_t maximum,uint16_t durationMs) {
 #if defined(BROOKLYN_TARGET_PCB)
   if(isQuiet()) return;
   // Main-loop caller; serialize with the feed-ready cue on the same PWM timer.
@@ -327,13 +361,21 @@ void signalBrightness(uint8_t value, uint8_t maximum) {
   const uint16_t frequency = 800 + (maximum ? uint32_t(bounded) * 2400 / maximum : 0);
   if (ledcSetup(channel, frequency, 8) != 0) {
     ledcWrite(channel, 0); ledcAttachPin(pins::BUZZER, channel);
-    ledcWrite(channel, 128); delay(45); ledcWrite(channel, 0);
+    ledcWrite(channel, 128); delay(durationMs); ledcWrite(channel, 0);
     ledcDetachPin(pins::BUZZER);
   }
   digitalWrite(pins::BUZZER, LOW);
   unlockIndicator();
 #else
-  (void)value; (void)maximum;
+  (void)value; (void)maximum;(void)durationMs;
+#endif
+}
+
+void signalBrightness(uint8_t value,uint8_t maximum) {signalFeedback(value,maximum,45);}
+void signalSetupReady() {
+  signalFeedback(1,3,120);
+#if defined(BROOKLYN_TARGET_PCB)
+  Serial.println(isQuiet()?"Setup AP ready: confirmation muted by quiet hours":"Setup AP ready: confirmation beep complete");
 #endif
 }
 
@@ -366,6 +408,9 @@ bool beginSafe() {
   lastFeedDuty=0;
   feedIndicatorUnavailable = false;
   feedReadyBeepAttempted = false;
+  __atomic_store_n(&statusCuesEnabled,0u,__ATOMIC_RELAXED);
+  __atomic_store_n(&observedGreen,0u,__ATOMIC_RELAXED);
+  __atomic_store_n(&readyPending,0u,__ATOMIC_RELAXED);
   pinMode(pins::AVI_LOCATION_LED, OUTPUT);
 
   digitalWrite(pins::BUZZER, LOW);

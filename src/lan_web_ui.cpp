@@ -9,6 +9,7 @@
 #include "led_diagnostic_policy.h"
 #include "ota_progress_script.h"
 #include "web_ui_assets.h"
+#include "support_assets.h"
 
 #if BROOKLYN_NETWORK_ENABLED
 
@@ -214,6 +215,14 @@ void LanWebUi::registerRoutes() {
   server_.on("/admin/password", HTTP_POST,
              [this]() { handlePasswordChange(); });
   server_.on("/api/status", HTTP_GET, [this]() { handleStatus(); });
+  server_.on("/support",HTTP_GET,[this](){
+    server_.sendHeader("Cache-Control","no-store");server_.sendHeader("X-Content-Type-Options","nosniff");
+    server_.send_P(200,"text/html; charset=utf-8",kSupportPage);
+  });
+  server_.on("/support.js",HTTP_GET,[this](){
+    server_.sendHeader("Cache-Control","public, max-age=3600");server_.sendHeader("X-Content-Type-Options","nosniff");
+    server_.send_P(200,"text/javascript; charset=utf-8",kSupportScript);
+  });
   server_.on("/monitor", HTTP_GET, [this]() {
     StatusSnapshot current=status_; updateAdminStatus(current);
     current.physicalLedOutputEnabled=display::live::enabled();
@@ -1942,6 +1951,7 @@ void LanWebUi::updateAdminStatus(StatusSnapshot &status) {
   status.oledAddress = configuration_.oledAddress();
   status.oledStatus = oled::status();
   const auto output = display::live::stats();
+  status.startupIndicatorsActive=output.startupIndicatorsActive;
   status.routeFocusActive=output.routeFocusActive;
   status.focusedRoute=output.focusedRoute;
   status.physicalPowerPaused = output.powerCanResume;

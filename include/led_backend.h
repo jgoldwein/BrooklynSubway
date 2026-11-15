@@ -31,6 +31,8 @@ enum class RouteDiagnosticStyle : uint8_t { WholeLine, Individual };
 bool runAllRouteDiagnostics(RouteDiagnosticSpeed speed = RouteDiagnosticSpeed::Normal,
                            RouteDiagnosticStyle style = RouteDiagnosticStyle::WholeLine);
 void setDiagnosticSystemReady(bool ready);
+// Boot-only status preview: all map/MODE pixels black, cap4, black-first.
+bool showStartupStatus(bool hardwareReady,bool checksPassed,uint8_t brightness);
 // Dedicated live-service entry points. Normal arm/transmit APIs remain locked.
 bool armLiveOutput();
 bool transmitLiveOutput(const DisplayState *frame, uint16_t count);

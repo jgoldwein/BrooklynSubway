@@ -4,6 +4,7 @@
 #pragma once
 
 #include "rgb_renderer.h"
+#include "led_types.h"
 
 #include <stdint.h>
 
@@ -101,5 +102,7 @@ const char *stateName(State state);
 // Renders static status colors into the four canonical status LED positions.
 // Map pixels are not read or modified; no physical LED API is involved.
 bool applyStatusOverlay(semantic::RgbFrame &frame, const StatusIndicators &status);
+// Bits 0/1/2: physically nonzero pure-green SYSTEM/NETWORK/MTA pixels.
+uint8_t greenStatusBits(const led::DisplayState *frame);
 
 }  // namespace brooklyn::display

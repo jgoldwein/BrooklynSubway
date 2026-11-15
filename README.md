@@ -1,8 +1,12 @@
 # Brooklyn Active Subway Map Firmware
 
-Initial firmware scaffold for the manufactured Brooklyn Active Subway Map V1.1 PCB.
+Firmware for the manufactured Brooklyn Active Subway Map V1.1 PCB.
 
-## Start here
+**Using the map?** Start with [Avi's quick start](docs/AVI_QUICK_START.md), then
+[Avi's user guide](docs/AVI_USER_GUIDE.md). These guides cover the current private
+preview; the public stable release may be older until the consolidated release.
+
+## Engineering: start here
 
 1. Read `PROJECT_CONTEXT.md`.
 2. After a computer or session reboot, follow [`RESUME.md`](RESUME.md) before
@@ -155,6 +159,18 @@ Short rotary press has no action during focus. The prior OLED page/line-browser
 state resumes after MODE exits, with idle timers paused during focus. MODE
 indicator LED307 is amber during focus, within existing brightness limits.
 
-NETWORK LED251 now shows green once connected/ready; connecting/unavailable
-remain red, time synchronization amber, and setup cyan. Device OLED page shows
+NETWORK LED251 shows green once connected/ready, red while unavailable,
+and amber while connecting or synchronizing time. Setup's logical cyan state
+remains separate; recovery keeps physical outputs off. Device OLED page shows
 the Wi-Fi MAC address, matching the station interface displayed by UniFi.
+
+### Startup readiness (private preview)
+
+After safe LED initialization, only the three readiness LEDs are lit at a
+4/255 cap: initially red, SYSTEM green after local checks, NETWORK amber then
+green, MTA red/amber then green when a complete fresh update arrives. All map
+pixels stay black until usable data. Known failure/recovery keeps GPIO1 LOW;
+POWER and saved quiet/brightness settings retain priority. Readiness edges give
+short1000/1500/2000Hz cues, serialized without runtime input delays. The MTA cue
+also serves U23 feed-ready, avoiding a duplicate sound. Quiet hours and DIM-at-boot
+mute automatic cues. See the Avi guides for normal operation.

@@ -32,6 +32,8 @@ OutputStats Controller::stats() const {
   result.routeFocusActive=routeFocusActive_;
   result.focusedRoute=routeFocusActive_?focusedRoute_:semantic::Route::None;
   result.effectiveRouteMask=effectiveRouteMask();
+  result.startupIndicatorsActive=startupIndicatorsActive_;
+  if(!enabled_ && !startupIndicatorsActive_) result.greenStatusBits=0;
   result.powerCanResume = powerCanResume_ && !enabled_ && !automaticStartPending_;
   result.automaticStartPending = automaticStartPending_ || (quietSuppressed_ && quietRestore_);
   result.powerMode = powerMode_;
@@ -157,6 +159,7 @@ void Controller::readIndications(IndicationReport &out,uint32_t nowMs,uint32_t a
 void Controller::disable(const Operations &operations, uint32_t nowMs, IndicationEnd reason) {
   stopIndications(nowMs==UINT32_MAX?lastObservationAtMs_:nowMs,reason);
   enabled_ = false;
+  startupIndicatorsActive_=false;
   automaticStartPending_ = false;
   powerCanResume_ = false;
   quietSuppressed_=quietRestore_=false;
@@ -185,6 +188,7 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
     quietRestore_=quietRestore_ || automaticStartPending_;
     stopIndications(nowMs,IndicationEnd::QuietHours);
     enabled_=automaticStartPending_=powerCanResume_=false;
+    startupIndicatorsActive_=false;
     if(armed_ && operations.stop) operations.stop(operations.context);
     armed_=false;return;
   }
@@ -194,10 +198,29 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
     quietRestore_=false;
   }
   if (!hasSnapshot_) return;
-  // Keep startup LOW while waiting for the first usable cycle. POWER can
-  // cancel automatic startup during this wait without enabling anything.
-  if (!everHadFrame_ && !snapshot_.hasFrame && snapshot_.status.systemHealthy && !recovery)
+  // Safe status-only startup: never render station pixels before usable data.
+  if (!everHadFrame_ && !snapshot_.hasFrame && snapshot_.status.systemHealthy && !snapshot_.status.provisioning && !recovery) {
+    if(automaticStartPending_ && !powerPressed && operations.arm && operations.transmit && operations.stop) {
+      if(!armed_) {
+        if(!operations.arm(operations.context)) {disable(operations,nowMs,IndicationEnd::OutputFailure);return;}
+        armed_=true;dirty_=true;
+      }
+      if(dirty_ || nowMs/1000!=animationTick_) {
+        semantic::RgbFrame rgb{};auto status=snapshot_.status;status.oledScreen=0;
+        status.brightness=snapshot_.brightness<4?snapshot_.brightness:4;
+        if(status.brightness>quietBrightness_) status.brightness=quietBrightness_;
+        if(!applyStatusOverlay(rgb,status)) {disable(operations,nowMs,IndicationEnd::OutputFailure);return;}
+        led::DisplayState frame[semantic::kFrameLedCount]{};
+        for(uint16_t i=0;i<semantic::kFrameLedCount;++i) frame[i].color=rgb.pixels[i];
+        if(!operations.transmit(operations.context,frame,semantic::kFrameLedCount)) {disable(operations,nowMs,IndicationEnd::OutputFailure);return;}
+        startupIndicatorsActive_=true;dirty_=false;animationTick_=nowMs/1000;
+        stats_.greenStatusBits=display::greenStatusBits(frame);
+        if(stats_.framesWritten!=UINT32_MAX) ++stats_.framesWritten;
+        stats_.lastWriteAtMs=nowMs;
+      }
+    }
     return;
+  }
   if (automaticStartPending_ && !powerPressed && !recovery) (void)enable(nowMs);
   if (recovery || !safe(nowMs) || !operations.arm ||
       !operations.transmit || !operations.stop) {
@@ -205,6 +228,7 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
     return;
   }
   if (!enabled_) return;
+  startupIndicatorsActive_=false;
   if (!armed_) {
     if (!operations.arm(operations.context)) {
       operations.stop(operations.context);
@@ -254,6 +278,7 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
     return;
   }
   observeIndications(trace,limited,nowMs);
+  stats_.greenStatusBits=display::greenStatusBits(limited);
   stats_.visibleMapLeds = stats_.darkOccupiedMapLeds = 0;
   for(auto &count:stats_.routeLights) count=0;
   for (uint16_t i=0;i<semantic::kFrameLedCount;++i) {

@@ -30,7 +30,7 @@ def main():
             "-DBROOKLYN_ALLOW_LED_DIAGNOSTIC=1",
             f"-I{h.ROOT / 'tools/host_tests'}",
             str(h.ROOT / "tools/host_tests/led_diagnostic_test.cpp"),
-            str(h.ROOT / "src/physical_output_safety.cpp"),
+            str(h.ROOT / "src/physical_output_safety.cpp"),str(h.ROOT / "src/operational_display.cpp"),str(h.ROOT / "src/train_frame.cpp"),str(h.ROOT / "src/rgb_renderer.cpp"),
             str(h.ROOT / "src/led_backend.cpp"),
             str(h.ROOT / "src/easter_eggs.cpp"),str(h.ROOT / "src/weather.cpp"),str(h.ROOT / "src/oled_screens.cpp"),
             str(h.ROOT / "src/led_map.cpp"),

@@ -342,7 +342,7 @@ void testStatusOverlayAndRenderingBoundary() {
                                     false, display::State::WaitingForData, 255};
   CHECK(display::applyStatusOverlay(frame, waiting));
   CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::Network)], {0, 0, 0}));
-  CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::MtaFeed)], {0, 0, 0}));
+  CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::MtaFeed)], {255, 0, 0}));
 
   display::StatusIndicators stationDown{true, display::WifiIndicator::Unavailable, false,
                                         true, display::State::NoData, 255};
@@ -351,7 +351,7 @@ void testStatusOverlayAndRenderingBoundary() {
   CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::MtaFeed)], {255, 0, 0}));
   stationDown.wifi = display::WifiIndicator::Connecting;
   CHECK(display::applyStatusOverlay(frame, stationDown));
-  CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::Network)], {255, 0, 0}));
+  CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::Network)], {255, 128, 0}));
   stationDown.wifi = display::WifiIndicator::TimeSyncing;
   CHECK(display::applyStatusOverlay(frame, stationDown));
   CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::Network)], {255, 128, 0}));

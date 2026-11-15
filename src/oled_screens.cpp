@@ -158,7 +158,7 @@ void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenT
         write(2,conditions.attempted?"Will retry later":"Needs Wi-Fi and time");
       } else {
         const int value=conditions.fahrenheitTenths;
-        write(1,"%s%d.%d F",value<0?"-":"",(value<0?-value:value)/10,(value<0?-value:value)%10);
+        write(1,"%s%d.%d \xB0" "F",value<0?"-":"",(value<0?-value:value)/10,(value<0?-value:value)%10);
         write(2,"%s",weather::description(conditions.code));
         write(3,"%s %lum old",age>3600?"Old data:":conditions.lastFailed?"Delayed:":"Data:",static_cast<unsigned long>(age/60));
       }

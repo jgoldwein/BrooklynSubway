@@ -172,7 +172,7 @@ void updateLogicalDisplay(uint32_t nowMs) {
   const brooklyn::display::StatusIndicators status{
       systemHealthy,
       wifiIndicator(networkService.state()),
-      networkService.state() == brooklyn::network::State::Provisioning,
+      networkService.state() == brooklyn::network::State::Provisioning || networkService.state() == brooklyn::network::State::NoCredentials,
       operationalDisplay.feedAttempted(),
       operationalDisplay.state(),
       brightness,
@@ -288,13 +288,39 @@ void setup() {
   brooklyn::led::begin();
 
   brooklyn::diagnostics::begin();
+  networkService.begin(); // Load saved brightness/quiet policy before any status preview.
+  brooklyn::oled::setScreenPreferences(networkService.screenPreferences());
+  brooklyn::hardware::setQuiet(brooklyn::oled::quietHoursActive(time(nullptr)),brooklyn::oled::quietMapBrightness());
+  bool startupIndicatorsReady=true;
+#if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+  brooklyn::hardware::enableStatusReadyCues();
+  uint8_t startupCap=networkService.brightness();
+  if(brooklyn::oled::quietHoursActive(time(nullptr)) && startupCap>brooklyn::oled::quietMapBrightness()) startupCap=brooklyn::oled::quietMapBrightness();
+  if(networkService.state()==brooklyn::network::State::NoCredentials || networkService.state()==brooklyn::network::State::Provisioning) startupCap=0;
+  startupIndicatorsReady=brooklyn::led::backend::showStartupStatus(hardwareReady,false,startupCap);
+  const uint32_t redPhaseStarted=millis();
+#endif
   const bool pipelineReady = brooklyn::pipeline::selfCheckEmptyCycle(trainPipeline);
-  systemHealthy = hardwareReady && pipelineReady;
+  systemHealthy = hardwareReady && pipelineReady && startupIndicatorsReady;
   brooklyn::led::backend::setDiagnosticSystemReady(systemHealthy);
-  Serial.printf("Train pipeline self-check (no feeds, no LED output): %s\n",
+#if defined(BROOKLYN_TARGET_PCB) && BROOKLYN_ALLOW_LIVE_LED_OUTPUT == 1
+  constexpr uint32_t kInitialRedMs=150;
+  if(systemHealthy) {
+    const uint32_t elapsed=millis()-redPhaseStarted;
+    if(startupCap && elapsed<kInitialRedMs) delay(kInitialRedMs-elapsed);
+    if(!brooklyn::led::backend::showStartupStatus(hardwareReady,true,startupCap)) {
+      systemHealthy=false;brooklyn::led::backend::setDiagnosticSystemReady(false);
+    } else if(startupCap) {
+      brooklyn::hardware::observeStatusGreen(1);
+      brooklyn::hardware::serviceKnobClick(millis(),true);
+      delay(90); // Boot-only SYSTEM cue; runtime cues never delay input sampling.
+      brooklyn::hardware::serviceKnobClick(millis(),true);
+    }
+  }
+#endif
+  Serial.printf("Train pipeline self-check (no feeds, station LEDs dark): %s\n",
                 pipelineReady ? "PASS" : "FAIL");
   brooklyn::telemetry::begin();
-  networkService.begin();
 #if BROOKLYN_NETWORK_ENABLED
   brooklyn::ota::healthSetupComplete(systemHealthy);
 #endif

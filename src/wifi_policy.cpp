@@ -195,8 +195,13 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
         "<header><div class=\"brand\"><span class=\"brand-mark\" aria-hidden=\"true\">BK</span><div>"
         "<h1>Brooklyn Subway</h1><p class=\"subtitle\">Specially Designed for Avi Yao</p></div></div></header>"
         "<main><section class=\"hero\"><p class=\"kicker\">Wi-Fi setup mode</p><h2>Let's connect your map</h2>"
-        "<p>Stay connected to <strong>BrooklynMap-Avi</strong> while you set up. Your phone may say &ldquo;No internet&rdquo; &mdash; that's normal.</p>"
-        "<ol class=\"steps\" aria-label=\"Setup progress\"><li");
+        );
+  if(status==PortalStatus::Saved)
+    o.put("<p>Your map has joined your home Wi-Fi. Now connect your phone to that same Wi-Fi to open the map.</p>");
+  else
+    o.put("<p>On your phone, open Wi-Fi settings and join <strong>BrooklynMap-Avi</strong>. Choose &ldquo;Stay connected&rdquo; or &ldquo;Use without internet&rdquo; if asked.</p>"
+          "<p>Keep this setup page open while you enter your details. No app or account is needed.</p>");
+  o.put("<ol class=\"steps\" aria-label=\"Setup progress\"><li");
   if(!adminConfigured && status!=PortalStatus::Saved && status!=PortalStatus::Connecting)o.put(" aria-current=\"step\"");
   o.put(">1. Map password</li><li");if(status==PortalStatus::Connecting || (adminConfigured && status!=PortalStatus::Saved))o.put(" aria-current=\"step\"");
   o.put(">2. Wi-Fi</li><li");if(status==PortalStatus::Saved)o.put(" aria-current=\"step\"");o.put(">3. Open your map</li></ol></section>");
@@ -215,18 +220,18 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
     bool ipSafe=connectedIp && *connectedIp;
     for(const char *c=connectedIp;ipSafe && *c;++c)ipSafe=(*c>='0'&&*c<='9')||*c=='.';
     if(ipSafe) {
-      o.put("<h3>Open your map</h3><ol><li>Reconnect your phone to the same Wi-Fi as the map.</li><li>Open this address in your normal browser:</li></ol>"
+      o.put("<h3>Open your map</h3><ol><li>Reconnect your phone to the same Wi-Fi as the map using your phone's Wi-Fi settings.</li><li>Wait about 10 seconds for your phone to rejoin that Wi-Fi.</li><li>Close the setup pop-up and open Safari, Chrome, or your usual browser.</li><li>Type this address in the address bar:</li></ol>"
             "<p class=\"ip-link\"><a href=\"http://");o.put(connectedIp);o.put("/\">");o.put(connectedIp);o.put("</a></p>"
             "<a class=\"button\" href=\"http://");o.put(connectedIp);o.put("/\">Open your map</a>"
-            "<p class=\"hint\">If you have two maps, use this board's individual IP address. Your phone's setup pop-up may not open your home network automatically.</p>");
+            "<p class=\"hint\">If you have two maps, use this board's individual IP address. If it does not open yet, wait a few more seconds and try again. Bookmark this page for next time. You do not need to join BrooklynMap-Avi again for everyday use.</p>");
     }
     if(!adminConfigured)o.put("<p class=\"alert warning\">No administrator password is set. The map's settings will stay locked until you set one through setup Wi-Fi.</p>");
     o.put("<p class=\"hint\">To return while setup Wi-Fi is available, go to <a href=\"http://192.168.4.1/\">192.168.4.1</a>. ");
-    if(saved)o.put("The setup network closes shortly.");o.put("</p></section>");
+    if(saved)o.put("The setup network closes shortly. This is normal; the map keeps using your home Wi-Fi.");o.put("</p></section>");
     if(saved) {
       if(ipSafe) {
         o.put("<script>var ip=\"");o.put(connectedIp);
-        o.put("\";function probe(){var c=new AbortController(),k=setTimeout(function(){c.abort()},2500);fetch(\"http://\"+ip+\"/api/status\",{mode:\"no-cors\",cache:\"no-store\",signal:c.signal}).then(function(){clearTimeout(k);location.replace(\"http://\"+ip+\"/\")}).catch(function(){clearTimeout(k);setTimeout(probe,2000)})}probe()</script>");
+        o.put("\";function probe(){var c=new AbortController(),k=setTimeout(function(){c.abort()},2500);fetch(\"http://\"+ip+\"/api/status\",{mode:\"no-cors\",cache:\"no-store\",signal:c.signal}).then(function(){clearTimeout(k);location.replace(\"http://\"+ip+\"/\")}).catch(function(){clearTimeout(k);setTimeout(probe,2000)})}setTimeout(probe,10000)</script>");
       }
       o.put("</main></body></html>");return o.completeLength();
     }
@@ -235,7 +240,7 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
   if(status==PortalStatus::InvalidInput)o.put("<section class=\"alert error\" role=\"alert\"><h2>Check your Wi-Fi details</h2><p>Choose or enter a Wi-Fi name. Use 8 to 63 password characters, or leave it empty for an open network.</p></section>");
   o.put("<section><h2 class=\"step-title\"><span class=\"step-number\">1</span>Protect your map settings</h2>");
   if(adminConfigured)o.put("<p class=\"pill\">Administrator password is set</p><details><summary>Advanced: reset administrator password</summary><p>An administrator password is configured. Resetting it replaces the map password and signs out existing administrator sessions.</p>");
-  else o.put("<p>Set the initial administrator password so you can change map settings later. This is just for your map &mdash; it can be different from your Wi-Fi password.</p>");
+  else o.put("<p>Set the initial administrator password so you can change map settings later. This is just for your map &mdash; it can be different from your Wi-Fi password. Save it somewhere safe; you will use it to sign in when changing settings.</p>");
   o.put("<form method=\"POST\" action=\"/admin/setup\" id=\"admin-form\"><label for=\"admin-password\">New map password (at least 8 characters)</label>"
         "<input id=\"admin-password\" name=\"password\" type=\"password\" minlength=\"8\" maxlength=\"128\" autocomplete=\"new-password\" required>"
         "<label for=\"admin-confirm\">Type the map password again</label><input id=\"admin-confirm\" name=\"confirmation\" type=\"password\" minlength=\"8\" maxlength=\"128\" autocomplete=\"new-password\" required>");
