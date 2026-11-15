@@ -309,8 +309,8 @@ void testStatusOverlayAndRenderingBoundary() {
   CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::Network)], {0, 0, 255}));
   CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::MtaFeed)], {0, 255, 0}));
   CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::Mode)], {0, 0, 0}));
-  const semantic::Rgb modeColors[]={{0,0,0},{0,255,255},{0,255,0},{160,0,255},{255,128,0}};
-  for(uint8_t page=0;page<5;++page) {
+  const semantic::Rgb modeColors[]={{0,0,0},{0,255,255},{0,255,0},{160,0,255},{255,128,0},{255,80,160}};
+  for(uint8_t page=0;page<6;++page) {
     normal.oledScreen=page; CHECK(display::applyStatusOverlay(frame,normal));
     CHECK(equalRgb(frame.pixels[statusIndex(led::StatusLed::Mode)], modeColors[page]));
   }

@@ -9,15 +9,18 @@ using namespace brooklyn::oled;
 int main() {
   Navigation nav;
   CHECK(nav.view().screen==Screen::Main && !nav.view().automatic);
-  nav.input(Action::TurnPrevious,10);CHECK(nav.view().screen==Screen::Lines && !nav.view().lineBrowsing);
-  nav.input(Action::TurnNext,20);CHECK(nav.view().screen==Screen::Main);
-  nav.input(Action::TurnPrevious,30);nav.input(Action::Select,40);
+  nav.input(Action::TurnPrevious,10);CHECK(nav.view().screen==Screen::Dedication);
+  nav.input(Action::TurnPrevious,15);CHECK(nav.view().screen==Screen::Lines && !nav.view().lineBrowsing);
+  nav.input(Action::TurnNext,20);CHECK(nav.view().screen==Screen::Dedication);
+  nav.input(Action::TurnNext,25);CHECK(nav.view().screen==Screen::Main);
+  nav.input(Action::TurnPrevious,30);nav.input(Action::TurnPrevious,35);nav.input(Action::Select,40);
   CHECK(nav.view().lineBrowsing);
   nav.input(Action::TurnPrevious,50);CHECK(nav.view().line==brooklyn::semantic::kRouteCount);
   nav.input(Action::TurnNext,60);CHECK(nav.view().line==1);
   nav.input(Action::TurnNext,70);CHECK(nav.view().line==2);
   nav.input(Action::Select,80);CHECK(!nav.view().lineBrowsing);
-  nav.input(Action::TurnNext,90);CHECK(nav.view().screen==Screen::Main && nav.view().line==2);
+  nav.input(Action::TurnNext,90);CHECK(nav.view().screen==Screen::Dedication && nav.view().line==2);
+  nav.input(Action::TurnNext,95);CHECK(nav.view().screen==Screen::Main);
   nav.input(Action::OpenLines,100);CHECK(nav.view().screen==Screen::Lines && nav.view().line==2);
   nav.input(Action::ToggleAuto,200);CHECK(nav.view().automatic);
   CHECK(!nav.update(5199));CHECK(nav.update(5200));CHECK(nav.view().line==3);
@@ -77,5 +80,23 @@ int main() {
   data.routeMask=0;formatScreen(Screen::Lines,data,0,text,view);
   CHECK(strstr(text.lines[2],"hidden")!=nullptr);
   CHECK(strstr(text.lines[4],"Turn:line")!=nullptr);
+  const char *names[]={"Joel","Marlene","Marc","Kim","Juliana","Levi","Robbie","Eric"};
+  bool seen[8]{};view.screen=Screen::Dedication;view.changedAtMs=0;
+  for(uint32_t at=0;at<60000;at+=1000) {
+    formatScreen(Screen::Dedication,data,at,text,view);
+    CHECK(strcmp(text.lines[0],"Happy Bar Mitzvah!")==0);
+    CHECK(strstr(text.lines[1],"Avi Yao")!=nullptr);
+    CHECK(strcmp(text.lines[2],"From the Goldweins")==0);
+    CHECK(strcmp(text.lines[3],"September 26, 2026")==0);
+    for(auto &line:text.lines) CHECK(strlen(line)<=21);
+    for(unsigned i=0;i<8;++i) if(strstr(text.lines[4],names[i])) seen[i]=true;
+  }
+  for(bool visible:seen) CHECK(visible);
+  data.sampledAtMs=1000;data.uptimeSeconds=49ull*86400+2*3600+3*60+4;
+  formatScreen(Screen::Device,data,2000,text);CHECK(strcmp(text.lines[3],"Uptime 49d 02:03:05")==0);
+  data.sampledAtMs=UINT32_MAX-499;
+  formatScreen(Screen::Device,data,500,text);CHECK(strcmp(text.lines[3],"Uptime 49d 02:03:05")==0);
+  data.uptimeSeconds=UINT64_MAX;formatScreen(Screen::Device,data,500,text);CHECK(strcmp(text.lines[3],"Uptime >9999 days")==0);
+  puts("Dedication text, all eight scrolling names, 64-bit uptime and millis rollover PASS");
   puts("OLED navigation: turn screens / press to browse lines, context exit, auto pause, remembered line, timeout/Stay, rollover, rotary bounce, long press, SSID scrolling and shared-light counts PASS");
 }

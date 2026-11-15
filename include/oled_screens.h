@@ -6,9 +6,10 @@
 #include "train_frame.h"
 #include <stdint.h>
 namespace brooklyn::oled {
-enum class Screen : uint8_t { Main, Activity, Connection, Device, Lines };
+enum class Screen : uint8_t { Main, Activity, Connection, Device, Lines, Dedication };
+constexpr uint8_t kScreenCount = static_cast<uint8_t>(Screen::Dedication)+1;
 constexpr Screen nextScreen(Screen screen) {
-  return static_cast<Screen>((static_cast<uint8_t>(screen) + 1u) % 5u);
+  return static_cast<Screen>((static_cast<uint8_t>(screen) + 1u) % kScreenCount);
 }
 enum class Action : uint8_t { NextScreen, OpenLines, TurnPrevious, TurnNext, Select, ToggleAuto };
 struct NavigationView {
@@ -34,6 +35,7 @@ enum class FeedHealth : uint8_t { Waiting, Fresh, Partial, Held, Stale, NoData }
 struct ScreenData {
   display::IndicationCounts indications{};
   uint32_t sampledAtMs = 0, updateAgeSeconds = 0;
+  uint64_t uptimeSeconds = 0;
   int16_t rssi = 0;
   uint8_t feedsSucceeded = 0, feedsTotal = 0;
   bool wifiConnected = false, hasUpdate = false, lightsEnabled = false;

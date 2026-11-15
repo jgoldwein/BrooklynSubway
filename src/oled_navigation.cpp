@@ -10,7 +10,7 @@ bool Navigation::input(Action action, uint32_t nowMs) {
   lastInputAtMs_ = autoAtMs_ = nowMs;
   if (action == Action::NextScreen ||
       ((action==Action::TurnNext || action==Action::TurnPrevious) && !view_.lineBrowsing)) {
-    view_.screen=action==Action::TurnPrevious ? static_cast<Screen>((static_cast<uint8_t>(view_.screen)+4u)%5u) : nextScreen(view_.screen);
+    view_.screen=action==Action::TurnPrevious ? static_cast<Screen>((static_cast<uint8_t>(view_.screen)+kScreenCount-1u)%kScreenCount) : nextScreen(view_.screen);
     view_.automatic=false;view_.lineBrowsing=false;
   }
   else if (action == Action::OpenLines) { view_.screen=Screen::Lines;view_.lineBrowsing=true;view_.automatic=false; }

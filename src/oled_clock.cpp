@@ -60,7 +60,7 @@ void draw(const char *clock) {
     return;
   }
   screen.setFont(u8g2_font_6x12_tf);
-  screen.drawStr((128 - screen.getStrWidth("Brooklyn Subway 1/5")) / 2, 16, "Brooklyn Subway 1/5");
+  screen.drawStr((128 - screen.getStrWidth("Brooklyn Subway 1/6")) / 2, 16, "Brooklyn Subway 1/6");
   const uint32_t trains = __atomic_load_n(&trackedTrainsWord, __ATOMIC_RELAXED);
   char count[24];
   if (trains & 0x80000000u) snprintf(count, sizeof(count), "Trains:%lu Lit:%u", static_cast<unsigned long>(trains & 0x7fffffffu), unsigned(__atomic_load_n(&visibleMapLights,__ATOMIC_RELAXED)));
@@ -225,7 +225,7 @@ void navigate(Action action, uint32_t nowMs) {
   const bool changed = navigation.input(action, nowMs);
   const auto view = navigation.view();
   portEXIT_CRITICAL(&screenDataMux);
-  if(changed) {requestRefresh();Serial.printf("OLED screen: %s (%u/5), line %s %s\n", screenName(view.screen), unsigned(view.screen)+1,
+  if(changed) {requestRefresh();Serial.printf("OLED screen: %s (%u/%u), line %s %s\n", screenName(view.screen), unsigned(view.screen)+1, unsigned(kScreenCount),
       semantic::routeName(static_cast<semantic::Route>(view.line)),view.automatic?"Auto":"Paused");
   }
 }

@@ -95,7 +95,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
          for(auto &line : out.lines) OLED_CHECK(strlen(line)<=21);
        }
      }
-     OLED_CHECK(nextScreen(Screen::Lines)==Screen::Main);
+     OLED_CHECK(nextScreen(Screen::Dedication)==Screen::Main);
      puts("OLED page formatting, age rollover, unavailable data and text bounds PASS"); return 0;
    }
    brooklyn::oled::advanceScreen();
@@ -106,6 +106,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  }
 
  if(scenario==34) brooklyn::oled::navigate(brooklyn::oled::Action::OpenLines,fakeNowMs);
+ if(scenario==36) brooklyn::oled::navigate(brooklyn::oled::Action::TurnPrevious,fakeNowMs);
  const uint8_t preferred=scenario==11?0x3c:0x38;
  brooklyn::oled::begin(preferred,scenario==12||scenario==13?32:207);OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
  if(scenario==6){OLED_CHECK(worker==nullptr);puts("OLED task allocation failure isolated PASS");return 0;}
@@ -140,8 +141,9 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario>=27 && scenario<=29) OLED_CHECK(frames==2 && titles==0 && setupTitles==0);
  if(scenario==30) OLED_CHECK(frames==2 && setupTitles==2 && titles==0);
  if(scenario==31) OLED_CHECK(frames==1 && powerCommands==1 && titles==0);
- if(scenario==33) OLED_CHECK(frames==3 && titles==2 && strcmp(lastScreenTitle,"Map lights OFF   2/5")==0 && fakeNowMs==120040);
- if(scenario==34) OLED_CHECK(frames==3 && titles==0 && strcmp(lastScreenTitle,"Line 3 Paused 5/5")==0 && fakeNowMs==120040);
+ if(scenario==33) OLED_CHECK(frames==3 && titles==2 && strcmp(lastScreenTitle,"Map lights OFF   2/6")==0 && fakeNowMs==120040);
+ if(scenario==34) OLED_CHECK(frames==3 && titles==0 && strcmp(lastScreenTitle,"Line 3 Paused 5/6")==0 && fakeNowMs==120040);
  if(scenario==35) OLED_CHECK(frames==3 && titles==3 && delays==51);
+ if(scenario==36) OLED_CHECK(frames==2 && titles==0 && strcmp(lastScreenTitle,"Happy Bar Mitzvah!")==0);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

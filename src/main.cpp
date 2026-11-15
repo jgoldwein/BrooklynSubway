@@ -21,6 +21,7 @@
 #include <Arduino.h>
 
 #include <string.h>
+#include <esp_timer.h>
 #if BROOKLYN_NETWORK_ENABLED
 #include <WiFi.h>
 #endif
@@ -319,6 +320,7 @@ void publishOledScreenData(uint32_t nowMs) {
   published = true; lastAtMs = nowMs;
   brooklyn::oled::ScreenData data;
   data.sampledAtMs = nowMs;
+  data.uptimeSeconds = static_cast<uint64_t>(esp_timer_get_time())/1000000u;
   const auto live = brooklyn::display::live::stats();
   brooklyn::oled::setReturnSeconds(networkService.oledReturnSeconds());
   data.indications = live.indications;
