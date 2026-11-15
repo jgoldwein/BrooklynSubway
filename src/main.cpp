@@ -320,7 +320,10 @@ void publishOledScreenData(uint32_t nowMs) {
   brooklyn::oled::ScreenData data;
   data.sampledAtMs = nowMs;
   const auto live = brooklyn::display::live::stats();
+  brooklyn::oled::setReturnSeconds(networkService.oledReturnSeconds());
   data.indications = live.indications;
+  data.routeMask=networkService.routeVisibilityMask();
+  brooklyn::oled::setLineCounts(data,operationalDisplay.frame(),live.routeLights);
   data.lightsEnabled = brooklyn::display::live::enabled();
   data.hasUpdate = operationalDisplay.hasFrame();
   data.updateAgeSeconds = operationalDisplay.dataAgeMs(nowMs)/1000;
@@ -340,7 +343,11 @@ void publishOledScreenData(uint32_t nowMs) {
   }
 #if BROOKLYN_NETWORK_ENABLED
   data.wifiConnected = WiFi.status() == WL_CONNECTED;
+  data.wifiConnecting = networkService.state()==brooklyn::network::State::WifiConnecting ||
+      networkService.state()==brooklyn::network::State::TemporarilyUnavailable;
   if (data.wifiConnected) {
+    const String ssid=WiFi.SSID();
+    snprintf(data.ssid,sizeof(data.ssid),"%s",ssid.c_str());
     data.rssi = WiFi.RSSI();
     const auto ip = WiFi.localIP();
     snprintf(data.ip, sizeof(data.ip), "%u.%u.%u.%u", ip[0], ip[1], ip[2], ip[3]);

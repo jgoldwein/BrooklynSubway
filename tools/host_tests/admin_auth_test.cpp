@@ -336,6 +336,8 @@ void testCookieAndEndpointPolicy() {
   CHECK(brooklyn::admin::isMutationEndpoint("POST", "/config/oled"));
   CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/config/oled"));
   CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/config/oled-dimmer"));
+  CHECK(brooklyn::admin::isMutationEndpoint("POST", "/config/oled-return"));
+  CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/config/oled-return"));
   CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/config/blue-hold"));
   CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/live-display/set"));
   CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/hardware-test/run"));

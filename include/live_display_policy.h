@@ -33,6 +33,7 @@ struct OutputStats {
   uint32_t stackMinimumBytes=0;
   uint16_t visibleMapLeds = 0;
   uint16_t darkOccupiedMapLeds = 0;
+  uint16_t routeLights[semantic::kRouteCount+1]{};
   IndicationCounts indications{};
   bool powerCanResume = false;
   bool automaticStartPending = false;

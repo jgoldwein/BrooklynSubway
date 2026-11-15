@@ -38,6 +38,7 @@ class LanWebUi {
   void handlePollInterval();
   void handleBlueHold();
   void handleOledDimmer();
+  void handleOledReturn();
   void handleUnknownTiming();
   void handleTrainColors();
   void handleOledAddress();

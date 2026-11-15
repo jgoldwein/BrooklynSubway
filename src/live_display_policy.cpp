@@ -31,7 +31,7 @@ OutputStats Controller::stats() const {
   result.powerCanResume = powerCanResume_ && !enabled_ && !automaticStartPending_;
   result.automaticStartPending = automaticStartPending_;
   result.powerMode = powerMode_;
-  if (!enabled_) { result.blinkingLeds = 0; result.visibleMapLeds = 0; result.darkOccupiedMapLeds = 0; }
+  if (!enabled_) { result.blinkingLeds = 0; result.visibleMapLeds = 0; result.darkOccupiedMapLeds = 0; for(auto &count:result.routeLights) count=0; }
   return result;
 }
 
@@ -232,10 +232,15 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
   }
   observeIndications(trace,limited,nowMs);
   stats_.visibleMapLeds = stats_.darkOccupiedMapLeds = 0;
+  for(auto &count:stats_.routeLights) count=0;
   for (uint16_t i=0;i<semantic::kFrameLedCount;++i) {
     if (!semantic::semanticForLed(i)) continue; // Exclude the four status LEDs.
     const auto &color=limited[i].color;
-    if (color.red || color.green || color.blue) ++stats_.visibleMapLeds;
+    if (color.red || color.green || color.blue) {
+      ++stats_.visibleMapLeds;
+      const auto route=static_cast<uint8_t>(semantic::routeForLed(i));
+      if(route && route<=semantic::kRouteCount) ++stats_.routeLights[route];
+    }
     else if (snapshot_.frame.occupancy[i]) ++stats_.darkOccupiedMapLeds;
   }
   animationTick_ = tick;

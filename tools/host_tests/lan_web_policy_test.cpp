@@ -49,6 +49,7 @@ struct MemoryStore {
   uint32_t oledAddress = 0;
   uint32_t blueHold = 0;
   uint32_t oledContrast = UINT32_MAX;
+  uint32_t oledReturn = UINT32_MAX;
   uint32_t unknownTiming = UINT32_MAX;
   bool colorsPresent=false;
   brooklyn::semantic::TrainColors colors=brooklyn::semantic::kDefaultTrainColors;
@@ -130,6 +131,8 @@ bool saveBlueHold(void *context, uint32_t value) {
   if (memory.failSave) return false;
   memory.blueHold = value; return true;
 }
+bool loadReturn(void *context,uint32_t &out) {out=static_cast<MemoryStore *>(context)->oledReturn;return out!=UINT32_MAX;}
+bool saveReturn(void *context,uint32_t value) {auto &m=*static_cast<MemoryStore *>(context);if(m.failSave)return false;m.oledReturn=value;return true;}
 bool loadContrast(void *context, uint32_t &out) {
   out = static_cast<MemoryStore *>(context)->oledContrast; return out != UINT32_MAX;
 }
@@ -156,7 +159,7 @@ bool saveColors(void *context,const brooklyn::semantic::TrainColors &value) {
 }
 brooklyn::config::Store configStore(MemoryStore &memory) {
   return {&memory, loadBrightness, saveBrightness, loadRouteVisibilityMask,
-          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPoll, savePoll, loadOled, saveOled, loadBlueHold, saveBlueHold, loadContrast, saveContrast, loadUnknown, saveUnknown, loadColors, saveColors};
+          saveRouteVisibilityMask, loadDnsOverride, saveDnsOverride, loadPoll, savePoll, loadOled, saveOled, loadBlueHold, saveBlueHold, loadContrast, saveContrast, loadUnknown, saveUnknown, loadColors, saveColors, loadReturn, saveReturn};
 }
 
 void testTrainColors() {
@@ -197,6 +200,18 @@ void testBlueHoldConfiguration() {
   memory.failSave = true; CHECK(!config.setUnknownTiming(511) && config.unknownTiming() == 1);
   memory.failSave = false; CHECK(!config.setUnknownTiming(768));
   memory.unknownTiming = 1000; uncertain.load(); CHECK(uncertain.unknownTiming() == brooklyn::config::kDefaultUnknownTiming);
+  CHECK(config.oledReturnSeconds()==60);
+  CHECK(config.setOledReturnSeconds(0));
+  DeviceConfiguration returned(configStore(memory));returned.load();CHECK(returned.oledReturnSeconds()==0);
+  CHECK(config.setOledReturnSeconds(300));returned.load();CHECK(returned.oledReturnSeconds()==300);
+  memory.failSave=true;CHECK(!config.setOledReturnSeconds(30) && config.oledReturnSeconds()==300);memory.failSave=false;
+  CHECK(!config.setOledReturnSeconds(31));memory.oledReturn=31;returned.load();CHECK(returned.oledReturnSeconds()==60);
+  uint32_t returnValue=99;
+  CHECK(parseOledReturnSeconds("0",returnValue) && returnValue==0);
+  CHECK(parseOledReturnSeconds("120",returnValue) && returnValue==120);
+  CHECK(!parseOledReturnSeconds("9999999999999999",returnValue));
+  CHECK(!parseOledReturnSeconds("30x",returnValue));CHECK(!parseOledReturnSeconds("-1",returnValue));
+  CHECK(!parseOledReturnSeconds(nullptr,returnValue));CHECK(!parseOledReturnSeconds("31",returnValue));
   CHECK(config.oledContrast() == 207);
   CHECK(config.setOledContrast(0));
   DeviceConfiguration dimmed(configStore(memory)); dimmed.load(); CHECK(dimmed.oledContrast() == 0);
@@ -634,7 +649,7 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "Run Network Diagnostics") != nullptr);
   CHECK(strstr(page, "method=\"post\" action=\"/network-diagnostics/run\"") !=
         nullptr);
-  CHECK(countSubstring(page, csrfToken) == 13);
+  CHECK(countSubstring(page, csrfToken) == 14);
   CHECK(strstr(page,"There is no fixed 20-second cutoff"));
   CHECK(!strstr(page,"action=\"/config/blue-hold\""));
   // Exercise the actual generated forms against the runtime route policy.

@@ -8,6 +8,7 @@
 namespace brooklyn::config {
 
 bool DeviceConfiguration::load() {
+  oledReturnSeconds_ = kDefaultOledReturnSeconds;
   trainColors_ = semantic::kDefaultTrainColors;
   unknownTiming_ = kDefaultUnknownTiming;
   oledContrast_ = kDefaultOledContrast;
@@ -22,6 +23,7 @@ bool DeviceConfiguration::load() {
 
   if (store_.loadTrainColors && store_.loadTrainColors(store_.context, trainColors_)) loaded = true;
   uint32_t stored = 0;
+  if (store_.loadOledReturn && store_.loadOledReturn(store_.context,stored) && validOledReturnSeconds(stored)) {oledReturnSeconds_=stored;loaded=true;}
   if (store_.loadUnknownTiming && store_.loadUnknownTiming(store_.context, stored) && semantic::validUnknownTiming(stored)) {
     unknownTiming_ = stored; loaded = true;
   }
@@ -56,6 +58,21 @@ bool DeviceConfiguration::load() {
     loaded = true;
   }
   return loaded;
+}
+
+bool validOledReturnSeconds(uint32_t seconds) {
+  return seconds==0 || seconds==30 || seconds==60 || seconds==120 || seconds==300;
+}
+bool parseOledReturnSeconds(const char *text,uint32_t &seconds) {
+  if(!text || !*text) return false;
+  uint32_t value=0;
+  for(const char *p=text;*p;++p) {if(*p<'0' || *p>'9' || value>300) return false;value=value*10+(*p-'0');}
+  if(!validOledReturnSeconds(value)) return false;
+  seconds=value;return true;
+}
+bool DeviceConfiguration::setOledReturnSeconds(uint32_t seconds) {
+  if(!validOledReturnSeconds(seconds) || !store_.saveOledReturn || !store_.saveOledReturn(store_.context,seconds)) return false;
+  oledReturnSeconds_=seconds;return true;
 }
 
 bool validOledAddress(uint32_t address) { return address >= 0x08 && address <= 0x77; }

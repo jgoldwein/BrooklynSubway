@@ -43,6 +43,7 @@ struct StatusSnapshot {
   semantic::TrainColors trainColors=semantic::kDefaultTrainColors;
   uint32_t unknownTiming = 511;
   uint8_t oledContrast = 207;
+  uint16_t oledReturnSeconds = config::kDefaultOledReturnSeconds;
   uint32_t blueHoldSeconds = 20;
   uint32_t pollSeconds = 15;
   uint8_t oledAddress = config::kDefaultOledAddress;

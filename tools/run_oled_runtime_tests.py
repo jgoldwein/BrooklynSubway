@@ -21,7 +21,7 @@ def main():
             f"-I{h.ROOT / 'tools/host_tests/oled_stubs'}", f"-I{h.ROOT / 'include'}",
             str(h.ROOT / "tools/host_tests/oled_runtime_test.cpp"),
             str(h.ROOT / "src/oled_clock.cpp"),
-            str(h.ROOT / "src/oled_clock_time.cpp"), str(h.ROOT / "src/oled_screens.cpp"), "-o", str(exe),
+            str(h.ROOT / "src/oled_clock_time.cpp"), str(h.ROOT / "src/oled_screens.cpp"), str(h.ROOT / "src/oled_navigation.cpp"), str(h.ROOT / "src/semantic_api.cpp"), str(h.ROOT / "src/generated/semantic_tables.cpp"), str(h.ROOT / "src/led_map.cpp"), "-o", str(exe),
         ]
         build = subprocess.run(command, capture_output=True, text=True)
         if build.returncode != 0:

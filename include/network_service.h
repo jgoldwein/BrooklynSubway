@@ -59,6 +59,7 @@ class NetworkService {
   bool setPhysicalBrightness(bool oled, uint8_t value);
   uint8_t oledAddress() const;
   uint8_t oledContrast() const;
+  uint16_t oledReturnSeconds() const;
   uint32_t unknownTiming() const;
   semantic::TrainColors trainColors() const;
   uint32_t routeVisibilityMask() const;

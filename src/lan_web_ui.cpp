@@ -254,6 +254,7 @@ void LanWebUi::registerRoutes() {
   server_.on("/config/oled", HTTP_POST, [this]() { handleOledAddress(); });
   server_.on("/config/colors", HTTP_POST, [this]() { handleTrainColors(); });
   server_.on("/config/unknown-timing", HTTP_POST, [this]() { handleUnknownTiming(); });
+  server_.on("/config/oled-return", HTTP_POST, [this]() { handleOledReturn(); });
   server_.on("/config/oled-dimmer", HTTP_POST, [this]() { handleOledDimmer(); });
   server_.on("/config/blue-hold", HTTP_POST, [this]() { handleBlueHold(); });
   server_.on("/config/poll", HTTP_POST, [this]() { handlePollInterval(); });
@@ -506,6 +507,24 @@ void LanWebUi::handleUnknownTiming() {
   }
   Serial.printf("Uncertain trains: style %s, brightness %u/255, fade %lu seconds\n",mode.c_str(),brightness,static_cast<unsigned long>(seconds));
   server_.sendHeader("Location","/"); server_.send(303,"text/plain","Uncertain train settings saved");
+}
+
+void LanWebUi::handleOledReturn() {
+  if(!authorizeRequest(true)) return;
+  bool secondsSeen=false,csrfSeen=false;
+  for(int i=0;i<server_.args();++i) {
+    const String name=server_.argName(i);
+    if(name=="seconds" && !secondsSeen) secondsSeen=true;
+    else if(name=="csrf" && !csrfSeen) csrfSeen=true;
+    else {server_.send(400,"text/plain","Invalid screen return settings");return;}
+  }
+  const String text=server_.arg("seconds");uint32_t seconds=0;
+  if(!secondsSeen || !csrfSeen || !hasNoEmbeddedNull(text) || !config::parseOledReturnSeconds(text.c_str(),seconds)) {
+    server_.send(400,"text/plain","Choose Stay, 30 seconds, 1, 2 or 5 minutes");return;
+  }
+  if(!configuration_.setOledReturnSeconds(seconds)) {server_.send(500,"text/plain","Could not save screen return setting");return;}
+  oled::setReturnSeconds(seconds);
+  server_.sendHeader("Location","/#screen");server_.send(303,"text/plain","Screen return setting saved");
 }
 
 void LanWebUi::handleOledDimmer() {
@@ -1871,6 +1890,7 @@ void LanWebUi::updateAdminStatus(StatusSnapshot &status) {
   status.routeVisibilityMask=configuration_.routeVisibilityMask();
   status.unknownTiming = configuration_.unknownTiming();
   status.oledContrast = configuration_.oledContrast();
+  status.oledReturnSeconds = configuration_.oledReturnSeconds();
   status.blueHoldSeconds = configuration_.blueHoldSeconds();
   status.pollSeconds = configuration_.pollSeconds();
   status.oledAddress = configuration_.oledAddress();

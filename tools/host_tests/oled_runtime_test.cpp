@@ -69,20 +69,20 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
      formatScreen(Screen::Connection,d,500,out);
      OLED_CHECK(strcmp(out.lines[3],"Updated 61 sec ago")==0);
      d.updateAgeSeconds=UINT32_MAX; formatScreen(Screen::Connection,d,500,out);
-     OLED_CHECK(strcmp(out.lines[3],"Updated >1 hour ago")==0);
+     OLED_CHECK(strcmp(out.lines[3],"Data is old: 99999s")==0);
      d.wifiConnected=false;d.hasUpdate=false;d.feedsTotal=0;
      formatScreen(Screen::Connection,d,500,out);
-     OLED_CHECK(strcmp(out.lines[1],"Wi-Fi: not connected")==0 && strcmp(out.lines[3],"No usable update yet")==0);
+     OLED_CHECK(strcmp(out.lines[1],"Wi-Fi not connected")==0 && strcmp(out.lines[3],"Waiting for trains")==0);
      const FeedHealth healthValues[]={FeedHealth::Waiting, FeedHealth::Fresh, FeedHealth::Partial, FeedHealth::Held, FeedHealth::Stale, FeedHealth::NoData};
      for(auto health : healthValues) {
        d.feedHealth=health;d.feedsTotal=255;d.feedsSucceeded=255;
-       const Screen pages[]={Screen::Activity, Screen::Connection, Screen::Device};
+       const Screen pages[]={Screen::Activity, Screen::Connection, Screen::Device, Screen::Lines};
        for(auto page : pages) {
          formatScreen(page,d,UINT32_MAX,out);
          for(auto &line : out.lines) OLED_CHECK(strlen(line)<=21);
        }
      }
-     OLED_CHECK(nextScreen(Screen::Device)==Screen::Main);
+     OLED_CHECK(nextScreen(Screen::Lines)==Screen::Main);
      puts("OLED page formatting, age rollover, unavailable data and text bounds PASS"); return 0;
    }
    brooklyn::oled::advanceScreen();

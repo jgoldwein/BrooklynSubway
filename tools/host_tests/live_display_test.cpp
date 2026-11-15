@@ -241,6 +241,7 @@ int main() {
   {
     live::Controller counts;auto frame=snapshot();counts.publish(frame);CHECK(counts.enable(0));
     counts.service(0,false,false,ops);CHECK(counts.stats().visibleMapLeds==1);
+    CHECK(counts.stats().routeLights[static_cast<uint8_t>(semantic::routeForLed(0))]==1);
     frame.brightness=0;counts.publish(frame);counts.service(40,false,false,ops);
     CHECK(counts.stats().visibleMapLeds==0 && counts.stats().darkOccupiedMapLeds==1);
     frame.brightness=5;frame.routeMask=0;counts.publish(frame);counts.service(80,false,false,ops);
@@ -254,6 +255,7 @@ int main() {
     counts.publish(frame);counts.service(160,false,false,ops);
     CHECK(counts.stats().visibleMapLeds==0 && counts.stats().darkOccupiedMapLeds==1);
     counts.disable(ops);CHECK(counts.stats().visibleMapLeds==0);
+    for(auto count:counts.stats().routeLights) CHECK(count==0);
   }
   {
     live::Controller pages;auto frame=snapshot();pages.publish(frame);CHECK(pages.enable(0));

@@ -765,6 +765,15 @@ size_t renderHomePage(char *out, size_t capacity,
                   "<button>Save screen brightness</button></form>", status.oledContrast, status.oledContrast);
   }
   writer.append("</section>");
+  writer.append("<section data-view=\"screen\"><h2>Screen browsing</h2><p>Turn the knob to choose a screen. On Lines, press to browse subway lines; press again to go back. ROUTE opens Lines and toggles Auto/Paused. Hold the knob 10 seconds for Wi-Fi setup.</p>");
+  if(status.adminSessionActive && csrfToken && *csrfToken) {
+    writer.append("<form method=\"post\" action=\"/config/oled-return\"><input type=\"hidden\" name=\"csrf\" value=\"");writer.html(csrfToken);
+    writer.append("\"><label>Return to the clock after no button or knob use<select name=\"seconds\">");
+    const unsigned seconds[]={0,30,60,120,300};const char *labels[]={"Stay on this screen","30 seconds","1 minute","2 minutes","5 minutes"};
+    for(unsigned i=0;i<5;++i) writer.format("<option value=\"%u\"%s>%s</option>",seconds[i],status.oledReturnSeconds==seconds[i]?" selected":"",labels[i]);
+    writer.append("</select></label><button>Save screen return</button></form>");
+  }
+  writer.append("</section>");
   writer.format("<details class=\"card\" data-view=\"screen\"><summary>Screen connection details</summary><p>Saved I2C address: 0x%02X. Default: 0x38. Reboot after changing.</p>", status.oledAddress);
   {
     char text[160]; renderOledStatus(text, sizeof(text), status.oledStatus);
@@ -884,7 +893,7 @@ const char *loginTargetForRequest(const char *path) {
   if (strcmp(path,"/update")==0 || strncmp(path,"/update/",8)==0) return "update";
   if (strcmp(path,"/hardware-test")==0 || strcmp(path,"/hardware-test/run")==0) return "hardware-test";
   if (strcmp(path,"/wifi/setup")==0 || strcmp(path,"/wifi/setup/confirm")==0) return "wifi-setup";
-  if (strcmp(path,"/config/oled")==0 || strcmp(path,"/config/oled-dimmer")==0) return "screen";
+  if (strcmp(path,"/config/oled")==0 || strcmp(path,"/config/oled-dimmer")==0 || strcmp(path,"/config/oled-return")==0) return "screen";
   if (strcmp(path,"/config/dns")==0) return "wifi";
   if (strcmp(path,"/config/poll")==0) return "advanced";
   if (strncmp(path,"/config/",8)==0) return "lights";
@@ -1186,7 +1195,7 @@ size_t renderStatusJson(char *out, size_t capacity,
   writer.format(",\"unknownTimingEnabled\":%s,\"unknownTimingBrightness\":%u,\"unknownTimingMode\":\"%s\",\"lastReportedFadeSeconds\":%u",
       semantic::unknownTimingMode(status.unknownTiming)!=semantic::UnknownTimingMode::Hidden?"true":"false",status.unknownTiming&255,
       semantic::unknownTimingModeName(semantic::unknownTimingMode(status.unknownTiming)),semantic::lastReportedFadeSeconds(status.unknownTiming));
-  writer.format(",\"oledContrast\":%u", status.oledContrast);
+  writer.format(",\"oledContrast\":%u,\"oledReturnSeconds\":%u", status.oledContrast, status.oledReturnSeconds);
   writer.append(",\"stoppedPolicy\":\"fresh-evidence\",\"stoppedTimeLimitEnabled\":false");
   writer.format(",\"blueHoldSeconds\":%lu", static_cast<unsigned long>(status.blueHoldSeconds)); // legacy stored value, inactive
   writer.format(",\"pollSeconds\":%lu", static_cast<unsigned long>(status.pollSeconds));

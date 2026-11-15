@@ -20,6 +20,8 @@ constexpr const char *kOledContrastKey = "oled_contrast";
 constexpr uint32_t kDefaultBlueHoldSeconds = 20;
 constexpr uint32_t kMaxBlueHoldSeconds = 300;
 constexpr const char *kBlueHoldKey = "blue_hold_sec";
+constexpr const char *kOledReturnKey = "oled_return";
+constexpr uint16_t kDefaultOledReturnSeconds = 60;
 constexpr uint8_t kDefaultBrightness = 5;
 constexpr uint8_t kDefaultOledAddress = 0x38;
 constexpr const char *kOledAddressKey = "oled_addr";
@@ -51,6 +53,8 @@ struct Store {
   bool (*saveUnknownTiming)(void *context, uint32_t value);
   bool (*loadTrainColors)(void *context, semantic::TrainColors &value);
   bool (*saveTrainColors)(void *context, const semantic::TrainColors &value);
+  bool (*loadOledReturn)(void *context, uint32_t &value);
+  bool (*saveOledReturn)(void *context, uint32_t value);
 };
 
 class DeviceConfiguration {
@@ -64,6 +68,8 @@ class DeviceConfiguration {
   bool setUnknownTiming(uint32_t setting);
   uint32_t unknownTiming() const { return unknownTiming_; }
   bool setOledContrast(uint8_t contrast);
+  bool setOledReturnSeconds(uint32_t seconds);
+  uint16_t oledReturnSeconds() const { return oledReturnSeconds_; }
   uint8_t oledContrast() const { return oledContrast_; }
   bool setBlueHoldSeconds(uint32_t seconds);
   uint32_t blueHoldSeconds() const { return blueHoldSeconds_; }
@@ -80,6 +86,7 @@ class DeviceConfiguration {
 
  private:
   Store store_;
+  uint16_t oledReturnSeconds_ = kDefaultOledReturnSeconds;
   semantic::TrainColors trainColors_ = semantic::kDefaultTrainColors;
   uint32_t unknownTiming_ = kDefaultUnknownTiming;
   uint8_t oledContrast_ = kDefaultOledContrast;
@@ -92,6 +99,8 @@ class DeviceConfiguration {
   uint32_t dnsOverrideIpv4_ = 0;
 };
 
+bool validOledReturnSeconds(uint32_t seconds);
+bool parseOledReturnSeconds(const char *text, uint32_t &seconds);
 bool parseTrainColor(const char *text, led::Rgb &color);
 bool parseDnsIpv4(const char *text, uint32_t &ipv4);
 bool validOledAddress(uint32_t address);
