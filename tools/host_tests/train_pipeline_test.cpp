@@ -504,6 +504,41 @@ void testStoppedHoldStartsOnQualifiedReport() {
   CHECK(p.frame().blueSecondsRemaining[index]==20); // New station, qualified later.
 }
 
+TrainPipeline gPublishedHold;
+void testStoppedPublicationTiming() {
+  auto &p=gPublishedHold;
+  auto report=[&](const char *id,uint32_t source,uint32_t publication,bool shown) {
+    p.beginCycle(source); Feed f(source);
+    f.vehicle(id,"2",1,"233N",source);
+    f.add(predictionEntity(id,"233N",source));
+    p.processFeed(f.b.d,f.b.n);p.finishCycle(publication,shown);
+  };
+  report("VISIBLE",kNow,kNow+18,true);
+  uint16_t index=0;while(!p.frame().occupancy[index])++index;
+  CHECK(p.frame().animationEpochUnix==kNow); // Never rejuvenate motion/source timing.
+  CHECK(p.frame().stoppedEpochUnix==kNow+18);
+  CHECK(p.frame().blueSecondsRemaining[index]==20);
+  sem::RenderConfig c{};c.animateTraffic=true;c.brightness=255;sem::RgbFrame rgb{};
+  c.nowUnix=kNow+37;sem::renderTrainFrame(p.frame(),rgb,c);CHECK(rgb.pixels[index].red==255);
+  c.nowUnix=kNow+38;sem::renderTrainFrame(p.frame(),rgb,c);CHECK(rgb.pixels[index].red==0);
+  report("VISIBLE",kNow+23,kNow+35,true);
+  CHECK(p.frame().blueSecondsRemaining[index]==3); // Repeat cannot start another window.
+  report("HELD",kNow+50,kNow+68,false);
+  report("HELD",kNow+75,kNow+93,true);
+  CHECK(p.frame().blueSecondsRemaining[index]==20); // Invisible candidate never armed its visit.
+  report("STALE_AT_PUBLICATION",kNow+100,kNow+170,true);
+  CHECK(sem::isUncertainOnly(p.frame(),index));
+  report("STALE_AT_PUBLICATION",kNow+180,kNow+190,true);
+  CHECK(p.frame().blueSecondsRemaining[index]==20); // Rejected stale publication did not arm.
+  report("FRESHNESS_CAP",kNow+200,kNow+255,true);
+  CHECK(p.frame().blueSecondsRemaining[index]==6); // Prediction/feed age still expires at 60 s.
+  c.nowUnix=kNow+260;sem::renderTrainFrame(p.frame(),rgb,c);CHECK(rgb.pixels[index].red==255);
+  c.nowUnix=kNow+261;sem::renderTrainFrame(p.frame(),rgb,c);CHECK(rgb.pixels[index].red==0);
+  report("ROLLBACK",kNow+300,kNow+318,true);
+  report("ROLLBACK",kNow+310,kNow+317,true);
+  CHECK(sem::isUncertainOnly(p.frame(),index));
+}
+
 TrainPipeline gLocations;
 void testLastReportedLocations() {
   auto &p=gLocations;
@@ -1239,6 +1274,7 @@ int main(int argc, char **argv) {
   testLastReportedLocations();
   testBlueHoldAcrossPolls();
   testStoppedHoldStartsOnQualifiedReport();
+  testStoppedPublicationTiming();
   testStationConfidence();
   testPredictionCapacity();
   testVerifiedTripDeparture();

@@ -48,6 +48,8 @@ struct TrainFrame {
   uint32_t lastReportedFadeStartUnix[kFrameLedCount];
   uint32_t approachingTrains;
   uint32_t animationEpochUnix;
+  // Independent stopped-color clock; source/motion epochs are never shifted.
+  uint32_t stoppedEpochUnix;
   StationTiming timing[kFrameLedCount];
   uint32_t resolvedTrains;   // accepted trains (including saturated ones)
   uint32_t excessTrains;     // resolvedTrains - occupiedLeds

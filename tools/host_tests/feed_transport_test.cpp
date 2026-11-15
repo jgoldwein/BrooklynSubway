@@ -7,6 +7,7 @@
 // Build/run with: python tools/run_feed_transport_tests.py [--replay DIR[@UNIX_NOW]]
 
 #include "feed_transport.h"
+#include "poll_handoff.h"
 
 #include "train_pipeline.h"
 
@@ -15,6 +16,8 @@
 #include <string.h>
 
 #include <vector>
+#include <atomic>
+#include <thread>
 
 using namespace brooklyn::transport;
 namespace net = brooklyn::network;
@@ -772,6 +775,39 @@ void testReplay(uint32_t nowUnix, int fileCount, char **files) {
 }  // namespace
 
 int main(int argc, char **argv) {
+  {
+    PollHandoff handoff;
+    CHECK(!handoff.active() && !handoff.take());
+    CHECK(handoff.start() && handoff.active());
+    CHECK(!handoff.start() && !handoff.take()); // no overlapping poll, no partial read
+    handoff.finish();
+    CHECK(handoff.active() && !handoff.start()); // result stays protected until acquired
+    CHECK(handoff.take() && !handoff.active());
+    CHECK(!handoff.take()); // consume exactly once
+    CHECK(handoff.start());handoff.finish();CHECK(handoff.take());
+  }
+  {
+    // Stress the actual release/acquire payload transfer across two host threads.
+    // The notification mirrors a task notification; result visibility depends
+    // on PollHandoff::finish/take rather than that notification.
+    PollHandoff handoff;std::atomic<unsigned> notification{0};
+    unsigned input=0,output=0;
+    constexpr unsigned transfers=2000;
+    std::thread worker([&] {
+      for(unsigned i=1;i<=transfers;++i) {
+        while(notification.load(std::memory_order_acquire)<i)std::this_thread::yield();
+        output=input ^ 0x51a79u;
+        handoff.finish();
+      }
+    });
+    for(unsigned i=1;i<=transfers;++i) {
+      input=i;CHECK(handoff.start());
+      notification.store(i,std::memory_order_release);
+      while(!handoff.take())std::this_thread::yield();
+      CHECK(output==(i ^ 0x51a79u));CHECK(!handoff.active());
+    }
+    worker.join();
+  }
   testConfig();
   testExactAndZero();
   testCapacityBoundary();

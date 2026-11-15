@@ -73,10 +73,15 @@ void testStartupAndAtomicCommit() {
 
   CHECK(controller.state() == display::State::WaitingForData);
   CHECK(!controller.hasFrame() && !controller.feedAttempted());
+  CHECK(controller.willCommit(display::CycleQuality::Complete,1000));
+  CHECK(controller.willCommit(display::CycleQuality::Partial,1000));
+  CHECK(!controller.willCommit(display::CycleQuality::NoFeeds,1000));
   CHECK(controller.completeCycle(a, display::CycleQuality::Complete, 1000) ==
         display::Event::None);
   CHECK(controller.state() == display::State::Fresh && controller.hasFrame());
   CHECK(memcmp(&controller.frame(), &a, sizeof(a)) == 0);
+  CHECK(!controller.willCommit(display::CycleQuality::Partial,2000));
+  CHECK(controller.willCommit(display::CycleQuality::Partial,92000));
 
   const semantic::TrainFrame shown = controller.frame();
   b.occupancy[1] = 4;  // Candidate work during polling is not visible to the controller.

@@ -15,6 +15,7 @@
 #include "network_config.h"
 #include "train_pipeline.h"
 #include "normal_config.h"
+#include "poll_handoff.h"
 
 #if BROOKLYN_NETWORK_ENABLED
 #include "lan_web_policy.h"
@@ -38,7 +39,7 @@ enum class State : uint8_t {
 class NetworkService {
  public:
   explicit NetworkService(pipeline::TrainPipeline &pipeline);
-  // Association retries are asynchronous; a due multi-feed poll runs synchronously.
+  // Association and bounded feed downloads run without blocking loop().
   void begin();
   // Call from loop(). Returns immediately when disabled.
   void update(uint32_t nowMs);
@@ -49,6 +50,10 @@ class NetworkService {
   void requestProvisioning();
   // Explicit user action: erase the map's own stored credentials (NVS namespace only).
   bool forgetCredentials();
+  // Complete the loop-owned publication after consuming the worker result.
+  void finishCycleReporting();
+  const pipeline::Counters &pipelineCounters() const { return publishedPipelineCounters_; }
+  bool fetchingFeeds() const;
   uint8_t brightness() const;
   bool setPhysicalBrightness(bool oled, uint8_t value);
   uint8_t oledAddress() const;
@@ -76,12 +81,15 @@ class NetworkService {
   void printStatus(const transport::CycleResult &result) const;
 #if BROOKLYN_NETWORK_ENABLED
   void serviceLanWebUi(uint32_t nowMs);
+  static void pollWorker(void *context);
+  void collectPollResult();
   void applyDnsOverride();
   void serviceNetworkDiagnostics(uint32_t nowMs);
   void stopLanWebUi();
 #endif
 
   pipeline::TrainPipeline &pipeline_;
+  pipeline::Counters publishedPipelineCounters_{};
   transport::TransportCounters counters_;
   transport::FeedBuffer buffer_;
   transport::PollScheduler scheduler_;
@@ -96,6 +104,16 @@ class NetworkService {
   uint32_t completedCycleAtMs_ = 0;
   bool completedCyclePending_ = false;
 #if BROOKLYN_NETWORK_ENABLED
+  transport::PollHandoff pollHandoff_;
+  void *pollTask_ = nullptr;
+  semantic::RenderConfig workerConfig_{};
+  transport::TransportCounters workerCounters_{};
+  transport::CycleResult workerResult_{};
+  transport::FeedFailure workerFailure_{};
+  uint32_t workerNowUnix_ = 0;
+  uint32_t workerCompletedAtMs_ = 0;
+  uint32_t workerStackWatermark_ = 0;
+  bool networkDiagnosticsPending_ = false;
   config::DeviceConfiguration configuration_;
   web::LanWebUi lanWebUi_;
   web::ServerOwnership serverOwnership_;

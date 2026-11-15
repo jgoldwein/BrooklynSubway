@@ -199,3 +199,20 @@ task-allocation failure. I2C codes: 0 success, 1 short write, 2 NACK, 4 other,
 5 timeout. These values refresh automatically without a serial connection.
 The firmware cannot optically verify the image, so Frame writes OK only confirms
 communication. Pin ownership and startup isolation remain unchanged.
+
+
+## Responsive feed polling (0.2.46)
+
+A single bounded feed worker downloads and decodes sequentially on core 0 using
+one 16 KiB stack and the existing PSRAM body buffer. The loop retains HTTP,
+controls, staleness aging and completed-result publication. Read-only status uses
+cached completed counters; collecting pipeline state is never exposed. Both
+status APIs include `fetchingFeeds`; the UI distinguishes a download in progress
+from the previous completed cycle. The poll interval is still a post-cycle wait.
+OTA and provisioning work are serialized between cycles, and a manual package
+upload during polling asks the authenticated user to retry shortly.
+
+Stopped-color time starts at candidate publication, with an independent epoch.
+Held partial candidates do not arm a new visit. Source/motion clocks are retained;
+original source freshness can shorten the configured stopped-color maximum.
+Repeated reports do not renew the same visit. No blink or palette change.

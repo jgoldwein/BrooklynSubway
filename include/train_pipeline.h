@@ -158,7 +158,7 @@ class TrainPipeline {
   gtfsrt::DecodeStatus processFeed(const uint8_t *data, size_t length);
 
   // Applies the deduplicated trips to the frame and renders it. Safe to call more than once; later calls change nothing.
-  void finishCycle();
+  void finishCycle(uint32_t stoppedPublicationUnix = 0, bool publishStops = true);
 
   CycleState state() const { return state_; }
   const Counters &counters() const { return counters_; }
@@ -174,7 +174,7 @@ class TrainPipeline {
  private:
   void record(const char *tripId, uint16_t outcome, const MotionEvidence &motion, const BlueEvidence &blue);
   void bumpBucket(uint16_t bucket);
-  uint16_t blueRemaining(uint32_t h1, uint32_t h2, uint32_t stopKey, uint32_t now, bool qualified);
+  uint16_t blueRemaining(uint32_t h1, uint32_t h2, uint32_t stopKey, uint32_t now, bool qualified, bool publish);
   // firstSeen is 0 until the first supported stop report of this visit.
   struct StopVisit { uint32_t h1, h2, stopKey, firstSeen, lastSeen; };
   static constexpr uint16_t kStopVisitCapacity = 256;

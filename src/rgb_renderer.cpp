@@ -103,6 +103,8 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
   const bool timed = config.animateTraffic && input.animationEpochUnix &&
                      config.nowUnix >= input.animationEpochUnix;
   const uint32_t elapsed = timed ? config.nowUnix - input.animationEpochUnix : 0;
+  const uint32_t stoppedEpoch = input.stoppedEpochUnix ? input.stoppedEpochUnix : input.animationEpochUnix;
+  const uint32_t stoppedElapsed = timed && config.nowUnix >= stoppedEpoch ? config.nowUnix - stoppedEpoch : 0;
 
   for (uint16_t i = 0; i < kFrameLedCount; ++i) {
     const bool occupied = input.occupancy[i] != 0;
@@ -137,7 +139,7 @@ RenderResult renderTrainFrame(const TrainFrame &input, RgbFrame &output,
     if (config.animateTraffic && semantic->role==Role::Segment) color=config.colors.approaching;
     const bool uncertain = isUncertainOnly(input, i) ||
         (occupied && !isApproachingOnly(input, i) && input.blueSecondsRemaining[i] &&
-         elapsed >= input.blueSecondsRemaining[i]);
+         stoppedElapsed >= input.blueSecondsRemaining[i]);
     const bool unknownApproach = (isApproachingOnly(input, i) || approachOverlay) &&
         (!timing.arrivalSecondsPlusOne || timing.arrivalSecondsPlusOne == UINT16_MAX ||
          timing.movementAgeSeconds + elapsed > 90);

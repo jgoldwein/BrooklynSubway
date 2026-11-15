@@ -553,6 +553,8 @@ size_t renderHomePage(char *out, size_t capacity,
                 "are unchanged.</p></details>"
                 "<section class=\"wide\" data-view=\"overview\"><h2>Train data &amp; colors</h2><details><summary>Train data details</summary><dl><dt>Last poll cycle</dt><dd data-status=\"feedCycleState\">");
   writer.append(status.hasCycle ? cycleStateName(status.cycleOutcome) : "Not run");
+  writer.append("</dd><dt>Download</dt><dd data-status=\"downloadState\">");
+  writer.append(status.fetchingFeeds?"Fetching train data":"Waiting for next update");
   writer.append("</dd><dt>Feeds succeeded / total</dt><dd data-status=\"feedSummary\">");
   if (status.hasCycle) {
     writer.format("%u / %u", status.feedsSucceeded, status.feedsTotal);
@@ -740,7 +742,7 @@ size_t renderHomePage(char *out, size_t capacity,
                   status.unknownTiming&255,semantic::lastReportedFadeSeconds(status.unknownTiming));
   }
   writer.append("<p>Faint lights stay faint. Fade time applies to the fading markers. Brightness 0 hides uncertain lights.</p></section>");
-  writer.format("<section class=\"blue-hold\" data-view=\"lights\"><h2>How long should the stopped color stay on?</h2><p>The stopped color means a recent stop report is supported by arrival data. Its timer starts when that report first qualifies. Keep it on for up to %lu seconds. "
+  writer.format("<section class=\"blue-hold\" data-view=\"lights\"><h2>How long should the stopped color stay on?</h2><p>The stopped color means a recent stop report is supported by arrival data. Its timer starts when a qualifying report is first displayed. Old data can shorten the window. Keep it on for up to %lu seconds. "
                 "After that, use your choice for uncertain movement. "
                 "Changes take effect with the next train update. Long stops can also become uncertain.</p>",
                 static_cast<unsigned long>(status.blueHoldSeconds));
@@ -857,7 +859,7 @@ size_t renderHomePage(char *out, size_t capacity,
                 "const controller=new AbortController();timer=setTimeout(()=>controller.abort(),15000);"
                 "const r=await fetch('/api/status',{cache:'no-store',signal:controller.signal});if(!r.ok)throw Error();"
                 "const s=await r.json();if(s.trainColors)document.querySelectorAll('[data-train-color]').forEach(e=>{const c=s.trainColors[e.dataset.trainColor];if(/^#[0-9a-f]{6}$/i.test(c))e.style.backgroundColor=c});s.feedSummary=s.feedsSucceeded+' / '+s.feedsTotal;s.connectionLabel=s.networkConnected?'Wi-Fi connected':'Wi-Fi disconnected';"
-                "s.mapPower=s.physicalLedOutputEnabled?'Lights on':s.physicalPowerPaused?'Lights paused':'Lights off';"
+                "s.downloadState=s.fetchingFeeds?'Fetching train data':'Waiting for next update';s.mapPower=s.physicalLedOutputEnabled?'Lights on':s.physicalPowerPaused?'Lights paused':'Lights off';"
                 "s.friendlyState=s.displayState==='Fresh'?'Train data is up to date':s.displayState==='WaitingForData'?'Waiting for the first train update':s.displayState==='NoData'?'No current train data':'Some train updates are delayed';"
                 "document.querySelectorAll('[data-status]').forEach(e=>{const k=e.dataset.status;"
                 "if(!(k in s))return;const v=s[k];e.textContent=v===null?'Not available':"
@@ -948,6 +950,7 @@ const char *monitorFeedState(const StatusSnapshot &s,semantic::Route route) {
   return received==required?"Received":received?"Partial":"Missing";
 }
 const char *monitorHealth(const StatusSnapshot &s) {
+  if (s.fetchingFeeds) return "Fetching train data. The map continues showing the last update.";
   if (!s.blueReport.timestamp) return "Waiting for the first train poll.";
   if (s.hasCycle && s.feedsSucceeded<s.feedsTotal) return "Some feeds are missing or unreadable. The map may hold an older update.";
   if (!s.unixTime) return "Waiting for clock sync; source age is unavailable.";
@@ -978,6 +981,7 @@ size_t renderTrainMonitorJson(char *out,size_t capacity,const StatusSnapshot &s)
   monitorAge(w,s.unixTime,r.oldestFeedTimestamp);
   w.format(",\"latestPollMappedTrains\":%lu",static_cast<unsigned long>(monitorLatestCount(s)));w.append(",\"reportAgeSeconds\":");monitorAge(w,s.unixTime,r.timestamp);
   w.append(",\"mapAgeSeconds\":");if(s.hasDataAge)w.format("%lu",static_cast<unsigned long>(s.dataAgeSeconds));else w.append("null");
+  w.format(",\"fetchingFeeds\":%s",s.fetchingFeeds?"true":"false");
   w.append(",\"health\":");monitorString(w,monitorHealth(s));
   w.format(",\"staleVehicles\":%lu,\"unmappedPositions\":%lu,\"conflictedTrips\":%lu,\"predictionConflicts\":%lu,\"capacityDrops\":%lu,\"uncertainMode\":",
       static_cast<unsigned long>(r.staleVehicles),static_cast<unsigned long>(r.unmappedPositions),static_cast<unsigned long>(r.conflictedTrips),static_cast<unsigned long>(r.predictionConflicts),static_cast<unsigned long>(r.capacityDrops));
@@ -1035,7 +1039,7 @@ size_t renderStatusJson(char *out, size_t capacity,
                 static_cast<unsigned long>(status.uptimeSeconds),
                 status.networkConnected ? "true" : "false");
   writer.json(status.ssid);
-  writer.append("\",\"ip\":\"");
+  writer.format("\",\"fetchingFeeds\":%s,\"ip\":\"",status.fetchingFeeds?"true":"false");
   writer.json(status.ip);
   writer.append("\",\"subnetMask\":\"");
   writer.json(status.subnet);

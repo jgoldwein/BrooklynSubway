@@ -1242,6 +1242,7 @@ void LanWebUi::handleUpdateReboot() {
 }
 
 void LanWebUi::serviceFirmwareUpdates(uint32_t nowMs) {
+  if (status_.fetchingFeeds) return; // no simultaneous MTA and OTA TLS/flash work
   if (installReleaseRequested_) {
     installReleaseRequested_ = false;
     installPhase_ = 1;
@@ -1583,6 +1584,7 @@ void LanWebUi::handleUpdateRaw() {
     case RAW_START: {
       updateStarted_ = true;
       updateDeniedStatus_ = installPhase_ == 1 ? 409 : updateAuthorizationStatus();
+      if (!updateDeniedStatus_ && status_.fetchingFeeds) updateDeniedStatus_=503;
       updateResult_ = ota::Result::NotStarted;
       if (updateDeniedStatus_ != 0) {
         Serial.printf("OTA: upload denied (HTTP %d)\n", updateDeniedStatus_);
@@ -1629,6 +1631,11 @@ void LanWebUi::handleUpdateComplete() {
   }
   if (denied == 401) {
     sendSignInRequired();
+    return;
+  }
+  if (denied == 503) {
+    server_.sendHeader("Retry-After","5");
+    server_.send(503,"text/plain","Finishing a train-data download. Please retry the upload in a few seconds.");
     return;
   }
   if (denied == 409) {

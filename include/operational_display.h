@@ -59,6 +59,7 @@ class Controller {
 
   // Called only after a whole poll cycle finishes; the candidate is copied
   // atomically from the pipeline's independent working frame.
+  bool willCommit(CycleQuality quality, uint32_t nowMs) const;
   Event completeCycle(const semantic::TrainFrame &candidate, CycleQuality quality,
                      uint32_t nowMs);
 

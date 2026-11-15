@@ -60,6 +60,14 @@ void Controller::commit(const semantic::TrainFrame &candidate, uint32_t nowMs) {
   ++frameRevision_;
 }
 
+bool Controller::willCommit(CycleQuality quality, uint32_t nowMs) const {
+  if (quality == CycleQuality::Complete) return true;
+  if (quality != CycleQuality::Partial) return false;
+  return !(hasFrame_ && hasComplete_ &&
+      static_cast<uint32_t>(nowMs - lastCompleteMs_) <= kPartialGraceMs &&
+      static_cast<uint32_t>(nowMs - lastCommitMs_) < kHardStaleLimitMs);
+}
+
 Event Controller::completeCycle(const semantic::TrainFrame &candidate, CycleQuality quality,
                                 uint32_t nowMs) {
   feedAttempted_ = true;
@@ -72,9 +80,7 @@ Event Controller::completeCycle(const semantic::TrainFrame &candidate, CycleQual
   }
 
   if (quality == CycleQuality::Partial) {
-    if (hasFrame_ && hasComplete_ &&
-        static_cast<uint32_t>(nowMs - lastCompleteMs_) <= kPartialGraceMs &&
-        static_cast<uint32_t>(nowMs - lastCommitMs_) < kHardStaleLimitMs) {
+    if (!willCommit(quality, nowMs)) {
       transition(State::DegradedHold);
       return Event::PartialHeld;
     }

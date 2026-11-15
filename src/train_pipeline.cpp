@@ -173,6 +173,8 @@ void TrainPipeline::record(const char *tripId, uint16_t outcome, const MotionEvi
         const bool recent = (saved.flags & RecentMatchingArrival) && (blue.flags & RecentMatchingArrival);
         saved.flags |= blue.flags;
         if (!recent) saved.flags &= ~RecentMatchingArrival;
+        if (!saved.stoppedFreshUntil || (blue.stoppedFreshUntil && blue.stoppedFreshUntil < saved.stoppedFreshUntil))
+          saved.stoppedFreshUntil = blue.stoppedFreshUntil;
         if (blue.age > saved.age) saved.age = blue.age;
         if (memcmp(saved.nextStop, blue.nextStop, 4)) memset(saved.nextStop, 0, 4);
         return;
@@ -207,7 +209,12 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimes
             diagnosticTime >= prediction.timestamp && diagnosticTime - prediction.timestamp <= 60 &&
             prediction.arrival <= diagnosticTime && diagnosticTime - prediction.arrival <= 30 &&
             feedTimestamp && diagnosticTime >= feedTimestamp && diagnosticTime - feedTimestamp <= 60)
+        {
           blue.flags |= RecentMatchingArrival;
+          blue.stoppedFreshUntil = t.vehicleTimestamp + 91;
+          if (prediction.timestamp + 61 < blue.stoppedFreshUntil) blue.stoppedFreshUntil = prediction.timestamp + 61;
+          if (feedTimestamp + 61 < blue.stoppedFreshUntil) blue.stoppedFreshUntil = feedTimestamp + 61;
+        }
         char next[5]{}; memcpy(next, prediction.stop, 4);
         const bool inferred = gtfsrt::applyVerifiedTripDeparture(t, next, prediction.arrival,
             prediction.timestamp, feedTimestamp, nowUnix_);
@@ -351,7 +358,7 @@ gtfsrt::DecodeStatus TrainPipeline::processFeed(const uint8_t *data, size_t leng
   return status;
 }
 
-uint16_t TrainPipeline::blueRemaining(uint32_t h1, uint32_t h2, uint32_t stopKey, uint32_t now, bool qualified) {
+uint16_t TrainPipeline::blueRemaining(uint32_t h1, uint32_t h2, uint32_t stopKey, uint32_t now, bool qualified, bool publish) {
   if (!now || !stopKey) return 0;
   // Retain visits through missing polls. Reclaim only entries unseen for 30 min.
   StopVisit *empty = nullptr;
@@ -364,13 +371,16 @@ uint16_t TrainPipeline::blueRemaining(uint32_t h1, uint32_t h2, uint32_t stopKey
     // Observe uncertain reports without consuming the stopped-color window.
     // Once qualified, the same visit never restarts on repeated reports.
     if (!qualified) return 0;
-    if (!visit.firstSeen) visit.firstSeen = now;
+    if (!visit.firstSeen) {
+      if (!publish) return config_.blueHoldSeconds;
+      visit.firstSeen = now;
+    }
     if (now < visit.firstSeen) return 0; // clock rollback never grants extra blue
     const uint32_t age = now - visit.firstSeen;
     return age < config_.blueHoldSeconds ? config_.blueHoldSeconds - age : 0;
   }
   if (!empty) return 0; // capacity uncertainty must not restart an existing timer
-  *empty = {h1, h2, stopKey, qualified ? now : 0, now};
+  *empty = {h1, h2, stopKey, qualified && publish ? now : 0, now};
   return qualified ? config_.blueHoldSeconds : 0;
 }
 
@@ -404,8 +414,10 @@ void TrainPipeline::rememberLocation(const TripEntry &trip,uint16_t led,bool unk
   if (empty) *empty={trip.h1,trip.h2,evidence.stopKey,now,unknown?now:0,unknown?now:nextUnknownAt,led,true};
 }
 
-void TrainPipeline::finishCycle() {
+void TrainPipeline::finishCycle(uint32_t stoppedPublicationUnix, bool publishStops) {
   if (state_ != CycleState::Collecting) return;
+  const uint32_t stoppedNow = stoppedPublicationUnix ? stoppedPublicationUnix : frame_.animationEpochUnix;
+  frame_.stoppedEpochUnix = stoppedNow;
   BlueEvidence perLed[semantic::kFrameLedCount]{};
   bool hasBlue[semantic::kFrameLedCount]{};
   blueReport_.timestamp = nowUnix_ ? nowUnix_ : frame_.animationEpochUnix;
@@ -422,9 +434,14 @@ void TrainPipeline::finishCycle() {
     }
     add(counters_.duplicateIdentical, static_cast<uint32_t>(e.records) - 1u);
     const uint16_t bucket = static_cast<uint16_t>(e.outcome >> 9);
-    const uint16_t remaining = bucket == kStation ? blueRemaining(e.h1, e.h2,
-        blueEvidence_[i].stopKey, frame_.animationEpochUnix,
-        (blueEvidence_[i].flags & RecentMatchingArrival) != 0) : 0;
+    uint16_t remaining = bucket == kStation ? blueRemaining(e.h1, e.h2,
+        blueEvidence_[i].stopKey, stoppedNow,
+        (blueEvidence_[i].flags & RecentMatchingArrival) != 0 &&
+        (!blueEvidence_[i].stoppedFreshUntil || stoppedNow < blueEvidence_[i].stoppedFreshUntil), publishStops) : 0;
+    if (remaining && blueEvidence_[i].stoppedFreshUntil && stoppedNow < blueEvidence_[i].stoppedFreshUntil) {
+      const uint32_t freshRemaining = blueEvidence_[i].stoppedFreshUntil - stoppedNow;
+      if (remaining > freshRemaining) remaining = static_cast<uint16_t>(freshRemaining);
+    }
     if (bucket == kApproaching || bucket == kSegment) {
       for (auto &visit : stopVisits_) if (visit.h1 == e.h1 && visit.h2 == e.h2) visit = {};
     }
@@ -449,7 +466,7 @@ void TrainPipeline::finishCycle() {
         if (uncertain || movingUnknown) ++quality.uncertain;
       }
       const uint32_t now=frame_.animationEpochUnix;
-      const uint32_t nextUnknownAt=bucket==kStation ? now+remaining :
+      const uint32_t nextUnknownAt=bucket==kStation ? stoppedNow+remaining :
           bucket==kApproaching ? now+(e.motion.movementAgeSeconds<=90 ? 91-e.motion.movementAgeSeconds : 0) :
           now+(blueEvidence_[i].age<=90 ? 91-blueEvidence_[i].age : 0);
       rememberLocation(e,index,uncertain||movingUnknown,nextUnknownAt);

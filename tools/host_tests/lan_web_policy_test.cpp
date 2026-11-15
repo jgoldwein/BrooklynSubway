@@ -817,6 +817,15 @@ void testTrainMonitor() {
   status.hasCycle=true;status.feedsSucceeded=7;status.feedsTotal=8;
   CHECK(brooklyn::web::renderTrainMonitorJson(json,sizeof(json),status)>0);
   CHECK(strstr(json,"Some feeds are missing"));
+  status.fetchingFeeds=true;
+  CHECK(brooklyn::web::renderTrainMonitorJson(json,sizeof(json),status)>0);
+  CHECK(strstr(json,"\"fetchingFeeds\":true") && strstr(json,"Fetching train data"));
+  CHECK(brooklyn::web::renderStatusJson(json,sizeof(json),status,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
+  CHECK(strstr(json,"\"fetchingFeeds\":true"));
+  CHECK(brooklyn::web::renderHomePage(html,sizeof(html),status,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
+  CHECK(strstr(html,"Fetching train data"));
+  status.fetchingFeeds=false;
+
   status.processedFeedMask=254;
   CHECK(brooklyn::web::renderTrainMonitorJson(json,sizeof(json),status)>0);
   CHECK(strstr(json,"\"feedState\":\"Missing\""));

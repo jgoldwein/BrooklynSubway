@@ -92,7 +92,7 @@ uint16_t firstLed(Role role, uint8_t slotCount = 0) {
 }
 
 void testBasic() {
-  static_assert(sizeof(TrainFrame) <= 3472, "occupancy, flags and 4-byte station timings stay bounded");
+  static_assert(sizeof(TrainFrame) <= 3476, "occupancy, flags, motion timings and independent stopped epoch stay bounded");
   TrainFrame f;
   clearFrame(f);
   checkFrameInvariants(f);

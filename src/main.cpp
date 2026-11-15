@@ -124,7 +124,7 @@ void publishTelemetrySnapshot(uint32_t nowMs) {
   }
   snap.hasCompleteAge = operationalDisplay.hasCompleteCycle();
   if (snap.hasCompleteAge) snap.completeAgeSeconds = operationalDisplay.completeAgeMs(nowMs) / 1000;
-  snap.vehiclesProcessed = trainPipeline.counters().vehiclesSeen;
+  snap.vehiclesProcessed = networkService.pipelineCounters().vehiclesSeen;
   snap.vehiclesResolved = operationalDisplay.frame().resolvedTrains;
   snap.occupiedMapLeds = operationalDisplay.frame().occupiedLeds;
   snap.hasCollisions = true;
@@ -383,11 +383,14 @@ void loop() {
                         ? CycleQuality::Complete
                         : CycleQuality::Partial;
         }
+        trainPipeline.finishCycle(static_cast<uint32_t>(time(nullptr)),
+            operationalDisplay.willCommit(quality, completedAtMs));
         const brooklyn::display::Event event = operationalDisplay.completeCycle(
             trainPipeline.frame(), quality, completedAtMs);
         reportDisplayTransition(previous, event, completedAtMs);
       }
     }
+    networkService.finishCycleReporting();
   }
   const uint32_t displayNowMs = millis();
   const brooklyn::display::State beforeAging = operationalDisplay.state();
@@ -413,7 +416,7 @@ void loop() {
   webStatus.approachingTrains = operationalDisplay.frame().approachingTrains;
   webStatus.occupiedLeds = operationalDisplay.frame().occupiedLeds;
   webStatus.collisionCount = operationalDisplay.frame().collisionLeds;
-  webStatus.blueReport = trainPipeline.blueReport();
+  // NetworkService retains the last completed report while its worker builds the next.
   networkService.setWebStatus(webStatus);
 #endif
 #if defined(BROOKLYN_TARGET_XIAO)

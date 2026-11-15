@@ -82,6 +82,7 @@ struct StatusSnapshot {
   bool timeSynchronized = false;
   uint32_t unixTime = 0;
   display::State displayState = display::State::WaitingForData;
+  bool fetchingFeeds = false;
   bool hasCycle = false;
   transport::CycleOutcome cycleOutcome = transport::CycleOutcome::NoFeeds;
   uint16_t processedFeedMask = 0;

@@ -80,27 +80,16 @@ wifi::Portal &portal() {
 // Logs feed failures (name, category, bytes, elapsed). Diagnostic only.
 class FailureLogger : public transport::FeedFailureObserver {
  public:
-  explicit FailureLogger(web::StatusSnapshot &status) : status_(status) {}
+  explicit FailureLogger(transport::FeedFailure &failure) : failure_(failure) {}
 
   void onFeedFailure(const transport::FeedFailure &failure) override {
     char line[112];
     transport::formatFeedFailure(line, sizeof(line), failure);
     Serial.println(line);
-    status_.hasLastFeedFailure = true;
-    snprintf(status_.lastFeedFailureName, sizeof(status_.lastFeedFailureName),
-             "%s", failure.name);
-    snprintf(status_.lastFeedFailureCategory,
-             sizeof(status_.lastFeedFailureCategory), "%s",
-             transport::downloadStatusName(failure.status));
-    status_.lastFeedFailureBytes =
-        failure.bytesReceived > UINT32_MAX
-            ? UINT32_MAX
-            : static_cast<uint32_t>(failure.bytesReceived);
-    status_.lastFeedFailureElapsedMs = failure.elapsedMs;
+    failure_ = failure;
   }
-
  private:
-  web::StatusSnapshot &status_;
+  transport::FeedFailure &failure_;
 };
 
 constexpr uint32_t elapsed(uint32_t now, uint32_t since) { return now - since; }
@@ -469,6 +458,12 @@ class HttpsFeedConnection : public transport::FeedConnection {
   uint32_t startedMs_ = 0;
 };
 
+class DeferredPipelineSink : public transport::PipelineSink {
+ public:
+  using transport::PipelineSink::PipelineSink;
+  void finishCycle() override {} // loop publishes/finishes only after ownership transfer
+};
+
 class MillisClock : public transport::Clock {
  public:
   uint32_t nowMs() const override { return millis(); }
@@ -520,7 +515,7 @@ uint32_t NetworkService::routeVisibilityMask() const {
 }
 
 void NetworkService::setWebStatus(const web::StatusSnapshot &status) {
-  webStatus_.blueReport = status.blueReport;
+  // blueReport is published only by finishCycleReporting(), never mid-download.
   webStatus_.displayState = status.displayState;
   webStatus_.hasDataAge = status.hasDataAge;
   webStatus_.dataAgeSeconds = status.dataAgeSeconds;
@@ -600,7 +595,7 @@ void NetworkService::begin() {
   Serial.printf("Network: credentials source: %s\n",
                 gActiveFromNvs ? "NVS" : (fallback ? "secrets.h developer fallback" : "none"));
   if (wifi::decideBootMode(gActiveFromNvs, fallback, false) == wifi::BootMode::Provisioning) {
-    startProvisioning(millis());
+    requestProvisioning();
   } else {
     state_ = State::WifiConnecting;
     allocateBuffer();
@@ -609,6 +604,7 @@ void NetworkService::begin() {
 }
 
 void NetworkService::startProvisioning(uint32_t nowMs) {
+  if (fetchingFeeds()) { recoveryRequested_=true; return; }
   display::live::disable();
   stopLanWebUi();
   serverOwnership_.stop();
@@ -794,33 +790,78 @@ void NetworkService::printStatus(const transport::CycleResult &r) const {
                 static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)));
 }
 
+bool NetworkService::fetchingFeeds() const {
+  return pollHandoff_.active() || completedCyclePending_;
+}
+
+void NetworkService::pollWorker(void *context) {
+  auto &self=*static_cast<NetworkService *>(context);
+  for (;;) {
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    static const MillisClock clock;
+    FailureLogger logger(self.workerFailure_);
+    DeferredPipelineSink sink(self.pipeline_, self.workerConfig_);
+    sink.setNow(self.workerNowUnix_);
+    const transport::PollPreconditions pre{WiFi.status()==WL_CONNECTED, self.workerNowUnix_>=kMinValidUnixTime};
+    self.workerResult_=transport::runPollCycle(sink,connection(),self.buffer_,kFeeds,kFeedCount,pre,
+        kDefaultNetworkConfig.acceptUnknownLength,self.workerCounters_,
+        transport::CycleBudget{&clock,kDefaultNetworkConfig.cycleBudgetMs},&logger);
+    self.workerCompletedAtMs_=millis();
+    self.workerStackWatermark_=uxTaskGetStackHighWaterMark(nullptr);
+    self.pollHandoff_.finish(); // release all result/pipeline writes; task sleeps until next launch
+  }
+}
+
 void NetworkService::pollNow(uint32_t nowMs) {
-  static const MillisClock clock;
-  FailureLogger logger(webStatus_);
-  semantic::RenderConfig renderConfig{};
-  renderConfig.brightness = configuration_.brightness();
-  renderConfig.blueHoldSeconds = configuration_.blueHoldSeconds();
-  transport::PipelineSink sink(pipeline_, renderConfig);
-  sink.setNow(static_cast<uint32_t>(time(nullptr)));
-  const transport::PollPreconditions pre{WiFi.status() == WL_CONNECTED,
-                                         static_cast<uint32_t>(time(nullptr)) >= kMinValidUnixTime};
-  const transport::CycleResult r = transport::runPollCycle(
-      sink, connection(), buffer_, kFeeds, kFeedCount, pre,
-      kDefaultNetworkConfig.acceptUnknownLength, counters_,
-      transport::CycleBudget{&clock, kDefaultNetworkConfig.cycleBudgetMs}, &logger);
-  latestCycle_ = r;
-  hasLatestCycle_ = true;
-  completedCycle_ = r;
-  completedCycleAtMs_ = millis();
-  completedCyclePending_ = true;
+  if (fetchingFeeds()) return;
+  if (!pollTask_) {
+    TaskHandle_t task=nullptr;
+    if (xTaskCreatePinnedToCore(pollWorker,"mta-feeds",16*1024,this,1,&task,0)!=pdPASS) {
+      Serial.println("Network: feed worker allocation failed; retry after poll interval");
+      scheduler_.cycleFinished(nowMs);
+      return;
+    }
+    pollTask_=task;
+    Serial.println("Network: bounded feed worker ready; loop remains available for web and controls");
+  }
+  workerConfig_={};
+  workerConfig_.brightness=configuration_.brightness();
+  workerConfig_.blueHoldSeconds=configuration_.blueHoldSeconds();
+  workerCounters_=counters_;
+  workerFailure_={};
+  workerNowUnix_=static_cast<uint32_t>(time(nullptr));
+  if (pollHandoff_.start()) xTaskNotifyGive(static_cast<TaskHandle_t>(pollTask_));
+}
+
+void NetworkService::collectPollResult() {
+  if (!pollHandoff_.take()) return;
+  counters_=workerCounters_;
+  completedCycle_=workerResult_;
+  completedCycleAtMs_=workerCompletedAtMs_;
+  completedCyclePending_=true;
   scheduler_.cycleFinished(completedCycleAtMs_);
-  (void)nowMs;
-  printStatus(r);
+  if (workerFailure_.name) {
+    webStatus_.hasLastFeedFailure=true;
+    snprintf(webStatus_.lastFeedFailureName,sizeof(webStatus_.lastFeedFailureName),"%s",workerFailure_.name);
+    snprintf(webStatus_.lastFeedFailureCategory,sizeof(webStatus_.lastFeedFailureCategory),"%s",transport::downloadStatusName(workerFailure_.status));
+    webStatus_.lastFeedFailureBytes=workerFailure_.bytesReceived>UINT32_MAX?UINT32_MAX:static_cast<uint32_t>(workerFailure_.bytesReceived);
+    webStatus_.lastFeedFailureElapsedMs=workerFailure_.elapsedMs;
+  }
+}
+
+void NetworkService::finishCycleReporting() {
+  latestCycle_=completedCycle_;
+  hasLatestCycle_=true;
+  publishedPipelineCounters_=pipeline_.counters();
+  webStatus_.blueReport=pipeline_.blueReport();
+  printStatus(latestCycle_);
+  Serial.printf("Network worker: stack low-water %lu; pipeline released to loop\n",static_cast<unsigned long>(workerStackWatermark_));
 }
 
 void NetworkService::update(uint32_t nowMs) {
   if (state_ == State::Disabled) return;
-  if (recoveryRequested_) {
+  collectPollResult();
+  if (recoveryRequested_ && !fetchingFeeds()) {
     recoveryRequested_ = false;
     if (state_ != State::Provisioning) {
       Serial.println("Network: setup mode requested by user (stored credentials kept)");
@@ -851,8 +892,7 @@ void NetworkService::update(uint32_t nowMs) {
         state_ = State::WifiConnecting;
         return;
       }
-      // The cycle blocks loop() while it downloads (documented limitation).
-      if (scheduler_.due(nowMs)) pollNow(nowMs);
+      if (!fetchingFeeds() && !recoveryRequested_ && networkDiagnostics_.snapshot().state != diagnostics::RunState::Running && scheduler_.due(nowMs)) pollNow(nowMs);
       return;
   }
 }
@@ -962,7 +1002,7 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
     if (latestCycle_.outcome == transport::CycleOutcome::Complete ||
         latestCycle_.outcome == transport::CycleOutcome::Partial ||
         latestCycle_.outcome == transport::CycleOutcome::NoFeeds) {
-      const pipeline::Counters &counts = pipeline_.counters();
+      const pipeline::Counters &counts = publishedPipelineCounters_;
       const uint32_t processed = counts.feedsProcessed;
       const uint32_t usable =
           processed > counts.feedDecodeFailures
@@ -991,10 +1031,13 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
   webStatus_.psramFeedBufferPresent = buffer_.data != nullptr;
   webStatus_.transportCounters = counters_;
   webStatus_.networkDiagnostics = networkDiagnostics_.snapshot();
+  webStatus_.fetchingFeeds=fetchingFeeds();
   lanWebUi_.service(webStatus_);
   applyDnsOverride();
 
-  if (lanWebUi_.consumeNetworkDiagnosticsRequest()) {
+  if (lanWebUi_.consumeNetworkDiagnosticsRequest()) networkDiagnosticsPending_=true;
+  if (networkDiagnosticsPending_ && !fetchingFeeds()) {
+    networkDiagnosticsPending_=false;
     if (networkDiagnostics_.start(diagnosticProbe())) {
       webStatus_.networkDiagnostics = networkDiagnostics_.snapshot();
       Serial.println("Network diagnostics: user-triggered read-only run started");
@@ -1004,7 +1047,7 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
 
   if (lanWebUi_.consumeSetupRequest()) {
     Serial.println("LAN UI: user requested Wi-Fi setup; existing credentials kept");
-    startProvisioning(millis());
+    requestProvisioning();
     return;
   }
   if (lanWebUi_.consumeRebootRequest()) {
@@ -1015,6 +1058,7 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
 }
 
 void NetworkService::applyDnsOverride() {
+  if (fetchingFeeds()) return; // apply resolver changes between TLS downloads
   webStatus_.manualDnsEnabled = configuration_.dnsOverrideEnabled();
   webStatus_.manualDnsApplied = dnsManualApplied_;
   webStatus_.manualDnsServer[0] = '\0';
@@ -1149,6 +1193,9 @@ uint8_t NetworkService::brightness() const {
 uint32_t NetworkService::routeVisibilityMask() const {
   return config::kDefaultRouteVisibilityMask;
 }
+
+void NetworkService::finishCycleReporting() {}
+bool NetworkService::fetchingFeeds() const { return false; }
 
 bool NetworkService::consumeCompletedCycle(transport::CycleResult &, uint32_t &) {
   return false;
