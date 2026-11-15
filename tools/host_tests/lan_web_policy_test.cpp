@@ -634,7 +634,9 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "Run Network Diagnostics") != nullptr);
   CHECK(strstr(page, "method=\"post\" action=\"/network-diagnostics/run\"") !=
         nullptr);
-  CHECK(countSubstring(page, csrfToken) == 14);
+  CHECK(countSubstring(page, csrfToken) == 13);
+  CHECK(strstr(page,"There is no fixed 20-second cutoff"));
+  CHECK(!strstr(page,"action=\"/config/blue-hold\""));
   // Exercise the actual generated forms against the runtime route policy.
   // A rendered POST form must pass authorizeRequest's endpoint-policy gate.
   const char *cursor = page;
@@ -810,6 +812,7 @@ void testIndicationApi() {
   for(unsigned i=0;i<r.eventCount;++i)r.events[i]={i+1,1000,21000,100000,static_cast<uint16_t>(i),brooklyn::display::IndicationEnd::StopWindowExpired,brooklyn::display::Indication::Uncertain};
   char json[6144];CHECK(brooklyn::web::renderIndicationJson(json,sizeof(json),r)>0);
   CHECK(strstr(json,"\"schemaVersion\":1")&&strstr(json,"\"historyGap\":true"));
+  CHECK(strstr(json,"\"stoppedPolicy\":\"fresh-evidence\""));
   CHECK(strstr(json,"\"durationMs\":20000")&&strstr(json,"Stopped-color time limit expired"));
   CHECK(strstr(json,"\"stopped\":12")&&strstr(json,"\"activeTotal\":20"));
   CHECK(brooklyn::web::renderIndicationJson(json,40,r)==0);
@@ -830,6 +833,7 @@ void testTrainMonitor() {
   char json[6144],html[24576];
   CHECK(brooklyn::web::renderTrainMonitorJson(json,sizeof(json),status)>0);
   CHECK(strstr(json,"\"visibleMapLeds\":12") && strstr(json,"\"mappedTrains\":80"));
+  CHECK(strstr(json,"\"stoppedPolicy\":\"fresh-evidence\"") && strstr(json,"\"stoppedTimeLimitEnabled\":false"));
   CHECK(strstr(json,"\"line\":\"F\"") && strstr(json,"\"health\":\""));
   CHECK(strstr(json,"\"latestPollMappedTrains\":8"));
   CHECK(strstr(json,"\"sourceAgeSeconds\":20") && strstr(json,"\"reportAgeSeconds\":15"));
@@ -863,7 +867,7 @@ void testTrainMonitor() {
 }
 
 void testJsonStatusIsEscapedAndSecretFree() {
-  char json[2048];
+  char json[6144];
   brooklyn::web::StatusSnapshot status = sampleStatus();
   strncpy(status.firmwareVersion, "0.2.8", sizeof(status.firmwareVersion) - 1);
   status.otaBootConfirmed = true;
@@ -988,7 +992,7 @@ void testRouteSelectionParsing() {
 }
 
 void testRouteVisibilityApiMasks() {
-  char json[2048];
+  char json[6144];
   const brooklyn::web::StatusSnapshot status = sampleStatus();
   const uint32_t masks[] = {
       brooklyn::semantic::kAllRoutesVisibleMask,
@@ -1110,7 +1114,7 @@ int main() {
   testRouteSelectionParsing();
   testServerOwnershipTransitions();
   static char page[brooklyn::web::kStatusPageCapacity];
-  char json[2048];
+  char json[6144];
   const brooklyn::web::StatusSnapshot status = sampleStatus();
   printf("Sample generated response sizes: HTML %lu B, status JSON %lu B\n",
          static_cast<unsigned long>(brooklyn::web::renderHomePage(

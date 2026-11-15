@@ -40,6 +40,10 @@ enum Bucket : uint8_t {
   kApproaching,
 };
 
+constexpr uint32_t kStopVehicleFreshSeconds=90;
+constexpr uint32_t kStopPredictionFreshSeconds=60;
+constexpr uint32_t kStopFeedFreshSeconds=60;
+constexpr uint32_t kRecentArrivalSeconds=30;
 constexpr uint16_t kConflictBit = 0x8000;
 constexpr uint16_t kOutcomeMask = 0x7FFF;
 constexpr uint16_t kMaxRecords = 0xFFFF;
@@ -201,19 +205,25 @@ void TrainPipeline::onVehicle(const gtfsrt::RtTrain &vehicle, uint32_t feedTimes
         memcpy(blue.nextStop, prediction.stop, 4); blue.flags = 0;
         if (memcmp(prediction.stop, vehicle.vehicleStopId, 4)) blue.flags |= NextDifferent;
         else if (diagnosticTime && prediction.arrival > diagnosticTime) blue.flags |= FutureArrival;
-        // A matching, recent arrival supports the reported stop; it does not
-        // prove dwell. Contradictory/missing/old evidence must not look blue.
+        // Start only from a recent matching arrival. A published supported stop
+        // may continue with an older arrival while SAME-stop VP/prediction/feed
+        // remain fresh and non-future; their original timestamps bound expiry.
+        // This supports the report, not independent proof of station dwell.
         if (prediction.hasArrival && !(blue.flags & NextDifferent) && t.status == gtfsrt::VehicleStatus::StoppedAt &&
             t.vehicleTimestamp && diagnosticTime >= t.vehicleTimestamp &&
-            diagnosticTime - t.vehicleTimestamp <= 90 && prediction.timestamp &&
-            diagnosticTime >= prediction.timestamp && diagnosticTime - prediction.timestamp <= 60 &&
-            prediction.arrival <= diagnosticTime && diagnosticTime - prediction.arrival <= 30 &&
-            feedTimestamp && diagnosticTime >= feedTimestamp && diagnosticTime - feedTimestamp <= 60)
+            diagnosticTime - t.vehicleTimestamp <= kStopVehicleFreshSeconds && prediction.timestamp &&
+            diagnosticTime >= prediction.timestamp && diagnosticTime - prediction.timestamp <= kStopPredictionFreshSeconds &&
+            prediction.arrival <= diagnosticTime &&
+            (diagnosticTime - prediction.arrival <= kRecentArrivalSeconds ||
+             hasSupportedStop(predictionH1,predictionH2,blue.stopKey,diagnosticTime)) &&
+            feedTimestamp && diagnosticTime >= feedTimestamp && diagnosticTime - feedTimestamp <= kStopFeedFreshSeconds)
         {
           blue.flags |= RecentMatchingArrival;
-          blue.stoppedFreshUntil = t.vehicleTimestamp + 91;
-          if (prediction.timestamp + 61 < blue.stoppedFreshUntil) blue.stoppedFreshUntil = prediction.timestamp + 61;
-          if (feedTimestamp + 61 < blue.stoppedFreshUntil) blue.stoppedFreshUntil = feedTimestamp + 61;
+          blue.stoppedFreshUntil = t.vehicleTimestamp + kStopVehicleFreshSeconds + 1;
+          const uint32_t predictionUntil=prediction.timestamp+kStopPredictionFreshSeconds+1;
+          const uint32_t feedUntil=feedTimestamp+kStopFeedFreshSeconds+1;
+          if (predictionUntil < blue.stoppedFreshUntil) blue.stoppedFreshUntil = predictionUntil;
+          if (feedUntil < blue.stoppedFreshUntil) blue.stoppedFreshUntil = feedUntil;
         }
         char next[5]{}; memcpy(next, prediction.stop, 4);
         const bool inferred = gtfsrt::applyVerifiedTripDeparture(t, next, prediction.arrival,
@@ -358,30 +368,37 @@ gtfsrt::DecodeStatus TrainPipeline::processFeed(const uint8_t *data, size_t leng
   return status;
 }
 
-uint16_t TrainPipeline::blueRemaining(uint32_t h1, uint32_t h2, uint32_t stopKey, uint32_t now, bool qualified, bool publish) {
-  if (!now || !stopKey) return 0;
-  // Retain visits through missing polls. Reclaim only entries unseen for 30 min.
-  StopVisit *empty = nullptr;
-  for (auto &visit : stopVisits_) {
-    if (visit.h1 && now >= visit.lastSeen && now - visit.lastSeen > 1800) visit = {};
-    if (!visit.h1) { if (!empty) empty = &visit; continue; }
-    if (visit.h1 != h1 || visit.h2 != h2) continue;
-    if (visit.stopKey != stopKey) { visit.stopKey = stopKey; visit.firstSeen = 0; }
-    visit.lastSeen = now;
-    // Observe uncertain reports without consuming the stopped-color window.
-    // Once qualified, the same visit never restarts on repeated reports.
-    if (!qualified) return 0;
-    if (!visit.firstSeen) {
-      if (!publish) return config_.blueHoldSeconds;
-      visit.firstSeen = now;
-    }
-    if (now < visit.firstSeen) return 0; // clock rollback never grants extra blue
-    const uint32_t age = now - visit.firstSeen;
-    return age < config_.blueHoldSeconds ? config_.blueHoldSeconds - age : 0;
+bool TrainPipeline::hasSupportedStop(uint32_t h1,uint32_t h2,uint32_t stopKey,uint32_t now) const {
+  if(!now || !stopKey)return false;
+  for(const auto &visit:stopVisits_)
+    if(visit.h1==h1 && visit.h2==h2 && visit.stopKey==stopKey &&
+       now>=visit.lastSeen && now<visit.freshUntil)return true;
+  return false;
+}
+void TrainPipeline::forgetStop(uint32_t h1,uint32_t h2) {
+  for(auto &visit:stopVisits_)if(visit.h1==h1 && visit.h2==h2)visit={};
+}
+uint16_t TrainPipeline::stoppedRemaining(uint32_t h1,uint32_t h2,uint32_t stopKey,uint32_t now,
+                                        uint32_t freshUntil,bool supported,bool publish) {
+  if(!now || !stopKey)return 0;
+  StopVisit *empty=nullptr;
+  for(auto &visit:stopVisits_) {
+    if(visit.h1 && now>=visit.lastSeen && now-visit.lastSeen>1800)visit={};
+    if(!visit.h1) {if(!empty)empty=&visit;continue;}
+    if(visit.h1!=h1 || visit.h2!=h2)continue;
+    if(now<visit.lastSeen) {visit.freshUntil=0;return 0;}
+    if(visit.stopKey!=stopKey) {visit.stopKey=stopKey;visit.freshUntil=0;}
+    visit.lastSeen=now;
+    if(!supported || now>=freshUntil) {visit.freshUntil=0;return 0;}
+    if(publish)visit.freshUntil=freshUntil;
+    const uint32_t remaining=freshUntil-now;
+    return remaining<UINT16_MAX?static_cast<uint16_t>(remaining):UINT16_MAX;
   }
-  if (!empty) return 0; // capacity uncertainty must not restart an existing timer
-  *empty = {h1, h2, stopKey, qualified && publish ? now : 0, now};
-  return qualified ? config_.blueHoldSeconds : 0;
+  if(!empty)return 0; // no unbounded continuation history on capacity exhaustion
+  *empty={h1,h2,stopKey,supported && publish && now<freshUntil?freshUntil:0,now};
+  if(!supported || now>=freshUntil)return 0;
+  const uint32_t remaining=freshUntil-now;
+  return remaining<UINT16_MAX?static_cast<uint16_t>(remaining):UINT16_MAX;
 }
 
 void TrainPipeline::forgetLocation(uint32_t h1,uint32_t h2) {
@@ -428,24 +445,18 @@ void TrainPipeline::finishCycle(uint32_t stoppedPublicationUnix, bool publishSto
     if (e.h1 == 0) continue;
     if ((e.outcome & kConflictBit) != 0) {
       forgetLocation(e.h1,e.h2);
+      forgetStop(e.h1,e.h2);
       bump(counters_.conflictedTrips);
       add(counters_.duplicateConflict, e.records);
       continue;
     }
     add(counters_.duplicateIdentical, static_cast<uint32_t>(e.records) - 1u);
     const uint16_t bucket = static_cast<uint16_t>(e.outcome >> 9);
-    uint16_t remaining = bucket == kStation ? blueRemaining(e.h1, e.h2,
-        blueEvidence_[i].stopKey, stoppedNow,
-        (blueEvidence_[i].flags & RecentMatchingArrival) != 0 &&
-        (!blueEvidence_[i].stoppedFreshUntil || stoppedNow < blueEvidence_[i].stoppedFreshUntil), publishStops) : 0;
-    bool freshnessLimited=false;
-    if (remaining && blueEvidence_[i].stoppedFreshUntil && stoppedNow < blueEvidence_[i].stoppedFreshUntil) {
-      const uint32_t freshRemaining = blueEvidence_[i].stoppedFreshUntil - stoppedNow;
-      if (remaining >= freshRemaining) { remaining = static_cast<uint16_t>(freshRemaining); freshnessLimited=true; }
-    }
-    if (bucket == kApproaching || bucket == kSegment) {
-      for (auto &visit : stopVisits_) if (visit.h1 == e.h1 && visit.h2 == e.h2) visit = {};
-    }
+    const uint16_t remaining = bucket == kStation ? stoppedRemaining(e.h1,e.h2,
+        blueEvidence_[i].stopKey,stoppedNow,blueEvidence_[i].stoppedFreshUntil,
+        (blueEvidence_[i].flags & RecentMatchingArrival)!=0,publishStops) : 0;
+    const bool freshnessLimited=remaining!=0;
+    if(bucket!=kStation)forgetStop(e.h1,e.h2);
     const bool uncertain = bucket == kStation &&
         (!(blueEvidence_[i].flags & RecentMatchingArrival) || !remaining);
     const uint16_t index = e.outcome & 0x1FF;

@@ -526,24 +526,7 @@ void LanWebUi::handleOledDimmer() {
 
 void LanWebUi::handleBlueHold() {
   if (!authorizeRequest(true)) return;
-  bool secondsSeen = false, csrfSeen = false;
-  for (int i = 0; i < server_.args(); ++i) {
-    const String name = server_.argName(i);
-    if (name == "seconds" && !secondsSeen) secondsSeen = true;
-    else if (name == "csrf" && !csrfSeen) csrfSeen = true;
-    else { server_.send(400, "text/plain", "Invalid blue hold settings"); return; }
-  }
-  const String text = server_.arg("seconds"); uint32_t seconds = 0;
-  if (!secondsSeen || !csrfSeen || server_.args() != 2 || !hasNoEmbeddedNull(text) ||
-      !config::parseBlueHoldSeconds(text.c_str(), seconds)) {
-    server_.send(400, "text/plain", "Choose 1 to 300 seconds"); return;
-  }
-  if (!configuration_.setBlueHoldSeconds(seconds)) {
-    server_.send(500, "text/plain", "Could not save blue hold time"); return;
-  }
-  Serial.printf("Station blue hold: %lu seconds; applies next poll, visit timers retained\n",
-                static_cast<unsigned long>(seconds));
-  server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "Blue hold saved; applies next poll");
+  sendNotice(410,"Stopped-color timing","Stopped lights now follow fresh train evidence. The old fixed-time setting is no longer used.",1,0,"/#lights","Back to lights");
 }
 
 void LanWebUi::handlePollInterval() {

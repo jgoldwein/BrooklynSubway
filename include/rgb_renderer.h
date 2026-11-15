@@ -50,7 +50,7 @@ struct RenderConfig {
   uint32_t nowUnix = 0;
   uint32_t animationTimeMs = 0;
   TrainColors colors=kDefaultTrainColors;
-  uint16_t blueHoldSeconds = 20;
+  uint16_t blueHoldSeconds = 20; // legacy compatibility field; fresh stop evidence now controls expiry
   UnknownTimingMode unknownTimingMode = UnknownTimingMode::Orange;
   uint16_t lastReportedFadeSeconds = kDefaultLastReportedFadeSeconds;
   bool showUnknownTiming = true;

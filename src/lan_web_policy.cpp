@@ -742,17 +742,10 @@ size_t renderHomePage(char *out, size_t capacity,
                   status.unknownTiming&255,semantic::lastReportedFadeSeconds(status.unknownTiming));
   }
   writer.append("<p>Faint lights stay faint. Fade time applies to the fading markers. Brightness 0 hides uncertain lights.</p></section>");
-  writer.format("<section class=\"blue-hold\" data-view=\"lights\"><h2>How long should the stopped color stay on?</h2><p>The stopped color means a recent stop report is supported by arrival data. Its timer starts when a qualifying report is first displayed. Old data can shorten the window. Keep it on for up to %lu seconds. "
-                "After that, use your choice for uncertain movement. "
-                "Changes take effect with the next train update. Long stops can also become uncertain.</p>",
-                static_cast<unsigned long>(status.blueHoldSeconds));
-  if (status.adminSessionActive && csrfToken && csrfToken[0]) {
-    writer.append("<form method=\"post\" action=\"/config/blue-hold\"><input type=\"hidden\" name=\"csrf\" value=\"");
-    writer.html(csrfToken);
-    writer.format("\"><label>Seconds <input type=\"number\" name=\"seconds\" min=\"1\" max=\"300\" value=\"%lu\" required></label>"
-                  "<button>Save stop time</button></form>", static_cast<unsigned long>(status.blueHoldSeconds));
-  }
-  writer.append("</section>");
+  writer.append("<section class=\"blue-hold\" data-view=\"lights\"><h2>When does the stopped color change?</h2>"
+                "<p>The stopped color stays on while fresh, consistent reports support a train at the station. "
+                "Verified departure evidence changes the indication to movement. Old, missing or contradictory evidence becomes uncertain. "
+                "There is no fixed 20-second cutoff. A repeated old report does not count as fresh evidence.</p></section>");
   writer.format("<details class=\"card wide\" data-view=\"advanced\"><summary>Train update timing</summary><p>Wait after each completed download cycle: %lu seconds. "
                 "Downloads add to the total interval. MTA feeds are typically generated about every 30 seconds; "
                 "faster checks can return identical data.</p>", static_cast<unsigned long>(status.pollSeconds));
@@ -1008,7 +1001,7 @@ void indicationLocation(Writer &w,uint16_t led) {
 }
 size_t renderIndicationJson(char *out,size_t capacity,const display::IndicationReport &r) {
   Writer w(out,capacity);
-  w.format("{\"schemaVersion\":1,\"available\":%s,\"outputEnabled\":%s,\"uptimeMs\":%lu,\"unixTime\":%lu,\"sampleAgeMs\":%lu,\"counts\":",
+  w.format("{\"schemaVersion\":1,\"stoppedPolicy\":\"fresh-evidence\",\"available\":%s,\"outputEnabled\":%s,\"uptimeMs\":%lu,\"unixTime\":%lu,\"sampleAgeMs\":%lu,\"counts\":",
       r.available?"true":"false",r.outputEnabled?"true":"false",static_cast<unsigned long>(r.nowMs),static_cast<unsigned long>(r.observedUnix),static_cast<unsigned long>(r.nowMs-r.observedAtMs));
   indicationCounts(w,r.counts);
   w.format(",\"newestSequence\":%lu,\"oldestSequence\":%lu,\"nextAfter\":%lu,\"historyGap\":%s,\"more\":%s,\"activeTotal\":%u,\"activeShown\":%u,\"active\":[",
@@ -1035,6 +1028,7 @@ size_t renderTrainMonitorJson(char *out,size_t capacity,const StatusSnapshot &s)
   w.format(",\"latestPollMappedTrains\":%lu",static_cast<unsigned long>(monitorLatestCount(s)));w.append(",\"reportAgeSeconds\":");monitorAge(w,s.unixTime,r.timestamp);
   w.append(",\"mapAgeSeconds\":");if(s.hasDataAge)w.format("%lu",static_cast<unsigned long>(s.dataAgeSeconds));else w.append("null");
   w.format(",\"fetchingFeeds\":%s",s.fetchingFeeds?"true":"false");
+  w.append(",\"stoppedPolicy\":\"fresh-evidence\",\"stoppedTimeLimitEnabled\":false");
   w.append(",\"indications\":");indicationCounts(w,s.indications);
   w.append(",\"health\":");monitorString(w,monitorHealth(s));
   w.format(",\"staleVehicles\":%lu,\"unmappedPositions\":%lu,\"conflictedTrips\":%lu,\"predictionConflicts\":%lu,\"capacityDrops\":%lu,\"uncertainMode\":",
@@ -1161,7 +1155,8 @@ size_t renderStatusJson(char *out, size_t capacity,
       semantic::unknownTimingMode(status.unknownTiming)!=semantic::UnknownTimingMode::Hidden?"true":"false",status.unknownTiming&255,
       semantic::unknownTimingModeName(semantic::unknownTimingMode(status.unknownTiming)),semantic::lastReportedFadeSeconds(status.unknownTiming));
   writer.format(",\"oledContrast\":%u", status.oledContrast);
-  writer.format(",\"blueHoldSeconds\":%lu", static_cast<unsigned long>(status.blueHoldSeconds));
+  writer.append(",\"stoppedPolicy\":\"fresh-evidence\",\"stoppedTimeLimitEnabled\":false");
+  writer.format(",\"blueHoldSeconds\":%lu", static_cast<unsigned long>(status.blueHoldSeconds)); // legacy stored value, inactive
   writer.format(",\"pollSeconds\":%lu", static_cast<unsigned long>(status.pollSeconds));
   writer.format(",\"physicalFramesWritten\":%lu,\"physicalMapChanges\":%lu,"
                 "\"physicalBlinkingLeds\":%u,\"physicalPowerPaused\":%s",

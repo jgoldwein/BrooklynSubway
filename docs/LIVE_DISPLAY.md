@@ -242,3 +242,21 @@ python tools/monitor_indications.py --url http://10.1.1.56 --seconds 180
 Stopped-color time limit and source-age limit are reported separately. Other
 reasons describe the observed replacement or an output/filter/test action.
 No timing or confidence policy was changed by adding this observation path.
+
+
+## Evidence-driven stopped color (0.2.48)
+
+The stopped color no longer ends simply because a visit is 20 seconds old.
+A new stop still needs recent matching arrival evidence. A previously published
+supported stop can persist with that older arrival while fresh same-trip/same-stop
+vehicle, prediction and feed reports remain consistent and non-future. Each source
+retains its original age limit; new headers do not refresh old inner timestamps.
+The renderer becomes uncertain at the earliest source deadline if no replacement
+arrives. Contradictions and movement supersede the stop; source freshness is not
+independent proof of dwell or departure.
+
+The old stop-time form is retired. Stored blue_hold/blueHoldSeconds values are
+legacy rollback data, not an active setting. APIs identify fresh-evidence policy
+and stoppedTimeLimitEnabled=false. Existing indication history can distinguish
+source expiry from changed reports; production no longer generates expiry from
+the retired fixed visit-time cap. No additional RAM, pin or power changes.

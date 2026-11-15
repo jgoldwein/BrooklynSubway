@@ -358,10 +358,11 @@ void testApproachingRepresentation() {
   CHECK(gPipe.counters().stale == 1 && gPipe.counters().approachingStation == 0);
 }
 
-Buf predictionEntity(const char *trip, const char *stop, uint32_t arrival, const char *route = "2", uint8_t relationship = 0) {
+Buf predictionEntity(const char *trip, const char *stop, uint32_t arrival, const char *route = "2", uint8_t relationship = 0, uint32_t timestamp = 0) {
   Buf event; event.vint(2, arrival);
   Buf update; update.msg(2, event).str(4, stop).vint(5, relationship);
   Buf tu; tu.msg(1, tripDesc(trip, route)).msg(2, update);
+  if(timestamp)tu.vint(4,timestamp);
   Buf entity; entity.str(1, "prediction").msg(3, tu);
   return entity;
 }
@@ -446,98 +447,91 @@ void testStationConfidence() {
   CHECK(sem::isUncertainOnly(gPipe.frame(), firstOccupied()));
 }
 
-TrainPipeline gTimed;
-void testBlueHoldAcrossPolls() {
-  auto &timed = gTimed;
-  auto report = [&](uint32_t now, const char *stop, uint16_t hold = 20) {
-    sem::RenderConfig config{}; config.blueHoldSeconds = hold;
-    timed.beginCycle(now, config);
-    Feed f(now); f.vehicle("HOLD_TRIP", "2", 1, stop, now);
-    f.add(predictionEntity("HOLD_TRIP", stop, now));
-    timed.processFeed(f.b.d, f.b.n); timed.finishCycle();
+TrainPipeline gFreshStops;
+void testEvidenceDrivenStops() {
+  auto &p=gFreshStops;
+  auto report=[&](const char *id,uint32_t now,uint32_t arrival,uint32_t vehicle,uint32_t prediction,
+                  const char *stop="233N",const char *next=nullptr,bool publish=true,uint32_t publication=0,uint16_t legacyHold=20) {
+    sem::RenderConfig config{};config.blueHoldSeconds=legacyHold;p.beginCycle(now,config);Feed f(now);
+    f.vehicle(id,"2",1,stop,vehicle);
+    if(prediction)f.add(predictionEntity(id,next?next:stop,arrival,"2",0,prediction));
+    p.processFeed(f.b.d,f.b.n);p.finishCycle(publication?publication:now,publish);
   };
-  report(kNow, "233N");
-  uint16_t index = 0; while (!timed.frame().occupancy[index]) ++index;
-  CHECK(timed.frame().blueSecondsRemaining[index] == 20);
-  sem::RenderConfig render{}; render.animateTraffic = true; render.brightness = 255;
-  render.nowUnix = kNow + 19; sem::RgbFrame rgb{};
-  sem::renderTrainFrame(timed.frame(), rgb, render); CHECK(rgb.pixels[index].red == 255);
-  render.nowUnix = kNow + 20;
-  sem::renderTrainFrame(timed.frame(), rgb, render);
-  CHECK(rgb.pixels[index].red == 0 && rgb.pixels[index].blue == 128);
-  report(kNow + 10, "233N"); CHECK(timed.frame().blueSecondsRemaining[index] == 10);
-  report(kNow + 20, "233N"); CHECK(sem::isUncertainOnly(timed.frame(), index));
-  report(kNow + 30, "233N"); CHECK(sem::isUncertainOnly(timed.frame(), index));
-  report(kNow + 31, "233N", 40); CHECK(timed.frame().blueSecondsRemaining[index] == 9);
-  timed.beginCycle(kNow + 32); timed.finishCycle(); // missing poll retains visit
-  report(kNow + 35, "233N"); CHECK(sem::isUncertainOnly(timed.frame(), index));
-  report(kNow + 40, "232N");
-  index = 0; while (!timed.frame().occupancy[index]) ++index;
-  CHECK(timed.frame().blueSecondsRemaining[index] == 20);
-  CHECK(!sem::isUncertainOnly(timed.frame(), index));
-}
-
-TrainPipeline gQualifiedHold;
-void testStoppedHoldStartsOnQualifiedReport() {
-  auto &p=gQualifiedHold;
-  auto report=[&](uint32_t now,bool credible,const char *stop="233N") {
-    p.beginCycle(now);Feed f(now);
-    f.vehicle("QUALIFY_HOLD","2",1,stop,now);
-    if(credible)f.add(predictionEntity("QUALIFY_HOLD",stop,now));
-    p.processFeed(f.b.d,f.b.n);p.finishCycle();
-  };
-  report(kNow,false);uint16_t index=0;while(!p.frame().occupancy[index])++index;
-  CHECK(sem::isUncertainOnly(p.frame(),index));
-  report(kNow+19,true);
-  CHECK(p.frame().blueSecondsRemaining[index]==20); // A late qualification gets its full window.
-  CHECK(!sem::isUncertainOnly(p.frame(),index));
-  sem::RenderConfig render{};render.animateTraffic=true;render.brightness=255;
-  render.nowUnix=kNow+38;sem::RgbFrame rgb{};
-  sem::renderTrainFrame(p.frame(),rgb,render);CHECK(rgb.pixels[index].red==255);
-  render.nowUnix=kNow+39;sem::renderTrainFrame(p.frame(),rgb,render);
-  CHECK(rgb.pixels[index].red==0 && rgb.pixels[index].blue>0);
-  report(kNow+25,false);CHECK(sem::isUncertainOnly(p.frame(),index));
-  report(kNow+30,true);CHECK(p.frame().blueSecondsRemaining[index]==9); // No restart after noisy evidence.
-  report(kNow+40,true);CHECK(sem::isUncertainOnly(p.frame(),index));
-  report(kNow+41,false,"232N");
-  report(kNow+60,true,"232N");index=0;while(!p.frame().occupancy[index])++index;
-  CHECK(p.frame().blueSecondsRemaining[index]==20); // New station, qualified later.
-}
-
-TrainPipeline gPublishedHold;
-void testStoppedPublicationTiming() {
-  auto &p=gPublishedHold;
-  auto report=[&](const char *id,uint32_t source,uint32_t publication,bool shown) {
-    p.beginCycle(source); Feed f(source);
-    f.vehicle(id,"2",1,"233N",source);
-    f.add(predictionEntity(id,"233N",source));
-    p.processFeed(f.b.d,f.b.n);p.finishCycle(publication,shown);
-  };
-  report("VISIBLE",kNow,kNow+18,true);
+  report("FRESH",kNow,kNow,kNow,kNow);
   uint16_t index=0;while(!p.frame().occupancy[index])++index;
-  CHECK(p.frame().animationEpochUnix==kNow); // Never rejuvenate motion/source timing.
-  CHECK(p.frame().stoppedEpochUnix==kNow+18);
-  CHECK(p.frame().blueSecondsRemaining[index]==20);
-  sem::RenderConfig c{};c.animateTraffic=true;c.brightness=255;sem::RgbFrame rgb{};
-  c.nowUnix=kNow+37;sem::renderTrainFrame(p.frame(),rgb,c);CHECK(rgb.pixels[index].red==255);
-  c.nowUnix=kNow+38;sem::renderTrainFrame(p.frame(),rgb,c);CHECK(rgb.pixels[index].red==0);
-  report("VISIBLE",kNow+23,kNow+35,true);
-  CHECK(p.frame().blueSecondsRemaining[index]==3); // Repeat cannot start another window.
-  report("HELD",kNow+50,kNow+68,false);
-  report("HELD",kNow+75,kNow+93,true);
-  CHECK(p.frame().blueSecondsRemaining[index]==20); // Invisible candidate never armed its visit.
-  report("STALE_AT_PUBLICATION",kNow+100,kNow+170,true);
-  CHECK(sem::isUncertainOnly(p.frame(),index));
-  report("STALE_AT_PUBLICATION",kNow+180,kNow+190,true);
-  CHECK(p.frame().blueSecondsRemaining[index]==20); // Rejected stale publication did not arm.
-  report("FRESHNESS_CAP",kNow+200,kNow+255,true);
-  CHECK(p.frame().blueSecondsRemaining[index]==6); // Prediction/feed age still expires at 60 s.
+  CHECK(p.frame().blueSecondsRemaining[index]==61);
   CHECK(p.frame().stoppedFreshnessLimited[index/8]&(uint8_t{1}<<(index%8)));
-  c.nowUnix=kNow+260;sem::renderTrainFrame(p.frame(),rgb,c);CHECK(rgb.pixels[index].red==255);
-  c.nowUnix=kNow+261;sem::renderTrainFrame(p.frame(),rgb,c);CHECK(rgb.pixels[index].red==0);
-  report("ROLLBACK",kNow+300,kNow+318,true);
-  report("ROLLBACK",kNow+310,kNow+317,true);
+  sem::RenderConfig c{};c.animateTraffic=true;c.brightness=255;sem::RgbFrame rgb{};
+  c.nowUnix=kNow+20;sem::renderTrainFrame(p.frame(),rgb,c);CHECK(rgb.pixels[index].red==255);
+  c.nowUnix=kNow+60;sem::renderTrainFrame(p.frame(),rgb,c);CHECK(rgb.pixels[index].red==255);
+  c.nowUnix=kNow+61;sem::renderTrainFrame(p.frame(),rgb,c);CHECK(rgb.pixels[index].red==0);
+  // Fresh SAME-stop evidence can sustain a previously established arrival for minutes.
+  for(unsigned offset=22;offset<=110;offset+=22) {
+    report("FRESH",kNow+offset,kNow,kNow+offset,kNow+offset,"233N",nullptr,true,0,1);
+    CHECK(!sem::isUncertainOnly(p.frame(),index));CHECK(p.frame().blueSecondsRemaining[index]==61);
+  }
+  // A new feed header cannot refresh old vehicle/prediction timestamps.
+  report("FRESH",kNow+132,kNow,kNow+110,kNow+110);CHECK(p.frame().blueSecondsRemaining[index]==39);
+  report("FRESH",kNow+154,kNow,kNow+110,kNow+110);CHECK(p.frame().blueSecondsRemaining[index]==17);
+  report("FRESH",kNow+172,kNow,kNow+110,kNow+110);CHECK(sem::isUncertainOnly(p.frame(),index));
+  // Contradictions invalidate continuation; an old arrival cannot bootstrap red again.
+  report("CONTRA",kNow+200,kNow+200,kNow+200,kNow+200);
+  report("CONTRA",kNow+222,kNow+200,kNow+222,kNow+222,"233N","233S");CHECK(sem::isUncertainOnly(p.frame(),index));
+  report("CONTRA",kNow+244,kNow+200,kNow+244,kNow+244);CHECK(sem::isUncertainOnly(p.frame(),index));
+  report("CONTRA",kNow+245,kNow+245,kNow+245,kNow+245);CHECK(!sem::isUncertainOnly(p.frame(),index));
+  report("CONTRA",kNow+266,kNow+300,kNow+266,kNow+266);CHECK(sem::isUncertainOnly(p.frame(),index));
+  report("CONTRA",kNow+280,kNow+245,kNow+280,kNow+280);CHECK(sem::isUncertainOnly(p.frame(),index));
+  report("MISSING_PRED",kNow+300,kNow+300,kNow+300,kNow+300);
+  report("MISSING_PRED",kNow+322,kNow+300,kNow+322,0);CHECK(sem::isUncertainOnly(p.frame(),index));
+  report("MISSING_PRED",kNow+344,kNow+300,kNow+344,kNow+344);CHECK(sem::isUncertainOnly(p.frame(),index));
+  // No borrowing confirmation across trip IDs or station identities.
+  report("KNOWN",kNow+400,kNow+400,kNow+400,kNow+400);
+  report("OTHER",kNow+400,kNow+300,kNow+400,kNow+400);CHECK(sem::isUncertainOnly(p.frame(),index));
+  report("CHANGE",kNow+500,kNow+500,kNow+500,kNow+500);
+  report("CHANGE",kNow+540,kNow+500,kNow+540,kNow+540,"232N");
+  uint16_t changed=0;while(!p.frame().occupancy[changed])++changed;CHECK(sem::isUncertainOnly(p.frame(),changed));
+  // An unpublished partial candidate is not an established displayed stop.
+  report("HELD",kNow+550,kNow+550,kNow+550,kNow+550,"233N",nullptr,false,kNow+568);
+  report("HELD",kNow+590,kNow+550,kNow+590,kNow+590);CHECK(sem::isUncertainOnly(p.frame(),index));
+  // Missing polls may hold a frame, but cannot prolong its original source deadline.
+  report("OUTAGE",kNow+600,kNow+600,kNow+600,kNow+600);
+  report("OUTAGE",kNow+662,kNow+600,kNow+662,kNow+662);CHECK(sem::isUncertainOnly(p.frame(),index));
+  report("OUTAGE",kNow+663,kNow+663,kNow+663,kNow+663);CHECK(!sem::isUncertainOnly(p.frame(),index));
+  // Publication delay consumes source lifetime; it never re-dates motion or source time.
+  report("DELAY",kNow+700,kNow+700,kNow+700,kNow+700,"233N",nullptr,true,kNow+718);
+  CHECK(p.frame().animationEpochUnix==kNow+700 && p.frame().stoppedEpochUnix==kNow+718);
+  CHECK(p.frame().blueSecondsRemaining[index]==43);
+  c.nowUnix=kNow+760;sem::renderTrainFrame(p.frame(),rgb,c);CHECK(rgb.pixels[index].red==255);
+  c.nowUnix=kNow+761;sem::renderTrainFrame(p.frame(),rgb,c);CHECK(rgb.pixels[index].red==0);
+  report("ROLLBACK",kNow+800,kNow+800,kNow+800,kNow+800,"233N",nullptr,true,kNow+818);
+  report("ROLLBACK",kNow+810,kNow+810,kNow+810,kNow+810,"233N",nullptr,true,kNow+817);
   CHECK(sem::isUncertainOnly(p.frame(),index));
+  // Verified next-stop departure supersedes the stop immediately, rather than waiting for expiry.
+  report("MOVE",kNow+900,kNow+900,kNow+900,kNow+900);
+  report("MOVE",kNow+922,kNow+952,kNow+912,kNow+922,"233N","232N");
+  CHECK(p.counters().verifiedTripDepartures==1);
+  CHECK(p.frame().approachingTrains || p.counters().resolvedSegment);
+  for(auto seconds:p.frame().blueSecondsRemaining)CHECK(seconds==0);
+  // Conflicting predictions and conflicting vehicle records invalidate old support.
+  report("CONFLICT",kNow+1000,kNow+1000,kNow+1000,kNow+1000);
+  p.beginCycle(kNow+1022);Feed conflict(kNow+1022);conflict.vehicle("CONFLICT","2",1,"233N",kNow+1022);
+  conflict.add(predictionEntity("CONFLICT","233N",kNow+1000)).add(predictionEntity("CONFLICT","233N",kNow+1001));
+  p.processFeed(conflict.b.d,conflict.b.n);p.finishCycle();CHECK(sem::isUncertainOnly(p.frame(),index));
+  report("CONFLICT",kNow+1044,kNow+1000,kNow+1044,kNow+1044);CHECK(sem::isUncertainOnly(p.frame(),index));
+  report("VEH_CONFLICT",kNow+1100,kNow+1100,kNow+1100,kNow+1100);
+  p.beginCycle(kNow+1122);Feed vehicles(kNow+1122);
+  vehicles.vehicle("VEH_CONFLICT","2",1,"233N",kNow+1122).vehicle("VEH_CONFLICT","2",1,"232N",kNow+1122);
+  vehicles.add(predictionEntity("VEH_CONFLICT","233N",kNow+1100));p.processFeed(vehicles.b.d,vehicles.b.n);p.finishCycle();
+  CHECK(p.counters().conflictedTrips==1);
+  report("VEH_CONFLICT",kNow+1144,kNow+1100,kNow+1144,kNow+1144);CHECK(sem::isUncertainOnly(p.frame(),index));
+  // Frozen vehicle timestamps cannot gain unlimited support from fresh predictions.
+  report("OLD_VEHICLE",kNow+1200,kNow+1200,kNow+1200,kNow+1200);
+  for(unsigned offset=22;offset<=88;offset+=22) {
+    report("OLD_VEHICLE",kNow+1200+offset,kNow+1200,kNow+1200,kNow+1200+offset);
+    CHECK(!sem::isUncertainOnly(p.frame(),index));
+  }
+  CHECK(p.frame().blueSecondsRemaining[index]==3);
+  report("OLD_VEHICLE",kNow+1292,kNow+1200,kNow+1200,kNow+1292);CHECK(sem::isUncertainOnly(p.frame(),index));
 }
 
 TrainPipeline gLocations;
@@ -564,12 +558,12 @@ void testLastReportedLocations() {
   c.lastReportedFadeSeconds=120; sem::renderTrainFrame(p.frame(),rgb,c); CHECK(rgb.pixels[old].red==1);
   report(kNow+70,"232N",true); uint16_t next=0; while (!p.frame().occupancy[next]) ++next;
   CHECK(next!=old && p.frame().lastReportedFadeStartUnix[old]==0);
-  CHECK(p.frame().lastReportedFadeStartUnix[next]==kNow+90);
-  c.lastReportedFadeSeconds=60; c.nowUnix=kNow+89; sem::renderTrainFrame(p.frame(),rgb,c);
+  CHECK(p.frame().lastReportedFadeStartUnix[next]==kNow+131);
+  c.lastReportedFadeSeconds=60; c.nowUnix=kNow+130; sem::renderTrainFrame(p.frame(),rgb,c);
   CHECK(rgb.pixels[next].red==5 && rgb.pixels[next].blue==0);
-  c.nowUnix=kNow+90; sem::renderTrainFrame(p.frame(),rgb,c);
+  c.nowUnix=kNow+131; sem::renderTrainFrame(p.frame(),rgb,c);
   CHECK(rgb.pixels[next].red==2 && rgb.pixels[next].green==2);
-  report(kNow+100,"232N",true); CHECK(p.frame().lastReportedFadeStartUnix[next]==kNow+90);
+  report(kNow+100,"232N",true); CHECK(p.frame().lastReportedFadeStartUnix[next]==kNow+161);
   p.beginCycle(kNow+110); Feed conflict(kNow+110);
   conflict.vehicle("LOCATION_TRIP","2",1,"233N",kNow+110);
   conflict.vehicle("LOCATION_TRIP","2",1,"232N",kNow+110);
@@ -1273,9 +1267,7 @@ int main(int argc, char **argv) {
   testApproachingRepresentation();
   testStationTimingPredictions();
   testLastReportedLocations();
-  testBlueHoldAcrossPolls();
-  testStoppedHoldStartsOnQualifiedReport();
-  testStoppedPublicationTiming();
+  testEvidenceDrivenStops();
   testStationConfidence();
   testPredictionCapacity();
   testVerifiedTripDeparture();
