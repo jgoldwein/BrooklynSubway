@@ -147,7 +147,7 @@ existing administrator password while connected to setup Wi-Fi.
 
 ### Start over or prepare the map for someone else
 
-Firmware 0.2.82 adds **Advanced → Firmware defaults**. Sign in, read the warning,
+Choose **Advanced → Reset to Firmware Defaults**. Sign in, read the warning,
 check the confirmation box, then choose **Erase settings and restart**.
 
 This removes saved Wi-Fi and its password, the administrator password, and all

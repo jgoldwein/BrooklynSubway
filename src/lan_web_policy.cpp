@@ -857,7 +857,7 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.html(csrfToken);
     writer.append("\"><button type=\"submit\">Restart map</button></form>");
   }
-  writer.append("<p class=\"muted\">Restart keeps settings. <a href=\"/defaults\">Firmware defaults</a></p></section>"
+  writer.append("<p class=\"muted\">Restart keeps settings. <a href=\"/defaults\">Reset to Firmware Defaults</a></p></section>"
                 "</main><p id=\"live-refresh\" class=\"footer\" role=\"status\">Live values refresh automatically.</p>"
                 "<script>(()=>{const note=document.getElementById('live-refresh');"
                 "async function refresh(){let timer;try{if(!document.hidden){"
