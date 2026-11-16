@@ -1,4 +1,4 @@
-# Avi's Brooklyn Subway guide
+# Avi’s Brooklyn Subway Map — User Guide
 
 Specially Designed for Avi Yao
 
