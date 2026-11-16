@@ -1,4 +1,5 @@
 #include "oled_clock.h"
+#include "oled_sound_badge.h"
 #include <Arduino.h>
 #include <Wire.h>
 #include "check.h"
@@ -11,6 +12,8 @@ FakeSerial Serial; FakeWire Wire;
 uint32_t fakeNowMs=120000;
 uint32_t millis() { return fakeNowMs; }
 char lastScreenTitle[24]{};
+int soundBadgeDraws=0,lastSoundBadgeX=0,mainClockDraws=0;
+char lastSoundBadgeLabel[24]{};
 int borderDraws=0,upgradeDraws=0,powerWarnings=0,completeDraws=0,failedDraws=0;
 int clockOnlyDraws=0,dateOnlyDraws=0;
 char lastOutside[24]{};
@@ -42,6 +45,16 @@ void delay(uint32_t ms){OLED_CHECK(ms==100);++retryDelays;}
 void vTaskDelete(void *) {++deletes;}
 void vTaskDelay(uint32_t ms) {
  OLED_CHECK(ms==20);++delays;fakeNowMs+=(scenario==19 || scenario==39)?1000:20;
+ if((scenario==66 || scenario==67) && delays<=2) {
+   if(delays==1) {OLED_CHECK(soundBadgeDraws==2 && strcmp(lastSoundBadgeLabel,"Saved")==0);fakeNowMs+=3979;}
+   else {OLED_CHECK(soundBadgeDraws==3);fakeNowMs-=19;}
+   return;
+ }
+ if(scenario==72 && delays==1) {
+   brooklyn::oled::ScreenData d;d.sound.sound=brooklyn::hardware::Sound::Restored;d.sound.sequence=2;d.sound.atMs=fakeNowMs;
+   brooklyn::oled::publishScreenData(d);return;
+ }
+ if(scenario==74 && delays==1){brooklyn::oled::showBrightness(true,16,255);return;}
  if((scenario==63 || scenario==64) && delays<=2) {
    if(delays==1) {OLED_CHECK(setupTitles==0 && strcmp(lastScreenTitle,"Happy Bar Mitzvah!")==0);fakeNowMs+=2979;}
    else {OLED_CHECK(setupTitles==0);fakeNowMs-=19;}
@@ -195,6 +208,25 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
    if(scenario==61){setSetupMode(true);showBrightness(true,16,255);}
  }
  if(scenario==62){using namespace brooklyn::oled;showUpgrade(UpgradePhase::Starting,"0.2.79");setEnabled(false);}
+ if(scenario>=66 && scenario<=75) {
+   using namespace brooklyn::oled;using brooklyn::hardware::Sound;
+   if(scenario==67)fakeNowMs=UINT32_MAX-1000;
+   ScreenData d;d.sound.sound=Sound::Saved;d.sound.sequence=1;d.sound.atMs=fakeNowMs;publishScreenData(d);
+   if(scenario==68)advanceScreen();
+   if(scenario==69)setSetupMode(true);
+   if(scenario==70)showUpgrade(UpgradePhase::Downloading,"0.2.92",25);
+   if(scenario==71)setEnabled(false);
+   if(scenario==75)showLineTest(brooklyn::semantic::Route::RouteF,0,1,1,false);
+   if(scenario==73) {
+     const Sound shown[]={Sound::System,Sound::Network,Sound::Feed,Sound::Saved,Sound::Lost,Sound::Restored,Sound::Setup,Sound::Upgrade};
+     for(auto kind:shown) {
+       d.sound.sound=kind;const auto badge=soundBadge(d.sound,d.sound.atMs+3999);OLED_CHECK(badge.label && badge.pixels && strlen(badge.label)*6+13<=126);
+       OLED_CHECK(!soundBadge(d.sound,d.sound.atMs+4000).label);
+     }
+     const Sound ignored[]={Sound::None,Sound::Knob,Sound::Brightness,Sound::Diagnostic,Sound::Extra,Sound::Startup};
+     for(auto kind:ignored){d.sound.sound=kind;OLED_CHECK(!soundBadge(d.sound,fakeNowMs).label);}
+   }
+ }
  const uint8_t preferred=scenario==11?0x3c:0x38;
  brooklyn::oled::begin(preferred,scenario==12||scenario==13?32:207);OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
  if(scenario==6){OLED_CHECK(worker==nullptr);puts("OLED task allocation failure isolated PASS");return 0;}
@@ -262,5 +294,13 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==62)OLED_CHECK(frames==2 && powerWarnings==2 && powerCommands==0 && strcmp(lastScreenTitle,"Update starting")==0);
  if(scenario==63 || scenario==64)OLED_CHECK(frames==4 && setupTitles==1 && setupNames==1 && setupAddresses==1 && titles==0);
  if(scenario==65)OLED_CHECK(frames==2 && upgradeDraws==2 && setupTitles==0 && powerWarnings==2);
+ if(scenario==66 || scenario==67)OLED_CHECK(frames==4 && soundBadgeDraws==3 && mainClockDraws==4 && strcmp(lastTrainText,"Trains:-- Lit:0")==0 && brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Main);
+ if(scenario==68)OLED_CHECK(soundBadgeDraws==0 && brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Activity);
+ if(scenario==69)OLED_CHECK(soundBadgeDraws==0 && setupTitles==2);
+ if(scenario==70)OLED_CHECK(soundBadgeDraws==0 && upgradeDraws==2);
+ if(scenario==71)OLED_CHECK(soundBadgeDraws==1 && powerCommands==1);
+ if(scenario==72)OLED_CHECK(soundBadgeDraws==3 && strcmp(lastSoundBadgeLabel,"Restored")==0 && mainClockDraws==3);
+ if(scenario==74)OLED_CHECK(soundBadgeDraws==2 && frames==3);
+ if(scenario==75)OLED_CHECK(soundBadgeDraws==0);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

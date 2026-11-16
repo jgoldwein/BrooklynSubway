@@ -101,6 +101,14 @@ this explanation.
 Routine knob ticks are omitted from **Last Sound**, so turning the knob does
 not replace the explanation of an important cue. The ticks still sound normally.
 
+On OLED **page 1/8**, a meaningful sound can also briefly replace the train-count
+line with an icon and a short label: a checkmark for **Saved** or **System ready**,
+Wi-Fi arcs for **Connected**, a train for **Feed ready**, a down arrow for
+**Service lost**, or an up arrow for **Restored**. The clock stays visible.
+The normal count returns four seconds after the cue started. Other OLED pages
+stay where you left them; setup, updates, tests and brightness feedback take
+priority. Knob ticks do not show an icon or restart the four-second timer.
+
 **Optional service alerts:** Open **Screen → Quiet hours and startup greeting**
 and check **Play service lost and restored sounds**. Save settings. These alerts
 are off by default, wait until service has worked, and do not repeat during one

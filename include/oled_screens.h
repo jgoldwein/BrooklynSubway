@@ -1,6 +1,7 @@
 // Copyright 2026 Joel W. Goldwein
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
+#include "hardware.h"
 #include "indication_types.h"
 #include "semantic_api.h"
 #include "train_frame.h"
@@ -44,6 +45,7 @@ class Navigation {
 struct LineData { uint32_t trains = 0; uint16_t lights = 0; bool atLeast = false; };
 enum class FeedHealth : uint8_t { Waiting, Fresh, Partial, Held, Stale, NoData };
 struct ScreenData {
+  hardware::SoundStatus sound{};
   weather::Snapshot weather{};
   uint32_t unixTime=0;
   display::IndicationCounts indications{};

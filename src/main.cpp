@@ -355,6 +355,7 @@ void publishOledScreenData(uint32_t nowMs) {
   published = true; lastAtMs = nowMs;
   brooklyn::oled::ScreenData data;
   data.sampledAtMs = nowMs;
+  data.sound=brooklyn::hardware::lastSound();
   data.unixTime=static_cast<uint32_t>(time(nullptr));
   data.weather=networkService.weatherStatus();
   data.uptimeSeconds = static_cast<uint64_t>(esp_timer_get_time())/1000000u;
