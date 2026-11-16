@@ -9,6 +9,7 @@
 #include "hardware.h"
 
 #include "diagnostics.h"
+#include "tls_memory.h"
 #include "wifi_policy.h"
 
 #include <Arduino.h>
@@ -589,6 +590,7 @@ void NetworkService::loadCredentials() {
 }
 
 void NetworkService::begin() {
+  (void)tls::configureMemory();
   if (!kDefaultNetworkConfig.enabled) {
     state_ = State::Disabled;
     Serial.printf("Network: %s\n", stateName(state_));
@@ -830,6 +832,8 @@ void NetworkService::printStatus(const transport::CycleResult &r) const {
                 static_cast<unsigned>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL)),
                 static_cast<unsigned>(heap_caps_get_minimum_free_size(MALLOC_CAP_INTERNAL)),
                 static_cast<unsigned>(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL)));
+  const auto tlsStats=tls::memoryStats();
+  Serial.printf("TLS allocations: external %lu; internal fallback %lu; failures %lu\n",static_cast<unsigned long>(tlsStats.externalAllocations),static_cast<unsigned long>(tlsStats.internalFallbacks),static_cast<unsigned long>(tlsStats.allocationFailures));
 }
 
 bool NetworkService::fetchingFeeds() const {

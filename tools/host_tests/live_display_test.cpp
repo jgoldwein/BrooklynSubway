@@ -316,6 +316,12 @@ int main() {
     live::Controller stale(true);stale.publish(frame);stale.service(0,false,false,ops);stale.setQuietBrightness(0);stale.service(1,false,false,ops);
     stale.setQuietBrightness(255);stale.service(100000,false,false,ops);CHECK(!stale.enabled());
     frame.frameAtMs=100001;stale.publish(frame);stale.service(100001,false,false,ops);CHECK(stale.enabled());
+    live::Controller noData(true);auto fresh=snapshot();noData.publish(fresh);noData.service(0,false,false,ops);CHECK(noData.enabled());
+    noData.setQuietBrightness(0);noData.service(1,false,false,ops);
+    auto missing=fresh;missing.hasFrame=false;missing.status.displayState=display::State::NoData;noData.publish(missing);
+    noData.setQuietBrightness(255);noData.service(2,false,false,ops);CHECK(!noData.enabled());
+    CHECK(noData.stats().automaticStartPending);
+    fresh.frameAtMs=3;noData.publish(fresh);noData.service(3,false,false,ops);CHECK(noData.enabled());
     puts("Quiet LED policy: off/unarm, dim ceiling, normal restore, manual POWER/fault preservation and fresh-data gating PASS");
   }
   {

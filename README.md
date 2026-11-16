@@ -176,3 +176,13 @@ POWER and saved quiet/brightness settings retain priority. Readiness edges give
 short1000/1500/2000Hz cues, serialized without runtime input delays. The MTA cue
 also serves U23 feed-ready, avoiding a duplicate sound. Quiet hours and DIM-at-boot
 mute automatic cues. See the Avi guides for normal operation.
+
+
+## Production TLS memory
+
+The network-enabled production build installs the SDK mbedTLS allocator hooks
+before networking. TLS blocks of 4096 bytes or more prefer the existing PSRAM;
+smaller blocks use internal RAM. Internal fallback and allocation failures are
+counted in serial cycle diagnostics. Certificate verification remains enabled.
+This uses the already pinned ESP32 framework, with no additional dependency.
+See [the COM6 recovery investigation](docs/QUIET_RESUME_RECOVERY_0.2.79.md).
