@@ -2,14 +2,18 @@
 
 Specially Designed for Avi Yao
 
+[Download the one-page packing sheet (PDF)](shipping/Brooklyn_Subway_Quick_Start.pdf)
+
 These instructions match the current preview firmware, 0.2.77. Older releases
 may work differently.
 
 ## Turn it on
 
 1. Plug in the supplied **5 V power adapter**. A computer is not needed.
-2. Watch the three small status lights. Red and amber are normal while starting.
-3. Wait for **SYSTEM, NETWORK, and MTA FEED to turn green**.
+2. If the OLED asks you to join **BrooklynMap-Avi**, do the first-time Wi-Fi
+   setup below. You do not need to wait for green lights before setting up Wi-Fi.
+3. After connecting, watch for **SYSTEM, NETWORK, and MTA FEED to turn green**.
+   Red and amber are normal while starting.
 
 Each light gives a short readiness beep when it becomes green. You will also
 hear the startup tune. Quiet hours or holding DIM during startup can mute sounds.

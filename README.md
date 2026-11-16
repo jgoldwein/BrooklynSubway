@@ -2,6 +2,8 @@
 
 Firmware for the manufactured Brooklyn Active Subway Map V1.1 PCB.
 
+**Packing the gift?** [Print the one-page quick start](docs/shipping/Brooklyn_Subway_Quick_Start.pdf) on US Letter at 100% size.
+
 **Using the map?** Start with [Avi's quick start](docs/AVI_QUICK_START.md), then
 [Avi's user guide](docs/AVI_USER_GUIDE.md). These guides cover the current private
 preview; the public stable release may be older until the consolidated release.

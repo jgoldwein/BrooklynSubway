@@ -3,7 +3,8 @@
 Specially Designed for Avi Yao
 
 Guide for preview firmware **0.2.78**. Start with the
-[one-page quick start](AVI_QUICK_START.md) if you just want to try the map.
+[quick start](AVI_QUICK_START.md) if you just want to try the map.
+For the gift box, [print the one-page sheet](shipping/Brooklyn_Subway_Quick_Start.pdf).
 
 ## A few useful words
 

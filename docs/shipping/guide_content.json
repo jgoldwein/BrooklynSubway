@@ -1,0 +1,75 @@
+{
+  "title": "Brooklyn Subway",
+  "subtitle": "Specially Designed for Avi Yao",
+  "guide_url": "https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/AVI_USER_GUIDE.md",
+  "repository_label": "github.com/jgoldwein/BrooklynSubway",
+  "steps": [
+    {
+      "title": "Power up",
+      "text": "Keep the antenna attached. Plug in the supplied <b>5 V, 3 A, center-positive adapter</b>. The small OLED screen will guide you through Wi-Fi setup."
+    },
+    {
+      "title": "Connect your phone",
+      "text": "In your phone's Wi-Fi settings, join <b>BrooklynMap-Avi</b>. If it says no internet, choose <b>Stay connected</b> or <b>Use without internet</b>."
+    },
+    {
+      "title": "Connect your map",
+      "text": "Open <b>http://192.168.4.1/</b> if setup does not appear. Create and save a <b>map settings password</b>. Then select home Wi-Fi and enter the <b>Wi-Fi password</b>. The map needs 2.4 GHz; a shared 2.4/5 GHz name works."
+    },
+    {
+      "title": "Open your map",
+      "text": "When setup says <b>You're connected!</b>, note the map's address. Rejoin home Wi-Fi on your phone, wait <b>10 seconds</b>, then open that address in Safari or Chrome. <b>Bookmark it.</b> Train lights start when data is ready."
+    }
+  ],
+  "left_controls": [
+    {
+      "title": "TURN THE KNOB",
+      "text": "Browse screens. On <b>Lines</b>, press the knob, then turn to browse lines. Press again to leave line browsing."
+    },
+    {
+      "title": "MODE",
+      "text": "Show one subway line. Turn the knob to choose. Press <b>MODE</b> again to restore your saved lines."
+    },
+    {
+      "title": "TEST",
+      "text": "Runs each whole line in red, green and blue, about <b>15 seconds</b>. Press POWER to stop."
+    }
+  ],
+  "right_controls": [
+    {
+      "title": "POWER",
+      "text": "Starting with both displays on:<br/><b>1st tap:</b> map off, screen on<br/><b>2nd tap:</b> map on, screen off<br/><b>3rd tap:</b> both off &nbsp; <b>4th tap:</b> both on<br/>Hold <b>3 seconds</b> to restart; settings stay saved."
+    },
+    {
+      "title": "BRIGHT / DIM",
+      "text": "Adjust the display that is on <b>by itself</b>. They do nothing when both displays are on or off."
+    }
+  ],
+  "colors": [
+    {
+      "name": "YELLOW",
+      "text": "Approaching",
+      "hex": "#D5A000"
+    },
+    {
+      "name": "RED",
+      "text": "Stopped / recent",
+      "hex": "#C93632"
+    },
+    {
+      "name": "GREEN",
+      "text": "Leaving",
+      "hex": "#24854A"
+    },
+    {
+      "name": "BLUE",
+      "text": "Uncertain / last report",
+      "hex": "#2865B4"
+    }
+  ],
+  "map_note": "Default colors. Uses MTA reports and estimates, not GPS. Several trains can share one light.",
+  "warning": "UPDATING? Do not unplug power. Wait for Update complete.",
+  "help_title": "Need help?",
+  "help_text": "<b>Wi-Fi changed?</b> Hold the knob for <b>10 seconds</b> to reopen setup.<br/><b>Send Joel a report:</b> Advanced &gt; Get help &gt; Make support report &gt; Send report to Joel. Review the email to <b>goldwein@gmail.com</b> and tap Send. Attach the saved report file if asked.",
+  "quiet_note": "Quiet hours can darken the map or screen and mute sounds."
+}
