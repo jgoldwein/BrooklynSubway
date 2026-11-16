@@ -10,6 +10,7 @@
 // NOT validated on hardware: the ESP32-S3 was not connected during Phase 4J.
 
 #pragma once
+#include "network_recovery.h"
 
 #include "feed_transport.h"
 #include "network_config.h"
@@ -111,6 +112,7 @@ class NetworkService {
   weather::Snapshot weather_{};
 #if BROOKLYN_NETWORK_ENABLED
   bool workerWeather_=false,workerWeatherOk_=false;
+  RecoveryPolicy connectionRecovery_;
   weather::Snapshot workerWeatherResult_{};
   uint32_t weatherAttemptAtMs_=0;
   transport::PollHandoff pollHandoff_;

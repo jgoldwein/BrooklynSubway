@@ -858,7 +858,7 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.html(csrfToken);
     writer.append("\"><button type=\"submit\">Restart map</button></form>");
   }
-  writer.append("<p class=\"muted\">Restart keeps Wi-Fi and settings.</p></section>"
+  writer.append("<p class=\"muted\">Restart keeps settings. <a href=\"/defaults\">Firmware defaults</a></p></section>"
                 "</main><p id=\"live-refresh\" class=\"footer\" role=\"status\">Live values refresh automatically.</p>"
                 "<script>(()=>{const note=document.getElementById('live-refresh');"
                 "async function refresh(){let timer;try{if(!document.hidden){"
@@ -884,6 +884,7 @@ const char *loginReturnPath(const char *target) {
   if (strcmp(target,"update")==0) return "/update";
   if (strcmp(target,"hardware-test")==0) return "/hardware-test";
   if (strcmp(target,"wifi-setup")==0) return "/wifi/setup";
+  if (strcmp(target,"defaults")==0) return "/defaults";
   if (strcmp(target,"lights")==0) return "/#lights";
   if (strcmp(target,"screen")==0) return "/#screen";
   if (strcmp(target,"wifi")==0) return "/#wifi";
@@ -893,6 +894,7 @@ const char *loginReturnPath(const char *target) {
 }
 const char *loginTargetForRequest(const char *path) {
   if (!path) return "";
+  if (strcmp(path,"/defaults")==0) return "defaults";
   if (strcmp(path,"/screen-options")==0 || strcmp(path,"/config/screen-options")==0) return "screen-options";
   if (strcmp(path,"/update")==0 || strncmp(path,"/update/",8)==0) return "update";
   if (strcmp(path,"/hardware-test")==0 || strcmp(path,"/hardware-test/run")==0) return "hardware-test";
@@ -903,6 +905,15 @@ const char *loginTargetForRequest(const char *path) {
   if (strncmp(path,"/config/",8)==0) return "lights";
   if (strcmp(path,"/network-diagnostics/run")==0 || strcmp(path,"/admin/password")==0 || strcmp(path,"/reboot")==0) return "advanced";
   return "overview";
+}
+
+size_t renderDefaultsPage(char *out,size_t capacity,const char *csrf) {
+  if (!csrf || !*csrf) return 0;
+  Writer w(out,capacity);
+  w.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Firmware defaults - Brooklyn Subway</title><link rel=\"stylesheet\" href=\"/ui.css\"></head><body><main><section class=\"card\"><h1>Return to firmware defaults</h1><p>Start over or prepare the map for a new owner.</p><p><strong>This erases:</strong> saved Wi-Fi and its password, the administrator password, and all customized settings, including colors, brightness, quiet hours and automatic update preferences.</p><p>The installed firmware stays. After restarting, connect to <strong>BrooklynMap-Avi</strong> and open <strong>192.168.4.1</strong>. Create a new administrator password and choose your Wi-Fi.</p><p>You cannot undo this reset. Keep power connected until the setup network appears.</p><form method=\"post\" action=\"/defaults\"><input type=\"hidden\" name=\"csrf\" value=\"");
+  w.html(csrf);
+  w.append("\"><p><label><input type=\"checkbox\" name=\"confirm\" value=\"erase\" required> I understand that Wi-Fi, the administrator password and saved settings will be erased.</label></p><button type=\"submit\">Erase settings and restart</button></form><p><a href=\"/#advanced\">Cancel and keep settings</a></p></section></main></body></html>");
+  return w.size();
 }
 
 size_t renderScreenOptionsPage(char *out,size_t capacity,uint64_t preferences,bool quietNow,const char *csrf) {

@@ -133,6 +133,21 @@ old or missing data is labeled instead of presented as new.
 To change Wi-Fi later, hold the knob for 10 seconds to reopen setup. Existing
 credentials are kept unless replacement credentials successfully connect.
 
+### Start over or prepare the map for someone else
+
+Firmware 0.2.82 adds **Advanced → Firmware defaults**. Sign in, read the warning,
+check the confirmation box, then choose **Erase settings and restart**.
+
+This removes saved Wi-Fi and its password, the administrator password, and all
+custom settings. It keeps the installed firmware. Keep power connected until
+**BrooklynMap-Avi** appears, then follow the Wi-Fi setup steps above. The new
+owner creates a new administrator password during setup.
+
+Automatic update preferences also return to their firmware defaults. After setup,
+open **Advanced → Firmware updates** and turn automatic updates on if you want
+new signed releases to install automatically. The 10-second knob hold only opens
+setup; it does not perform this reset.
+
 If you have two boards, set them up one at a time. They use the same setup
 network name. The Device screen's MAC address helps identify each board in UniFi.
 

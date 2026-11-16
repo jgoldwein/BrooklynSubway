@@ -318,7 +318,7 @@ void testCookieAndEndpointPolicy() {
       "/config/unknown-timing",
       "/config/oled-dimmer", "/config/blue-hold",
       "/config/brightness", "/config/routes", "/config/dns", "/wifi/setup",
-      "/wifi/setup/confirm", "/reboot", "/update/check", "/update/install",
+      "/wifi/setup/confirm", "/reboot", "/defaults", "/update/check", "/update/install",
       "/update/reboot", "/update/auto", "/update/interval",
       "/network-diagnostics/run", "/hardware-test/run",
       "/admin/password",
@@ -328,6 +328,8 @@ void testCookieAndEndpointPolicy() {
     CHECK(brooklyn::admin::isProtectedEndpoint("POST", path));
   }
   CHECK(brooklyn::admin::isProtectedEndpoint("GET", "/wifi/setup"));
+  CHECK(brooklyn::admin::isProtectedEndpoint("GET", "/defaults"));
+  CHECK(!brooklyn::admin::isMutationEndpoint("GET", "/defaults"));
   CHECK(brooklyn::admin::isProtectedEndpoint("GET", "/hardware-test"));
   CHECK(!brooklyn::admin::isProtectedEndpoint("GET", "/live-display"));
   CHECK(!brooklyn::admin::isProtectedEndpoint("POST", "/live-display/set"));

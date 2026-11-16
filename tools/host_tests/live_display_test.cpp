@@ -322,6 +322,12 @@ int main() {
     noData.setQuietBrightness(255);noData.service(2,false,false,ops);CHECK(!noData.enabled());
     CHECK(noData.stats().automaticStartPending);
     fresh.frameAtMs=3;noData.publish(fresh);noData.service(3,false,false,ops);CHECK(noData.enabled());
+    live::Controller outage(true);outage.publish(fresh);outage.service(3,false,false,ops);CHECK(outage.enabled());
+    outage.publish(missing);outage.service(4,false,false,ops);CHECK(!outage.enabled());
+    CHECK(outage.stats().automaticStartPending);
+    fresh.frameAtMs=5;outage.publish(fresh);outage.service(5,false,false,ops);CHECK(outage.enabled());
+    outage.disable(ops,6,display::IndicationEnd::OutputFailure);
+    outage.publish(fresh);outage.service(7,false,false,ops);CHECK(!outage.enabled());
     puts("Quiet LED policy: off/unarm, dim ceiling, normal restore, manual POWER/fault preservation and fresh-data gating PASS");
   }
   {

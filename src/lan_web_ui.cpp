@@ -11,6 +11,7 @@
 #include "ota_progress_script.h"
 #include "web_ui_assets.h"
 #include "support_assets.h"
+#include "factory_reset.h"
 
 #if BROOKLYN_NETWORK_ENABLED
 
@@ -280,11 +281,14 @@ void LanWebUi::registerRoutes() {
   server_.on("/wifi/setup/confirm", HTTP_POST,
              [this]() { handleSetupRequest(); });
   server_.on("/reboot", HTTP_POST, [this]() { handleReboot(); });
+  server_.on("/defaults", HTTP_GET, [this]() { handleDefaultsPage(); });
+  server_.on("/defaults", HTTP_POST, [this]() { handleDefaultsReset(); });
   server_.onNotFound([this]() { server_.send(404, "text/plain", "Not found"); });
 }
 
 void LanWebUi::stop() {
-  display::live::disable();
+  // HTTP ownership can end during an ordinary Wi-Fi reconnect. The display
+  // policy owns stale-data shutdown; stopping a server must not cancel POWER intent.
   if (!active_) return;
   server_.stop();
   active_ = false;
@@ -295,6 +299,7 @@ void LanWebUi::service(const StatusSnapshot &status) {
   if (!active_) return;
   status_ = status;
   server_.handleClient();
+  if (rebootRequested_) return; // Never start an automatic update after reset was confirmed.
   if (allDiagnosticState_ == AllDiagnosticState::Pending) {
     allDiagnosticState_ = (routeDiagnostic_ ? led::backend::runAllRouteDiagnostics(led::backend::RouteDiagnosticSpeed::Normal,
         routeWalkDiagnostic_ ? led::backend::RouteDiagnosticStyle::Individual : led::backend::RouteDiagnosticStyle::WholeLine)
@@ -822,6 +827,35 @@ void LanWebUi::handleReboot() {
   display::live::disable();
   rebootRequested_ = true;
   sendHtml(kRebooting, strlen(kRebooting));
+}
+
+void LanWebUi::handleDefaultsPage() {
+  if (!authorizeRequest(false)) return;
+  char csrf[admin::kTokenSize*2+1]={};
+  if (!requestSession(csrf,sizeof(csrf))) {sendSignInRequired();return;}
+  const size_t length=renderDefaultsPage(gPage,sizeof(gPage),csrf);
+  eraseBytes(csrf,sizeof(csrf));
+  if (!length) {server_.send(500,"text/plain","Unable to render reset page");return;}
+  sendHtml(gPage,length);
+}
+
+void LanWebUi::handleDefaultsReset() {
+  if (!authorizeRequest(true)) return;
+  if (server_.args()!=2 || !server_.hasArg("confirm") || server_.arg("confirm")!="erase") {
+    server_.send(400,"text/plain","Confirm that you want to erase Wi-Fi, the administrator password and all saved settings.");return;
+  }
+  if (updateStarted_ || otaSession_.activationPending() || installPhase_==1 || rebootRequested_) {
+    server_.send(409,"text/plain","Wait for the firmware update or restart to finish before resetting settings.");return;
+  }
+  if (!defaults::request()) {
+    server_.send(500,"text/plain","Reset could not be saved. Settings have not been erased.");return;
+  }
+  display::live::disable();
+  rebootRequested_=true;
+  sendNotice(200,"Returning to firmware defaults",
+      "The map is restarting. Saved Wi-Fi, the administrator password and customized settings will be erased. "
+      "Wait about 20 seconds, then connect to BrooklynMap-Avi and open http://192.168.4.1 to set it up. "
+      "Keep power connected until the setup network appears. The installed firmware is kept.",0,0,"/","Home");
 }
 
 void LanWebUi::handleLoginPage() {

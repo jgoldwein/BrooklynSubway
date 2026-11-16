@@ -211,6 +211,16 @@ void testBlueHoldConfiguration() {
   memory.failSave=true;CHECK(!config.setScreenPreferences(kDefaultScreenPreferences) && config.screenPreferences()==word);memory.failSave=false;
   memory.screenPrefs=UINT64_MAX;prefReloaded.load();CHECK(prefReloaded.screenPreferences()==kDefaultScreenPreferences);
   char screenPage[6144];
+  CHECK(brooklyn::web::renderDefaultsPage(screenPage,sizeof(screenPage),"token<&>")>0);
+  CHECK(strstr(screenPage,"token&lt;&amp;&gt;")!=nullptr);
+  CHECK(strstr(screenPage,"method=\"post\" action=\"/defaults\"")!=nullptr);
+  CHECK(strstr(screenPage,"name=\"confirm\" value=\"erase\" required")!=nullptr);
+  CHECK(strstr(screenPage,"administrator password") && strstr(screenPage,"BrooklynMap-Avi"));
+  CHECK(brooklyn::web::renderDefaultsPage(screenPage,16,"token")==0);
+  CHECK(brooklyn::web::renderDefaultsPage(screenPage,sizeof(screenPage),nullptr)==0);
+  CHECK(brooklyn::web::renderDefaultsPage(screenPage,sizeof(screenPage),"")==0);
+  CHECK(strcmp(brooklyn::web::loginReturnPath("defaults"),"/defaults")==0);
+  CHECK(strcmp(brooklyn::web::loginTargetForRequest("/defaults"),"defaults")==0);
   CHECK(brooklyn::web::renderScreenOptionsPage(screenPage,sizeof(screenPage),kDefaultScreenPreferences,false,"token<&>")>0);
   CHECK(strstr(screenPage,"token&lt;&amp;&gt;")!=nullptr);
   CHECK(strstr(screenPage,"name=\"startup\" value=\"1\" checked")!=nullptr);

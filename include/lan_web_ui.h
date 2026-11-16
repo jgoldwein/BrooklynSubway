@@ -50,6 +50,8 @@ class LanWebUi {
   void handleSetupConfirmation();
   void handleSetupRequest();
   void handleReboot();
+  void handleDefaultsPage();
+  void handleDefaultsReset();
   void handleLoginPage();
   void handleLogin();
   void handleLogout();

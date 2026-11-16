@@ -226,7 +226,7 @@ void Controller::service(uint32_t nowMs, bool powerPressed, bool recovery,
       !operations.transmit || !operations.stop) {
     // Quiet-hours/POWER/startup intent waits for fresh data, but hardware,
     // setup and explicit recovery failures must still require a new request.
-    const bool awaitFresh=automaticStartPending_ && physicalPowerControl_ &&
+    const bool awaitFresh=(automaticStartPending_ || enabled_) && physicalPowerControl_ &&
         !recovery && snapshot_.status.systemHealthy && !snapshot_.status.provisioning &&
         operations.arm && operations.transmit && operations.stop;
     disable(operations,nowMs,recovery?IndicationEnd::Recovery:IndicationEnd::NoUsableData);

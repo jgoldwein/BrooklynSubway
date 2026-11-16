@@ -10,6 +10,7 @@
 
 #include "diagnostics.h"
 #include "tls_memory.h"
+#include "factory_reset.h"
 #include "wifi_policy.h"
 
 #include <Arduino.h>
@@ -595,6 +596,15 @@ void NetworkService::begin() {
     Serial.printf("Network: %s\n", stateName(state_));
     return;
   }
+  const auto resetResult=defaults::completePending();
+  if (resetResult==defaults::Result::Failed) {
+    // Do not load partially erased credentials/settings. Retry on next boot.
+    state_=State::Disabled;
+    Serial.println("Firmware defaults: storage reset failed; network disabled, retry by restarting");
+    return;
+  }
+  if (resetResult==defaults::Result::Complete)
+    Serial.println("Firmware defaults: Wi-Fi, administrator and saved settings cleared; starting fresh setup");
   runtimeReport_.boot=brooklyn::diagnostics::bootInfo();
   runtimeReport_.deviceId=ESP.getEfuseMac();runtimeReport_.resetReason=brooklyn::diagnostics::resetReasonName();
   webStatus_.boot=runtimeReport_.boot;webStatus_.deviceId=runtimeReport_.deviceId;
@@ -908,6 +918,7 @@ void NetworkService::collectPollResult() {
   }
   counters_=workerCounters_;
   completedCycle_=workerResult_;
+  if (completedCycle_.attempted) connectionRecovery_.cycle(completedCycle_.downloaded != 0);
   completedCycleAtMs_=workerCompletedAtMs_;
   completedCyclePending_=true;
   scheduler_.cycleFinished(completedCycleAtMs_);
@@ -966,6 +977,20 @@ void NetworkService::update(uint32_t nowMs) {
         return;
       }
       if (!fetchingFeeds() && !recoveryRequested_ && networkDiagnostics_.snapshot().state != diagnostics::RunState::Running) {
+        if (connectionRecovery_.due(nowMs)) {
+          Serial.printf("Network recovery: repeated transport failures; reassociating (status %d, IP %s, gateway %s, RSSI %d)\n",
+              static_cast<int>(WiFi.status()), WiFi.localIP().toString().c_str(),
+              WiFi.gatewayIP().toString().c_str(), WiFi.RSSI());
+          connectionRecovery_.attempted(nowMs);
+          stopLanWebUi();
+          serverOwnership_.stop();
+          // No active feed/weather/diagnostic worker owns the network here.
+          // Keep credentials in NVS; next serviceWifi() performs a fresh join.
+          WiFi.disconnect(false, false);
+          wifiStarted_=false;
+          state_=State::WifiConnecting;
+          return;
+        }
         if(scheduler_.due(nowMs)) pollNow(nowMs);
         else if(hasLatestCycle_ && pollTask_ && weather::due(weather_.attempted,weatherAttemptAtMs_,nowMs,completedCycleAtMs_,weather_.lastFailed)) {
           workerWeather_=true;workerWeatherOk_=false;workerWeatherResult_={};

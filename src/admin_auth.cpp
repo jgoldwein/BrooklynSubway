@@ -442,7 +442,7 @@ bool isProtectedEndpoint(const char *method, const char *path) {
   if (strcmp(method, "GET") == 0 &&
       (strcmp(path, "/wifi/setup") == 0 || strcmp(path, "/update") == 0 ||
        strcmp(path, "/update/progress") == 0 ||
-       strcmp(path, "/hardware-test") == 0 || strcmp(path, "/screen-options") == 0)) {
+       strcmp(path, "/hardware-test") == 0 || strcmp(path, "/defaults") == 0 || strcmp(path, "/screen-options") == 0)) {
     return true;
   }
   return isMutationEndpoint(method, path);
@@ -468,6 +468,7 @@ bool isMutationEndpoint(const char *method, const char *path) {
          strcmp(path, "/wifi/setup/confirm") == 0 ||
          strcmp(path, "/login") == 0 ||
          strcmp(path, "/reboot") == 0 ||
+         strcmp(path, "/defaults") == 0 ||
          strcmp(path, "/update") == 0 ||
          strcmp(path, "/update/check") == 0 ||
          strcmp(path, "/update/install") == 0 ||
