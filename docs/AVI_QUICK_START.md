@@ -79,7 +79,7 @@ spacing and steady colons; seconds still change every second.
 For a bedroom, turn the map off with POWER, then use DIM to lower the OLED.
 Quiet hours can also dim the OLED, silence beeps, and turn off or dim the map.
 
-More help: [Avi's user guide](AVI_USER_GUIDE.md).
+More help: [Avi’s Brooklyn Subway Map — User Guide](AVI_USER_GUIDE.md).
 
 If you need help, open **Advanced > Get help** to make a support report and
 open an email draft to Joel. Review it and tap Send in your email app.
