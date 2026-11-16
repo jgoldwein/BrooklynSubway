@@ -123,6 +123,10 @@ old or missing data is labeled instead of presented as new.
 
 ## Connect to Wi-Fi
 
+On a fresh setup boot, the OLED shows the Bar Mitzvah greeting for about three
+seconds, then displays the setup network and address. Opening setup later with
+the 10-second knob hold shows the instructions immediately.
+
 1. If setup is needed, join **BrooklynMap-Avi** on your phone or computer.
 2. Open **http://192.168.4.1/** in a browser.
 3. Create an administrator password if asked. Keep it somewhere safe. Press

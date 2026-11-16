@@ -16,7 +16,8 @@ uint8_t quietMapBrightness();
 void begin(uint8_t address, uint8_t contrast = 207);
 void setContrast(uint8_t contrast);
 void setEnabled(bool enabled);
-// Setup instructions replace the clock only while the provisioning AP is active.
+// Setup instructions replace the clock while provisioning. A boot that starts
+// in setup shows the enabled startup dedication for three seconds first.
 void setSetupMode(bool enabled);
 // Worker-owned OLED overlay; publishers never access I2C.
 void showUpgrade(UpgradePhase phase,const char *version=nullptr,uint8_t percent=0);

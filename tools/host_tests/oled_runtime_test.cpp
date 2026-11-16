@@ -42,6 +42,11 @@ void delay(uint32_t ms){OLED_CHECK(ms==100);++retryDelays;}
 void vTaskDelete(void *) {++deletes;}
 void vTaskDelay(uint32_t ms) {
  OLED_CHECK(ms==20);++delays;fakeNowMs+=(scenario==19 || scenario==39)?1000:20;
+ if((scenario==63 || scenario==64) && delays<=2) {
+   if(delays==1) {OLED_CHECK(setupTitles==0 && strcmp(lastScreenTitle,"Happy Bar Mitzvah!")==0);fakeNowMs+=2979;}
+   else {OLED_CHECK(setupTitles==0);fakeNowMs-=19;}
+   return;
+ }
  if((scenario==58 || scenario==59) && delays==1){fakeNowMs+=scenario==58?8000:12000;return;}
  if(scenario==60 && delays==1){brooklyn::oled::showUpgrade(brooklyn::oled::UpgradePhase::Complete,"0.2.77");return;}
  if(scenario==50 && delays==1) {brooklyn::oled::setRouteFocus(false,brooklyn::semantic::Route::None);return;}
@@ -87,6 +92,12 @@ size_t FakeWire::write(uint8_t *,size_t n){OLED_CHECK(open);return scenario==4?0
 int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  brooklyn::oled::setScreenPreferences(brooklyn::config::kDefaultScreenPreferences & ~brooklyn::config::kStartupDedicationBit);
  if(scenario==37 || scenario==39) brooklyn::oled::setScreenPreferences(brooklyn::config::kDefaultScreenPreferences);
+ if(scenario==63 || scenario==64 || scenario==65) {
+   brooklyn::oled::setScreenPreferences(brooklyn::config::kDefaultScreenPreferences);
+   brooklyn::oled::setSetupMode(true);
+   if(scenario==64)fakeNowMs=UINT32_MAX-1000;
+   if(scenario==65)brooklyn::oled::showUpgrade(brooklyn::oled::UpgradePhase::Downloading,"0.2.84",45);
+ }
  if(scenario==38) {brooklyn::config::ScreenPreferences p;p.quietEnabled=true;p.startupDedication=false;p.startMinute=600;p.endMinute=840;brooklyn::oled::setScreenPreferences(brooklyn::config::packScreenPreferences(p));}
 
  if(scenario==8){brooklyn::oled::begin(0x07); OLED_CHECK(!worker && starts==0); puts("OLED invalid address rejected PASS"); return 0;}
@@ -249,5 +260,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==60)OLED_CHECK(frames==3 && upgradeDraws==2 && completeDraws==1 && powerWarnings==2);
  if(scenario==61)OLED_CHECK(frames==2 && upgradeDraws==2 && setupTitles==0 && powerWarnings==2);
  if(scenario==62)OLED_CHECK(frames==2 && powerWarnings==2 && powerCommands==0 && strcmp(lastScreenTitle,"Update starting")==0);
+ if(scenario==63 || scenario==64)OLED_CHECK(frames==4 && setupTitles==1 && setupNames==1 && setupAddresses==1 && titles==0);
+ if(scenario==65)OLED_CHECK(frames==2 && upgradeDraws==2 && setupTitles==0 && powerWarnings==2);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

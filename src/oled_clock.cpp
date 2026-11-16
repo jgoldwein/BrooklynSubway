@@ -18,6 +18,14 @@ uint32_t trackedTrainsWord = 0;
 uint32_t visibleMapLights = 0;
 uint32_t requestedEnabled = 1;
 uint32_t setupMode = 0;
+// OLED-worker-owned: a brief welcome only when this boot starts in setup.
+constexpr uint32_t kSetupGreetingMs=3000;
+bool setupBootGreeting=false;
+uint32_t setupGreetingStartedMs=0;
+bool setupGreetingVisible(uint32_t nowMs) {
+  return setupBootGreeting && __atomic_load_n(&setupMode,__ATOMIC_RELAXED) &&
+      static_cast<uint32_t>(nowMs-setupGreetingStartedMs)<kSetupGreetingMs;
+}
 uint32_t routeFocusWord=0;
 Navigation navigation;
 uint32_t returnSeconds = 60;
@@ -53,6 +61,14 @@ void draw(const char *clock) {
     screen.sendBuffer();return;
   }
   if (__atomic_load_n(&setupMode, __ATOMIC_RELAXED)) {
+    if(setupGreetingVisible(millis())) {
+      ScreenData data;ScreenText text;
+      portENTER_CRITICAL(&screenDataMux);data=screenData;portEXIT_CRITICAL(&screenDataMux);
+      formatScreen(Screen::Dedication,data,millis(),text);
+      screen.setFont(u8g2_font_6x12_tf);
+      for(uint8_t i=0;i<5;++i)screen.drawStr(i<4?(128-screen.getStrWidth(text.lines[i]))/2:0,11+i*12,text.lines[i]);
+      screen.sendBuffer();return;
+    }
     screen.setFont(u8g2_font_6x12_tf);
     screen.drawStr((128-screen.getStrWidth("Wi-Fi setup"))/2, 12, "Wi-Fi setup");
     screen.drawStr((128-screen.getStrWidth("On your phone:"))/2, 24, "On your phone:");
@@ -225,11 +241,15 @@ void run(void *) {
     }
     if (desired != appliedContrast) { screen.setContrast(desired); appliedContrast = desired; }
   }
-  if(!transportFailed && !__atomic_load_n(&setupMode,__ATOMIC_RELAXED) &&
-      (readScreenPreferences()&config::kStartupDedicationBit)) {
+  if(!transportFailed && (readScreenPreferences()&config::kStartupDedicationBit)) {
+    if(__atomic_load_n(&setupMode,__ATOMIC_RELAXED)) {
+      setupBootGreeting=true;setupGreetingStartedMs=millis();
+      Serial.println("OLED: three-second setup dedication, then BrooklynMap-Avi instructions");
+    } else {
     const bool wait=config::unpackScreenPreferences(readScreenPreferences()).startupUntilWifi;
     portENTER_CRITICAL(&screenDataMux);navigation.startDedication(millis(),wait);portEXIT_CRITICAL(&screenDataMux);
     requestRefresh();Serial.println(wait?"OLED: startup dedication until Wi-Fi has an IP, minimum 5 seconds; turn to skip":"OLED: five-second startup dedication; turn knob to skip");
+    }
   }
   if (!transportFailed) draw("Syncing time...");
   if (transportFailed) {
@@ -240,15 +260,16 @@ void run(void *) {
   setStatus(State::Ready);
   Serial.println("OLED clock: initialization and first frame complete");
   bool synchronized = false;
-  bool awake = true,wasUpgrade=false;
+  bool awake = true,wasUpgrade=false,wasSetupGreeting=setupGreetingVisible(millis());
   uint32_t lastFeedback = 0;
   bool feedbackActive = false, firstRefresh = true;
   uint32_t feedbackAtMs = 0, lastRenderAtMs = 0, lastRevision = 0;
   for (;;) {
     const uint32_t nowMs = millis();
     UpgradeView upgrade;const bool upgrading=readUpgrade(upgrade,nowMs);
+    const bool greeting=setupGreetingVisible(nowMs);
     const uint32_t revision = __atomic_load_n(&uiRevision,__ATOMIC_RELAXED);
-    bool redraw=firstRefresh || upgrading!=wasUpgrade || revision!=lastRevision || static_cast<uint32_t>(nowMs-lastRenderAtMs)>=1000;
+    bool redraw=firstRefresh || upgrading!=wasUpgrade || greeting!=wasSetupGreeting || revision!=lastRevision || static_cast<uint32_t>(nowMs-lastRenderAtMs)>=1000;
     char text[24]{};
     const bool valid = formatClock(time(nullptr), text, sizeof(text));
     if (valid && !synchronized) Serial.println("OLED clock: New York time synchronized (automatic DST)");
@@ -287,6 +308,7 @@ void run(void *) {
       } else draw(text);
     }
     wasUpgrade=upgrading;
+    wasSetupGreeting=greeting;
     if(redraw) {lastRevision=revision;lastRenderAtMs=nowMs;firstRefresh=false;}
     if (transportFailed) {
       setStatus(State::TransferFailed, transferError);
