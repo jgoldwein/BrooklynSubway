@@ -57,7 +57,8 @@ struct NetworkConfig {
   bool acceptUnknownLength;
   uint32_t connectTimeoutMs;   // TCP connect and, separately, TLS handshake
   uint32_t readIdleTimeoutMs;  // max wait with no new body bytes
-  uint32_t feedDeadlineMs;     // per-feed limit on the body transfer, measured from request start
+  uint32_t feedDeadlineMs;     // body-transfer limit, measured after response headers arrive
+  uint32_t requestDeadlineMs; // overall elapsed limit checked during body reads (includes setup)
   uint32_t cycleBudgetMs;      // overall budget: no new feed starts once it has elapsed
   uint32_t wifiRetryMs;        // minimum spacing of Wi-Fi association attempts
   uint32_t timeSyncTimeoutMs;  // SNTP wait before the attempt is retried
@@ -70,6 +71,7 @@ constexpr NetworkConfig kDefaultNetworkConfig = {
     8000,
     8000,
     12000,
+    30000,
     60000,
     30000,
     20000,

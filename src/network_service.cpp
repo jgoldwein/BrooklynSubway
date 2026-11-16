@@ -10,6 +10,7 @@
 
 #include "diagnostics.h"
 #include "tls_memory.h"
+#include "feed_stream_reader.h"
 #include "factory_reset.h"
 #include "wifi_policy.h"
 
@@ -24,6 +25,7 @@
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
+#include <esp_wifi.h>
 #include <fcntl.h>
 #include <esp_heap_caps.h>
 #include <soc/soc_memory_types.h>
@@ -438,33 +440,24 @@ class HttpsFeedConnection : public transport::FeedConnection {
     }
     if (code != HTTP_CODE_OK) return transport::OpenResult::HttpFailure;
     contentLength = http_.getSize();  // -1 when absent
+    expectedLength_=contentLength;headersAtMs_=millis();
+    reader_.reset(startedMs_,headersAtMs_,contentLength,config_.readIdleTimeoutMs,config_.requestDeadlineMs,config_.feedDeadlineMs);
     stream_ = http_.getStreamPtr();
     return stream_ == nullptr ? transport::OpenResult::HttpFailure : transport::OpenResult::Ok;
   }
 
   int32_t read(uint8_t *dest, size_t maxLen) override {
     if (stream_ == nullptr) return transport::kReadError;
-    const uint32_t waitStart = millis();
-    for (;;) {
-      const int avail = stream_->available();
-      if (avail > 0) {
-        const size_t n = static_cast<size_t>(avail) < maxLen ? static_cast<size_t>(avail) : maxLen;
-        const size_t got = stream_->readBytes(dest, n);
-        if (got > 0) return static_cast<int32_t>(got);
-      } else if (!stream_->connected()) {
-        return transport::kReadEof;
-      }
-      const uint32_t now = millis();
-      if (elapsed(now, waitStart) >= config_.readIdleTimeoutMs ||
-          elapsed(now, startedMs_) >= config_.feedDeadlineMs) {
-        return transport::kReadTimeout;
-      }
-      delay(1);
-    }
+    struct Clock {uint32_t nowMs() const{return millis();} void wait(){delay(1);}} clock;
+    return reader_.read(*stream_,clock,dest,maxLen);
   }
 
   transport::AttemptDiagnostics diagnostics() const override {return details_;}
   void close() override {
+    if(details_.httpCode==HTTP_CODE_OK)Serial.printf("HTTPS body: %lu/%ld B; bulk reads %lu; headers %lu ms; body %lu ms; max gap %lu ms; %s\n",
+        static_cast<unsigned long>(reader_.bytes),static_cast<long>(expectedLength_),static_cast<unsigned long>(reader_.chunks),
+        static_cast<unsigned long>(headersAtMs_-startedMs_),static_cast<unsigned long>(millis()-headersAtMs_),
+        static_cast<unsigned long>(reader_.maxGapMs),transport::bodyStopName(reader_.stop));
     // Capture before our explicit cleanup. HTTPClient/TLS may already have cleaned
     // up internally; these readings are not claimed to be the allocation peak.
     char error[1]={0};const int raw=client_.lastError(error,sizeof(error));
@@ -480,6 +473,9 @@ class HttpsFeedConnection : public transport::FeedConnection {
 
  private:
   const NetworkConfig &config_;
+  transport::FeedStreamReader reader_;
+  int32_t expectedLength_=transport::kUnknownLength;
+  uint32_t headersAtMs_=0;
   uint8_t handshakeSeconds_;
   ObservedSecureClient client_;
   transport::AttemptDiagnostics details_{};
@@ -505,7 +501,7 @@ HttpsFeedConnection &connection() {
   return instance;
 }
 HttpsFeedConnection &weatherConnection() {
-  static const NetworkConfig config=[](){auto c=kDefaultNetworkConfig;c.connectTimeoutMs=2500;c.readIdleTimeoutMs=2500;c.feedDeadlineMs=12000;return c;}();
+  static const NetworkConfig config=[](){auto c=kDefaultNetworkConfig;c.connectTimeoutMs=2500;c.readIdleTimeoutMs=2500;c.feedDeadlineMs=12000;c.requestDeadlineMs=12000;return c;}();
   static HttpsFeedConnection instance(config,8);
   return instance;
 }
@@ -745,6 +741,8 @@ void NetworkService::allocateBuffer() {
 
 void NetworkService::serviceWifi(uint32_t nowMs) {
   if (WiFi.status() == WL_CONNECTED) {
+    wifi_ps_type_t powerSave;
+    if(esp_wifi_get_ps(&powerSave)==ESP_OK)Serial.printf("Network: Wi-Fi power-save driver mode %d (0=awake)\n",static_cast<int>(powerSave));
     state_ = State::TimeSyncing;
     timeStarted_ = false;
     return;

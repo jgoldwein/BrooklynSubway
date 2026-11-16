@@ -626,6 +626,7 @@ void testBudget() {
   }
   CHECK(net::kDefaultNetworkConfig.cycleBudgetMs == 60000);
   CHECK(net::kDefaultNetworkConfig.feedDeadlineMs == 12000);
+  CHECK(net::kDefaultNetworkConfig.requestDeadlineMs == 30000);
   CHECK(net::kDefaultNetworkConfig.cycleBudgetMs > net::kDefaultNetworkConfig.feedDeadlineMs);
 }
 
