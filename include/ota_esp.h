@@ -18,7 +18,7 @@ class WebOtaSession {
  public:
   WebOtaSession();
   ~WebOtaSession();
-  Result start(size_t contentLength, bool deferActivation = false);
+  Result start(size_t contentLength, bool deferActivation = false,const char *expectedVersion = nullptr);
   Result feed(const uint8_t *data, size_t length);
   Result finish();
   bool activatePendingImage();

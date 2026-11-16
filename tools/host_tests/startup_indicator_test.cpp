@@ -17,6 +17,7 @@ bool feedReadyMode = false;
 bool brightnessMode = false;
 bool knobMode=false,probePriority=false,eggMode=false,readyMode=false;
 uint32_t lastFeedbackMs=0;
+bool upgradeCueMode=false;uint32_t upgradeCueMs=0;int upgradeNotes=0;
 int readyBeeps = 0;
 int beepStarts = 0, cueMs = 0, cueOnMs = 0, abortAtMs = -1;
 bool recoveryRequested = false;
@@ -56,7 +57,8 @@ uint32_t ledcSetup(uint8_t channel, uint32_t hz, uint8_t resolution) {
     ++feedSetups; return failFeedSetup ? 0 : hz;
   }
   CHECK(channel == 7 && resolution == 8 && duty == 0);
-  if(readyMode) {CHECK(hz==1000 || hz==1500 || hz==2000);}
+  if(upgradeCueMode){CHECK(hz==(upgradeNotes?900u:1200u));++upgradeNotes;}
+  else if(readyMode) {CHECK(hz==1000 || hz==1500 || hz==2000);}
   else if(eggMode) {CHECK(hz>=100 && hz<=4000);}
   else if (knobMode) {CHECK(hz==2000);}
   else if (brightnessMode) { CHECK(hz >= 800 && hz <= 3200); }
@@ -76,7 +78,7 @@ void ledcAttachPin(uint8_t pin, uint8_t channel) {
 }
 void ledcWrite(uint8_t channel, uint32_t value) {
   if (channel == 4) { CHECK(value <= 8); feedDuty = value; return; }
-  CHECK(channel == 7 && (value == 0 || value == 128));
+  CHECK(channel == 7 && (value == 0 || value == 128 || (upgradeCueMode && value==64)));
   if (cueMode && value == 128) ++beepStarts;
   duty = value;
 }
@@ -86,6 +88,7 @@ void ledcDetachPin(uint8_t pin) {
   ++detachCalls;
 }
 void delay(uint32_t ms) {
+  if(upgradeCueMode){CHECK((ms==100 && duty==64)||(ms==120 && duty==0));upgradeCueMs+=ms;return;}
   CHECK(!readyMode);
   CHECK(enable == LOW);
   if (brightnessMode) { CHECK((ms == 45 || ms == 120) && duty == 128);lastFeedbackMs=ms;
@@ -115,7 +118,7 @@ void delay(uint32_t ms) {
   }
 }
 void reset(bool muted, int failAt = -1) {
-  knobMode=false;probePriority=false;readyMode=false;
+  knobMode=false;probePriority=false;readyMode=false;upgradeCueMode=false;upgradeCueMs=0;upgradeNotes=0;
   brightnessMode = false;
   cueMode = false;
   feedReadyMode = false;
@@ -291,5 +294,10 @@ int main() {
   brooklyn::hardware::setQuiet(true);brooklyn::hardware::signalSetupReady();CHECK(attachCalls==1 && duty==0);brooklyn::hardware::setQuiet(false);
   reset(false,0);brightnessMode=true;brooklyn::hardware::signalSetupReady();CHECK(duty==0 && buzzer==LOW && attachCalls==0);
   puts("Ready cues: three pitches, green-edge only, repeated recovery, no U23 duplicate, quiet/DIM/maintenance/power cancellation and PWM failure PASS");
+  reset(false);upgradeCueMode=true;brooklyn::hardware::signalUpgradeStarting();CHECK(upgradeNotes==2 && upgradeCueMs==320 && duty==0 && buzzer==LOW && attachCalls==2 && detachCalls==2);
+  brooklyn::hardware::setQuiet(true);brooklyn::hardware::signalUpgradeStarting();CHECK(upgradeNotes==2 && upgradeCueMs==320 && duty==0);brooklyn::hardware::setQuiet(false);
+  reset(false,0);upgradeCueMode=true;brooklyn::hardware::signalUpgradeStarting();CHECK(attachCalls==0 && duty==0 && buzzer==LOW);
+  reset(false,1);upgradeCueMode=true;brooklyn::hardware::signalUpgradeStarting();CHECK(attachCalls==1 && detachCalls==1 && duty==0 && buzzer==LOW);
+  puts("Upgrade cue: two descending 100ms notes, 120ms gap, quarter-duty, quiet suppression and PWM failure cleanup PASS");
   puts("Startup: U23 pulses, four rising notes plus descending pair, 2265 ms, 50%-duty PWM, DIM mute, failed-check silence, PWM failure cleanup, addressable outputs disabled PASS");
 }

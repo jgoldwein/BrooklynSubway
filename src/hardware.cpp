@@ -379,6 +379,23 @@ void signalSetupReady() {
 #endif
 }
 
+void signalUpgradeStarting() {
+#if defined(BROOKLYN_TARGET_PCB)
+  if(isQuiet()){Serial.println("Upgrade cue: muted by quiet hours");return;}
+  lockIndicator();stopKnobToneLocked();
+  constexpr uint8_t channel=7,kGentleDuty=64;
+  const uint16_t frequencies[]={1200,900};
+  for(uint8_t note=0;note<2;++note) {
+    if(isQuiet() || ledcSetup(channel,frequencies[note],8)==0)break;
+    ledcWrite(channel,0);ledcAttachPin(pins::BUZZER,channel);ledcWrite(channel,kGentleDuty);
+    delay(100);ledcWrite(channel,0);ledcDetachPin(pins::BUZZER);digitalWrite(pins::BUZZER,LOW);
+    if(note==0)delay(120);
+  }
+  digitalWrite(pins::BUZZER,LOW);unlockIndicator();
+  Serial.println("Upgrade cue: complete (1200/900 Hz, gentle duty 64/255)");
+#endif
+}
+
 bool beginSafe() {
 #if defined(BROOKLYN_TARGET_PCB)
   digitalWrite(pins::LED_ENABLE, LOW);

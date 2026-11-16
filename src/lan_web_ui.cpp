@@ -1516,7 +1516,7 @@ bool LanWebUi::installAvailableRelease() {
 
   bool downloadSucceeded=false;
   struct OverlayFailureGuard {bool &succeeded;~OverlayFailureGuard(){if(!succeeded)oled::showUpgrade(oled::UpgradePhase::Failed);}} overlayGuard{downloadSucceeded};
-  oled::showUpgrade(oled::UpgradePhase::Downloading,approvedVersion,0);
+  oled::showUpgrade(oled::UpgradePhase::Starting,approvedVersion,0);
   snprintf(releaseStatus_, sizeof(releaseStatus_),
            "Downloading approved release %s", approvedVersion);
   Serial.printf("OTA release: downloading version=%s target=%s\n",
@@ -1552,7 +1552,7 @@ bool LanWebUi::installAvailableRelease() {
     return false;
   }
   ota::Result result =
-      otaSession_.start(static_cast<size_t>(contentLength), true);
+      otaSession_.start(static_cast<size_t>(contentLength), true,approvedVersion);
   if (result != ota::Result::Ok) {
     snprintf(releaseStatus_, sizeof(releaseStatus_),
              "Firmware installer could not start: %s",

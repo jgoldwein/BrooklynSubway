@@ -62,7 +62,7 @@ struct ScreenData {
   LineData lines[semantic::kRouteCount+1]{};
 };
 struct ScreenText { char lines[5][22]{}; };
-enum class UpgradePhase : uint8_t { None, Downloading, Verifying, Ready, Restarting, Checking, Complete, Failed };
+enum class UpgradePhase : uint8_t { None, Downloading, Verifying, Ready, Restarting, Checking, Complete, Failed, Starting };
 struct UpgradeView { UpgradePhase phase=UpgradePhase::None; uint8_t percent=0; char version[33]{}; uint32_t shownAtMs=0; };
 bool upgradeActive(const UpgradeView &view,uint32_t nowMs);
 void formatUpgrade(const UpgradeView &view,ScreenText &out);

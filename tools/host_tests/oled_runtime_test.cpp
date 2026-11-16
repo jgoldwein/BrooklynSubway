@@ -183,6 +183,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
    if(scenario==56 || scenario==58)setEnabled(false);
    if(scenario==61){setSetupMode(true);showBrightness(true,16,255);}
  }
+ if(scenario==62){using namespace brooklyn::oled;showUpgrade(UpgradePhase::Starting,"0.2.79");setEnabled(false);}
  const uint8_t preferred=scenario==11?0x3c:0x38;
  brooklyn::oled::begin(preferred,scenario==12||scenario==13?32:207);OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
  if(scenario==6){OLED_CHECK(worker==nullptr);puts("OLED task allocation failure isolated PASS");return 0;}
@@ -247,5 +248,6 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==59)OLED_CHECK(frames==3 && failedDraws==2 && titles==1 && powerWarnings==0);
  if(scenario==60)OLED_CHECK(frames==3 && upgradeDraws==2 && completeDraws==1 && powerWarnings==2);
  if(scenario==61)OLED_CHECK(frames==2 && upgradeDraws==2 && setupTitles==0 && powerWarnings==2);
+ if(scenario==62)OLED_CHECK(frames==2 && powerWarnings==2 && powerCommands==0 && strcmp(lastScreenTitle,"Update starting")==0);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

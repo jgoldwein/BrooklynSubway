@@ -2,7 +2,7 @@
 
 Specially Designed for Avi Yao
 
-Guide for preview firmware **0.2.77**. Start with the
+Guide for preview firmware **0.2.78**. Start with the
 [one-page quick start](AVI_QUICK_START.md) if you just want to try the map.
 
 ## A few useful words
@@ -206,7 +206,9 @@ If your map is unreachable, send a photo of its screen and describe the problem.
 
 ## During a software update
 
-The OLED shows the version and download progress. **Do not unplug power** while
+Two gentle notes and an **Update starting** message give about three seconds
+of notice before an update. Quiet hours mute the notes. The OLED then shows
+the version and download progress. **Do not unplug power** while
 it downloads, verifies, restarts, or checks startup. A manual update may ask you
 to approve the restart on the web page. An automatic update restarts by itself.
 After startup passes its checks, **Update complete** appears for eight seconds.

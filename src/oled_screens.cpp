@@ -26,11 +26,12 @@ bool upgradeActive(const UpgradeView &v,uint32_t nowMs) {
 }
 void formatUpgrade(const UpgradeView &v,ScreenText &out) {
   out={};TextWriter write(out);
-  write(0,v.phase==UpgradePhase::Complete?"Update complete":v.phase==UpgradePhase::Failed?"Update failed":"Firmware update");
+  write(0,v.phase==UpgradePhase::Starting?"Update starting":v.phase==UpgradePhase::Complete?"Update complete":v.phase==UpgradePhase::Failed?"Update failed":"Firmware update");
   write(1,"Version %.13s",v.version[0]?v.version:"pending");
   if(v.phase==UpgradePhase::Complete){write(2,"Startup checks passed");write(3,"Returning to display");return;}
   if(v.phase==UpgradePhase::Failed){write(2,"See web update page");write(3,"Please try again");return;}
   switch(v.phase){
+    case UpgradePhase::Starting:write(2,"Starting shortly");break;
     case UpgradePhase::Downloading:write(2,"Downloading: %u%%",unsigned(v.percent>99?99:v.percent));break;
     case UpgradePhase::Verifying:write(2,"Verifying update");break;
     case UpgradePhase::Ready:write(2,"Ready to restart");break;

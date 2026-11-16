@@ -8,6 +8,7 @@
 #include "lan_web_policy.h"
 #include "ota_trusted_keys.h"
 #include "oled_clock.h"
+#include "hardware.h"
 
 #include <Arduino.h>
 #include <esp_ota_ops.h>
@@ -175,11 +176,17 @@ const char *WebOtaSession::firmwareVersion() {
          BROOKLYN_STRINGIFY(BROOKLYN_FIRMWARE_VERSION_PATCH);
 }
 
-Result WebOtaSession::start(size_t contentLength, bool deferActivation) {
+Result WebOtaSession::start(size_t contentLength, bool deferActivation,const char *expectedVersion) {
   if (!impl_) return Result::WriterBegin;
   if (impl_->writer.activationPending()) return Result::Busy;
   if (installer_) installer_->abort();
-  oled::showUpgrade(oled::UpgradePhase::Downloading, "", 0);
+  oled::showUpgrade(oled::UpgradePhase::Starting,expectedVersion?expectedVersion:"",0);
+  const uint32_t announcedAt=millis();
+  hardware::signalUpgradeStarting();
+  // Gives the operator a visible three-second heads-up before body/flash work.
+  // RTOS/OLED/input workers keep running; quiet mode retains the visual delay.
+  while(static_cast<uint32_t>(millis()-announcedAt)<3000)delay(20);
+  oled::showUpgrade(oled::UpgradePhase::Downloading);
   impl_->writer.deferActivation(deferActivation);
   const InstallerConfig config{BROOKLYN_OTA_TARGET, kTrustedKeys,
                                kTrustedKeyCount, firmwareVersion()};
