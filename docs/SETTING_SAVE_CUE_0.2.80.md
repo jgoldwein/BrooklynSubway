@@ -1,7 +1,9 @@
 # Saved-setting cue — queued 0.2.80
 
-Prepared and host-tested; not installed or published while COM6's private
-0.2.79 recovery observation is running. Do not interrupt that capture to try it.
+The user subsequently requested publication, authorizing an intentional restart
+of the running COM6 recovery test. Before publication, a captured panic was
+decoded to the SDK mDNS discovery service; 0.2.80 also disables that optional
+service. Direct IP access and ordinary DNS/TLS remain available.
 
 A successful user setting save requests two gentle ascending notes: 1200 then
 1800 Hz, 60 ms each, separated by 50 ms at duty 64/255 on the existing GPIO21

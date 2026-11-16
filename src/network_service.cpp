@@ -20,7 +20,6 @@
 #include "wifi_portal.h"
 
 #include <HTTPClient.h>
-#include <ESPmDNS.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
 #include <WiFiClientSecure.h>
@@ -979,10 +978,7 @@ void NetworkService::update(uint32_t nowMs) {
 
 void NetworkService::stopLanWebUi() {
   lanWebUi_.stop();
-  if (mdnsStarted_) {
-    MDNS.end();
-    mdnsStarted_ = false;
-  }
+  mdnsStarted_ = false;
   mdnsAttempted_ = false;
 }
 
@@ -1019,13 +1015,10 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
 
   if (!mdnsAttempted_) {
     mdnsAttempted_ = true;
-    mdnsStarted_ = MDNS.begin(web::kHostname);
-    if (mdnsStarted_) {
-      MDNS.addService("http", "tcp", 80);
-      Serial.printf("LAN UI: mDNS available at %s\n", web::kMdnsUrl);
-    } else {
-      Serial.println("LAN UI: mDNS unavailable; DHCP address remains available");
-    }
+    // Pinned SDK mDNS crashed in _mdns_remove_scheduled_answer (captured079).
+    // Keep .local discovery off; DHCP hostname and direct IP access remain.
+    mdnsStarted_ = false;
+    Serial.println("LAN UI: .local discovery disabled (SDK panic workaround); use the Device IP address");
   }
 
   if (serverOwnership_.mode() == web::ServerMode::Provisioning) return;

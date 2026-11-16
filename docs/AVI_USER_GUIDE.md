@@ -2,7 +2,7 @@
 
 Specially Designed for Avi Yao
 
-Guide for preview firmware **0.2.78**. Start with the
+Guide for firmware **0.2.80**. Start with the
 [quick start](AVI_QUICK_START.md) if you just want to try the map.
 For the gift box, [print the one-page sheet](shipping/Brooklyn_Subway_Quick_Start.pdf).
 
@@ -142,7 +142,8 @@ On the Device screen, find the board's **IP address**. Type that address into a
 browser on the same home network. For example: `http://192.168.1.42/`.
 Use the address on your own Device screen, not the example.
 
-You can also try **http://brooklynmap.local/** when only one map is in use.
+Use the IP address shown on the map. The optional `brooklynmap.local` name is
+disabled in 0.2.80 to avoid an ESP32 discovery-service crash.
 Sign in as administrator when prompted. Use settings on your trusted home
 network.
 
@@ -216,3 +217,5 @@ After startup passes its checks, **Update complete** appears for eight seconds.
 The normal display then returns. If the OLED was off, it returns to being off.
 If you see **Update failed**, open the web update page for details and retry.
 These messages apply to web updates; USB programming uses a separate bootloader.
+
+A successful settings save plays two gentle rising notes. Quiet hours mute them.
