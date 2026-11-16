@@ -37,7 +37,13 @@ calling this step complete. No message is sent automatically.
 
 Publish one tested signed release; verify installation, reboot, displayed
 version and automatic-update settings on the shipping board. A USB development
-upload does not prove internet updates work. Not completed for this release.
+upload does not prove internet updates work.
+
+Completed on COM6 with 0.2.74 on November 15, 2026: operator confirmed the
+web update finished; device reports the new version, successful boot-health
+confirmation, fresh 8/8 feeds and live map output. COM5 remains 0.2.50 for its
+existing baseline test. Automatic unattended installation and forced physical
+rollback are separate from this successful manual internet-update rehearsal.
 
 ## 4. Stability and recovery
 

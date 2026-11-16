@@ -654,3 +654,15 @@ Private073: user confirms reporting works; requested Get help match other Advanc
 ## Shipping rehearsal candidate 0.2.74
 
 User approved about12h stability instead of48h and authorized OTA rehearsal next. Candidate074 consolidates private051-073 features, no functional changes from073 except version. Full34host suites pass; four builds underway. Preserve6unrelated RESUME/simulator/replay edits. COM5 must have Automatic updates OFF before publishing stable, confirmation requested; do not publish until confirmed. COM6 remains073 for true GitHub update to074 (do not USBflash074). Signing uses existing external keyid1, no rotation. Actual GitHub update/UIcompletion/reboot/health and12h run remain pending; static rollback-policy tests do not prove a forced physical rollback on this board.
+
+
+## 0.2.74 Internet update verified November15
+
+User confirmed COM5 Automatic updates OFF. Published signed074 GitHub release; latest metadata7954B within8192 limit. User installed074 on COM6 through web updater and confirmed finished. Read-only verification: COM6 firmware074, otaBootConfirmed true, software reset,44s uptime, Fresh8/8,70 visible mapLEDs/live enabled,unexpectedWarmResets0,heapmin23368B. COM5 unchanged050, power-on uptime14279s,Fresh8/8,unexpected0. Captures COM6/COM5-after-OTA074.json and runtime saved. Actual signed GitHub OTA/restart/health/live-data path now verified; forced physical rollback not exercised. User explicitly said do not interrupt existing COM5 test. Existing scheduled observer summary still waiting-for-start22:00NY Nov15 for8h, distinct from current physical uptime. Do not change/stop/duplicate it. After its test finishes, user-agreed sequence is updateCOM5 then separate~12h final-firmware run. No12h run started yet.
+
+
+## Unattended OTA rehearsal 0.2.75
+
+User enabled COM6 automatic updates and confirmed saving5minute check interval; explicitly instructed no manual Check/Install/Restart. Preparing version-only075 from074 firmware source, samekey/pins/config. Publish signedstable then passively capture COM6 serial/API scheduled discovery/install/restart/health/live, preserving COM5autoOFF050baseline. Do not claim success from manual074 rehearsal; unattended075 evidence pending.
+
+User additionally requested firmware version on Overview before075publication. Added escaped firmwareVersion span before Advanced section, uses existing live5s status-refresh binding. Retains Advanced device version. Shortened existing POWER/OLED hints to stay within pagebuffer; no settings/hardware change. Version-only description superseded by this small UI addition. Read-only observer PID30596 started before publication and watches serial/API for20min.

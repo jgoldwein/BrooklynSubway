@@ -609,6 +609,8 @@ void testPageEscapingAndRequiredContent() {
       brooklyn::semantic::kAllRoutesVisibleMask, csrfToken);
   CHECK(authenticatedPageSize > 0);
   CHECK(authenticatedPageSize < sizeof(page));
+  CHECK(strstr(page,"data-status=\"firmwareVersion\"")!=nullptr);
+  CHECK(strstr(page,"data-status=\"firmwareVersion\"") < strstr(page,"id=\"advanced\""));
   const char *views[]={"overview","lights","screen","wifi","advanced"};
   for (const char *view:views) {
     char navigation[64],anchor[64];

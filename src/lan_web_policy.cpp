@@ -366,7 +366,9 @@ size_t renderHomePage(char *out, size_t capacity,
   writer.append(status.displayState==display::State::Fresh?"Train data is up to date":
                 status.displayState==display::State::WaitingForData?"Waiting for the first train update":
                 status.displayState==display::State::NoData?"No current train data":"Some train updates are delayed");
-  writer.append("</p><p><a class=\"hint\" href=\"#wifi\" data-status=\"connectionLabel\">");
+  writer.append("</p><p class=\"hint\">Firmware <span data-status=\"firmwareVersion\">");
+  writer.html(status.firmwareVersion[0] != '\0' ? status.firmwareVersion : "unknown");
+  writer.append("</span></p><p><a class=\"hint\" href=\"#wifi\" data-status=\"connectionLabel\">");
   writer.append(status.networkConnected?"Wi-Fi connected":"Wi-Fi disconnected");
   writer.append("</a></p><div class=\"metrics\"><div class=\"metric\"><strong data-status=\"resolvedTrains\">");
   writer.format("%lu</strong><span>Mapped trains</span></div><div class=\"metric\"><strong data-status=\"feedSummary\">%u / %u</strong>"
@@ -375,7 +377,7 @@ size_t renderHomePage(char *out, size_t capacity,
   if (status.hasDataAge) writer.format("%lu seconds",static_cast<unsigned long>(status.dataAgeSeconds)); else writer.append("Waiting");
   writer.append("</strong><span>Latest update</span></div></div><p class=\"hint\"><strong data-status=\"visibleMapLeds\">");
   writer.format("%u</strong> lit map LEDs. Several trains can share one light; uncertain markers may fade. <a href=\"/monitor\">Train monitor</a></p>",status.visibleMapLeds);
-  writer.append("<p class=\"hint\">POWER cycles: all on, LEDs off, screen off, all off. Hold 3 seconds to reboot. BRIGHT/DIM adjust the display that is on by itself.</p>"
+  writer.append("<p class=\"hint\">POWER cycles both displays on/off. Hold 3 seconds to restart. BRIGHT/DIM work with one display on.</p>"
                 "<div class=\"actions\"><a class=\"button\" href=\"#lights\">Adjust train lights</a>"
                 "<a class=\"button secondary\" href=\"#screen\">Screen brightness</a></div></section>"
                 "<section class=\"wide\" data-view=\"advanced\" id=\"advanced\"><p class=\"kicker\">Tools &amp; help</p><h2>Keep your map running</h2>"
@@ -778,7 +780,7 @@ size_t renderHomePage(char *out, size_t capacity,
   {
     char text[160]; renderOledStatus(text, sizeof(text), status.oledStatus);
     writer.append("<p data-status=\"oledStatus\">"); writer.html(text); writer.append("</p>");
-    writer.append("<p class=\"muted\">Startup tries the saved address first, then 0x38/0x3C/0x3D. Active 0x00 means none. I2C: 0=OK, 1=short write, 2=NACK, 4=other, 5=timeout.</p>");
+    writer.append("<p class=\"muted\">Tries saved address, then 0x38/0x3C/0x3D. Active 0x00: no screen found.</p>");
   }
   if (status.adminSessionActive && csrfToken && csrfToken[0]) {
     writer.append("<form method=\"post\" action=\"/config/oled\"><input type=\"hidden\" name=\"csrf\" value=\"");
@@ -856,8 +858,7 @@ size_t renderHomePage(char *out, size_t capacity,
     writer.html(csrfToken);
     writer.append("\"><button type=\"submit\">Restart map</button></form>");
   }
-  writer.append("<p class=\"muted\">A reboot retains Wi-Fi credentials and "
-                "configuration.</p></section>"
+  writer.append("<p class=\"muted\">Restart keeps Wi-Fi and settings.</p></section>"
                 "</main><p id=\"live-refresh\" class=\"footer\" role=\"status\">Live values refresh automatically.</p>"
                 "<script>(()=>{const note=document.getElementById('live-refresh');"
                 "async function refresh(){let timer;try{if(!document.hidden){"
