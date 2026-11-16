@@ -54,6 +54,46 @@ Station lights remain dark until usable train data arrives. Quiet hours, POWER,
 or a safety stop can also keep lights off. The status lights do not override
 those settings.
 
+## Sounds and what they mean
+
+The sounds tell you what the map is doing. They are not numbered error codes.
+
+- **Four rising notes, then a lower "ding-dong":** the map is starting up.
+  Wait for Wi-Fi and train data; this tune alone does not mean they are ready.
+- **One low readiness beep:** SYSTEM has turned green. The board's startup
+  checks passed.
+- **One middle readiness beep:** NETWORK has turned green. The network service
+  is ready.
+- **One high readiness beep:** MTA FEED has turned green. A complete, fresh
+  train update arrived. This also serves as the feed-ready sound for the dim
+  Avi-location light; there is no extra beep for that light.
+- **Two gentle rising notes:** a setting was saved successfully. Several saves
+  close together may share one confirmation sound.
+- **Two gentle descending notes:** a firmware update is starting. Read the
+  OLED message and **do not unplug power**. Wait for **Update complete**.
+- **One confirmation beep when setup opens:** BrooklynMap-Avi is ready.
+  Follow the OLED instructions, including after holding the knob for 10 seconds.
+- **A short tick as you turn the knob:** the map recognized a knob turn.
+- **A short tone when you press BRIGHT or DIM:** brightness feedback. A higher
+  pitch means a brighter setting. Look at the OLED for the actual level.
+  These buttons adjust brightness only when one display is on by itself.
+- **One to eight beeps during the full channel test:** the number identifies
+  the next LED channel being tested: one beep for channel 1, two for channel 2,
+  and so on. It is not a subway line number or an error count.
+- **Short and long notes in the Morse-code extra:** the map is spelling
+  **Avi Yao** for fun. Other secret extras can also play sounds.
+
+A readiness beep can repeat if a service loses readiness and then recovers.
+A light that stays green does not keep beeping. Check the status lights or
+web page to find out what is happening rather than relying on pitch alone.
+
+**Want it quiet?** Quiet hours mute the beeps, including manual tests and
+secret extras. The quiet-hours schedule applies after the clock is synchronized.
+Holding **DIM while powering on or restarting** mutes the startup tune and
+automatic readiness cues for that boot; it does not mute every later button,
+save or update sound. You may also hear no cue while another test or recovery
+operation is taking priority. A missing sound by itself does not prove a fault.
+
 ## The buttons and knob
 
 ### POWER
