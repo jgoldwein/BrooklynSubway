@@ -640,6 +640,8 @@ void testPageEscapingAndRequiredContent() {
     CHECK(strstr(help,"href=\"/help\" aria-current=\"page\"")!=nullptr);
     CHECK(strstr(help,"href=\"/#overview\"") && strstr(help,"href=\"/#advanced\""));
     CHECK(strstr(help,"id=\"about\"") && strstr(help,"id=\"licenses\""));
+    CHECK(strstr(help,"id=\"sounds\"") && strstr(help,"Read the sound guide"));
+    CHECK(strstr(help,"AVI_USER_GUIDE.md#sounds-and-what-they-mean") && strstr(help,"MTA feed recovered"));
     CHECK(strstr(help,"Project on GitHub") && strstr(help,"AVI_USER_GUIDE.md"));
     CHECK(strstr(help,"href=\"/support\"") && strstr(help,"Nothing is sent automatically"));
     CHECK(strstr(help,"Apache License 2.0") && strstr(help,"CERN Open Hardware Licence") && strstr(help,"Creative Commons Attribution 4.0"));

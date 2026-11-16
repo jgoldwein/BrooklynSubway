@@ -87,6 +87,12 @@ A readiness beep can repeat if a service loses readiness and then recovers.
 A light that stays green does not keep beeping. Check the status lights or
 web page to find out what is happening rather than relying on pitch alone.
 
+**A short beep when nobody touched the map?** A common reason is the MTA feed
+recovering after a delayed or incomplete update: the MTA FEED light returns
+from amber to green and plays its high readiness tone. That does not mean the
+board restarted. Wi-Fi recovery can also play the middle readiness tone.
+Open **Help → Read the sound guide** to return to this explanation.
+
 **Want it quiet?** Quiet hours mute the beeps, including manual tests and
 secret extras. The quiet-hours schedule applies after the clock is synchronized.
 Holding **DIM while powering on or restarting** mutes the startup tune and
