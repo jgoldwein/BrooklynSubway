@@ -3,6 +3,7 @@
 
 #include "lan_web_ui.h"
 #include "hardware.h"
+#include "oled_clock.h"
 #include "live_display.h"
 #include "led_backend.h"
 #include "controls.h"
@@ -1060,8 +1061,8 @@ void LanWebUi::handleUpdatePage() {
         "<div class=\"card\"><h2 id=\"oh\" style=\"margin-top:0\">Installing %s</h2>"
         "<progress id=\"pg\" max=\"100\" value=\"0\" style=\"width:100%%\">"
         "</progress><p id=\"pt\" role=\"status\">Starting download&hellip;</p>"
-        "<p class=\"muted\">The device verifies the signature as it downloads. "
-        "LEDs and feeds pause until this finishes. Do not unplug the board."
+        "<p id=\"power-warning\" class=\"muted\">The device verifies the signature as it downloads. "
+        "LEDs and feeds pause until this finishes. Do not unplug power."
         "</p><p><a href=\"/\">View running firmware version</a></p></div>"
         "<script>var expected=\"%s\",waitingForRestart=false;%s</script>",
         availableVersion_, availableVersion_, kOtaProgressScript);
@@ -1085,7 +1086,7 @@ void LanWebUi::handleUpdatePage() {
         "<div class=\"card ok\"><h2 style=\"margin-top:0\">Version %s is ready "
         "to install</h2>"
         "<p>A verified, signed firmware image is staged. Nothing changes until "
-        "you approve the restart. Your settings and Wi-Fi are kept, and the "
+        "you approve the restart. Do not unplug power. Your settings and Wi-Fi are kept, and the "
         "previous firmware is restored automatically if the new one fails its "
         "health check.</p>"
         "<form method=\"post\" action=\"/update/reboot\">"
@@ -1167,7 +1168,7 @@ void LanWebUi::handleUpdatePage() {
       "<button type=\"submit\" class=\"secondary\">Save</button></form>"
       "<h2>Manual signed package</h2>"
       "<p>Have a <code>.bkota</code> file? Upload it here. It is verified and "
-      "staged, then you approve the restart.</p>"
+      "staged, then you approve the restart. Do not unplug power during the update.</p>"
       "<input type=\"file\" id=\"f\" accept=\".bkota\"> "
       "<button id=\"b\">Upload and verify</button>"
       "<progress id=\"up\" max=\"100\" value=\"0\" style=\"width:100%%;"
@@ -1181,7 +1182,7 @@ void LanWebUi::handleUpdatePage() {
       "x.setRequestHeader(\"X-CSRF-Token\",t);x.setRequestHeader("
       "\"Content-Type\",\"application/octet-stream\");x.upload.onprogress="
       "function(e){var p=Math.round(100*e.loaded/e.total);u.value=p;"
-      "s.textContent=\"Uploading \"+p+\"%%\"};x.onload=function(){"
+      "s.textContent=\"Uploading \"+p+\"%% - Do not unplug power\"};x.onload=function(){"
       "if(x.responseURL&&new URL(x.responseURL).pathname===\"/login\"){location.assign(\"/login?next=update\");return}"
       "s.textContent=x.status==200?x.responseText:\"Rejected (\"+x.status+\"): \"+"
       "x.responseText;if(x.status==200){setTimeout(function(){location.reload()}"
@@ -1297,7 +1298,7 @@ void LanWebUi::handleUpdateReboot() {
       "<h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p><h2 id=\"oh\">Restarting</h2><div class=\"card\" role=\"status\">"
       "<progress id=\"pg\" max=\"100\" value=\"99\" style=\"width:100%%\"></progress>"
       "<p id=\"pt\">Waiting for the new firmware to restart and confirm startup...</p>"
-      "<p class=\"muted\">Keep power connected. You will need to sign in again.</p></div>"
+      "<p id=\"power-warning\" class=\"muted\">Do not unplug power. You will need to sign in again.</p></div>"
       "<p><a href=\"/\">View running firmware version</a></p>"
       "<script>var expected=\"%s\",waitingForRestart=true;%s</script></body></html>",
       kUpdateStyle, expectedVersion, kOtaProgressScript);
@@ -1513,6 +1514,9 @@ bool LanWebUi::installAvailableRelease() {
     return false;
   }
 
+  bool downloadSucceeded=false;
+  struct OverlayFailureGuard {bool &succeeded;~OverlayFailureGuard(){if(!succeeded)oled::showUpgrade(oled::UpgradePhase::Failed);}} overlayGuard{downloadSucceeded};
+  oled::showUpgrade(oled::UpgradePhase::Downloading,approvedVersion,0);
   snprintf(releaseStatus_, sizeof(releaseStatus_),
            "Downloading approved release %s", approvedVersion);
   Serial.printf("OTA release: downloading version=%s target=%s\n",
@@ -1645,6 +1649,7 @@ bool LanWebUi::installAvailableRelease() {
            approvedVersion);
   Serial.printf("OTA release: staged version=%s; reboot approval required\n",
                 approvedVersion);
+  downloadSucceeded=true;
   return true;
 }
 
@@ -1734,7 +1739,7 @@ void LanWebUi::handleUpdateComplete() {
   const int length = snprintf(
       gPage, kPageCapacity,
       "Firmware %s verified and staged. The page will reload so you can "
-      "approve the restart.%s",
+      "approve the restart. Do not unplug power.%s",
       installer != nullptr ? installer->header().version : "?",
       downgrade ? " WARNING: this is an older version (downgrade)." : "");
   snprintf(releaseStatus_, sizeof(releaseStatus_),

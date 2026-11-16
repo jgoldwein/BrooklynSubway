@@ -23,6 +23,10 @@ Navigation navigation;
 uint32_t returnSeconds = 60;
 portMUX_TYPE screenDataMux = portMUX_INITIALIZER_UNLOCKED;
 ScreenData screenData{};
+UpgradeView upgradeView{};
+bool readUpgrade(UpgradeView &view,uint32_t nowMs) {
+  portENTER_CRITICAL(&screenDataMux);view=upgradeView;portEXIT_CRITICAL(&screenDataMux);return upgradeActive(view,nowMs);
+}
 LineTestView lineTest{};
 ScreenText easterText{};
 bool easterActive=false;
@@ -42,6 +46,12 @@ void setStatus(State state, uint8_t error = 0) {
 }
 void draw(const char *clock) {
   screen.clearBuffer();
+  UpgradeView upgrade;
+  if(readUpgrade(upgrade,millis())) {
+    ScreenText text;formatUpgrade(upgrade,text);screen.setFont(u8g2_font_6x12_tf);
+    for(uint8_t i=0;i<5;++i)screen.drawStr((128-screen.getStrWidth(text.lines[i]))/2,11+i*12,text.lines[i]);
+    screen.sendBuffer();return;
+  }
   if (__atomic_load_n(&setupMode, __ATOMIC_RELAXED)) {
     screen.setFont(u8g2_font_6x12_tf);
     screen.drawStr((128-screen.getStrWidth("Wi-Fi setup"))/2, 12, "Wi-Fi setup");
@@ -230,14 +240,15 @@ void run(void *) {
   setStatus(State::Ready);
   Serial.println("OLED clock: initialization and first frame complete");
   bool synchronized = false;
-  bool awake = true;
+  bool awake = true,wasUpgrade=false;
   uint32_t lastFeedback = 0;
   bool feedbackActive = false, firstRefresh = true;
   uint32_t feedbackAtMs = 0, lastRenderAtMs = 0, lastRevision = 0;
   for (;;) {
     const uint32_t nowMs = millis();
+    UpgradeView upgrade;const bool upgrading=readUpgrade(upgrade,nowMs);
     const uint32_t revision = __atomic_load_n(&uiRevision,__ATOMIC_RELAXED);
-    bool redraw=firstRefresh || revision!=lastRevision || static_cast<uint32_t>(nowMs-lastRenderAtMs)>=1000;
+    bool redraw=firstRefresh || upgrading!=wasUpgrade || revision!=lastRevision || static_cast<uint32_t>(nowMs-lastRenderAtMs)>=1000;
     char text[24]{};
     const bool valid = formatClock(time(nullptr), text, sizeof(text));
     if (valid && !synchronized) Serial.println("OLED clock: New York time synchronized (automatic DST)");
@@ -257,7 +268,7 @@ void run(void *) {
       lastFeedback = feedback; feedbackActive=feedback!=0;feedbackAtMs=nowMs;redraw=true;
     }
     if(feedbackActive && static_cast<uint32_t>(nowMs-feedbackAtMs)>=3000) {feedbackActive=false;redraw=true;}
-    const bool desiredEnabled = __atomic_load_n(&requestedEnabled, __ATOMIC_RELAXED) != 0 || feedbackActive;
+    const bool desiredEnabled = __atomic_load_n(&requestedEnabled, __ATOMIC_RELAXED) != 0 || feedbackActive || upgrading;
     if (!transportFailed && desiredEnabled != awake) {
       screen.setPowerSave(desiredEnabled ? 0 : 1);
       awake = desiredEnabled;
@@ -265,7 +276,7 @@ void run(void *) {
       Serial.println(awake ? "OLED clock: POWER display ON" : "OLED clock: POWER display OFF");
     }
     if (!transportFailed && awake && redraw) {
-      if (feedbackActive) {
+      if (feedbackActive && !upgrading) {
         char level[24];
         snprintf(level, sizeof(level), "%u / %u", unsigned(feedback & 255), unsigned((feedback >> 8) & 255));
         const char *label = (feedback & (1u << 16)) ? "OLED brightness" : "LED brightness";
@@ -275,6 +286,7 @@ void run(void *) {
         screen.sendBuffer();
       } else draw(text);
     }
+    wasUpgrade=upgrading;
     if(redraw) {lastRevision=revision;lastRenderAtMs=nowMs;firstRefresh=false;}
     if (transportFailed) {
       setStatus(State::TransferFailed, transferError);
@@ -298,6 +310,16 @@ bool quietHoursActive(time_t utc) {
   return config::quietActive(word,known,minute);
 }
 uint8_t quietMapBrightness() {return config::unpackScreenPreferences(readScreenPreferences()).quietMapBrightness;}
+void showUpgrade(UpgradePhase phase,const char *version,uint8_t percent) {
+  bool changed=false;
+  portENTER_CRITICAL(&screenDataMux);
+  UpgradeView next=upgradeView;next.phase=phase;next.percent=percent>99?99:percent;
+  if(version)snprintf(next.version,sizeof(next.version),"%s",version);
+  changed=next.phase!=upgradeView.phase || next.percent!=upgradeView.percent || strcmp(next.version,upgradeView.version)!=0;
+  if(changed){next.shownAtMs=millis();upgradeView=next;}
+  portEXIT_CRITICAL(&screenDataMux);
+  if(changed){requestRefresh();Serial.printf("OLED update: phase %u, version %s, %u%%\n",unsigned(phase),version?version:"unchanged",unsigned(percent));}
+}
 void publishScreenData(const ScreenData &data) {
   portENTER_CRITICAL(&screenDataMux);
   screenData = data;
@@ -333,7 +355,8 @@ void advanceScreen() {
   navigate(Action::NextScreen, millis());
 }
 void navigate(Action action, uint32_t nowMs) {
-  if (__atomic_load_n(&setupMode, __ATOMIC_RELAXED)) return;
+  UpgradeView upgrade;
+  if (__atomic_load_n(&setupMode, __ATOMIC_RELAXED) || readUpgrade(upgrade,nowMs)) return;
   portENTER_CRITICAL(&screenDataMux);
   const bool changed = navigation.input(action, nowMs);
   const auto view = navigation.view();
@@ -343,7 +366,8 @@ void navigate(Action action, uint32_t nowMs) {
   }
 }
 void serviceNavigation(uint32_t nowMs, bool active) {
-  const bool usable=active && !__atomic_load_n(&setupMode,__ATOMIC_RELAXED);
+  UpgradeView upgrade;
+  const bool usable=active && !__atomic_load_n(&setupMode,__ATOMIC_RELAXED) && !readUpgrade(upgrade,nowMs);
   static bool checkedAnniversary=false;
   static uint32_t anniversaryCheckedAt=0;
   static uint16_t anniversaryYear=0;
@@ -414,5 +438,5 @@ Status status() {
 }
 }
 #else
-namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void setSetupMode(bool) {} void setScreenPreferences(uint64_t) {} bool quietHoursActive(time_t) {return false;} uint8_t quietMapBrightness() {return 255;} void publishScreenData(const ScreenData &) {} void showLineTest(semantic::Route,uint8_t,uint16_t,uint16_t,bool) {} void clearLineTest() {} void showEasterEgg(const ScreenText &) {} void clearEasterEgg() {} void setRouteFocus(bool,semantic::Route) {} Screen selectedScreen() { return Screen::Main; } void advanceScreen() {} void navigate(Action,uint32_t) {} void serviceNavigation(uint32_t,bool) {} void setReturnSeconds(uint16_t) {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} void setTrackedTrains(uint32_t, bool) {} void setVisibleMapLights(uint16_t) {} Status status() { return {}; } }
+namespace brooklyn::oled { void begin(uint8_t, uint8_t) {} void setContrast(uint8_t) {} void setEnabled(bool) {} void setSetupMode(bool) {} void showUpgrade(UpgradePhase,const char *,uint8_t) {} void setScreenPreferences(uint64_t) {} bool quietHoursActive(time_t) {return false;} uint8_t quietMapBrightness() {return 255;} void publishScreenData(const ScreenData &) {} void showLineTest(semantic::Route,uint8_t,uint16_t,uint16_t,bool) {} void clearLineTest() {} void showEasterEgg(const ScreenText &) {} void clearEasterEgg() {} void setRouteFocus(bool,semantic::Route) {} Screen selectedScreen() { return Screen::Main; } void advanceScreen() {} void navigate(Action,uint32_t) {} void serviceNavigation(uint32_t,bool) {} void setReturnSeconds(uint16_t) {} void showBrightness(bool, uint8_t, uint8_t) {} void clearBrightnessFeedback() {} void setTrackedTrains(uint32_t, bool) {} void setVisibleMapLights(uint16_t) {} Status status() { return {}; } }
 #endif

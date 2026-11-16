@@ -2,7 +2,7 @@
 
 Specially Designed for Avi Yao
 
-Guide for preview firmware **0.2.74**. Start with the
+Guide for preview firmware **0.2.77**. Start with the
 [one-page quick start](AVI_QUICK_START.md) if you just want to try the map.
 
 ## A few useful words
@@ -202,3 +202,14 @@ usual message to Joel. On some phones you must choose Copy after the text is
 selected. The report excludes passwords, sign-in details, Wi-Fi names and
 network addresses. Making a report does not change settings or send anything.
 If your map is unreachable, send a photo of its screen and describe the problem.
+
+
+## During a software update
+
+The OLED shows the version and download progress. **Do not unplug power** while
+it downloads, verifies, restarts, or checks startup. A manual update may ask you
+to approve the restart on the web page. An automatic update restarts by itself.
+After startup passes its checks, **Update complete** appears for eight seconds.
+The normal display then returns. If the OLED was off, it returns to being off.
+If you see **Update failed**, open the web update page for details and retry.
+These messages apply to web updates; USB programming uses a separate bootloader.

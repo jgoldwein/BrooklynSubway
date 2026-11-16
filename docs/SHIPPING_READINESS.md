@@ -42,8 +42,9 @@ upload does not prove internet updates work.
 Completed on COM6 with 0.2.74 on November 15, 2026: operator confirmed the
 web update finished; device reports the new version, successful boot-health
 confirmation, fresh 8/8 feeds and live map output. COM5 remains 0.2.50 for its
-existing baseline test. Automatic unattended installation and forced physical
-rollback are separate from this successful manual internet-update rehearsal.
+existing baseline test. Scheduled unattended updating also passed on COM6 from 0.2.74 to 0.2.75; see
+[the recorded rehearsal](AUTOMATIC_UPDATE_REHEARSAL_0.2.75.md). Forced physical
+rollback remains a separate, unexercised test.
 
 ## 4. Stability and recovery
 

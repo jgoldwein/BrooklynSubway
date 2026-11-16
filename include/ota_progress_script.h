@@ -24,7 +24,7 @@ function probe(){get('/api/status?ota='+Date.now(),function(x){
  if(x.status!==200){later(probe);return;}
  var d;try{d=JSON.parse(x.responseText)}catch(e){later(probe);return;}
  if(d.firmwareVersion===expected){
-  if(d.otaBootConfirmed===true){done=true;bar.value=100;title.textContent='Update complete';text.textContent='Running version '+expected+'. Opening the status page...';setTimeout(function(){location.replace('/')},2000);return;}
+  if(d.otaBootConfirmed===true){var warning=document.getElementById('power-warning');if(warning)warning.hidden=true;done=true;bar.value=100;title.textContent='Update complete';text.textContent='Running version '+expected+'. Opening the status page...';setTimeout(function(){location.replace('/')},2000);return;}
   title.textContent='Confirming startup';text.textContent='Version '+expected+' has started. Waiting for its boot health check...';later(probe);return;
  }
  text.textContent='Waiting for version '+expected+(d.firmwareVersion?'; device reports '+d.firmwareVersion:'')+'...';

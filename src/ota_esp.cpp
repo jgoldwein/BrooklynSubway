@@ -7,6 +7,7 @@
 
 #include "lan_web_policy.h"
 #include "ota_trusted_keys.h"
+#include "oled_clock.h"
 
 #include <Arduino.h>
 #include <esp_ota_ops.h>
@@ -151,6 +152,7 @@ bool gSetupHealthy = false;
 bool gSetupReported = false;
 bool gMarkedValid = false;
 bool gImageConfirmed = false;
+bool gPendingOtaBoot = false;
 constexpr uint32_t kHealthyUptimeMs = 15000;
 
 }  // namespace
@@ -177,13 +179,14 @@ Result WebOtaSession::start(size_t contentLength, bool deferActivation) {
   if (!impl_) return Result::WriterBegin;
   if (impl_->writer.activationPending()) return Result::Busy;
   if (installer_) installer_->abort();
+  oled::showUpgrade(oled::UpgradePhase::Downloading, "", 0);
   impl_->writer.deferActivation(deferActivation);
   const InstallerConfig config{BROOKLYN_OTA_TARGET, kTrustedKeys,
                                kTrustedKeyCount, firmwareVersion()};
   installer_.reset(new (std::nothrow) Installer(config, impl_->sha,
                                                 impl_->verifier,
                                                 impl_->writer));
-  if (!installer_) return Result::WriterBegin;
+  if (!installer_) {oled::showUpgrade(oled::UpgradePhase::Failed);return Result::WriterBegin;}
   Serial.printf("OTA: update started target=%s length=%u keys=%u\n",
                 BROOKLYN_OTA_TARGET_NAME,
                 static_cast<unsigned>(contentLength),
@@ -191,6 +194,7 @@ Result WebOtaSession::start(size_t contentLength, bool deferActivation) {
                     provisionedKeyCount(kTrustedKeys, kTrustedKeyCount)));
   const Result result = installer_->start(contentLength);
   if (result != Result::Ok) {
+    oled::showUpgrade(oled::UpgradePhase::Failed);
     Serial.printf("OTA: rejected - %s\n", resultName(result));
   }
   return result;
@@ -207,14 +211,22 @@ Result WebOtaSession::feed(const uint8_t *data, size_t length) {
                   installer_->downgrade() ? "YES" : "no");
   }
   if (result != Result::Ok) {
+    oled::showUpgrade(oled::UpgradePhase::Failed);
     Serial.printf("OTA: failed - %s\n", resultName(result));
+  }
+  if(result==Result::Ok && installer_->headerValid()) {
+    const auto &header=installer_->header();
+    const uint8_t percent=header.payloadSize?static_cast<uint8_t>(uint64_t(installer_->payloadReceived())*99/header.payloadSize):0;
+    oled::showUpgrade(oled::UpgradePhase::Downloading,header.version,percent);
   }
   return result;
 }
 
 Result WebOtaSession::finish() {
   if (!installer_) return Result::NotStarted;
+  oled::showUpgrade(oled::UpgradePhase::Verifying);
   const Result result = installer_->finish();
+  oled::showUpgrade(result==Result::Ok?(impl_->writer.activationPending()?oled::UpgradePhase::Ready:oled::UpgradePhase::Restarting):oled::UpgradePhase::Failed);
   Serial.printf("OTA: %s\n",
                 result == Result::Ok
                     ? (impl_->writer.activationPending()
@@ -227,6 +239,7 @@ Result WebOtaSession::finish() {
 bool WebOtaSession::activatePendingImage() {
   if (!impl_) return false;
   const bool activated = impl_->writer.activatePendingImage();
+  oled::showUpgrade(activated?oled::UpgradePhase::Restarting:oled::UpgradePhase::Failed);
   Serial.printf("OTA: boot activation %s\n", activated ? "approved" : "FAILED");
   return activated;
 }
@@ -237,9 +250,14 @@ bool WebOtaSession::activationPending() const {
 
 void WebOtaSession::abort() {
   if (installer_) installer_->abort();
+  oled::showUpgrade(oled::UpgradePhase::Failed);
 }
 
 void healthSetupComplete(bool setupHealthy) {
+  esp_ota_img_states_t imageState=ESP_OTA_IMG_UNDEFINED;
+  const esp_partition_t *running=esp_ota_get_running_partition();
+  gPendingOtaBoot=running && esp_ota_get_state_partition(running,&imageState)==ESP_OK && imageState==ESP_OTA_IMG_PENDING_VERIFY;
+  if(gPendingOtaBoot)oled::showUpgrade(oled::UpgradePhase::Checking,WebOtaSession::firmwareVersion());
   gSetupHealthy = setupHealthy;
   gSetupReported = true;
   Serial.printf("OTA health gate: setup %s; rollback confirmation after %u s\n",
@@ -253,6 +271,7 @@ void healthService(uint32_t nowMs) {
   gMarkedValid = true;
   const esp_err_t result = esp_ota_mark_app_valid_cancel_rollback();
   gImageConfirmed = result == ESP_OK;
+  if(gPendingOtaBoot)oled::showUpgrade(gImageConfirmed?oled::UpgradePhase::Complete:oled::UpgradePhase::Failed,WebOtaSession::firmwareVersion());
   Serial.printf("OTA health gate: image confirmed (%s)\n",
                 result == ESP_OK ? "ok" : esp_err_to_name(result));
 }

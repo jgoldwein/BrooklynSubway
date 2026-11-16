@@ -19,6 +19,28 @@ class TextWriter {
   ScreenText &out_;
 };
 }
+bool upgradeActive(const UpgradeView &v,uint32_t nowMs) {
+  if(v.phase==UpgradePhase::None)return false;
+  const uint32_t duration=v.phase==UpgradePhase::Complete?8000:v.phase==UpgradePhase::Failed?12000:0;
+  return !duration || static_cast<uint32_t>(nowMs-v.shownAtMs)<duration;
+}
+void formatUpgrade(const UpgradeView &v,ScreenText &out) {
+  out={};TextWriter write(out);
+  write(0,v.phase==UpgradePhase::Complete?"Update complete":v.phase==UpgradePhase::Failed?"Update failed":"Firmware update");
+  write(1,"Version %.13s",v.version[0]?v.version:"pending");
+  if(v.phase==UpgradePhase::Complete){write(2,"Startup checks passed");write(3,"Returning to display");return;}
+  if(v.phase==UpgradePhase::Failed){write(2,"See web update page");write(3,"Please try again");return;}
+  switch(v.phase){
+    case UpgradePhase::Downloading:write(2,"Downloading: %u%%",unsigned(v.percent>99?99:v.percent));break;
+    case UpgradePhase::Verifying:write(2,"Verifying update");break;
+    case UpgradePhase::Ready:write(2,"Ready to restart");break;
+    case UpgradePhase::Restarting:write(2,"Restarting...");break;
+    case UpgradePhase::Checking:write(2,"Checking startup");break;
+    default:break;
+  }
+  write(3,"Do not unplug power");
+  write(4,v.phase==UpgradePhase::Ready?"Approve on web page":"Please wait");
+}
 const char *screenName(Screen screen) {
   switch (screen) {
     case Screen::Activity: return "Train activity";

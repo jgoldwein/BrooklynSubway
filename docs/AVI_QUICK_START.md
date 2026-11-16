@@ -2,7 +2,7 @@
 
 Specially Designed for Avi Yao
 
-These instructions match the current preview firmware, 0.2.74. Older releases
+These instructions match the current preview firmware, 0.2.77. Older releases
 may work differently.
 
 ## Turn it on

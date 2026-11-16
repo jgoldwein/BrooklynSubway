@@ -18,6 +18,8 @@ void setContrast(uint8_t contrast);
 void setEnabled(bool enabled);
 // Setup instructions replace the clock only while the provisioning AP is active.
 void setSetupMode(bool enabled);
+// Worker-owned OLED overlay; publishers never access I2C.
+void showUpgrade(UpgradePhase phase,const char *version=nullptr,uint8_t percent=0);
 void publishScreenData(const ScreenData &data);
 void showLineTest(semantic::Route route,uint8_t color,uint16_t current,uint16_t total,bool individual);
 void clearLineTest();

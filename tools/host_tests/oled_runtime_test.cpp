@@ -11,7 +11,7 @@ FakeSerial Serial; FakeWire Wire;
 uint32_t fakeNowMs=120000;
 uint32_t millis() { return fakeNowMs; }
 char lastScreenTitle[24]{};
-int borderDraws=0;
+int borderDraws=0,upgradeDraws=0,powerWarnings=0,completeDraws=0,failedDraws=0;
 int clockOnlyDraws=0,dateOnlyDraws=0;
 char lastOutside[24]{};
 char lastMac[24]{};
@@ -42,6 +42,8 @@ void delay(uint32_t ms){OLED_CHECK(ms==100);++retryDelays;}
 void vTaskDelete(void *) {++deletes;}
 void vTaskDelay(uint32_t ms) {
  OLED_CHECK(ms==20);++delays;fakeNowMs+=(scenario==19 || scenario==39)?1000:20;
+ if((scenario==58 || scenario==59) && delays==1){fakeNowMs+=scenario==58?8000:12000;return;}
+ if(scenario==60 && delays==1){brooklyn::oled::showUpgrade(brooklyn::oled::UpgradePhase::Complete,"0.2.77");return;}
  if(scenario==50 && delays==1) {brooklyn::oled::setRouteFocus(false,brooklyn::semantic::Route::None);return;}
  if(scenario==53 && delays==1) {brooklyn::oled::clearLineTest();return;}
  if(scenario==43 && delays==1) {brooklyn::oled::clearEasterEgg();return;}
@@ -170,6 +172,17 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
    for(int i=0;i<3;++i) brooklyn::oled::advanceScreen();
  }
  if(scenario==55) for(int i=0;i<3;++i) brooklyn::oled::navigate(brooklyn::oled::Action::TurnPrevious,fakeNowMs);
+ if(scenario>=56 && scenario<=61) {
+   using namespace brooklyn::oled;
+   UpgradeView v;v.phase=UpgradePhase::Complete;v.shownAtMs=UINT32_MAX-100;
+   OLED_CHECK(upgradeActive(v,uint32_t(v.shownAtMs+7999)) && !upgradeActive(v,uint32_t(v.shownAtMs+8000)));
+   v.phase=UpgradePhase::Failed;OLED_CHECK(upgradeActive(v,uint32_t(v.shownAtMs+11999)) && !upgradeActive(v,uint32_t(v.shownAtMs+12000)));
+   for(unsigned phase=1;phase<=7;++phase){v.phase=static_cast<UpgradePhase>(phase);v.percent=255;strcpy(v.version,"12345678901234567890123456789012");ScreenText text;formatUpgrade(v,text);for(auto &line:text.lines)OLED_CHECK(strlen(line)<=21);OLED_CHECK((strstr(text.lines[3],"Do not unplug power")!=nullptr)==(phase<=5));}
+   showUpgrade(scenario==58?UpgradePhase::Complete:scenario==59?UpgradePhase::Failed:scenario==60?UpgradePhase::Checking:scenario==57?UpgradePhase::Ready:UpgradePhase::Downloading,"0.2.77",45);
+   const auto previous=selectedScreen();navigate(Action::NextScreen,fakeNowMs);OLED_CHECK(selectedScreen()==previous);
+   if(scenario==56 || scenario==58)setEnabled(false);
+   if(scenario==61){setSetupMode(true);showBrightness(true,16,255);}
+ }
  const uint8_t preferred=scenario==11?0x3c:0x38;
  brooklyn::oled::begin(preferred,scenario==12||scenario==13?32:207);OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
  if(scenario==6){OLED_CHECK(worker==nullptr);puts("OLED task allocation failure isolated PASS");return 0;}
@@ -228,5 +241,11 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==53) OLED_CHECK(frames==3 && strcmp(lastScreenTitle,"Line F only")==0);
  if(scenario==54) OLED_CHECK(frames==2 && strcmp(lastMac,"MAC 28:84:85:34:1F:74")==0);
  if(scenario==55) OLED_CHECK(frames==2 && clockOnlyDraws==2 && dateOnlyDraws==2);
+ if(scenario==56)OLED_CHECK(frames==2 && titles==0 && upgradeDraws==2 && powerWarnings==2 && powerCommands==0);
+ if(scenario==57)OLED_CHECK(frames==2 && powerWarnings==2 && strcmp(lastScreenTitle,"Firmware update")==0);
+ if(scenario==58)OLED_CHECK(frames==2 && completeDraws==2 && powerWarnings==0 && powerCommands==1);
+ if(scenario==59)OLED_CHECK(frames==3 && failedDraws==2 && titles==1 && powerWarnings==0);
+ if(scenario==60)OLED_CHECK(frames==3 && upgradeDraws==2 && completeDraws==1 && powerWarnings==2);
+ if(scenario==61)OLED_CHECK(frames==2 && upgradeDraws==2 && setupTitles==0 && powerWarnings==2);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }
