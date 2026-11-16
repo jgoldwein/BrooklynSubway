@@ -5,6 +5,7 @@
 namespace brooklyn::display::live {
 
 void Controller::publish(const Snapshot &snapshot) {
+  const bool finishedSetup=hasSnapshot_ && snapshot_.status.provisioning && !snapshot.status.provisioning;
   if(snapshot.status.provisioning) clearRouteFocus();
   if ((memcmp(snapshot_.frame.occupancy, snapshot.frame.occupancy,
               sizeof(snapshot.frame.occupancy)) != 0 ||
@@ -18,6 +19,10 @@ void Controller::publish(const Snapshot &snapshot) {
   snapshot_ = snapshot;
   hasSnapshot_ = true;
   everHadFrame_ = everHadFrame_ || snapshot.hasFrame;
+  // Provisioning deliberately disarms output. Completing that mode is a new
+  // start request, gated by fresh data and the existing POWER/quiet/fault policy.
+  if(finishedSetup && physicalPowerControl_ && snapshot.status.systemHealthy && ledsRequested())
+    requestAutomaticStart();
   // With no web enable switch, a later physical POWER press may retry once
   // healthy data returns. This never auto-restarts a fault-stopped session.
   if (physicalPowerControl_ && snapshot.hasFrame && snapshot.status.systemHealthy &&

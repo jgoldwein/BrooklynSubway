@@ -361,5 +361,25 @@ int main() {
     focus.toggleRouteFocus();s.status.provisioning=true;focus.publish(s);CHECK(!focus.routeFocusActive());
     puts("Route focus: all 18 actual map filters, wrap, saved-zero override, latest saved restore, quiet preservation and recovery/setup exit PASS");
   }
+  {
+    live::Controller setup(true);auto pending=snapshot();pending.hasFrame=false;
+    pending.status.provisioning=true;pending.status.displayState=display::State::WaitingForData;
+    setup.publish(pending);setup.service(0,false,false,ops);CHECK(!setup.enabled());
+    // The portal disarms output; association success does not imply usable feeds yet.
+    setup.disable(ops);pending.status.provisioning=false;
+    setup.publish(pending);setup.service(1,false,false,ops);CHECK(!setup.enabled() && setup.stats().automaticStartPending);
+    auto fresh=snapshot();fresh.frameAtMs=2;setup.publish(fresh);setup.service(2,false,false,ops);CHECK(setup.enabled());
+    // POWER off selected during setup survives the setup-to-LAN transition.
+    live::Controller off(true);pending.status.provisioning=true;off.publish(pending);off.service(0,false,false,ops);
+    off.service(10,true,false,ops);off.service(50,true,false,ops);off.service(100,false,false,ops);off.service(140,false,false,ops);
+    CHECK(off.stats().powerMode==1);fresh.frameAtMs=150;off.publish(fresh);off.service(150,false,false,ops);CHECK(!off.enabled());
+    live::Controller quiet(true);quiet.publish(pending);quiet.service(0,false,false,ops);quiet.setQuietBrightness(0);
+    quiet.publish(fresh);quiet.service(150,false,false,ops);CHECK(!quiet.enabled());
+    quiet.setQuietBrightness(255);quiet.service(151,false,false,ops);CHECK(quiet.enabled());
+    live::Controller bad(true);bad.publish(pending);bad.service(0,false,false,ops);
+    fresh.status.systemHealthy=false;bad.publish(fresh);bad.service(150,false,false,ops);CHECK(!bad.enabled());
+    fresh.status.systemHealthy=true;bad.publish(fresh);bad.service(151,false,false,ops);CHECK(!bad.enabled());
+    puts("Provisioning exit: fresh-feed auto start, POWER off, quiet restore and unhealthy transition guards PASS");
+  }
   puts("Live display: safe startup, automatic/manual enable, continuous color, four POWER modes, release debounce, 3-second reboot once, boot-held suppression, test restoration, maintenance/fault guards, stale timeout, brightness/current caps, MODE overlay and rollover PASS");
 }
