@@ -16,7 +16,7 @@ updates and scheduled automatic updates, using one shared OTA session path.
 
 No new storage keys, tasks, libraries, GPIO assignments or signing-key changes.
 USB bootloader flashing cannot show an application-managed OLED progress page.
-A private 0.2.76 bootstrap installs the overlay on COM6 before its automatic
+An automatic 0.2.76 bootstrap installs the overlay on COM6 before its automatic
 0.2.77 rehearsal, so the full download-to-completion display can be tested.
 
 Validation: all 34 host suites pass, including 62 OLED runtime scenarios for
