@@ -25,7 +25,7 @@ bool feedIndicatorAttached = false;
 bool feedIndicatorOn = false;
 bool feedIndicatorUnavailable = false;
 bool feedReadyBeepAttempted = false;
-void stopKnobToneLocked();
+void stopKnobToneLocked(bool preserveSettings=false);
 void lockIndicator();
 void unlockIndicator();
 
@@ -225,16 +225,18 @@ uint32_t indicatorLock = 0;
 bool indicatorRequested = false, indicatorAllowed = true;
 uint32_t allowedWord = 1;
 #if defined(BROOKLYN_TARGET_PCB)
-uint32_t knobPending = 0;
+uint32_t knobPending = 0,settingsPending=0,settingsAtMs=0;
+uint8_t settingsStep=0;bool knobSettings=false;
 bool knobActive = false, knobGap = false;
 bool knobReady=false;
 uint32_t knobUntilMs = 0;
-void stopKnobToneLocked() {
+void stopKnobToneLocked(bool preserveSettings) {
   if(knobActive) {
     ledcWrite(7,0);ledcDetachPin(pins::BUZZER);digitalWrite(pins::BUZZER,LOW);
   }
   knobActive=knobGap=false;
-  knobReady=false;
+  knobReady=knobSettings=false;settingsStep=0;
+  if(!preserveSettings)__atomic_store_n(&settingsPending,0u,__ATOMIC_RELAXED);
   __atomic_store_n(&readyPending,0u,__ATOMIC_RELAXED);
   __atomic_store_n(&knobPending,0u,__ATOMIC_RELAXED);
 }
@@ -298,6 +300,14 @@ void requestKnobClick() {
   while(pending<8 && !__atomic_compare_exchange_n(&knobPending,&pending,pending+1,false,__ATOMIC_RELAXED,__ATOMIC_RELAXED)) {}
 #endif
 }
+void requestSettingsSaved() {
+#if defined(BROOKLYN_TARGET_PCB)
+  if(isQuiet())return;
+  __atomic_store_n(&settingsAtMs,millis()+250u,__ATOMIC_RELAXED);
+  __atomic_store_n(&settingsPending,1u,__ATOMIC_RELEASE);
+  Serial.println("Settings saved: confirmation queued");
+#endif
+}
 void enableStatusReadyCues() {
 #if defined(BROOKLYN_TARGET_PCB)
   __atomic_store_n(&statusCuesEnabled,1u,__ATOMIC_RELAXED);
@@ -321,13 +331,23 @@ void serviceKnobClick(uint32_t nowMs,bool allowed) {
   else if(knobActive) {
     if(static_cast<int32_t>(nowMs-knobUntilMs)>=0) {
       ledcWrite(7,0);ledcDetachPin(pins::BUZZER);digitalWrite(pins::BUZZER,LOW);
-      const uint32_t gap=knobReady?80:15;
-      knobActive=knobReady=false;knobGap=true;knobUntilMs=nowMs+gap;
+      const uint32_t gap=knobSettings?50:knobReady?80:15;
+      if(knobSettings)settingsStep=settingsStep==1?2:0;
+      knobActive=knobReady=knobSettings=false;knobGap=true;knobUntilMs=nowMs+gap;
     }
   } else if(!knobGap || static_cast<int32_t>(nowMs-knobUntilMs)>=0) {
     knobGap=false;
     const uint32_t ready=__atomic_load_n(&readyPending,__ATOMIC_RELAXED);
-    if(ready) {
+    const bool savedDue=__atomic_load_n(&settingsPending,__ATOMIC_ACQUIRE) &&
+        static_cast<int32_t>(nowMs-__atomic_load_n(&settingsAtMs,__ATOMIC_RELAXED))>=0;
+    if(settingsStep || savedDue) {
+      if(!settingsStep){__atomic_store_n(&settingsPending,0u,__ATOMIC_RELAXED);settingsStep=1;}
+      const uint16_t hz=settingsStep==1?1200:1800;
+      if(ledcSetup(7,hz,8)!=0) {
+        ledcWrite(7,0);ledcAttachPin(pins::BUZZER,7);ledcWrite(7,64);
+        knobActive=knobSettings=true;knobUntilMs=nowMs+60;
+      } else {settingsStep=0;digitalWrite(pins::BUZZER,LOW);}
+    } else if(ready) {
       const uint32_t bit=ready&(~ready+1u);
       __atomic_fetch_and(&readyPending,~bit,__ATOMIC_RELAXED);
       const uint16_t hz=bit==1?1000:bit==2?1500:2000;
@@ -355,7 +375,7 @@ static void signalFeedback(uint8_t value, uint8_t maximum,uint16_t durationMs) {
   if(isQuiet()) return;
   // Main-loop caller; serialize with the feed-ready cue on the same PWM timer.
   lockIndicator();
-  stopKnobToneLocked();
+  stopKnobToneLocked(true);
   constexpr uint8_t channel = 7;
   const uint8_t bounded = value < maximum ? value : maximum;
   const uint16_t frequency = 800 + (maximum ? uint32_t(bounded) * 2400 / maximum : 0);

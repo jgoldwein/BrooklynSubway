@@ -3,6 +3,7 @@
 
 #include "wifi_portal.h"
 #include "admin_auth.h"
+#include "hardware.h"
 #include "web_ui_assets.h"
 #include "wifi_setup_assets.h"
 
@@ -252,6 +253,7 @@ void Portal::handleAdminSetup() {
         "administrator settings were not changed");
     return;
   }
+  hardware::requestSettingsSaved();
   Serial.println("Provisioning: administrator password set or reset locally");
   server_.sendHeader("Location", "/", true);
   server_.send(303, "text/plain", "");
@@ -363,6 +365,7 @@ Portal::Result Portal::service(uint32_t nowMs) {
       stationIpText.toCharArray(connectedIp_, sizeof(connectedIp_));
       if (commitIfAssociated(store_, candidate_, true)) {
         saved_ = true;
+        hardware::requestSettingsSaved();
         savedAtMs_ = nowMs;
         lastStatus_ = PortalStatus::Saved;
         Serial.printf("Provisioning: SUCCESS - joined selected Wi-Fi network; LAN IP %s; credentials saved\n",

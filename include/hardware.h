@@ -25,6 +25,8 @@ void signalSetupReady();
 void signalUpgradeStarting();
 // Bounded, nonblocking knob feedback; serviced by the live input task.
 void requestKnobClick();
+// Successful persistence only; coalesced, nonblocking two-note confirmation.
+void requestSettingsSaved();
 void serviceKnobClick(uint32_t nowMs, bool allowed);
 void setQuiet(bool quiet,uint8_t mapBrightness=255);
 // Manual easter-egg tone; zero stops. Shared timer/quiet policy, no delay.

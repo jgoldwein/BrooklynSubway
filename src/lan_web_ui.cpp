@@ -468,6 +468,7 @@ void LanWebUi::handleOledAddress() {
     server_.send(400, "text/plain", "Use a 7-bit hex address from 0x08 to 0x77"); return;
   }
   if (!configuration_.setOledAddress(address)) { server_.send(500, "text/plain", "Could not save OLED address"); return; }
+  hardware::requestSettingsSaved();
   Serial.printf("OLED clock: saved address 0x%02X; reboot to apply\n", address);
   server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "OLED address saved; reboot to apply");
 }
@@ -492,6 +493,7 @@ void LanWebUi::handleTrainColors() {
     }
   }
   if (!configuration_.setTrainColors(colors)) { server_.send(500,"text/plain","Could not save colors"); return; }
+  hardware::requestSettingsSaved();
   Serial.println("Train state colors saved; live display updates without restarting visit timers");
   server_.sendHeader("Location","/"); server_.send(303,"text/plain","Train colors saved");
 }
@@ -519,6 +521,7 @@ void LanWebUi::handleUnknownTiming() {
   if (!configuration_.setUnknownTiming(setting)) {
     server_.send(500,"text/plain","Could not save uncertain train settings"); return;
   }
+  hardware::requestSettingsSaved();
   Serial.printf("Uncertain trains: style %s, brightness %u/255, fade %lu seconds\n",mode.c_str(),brightness,static_cast<unsigned long>(seconds));
   server_.sendHeader("Location","/"); server_.send(303,"text/plain","Uncertain train settings saved");
 }
@@ -559,6 +562,7 @@ void LanWebUi::handleSaveScreenOptions() {
   if(!config::validScreenPreferences(word)) {server_.send(400,"text/plain","Start and end times must differ");return;}
   if(!configuration_.setScreenPreferences(word)) {server_.send(500,"text/plain","Could not save screen settings");return;}
   oled::setScreenPreferences(word);hardware::setQuiet(oled::quietHoursActive(time(nullptr)),oled::quietMapBrightness());
+  hardware::requestSettingsSaved();
   server_.sendHeader("Location","/screen-options");server_.send(303,"text/plain","Screen settings saved");
 }
 
@@ -576,6 +580,7 @@ void LanWebUi::handleOledReturn() {
     server_.send(400,"text/plain","Choose Stay, 30 seconds, 1, 2 or 5 minutes");return;
   }
   if(!configuration_.setOledReturnSeconds(seconds)) {server_.send(500,"text/plain","Could not save screen return setting");return;}
+  hardware::requestSettingsSaved();
   oled::setReturnSeconds(seconds);
   server_.sendHeader("Location","/#screen");server_.send(303,"text/plain","Screen return setting saved");
 }
@@ -597,6 +602,7 @@ void LanWebUi::handleOledDimmer() {
   if (!configuration_.setOledContrast(contrast)) {
     server_.send(500, "text/plain", "Could not save OLED brightness"); return;
   }
+  hardware::requestSettingsSaved();
   oled::setContrast(contrast);
   Serial.printf("OLED clock: saved contrast %u/255; worker applies within one second\n", contrast);
   server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "OLED brightness saved");
@@ -616,6 +622,7 @@ void LanWebUi::handlePollInterval() {
     server_.send(400, "text/plain", "Choose 15 to 120 seconds"); return;
   }
   if (!configuration_.setPollSeconds(seconds)) { server_.send(500, "text/plain", "Could not save interval"); return; }
+  hardware::requestSettingsSaved();
   Serial.printf("MTA poll wait: %lu seconds after each completed cycle\n", static_cast<unsigned long>(seconds));
   server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "Interval saved");
 }
@@ -657,6 +664,7 @@ void LanWebUi::handleBrightness() {
     server_.send(500, "text/plain", "Unable to save brightness");
     return;
   }
+  hardware::requestSettingsSaved();
   server_.sendHeader("Location", "/", true);
   server_.send(303, "text/plain", "");
 }
@@ -704,6 +712,7 @@ void LanWebUi::handleDnsSettings() {
     server_.send(500, "text/plain", "Unable to save DNS settings");
     return;
   }
+  hardware::requestSettingsSaved();
   char address[16] = {};
   config::formatDnsIpv4(ipv4, address, sizeof(address));
   Serial.printf("LAN UI: manual DNS %s%s%s%s\n",
@@ -754,6 +763,7 @@ void LanWebUi::handleRoutes() {
     server_.send(500, "text/plain", "Unable to save route selection");
     return;
   }
+  hardware::requestSettingsSaved();
   Serial.printf("LAN UI: route visibility saved (mask 0x%05lx)\n",
                 static_cast<unsigned long>(visibilityMask));
   server_.sendHeader("Location", "/", true);
@@ -1011,6 +1021,7 @@ void LanWebUi::handlePasswordChange() {
     server_.send(500, "text/plain", "Unable to save administrator password");
     return;
   }
+  hardware::requestSettingsSaved();
   server_.sendHeader(
       "Set-Cookie",
       "bkmap_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0");
@@ -1368,6 +1379,7 @@ void LanWebUi::handleUpdateInterval() {
                "The setting could not be saved. It is unchanged.", 2, 0);
     return;
   }
+  hardware::requestSettingsSaved();
   prefs.end();
   checkIntervalMs_ = static_cast<uint32_t>(mins) * 60000u;
   lastReleaseCheckMs_ = millis();
@@ -1395,6 +1407,7 @@ void LanWebUi::handleUpdateAuto() {
                "The setting could not be saved. It is unchanged.", 2, 0);
     return;
   }
+  hardware::requestSettingsSaved();
   prefs.end();
   autoInstall_ = enable;
   Serial.printf("OTA auto-install setting: %s\n", enable ? "ON" : "OFF");

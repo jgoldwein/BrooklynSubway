@@ -17,6 +17,8 @@ bool feedReadyMode = false;
 bool brightnessMode = false;
 bool knobMode=false,probePriority=false,eggMode=false,readyMode=false;
 uint32_t lastFeedbackMs=0;
+bool settingsCueMode=false;uint32_t soundNow=0;
+uint32_t millis(){return soundNow;}
 bool upgradeCueMode=false;uint32_t upgradeCueMs=0;int upgradeNotes=0;
 int readyBeeps = 0;
 int beepStarts = 0, cueMs = 0, cueOnMs = 0, abortAtMs = -1;
@@ -57,7 +59,8 @@ uint32_t ledcSetup(uint8_t channel, uint32_t hz, uint8_t resolution) {
     ++feedSetups; return failFeedSetup ? 0 : hz;
   }
   CHECK(channel == 7 && resolution == 8 && duty == 0);
-  if(upgradeCueMode){CHECK(hz==(upgradeNotes?900u:1200u));++upgradeNotes;}
+  if(settingsCueMode){CHECK(hz==1200 || hz==1800 || hz==2000 || hz==800);}
+  else if(upgradeCueMode){CHECK(hz==(upgradeNotes?900u:1200u));++upgradeNotes;}
   else if(readyMode) {CHECK(hz==1000 || hz==1500 || hz==2000);}
   else if(eggMode) {CHECK(hz>=100 && hz<=4000);}
   else if (knobMode) {CHECK(hz==2000);}
@@ -78,7 +81,7 @@ void ledcAttachPin(uint8_t pin, uint8_t channel) {
 }
 void ledcWrite(uint8_t channel, uint32_t value) {
   if (channel == 4) { CHECK(value <= 8); feedDuty = value; return; }
-  CHECK(channel == 7 && (value == 0 || value == 128 || (upgradeCueMode && value==64)));
+  CHECK(channel == 7 && (value == 0 || value == 128 || ((upgradeCueMode || settingsCueMode) && value==64)));
   if (cueMode && value == 128) ++beepStarts;
   duty = value;
 }
@@ -118,6 +121,8 @@ void delay(uint32_t ms) {
   }
 }
 void reset(bool muted, int failAt = -1) {
+  brooklyn::hardware::serviceKnobClick(0,false);
+  settingsCueMode=false;soundNow=0;
   knobMode=false;probePriority=false;readyMode=false;upgradeCueMode=false;upgradeCueMs=0;upgradeNotes=0;
   brightnessMode = false;
   cueMode = false;
@@ -299,5 +304,22 @@ int main() {
   reset(false,0);upgradeCueMode=true;brooklyn::hardware::signalUpgradeStarting();CHECK(attachCalls==0 && duty==0 && buzzer==LOW);
   reset(false,1);upgradeCueMode=true;brooklyn::hardware::signalUpgradeStarting();CHECK(attachCalls==1 && detachCalls==1 && duty==0 && buzzer==LOW);
   puts("Upgrade cue: two descending 100ms notes, 120ms gap, quarter-duty, quiet suppression and PWM failure cleanup PASS");
+  reset(false);settingsCueMode=true;
+  using brooklyn::hardware::requestSettingsSaved;
+  requestSettingsSaved();serviceKnobClick(249,true);CHECK(duty==0);
+  serviceKnobClick(250,true);CHECK(duty==64 && frequency==1200);
+  serviceKnobClick(310,true);CHECK(duty==0);serviceKnobClick(360,true);CHECK(duty==64 && frequency==1800);
+  serviceKnobClick(420,true);serviceKnobClick(470,true);CHECK(duty==0 && attachCalls==2 && detachCalls==2);
+  reset(false);settingsCueMode=true;for(unsigned i=0;i<20;++i){soundNow=i;requestSettingsSaved();}
+  serviceKnobClick(268,true);CHECK(duty==0);serviceKnobClick(269,true);CHECK(duty==64);
+  brooklyn::hardware::setQuiet(true);serviceKnobClick(270,true);CHECK(duty==0);requestSettingsSaved();
+  brooklyn::hardware::setQuiet(false);serviceKnobClick(600,true);CHECK(attachCalls==1 && duty==0);
+  reset(false,0);settingsCueMode=true;requestSettingsSaved();serviceKnobClick(250,true);CHECK(duty==0 && attachCalls==0);
+  reset(false);settingsCueMode=true;requestSettingsSaved();serviceKnobClick(250,false);serviceKnobClick(500,true);CHECK(duty==0 && attachCalls==0);
+  reset(false);settingsCueMode=true;soundNow=UINT32_MAX-100;requestSettingsSaved();serviceKnobClick(148,true);CHECK(duty==0);serviceKnobClick(149,true);CHECK(duty==64);
+  serviceKnobClick(209,true);serviceKnobClick(259,true);serviceKnobClick(319,true);CHECK(duty==0 && attachCalls==2);
+  reset(false,1);settingsCueMode=true;requestSettingsSaved();serviceKnobClick(250,true);serviceKnobClick(310,true);serviceKnobClick(360,true);CHECK(duty==0 && attachCalls==1 && detachCalls==1);serviceKnobClick(500,true);CHECK(attachCalls==1);
+  reset(false);settingsCueMode=brightnessMode=true;requestSettingsSaved();brooklyn::hardware::signalBrightness(0,255);brightnessMode=false;serviceKnobClick(250,true);CHECK(frequency==1200 && duty==64);serviceKnobClick(310,false);CHECK(duty==0);
+  puts("Saved settings cue: two nonblocking ascending notes, coalescing/debounce, quiet cancellation, maintenance, failure and timer rollover PASS");
   puts("Startup: U23 pulses, four rising notes plus descending pair, 2265 ms, 50%-duty PWM, DIM mute, failed-check silence, PWM failure cleanup, addressable outputs disabled PASS");
 }

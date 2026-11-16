@@ -52,7 +52,9 @@ Two initial post-fix cycles completed 8/8 with live output. Serial showed 36
 external TLS allocations, zero internal fallbacks and zero allocation failures.
 Minimum internal heap was about 63 KB and largest free block about 63 KB.
 This demonstrates initial data recovery, not overnight panic resolution.
-A short real quiet-hours end test and extended capture remain necessary.
+The operator completed a short real quiet-hours window and confirmed the map
+went off and returned by itself. Extended capture remains in progress; this
+short test does not establish that the overnight panic issue is resolved.
 The candidate has not been published as a stable GitHub release.
 
 Local evidence: captures/COM6-quiet-end-2026-11-16.json,

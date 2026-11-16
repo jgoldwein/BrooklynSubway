@@ -408,6 +408,7 @@ void serviceBrightnessButtons() {
     if (value != previous && !networkService.setPhysicalBrightness(screen, value)) {
       Serial.println("Brightness buttons: could not save setting; unchanged"); continue;
     }
+    if(value!=previous)brooklyn::hardware::requestSettingsSaved();
     if (screen) brooklyn::oled::setContrast(value);
     else updateLogicalDisplay(millis());
     if (brooklyn::display::live::stats().powerMode != request.mode) continue;
