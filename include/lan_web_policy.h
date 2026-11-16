@@ -152,6 +152,7 @@ size_t renderHomePage(char *out, size_t capacity,
 const char *loginReturnPath(const char *target);
 const char *loginTargetForRequest(const char *path);
 size_t renderDefaultsPage(char *out,size_t capacity,const char *csrf);
+size_t renderHelpPage(char *out,size_t capacity,const char *version,const char *target);
 size_t renderScreenOptionsPage(char *out,size_t capacity,uint64_t preferences,bool quietNow,const char *csrf);
 size_t renderLoginPage(char *out, size_t capacity, const char *csrfToken, const char *target = "");
 size_t renderTrainMonitorPage(char *out, size_t capacity, const StatusSnapshot &status);

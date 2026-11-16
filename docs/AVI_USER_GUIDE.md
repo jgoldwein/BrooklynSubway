@@ -219,7 +219,11 @@ Weather data: [Open-Meteo](https://open-meteo.com/), licensed under
 
 ## Send Joel a support report
 
-1. Open your map's web page and choose **Advanced**, then **Get help**.
+The top-level **Help** menu includes the online guide, **Project on GitHub**,
+**About**, and **Licenses**. You can read the local Help page without internet;
+GitHub links and full license documents need internet access.
+
+1. Open your map's web page and choose **Help**, then **Make a support report**.
 2. Press **Make support report** and review the text.
 3. Press **Send report to Joel**. Your email app opens a draft addressed to
    **goldwein@gmail.com**. Describe the problem, review the message, then tap Send.

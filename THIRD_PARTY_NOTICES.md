@@ -38,3 +38,13 @@ library is licensed under the GNU Lesser General Public License, version 3 or
 included with the library source as `COPYING`; see also
 <https://www.gnu.org/licenses/lgpl-3.0.html>. This notice does not claim
 ownership of the library or alter its license.
+
+## U8g2
+
+The OLED display uses **U8g2 2.36.18** by olikraus and contributors, source:
+<https://github.com/olikraus/u8g2/tree/2.36.18>. Its library code uses the
+two-clause BSD license (BSD-2-Clause), copyright 2016 olikraus@gmail.com.
+Fonts have their own terms; the library code license does not replace them.
+See the complete upstream `LICENSE` and its linked font notices:
+<https://github.com/olikraus/u8g2/blob/2.36.18/LICENSE> and
+<https://github.com/olikraus/u8g2/wiki/fntgrp>.

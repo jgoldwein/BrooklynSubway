@@ -630,8 +630,24 @@ void testPageEscapingAndRequiredContent() {
   }
   CHECK(strstr(page,"aria-label=\"Map settings\"")!=nullptr);
   CHECK(strstr(page,">Advanced</a>")!=nullptr && strstr(page,">More</a>")==nullptr);
+  CHECK(strstr(page,"<a href=\"/help\">Help</a>")!=nullptr);
   CHECK(strstr(page,"<main>")!=nullptr && strstr(page,"</main>")!=nullptr);
   CHECK(strstr(page,"<output id=\"screen-level\"")!=nullptr);
+  {
+    char help[8192];
+    CHECK(brooklyn::web::renderHelpPage(help,sizeof(help),"0.2.87<&>","PCB<&>")>0);
+    CHECK(strstr(help,"0.2.87&lt;&amp;&gt;") && strstr(help,"PCB&lt;&amp;&gt;"));
+    CHECK(strstr(help,"href=\"/help\" aria-current=\"page\"")!=nullptr);
+    CHECK(strstr(help,"href=\"/#overview\"") && strstr(help,"href=\"/#advanced\""));
+    CHECK(strstr(help,"id=\"about\"") && strstr(help,"id=\"licenses\""));
+    CHECK(strstr(help,"Project on GitHub") && strstr(help,"AVI_USER_GUIDE.md"));
+    CHECK(strstr(help,"href=\"/support\"") && strstr(help,"Nothing is sent automatically"));
+    CHECK(strstr(help,"Apache License 2.0") && strstr(help,"CERN Open Hardware Licence") && strstr(help,"Creative Commons Attribution 4.0"));
+    CHECK(strstr(help,"THIRD_PARTY_NOTICES.md") && strstr(help,"LGPL-3.0-or-later") && strstr(help,"BSD-2-Clause"));
+    CHECK(strstr(help,"rel=\"noopener noreferrer\"") && strstr(help,"/ui.css?v=087"));
+    CHECK(brooklyn::web::renderHelpPage(help,16,"0.2.87","PCB")==0);
+    CHECK(brooklyn::web::renderHelpPage(help,sizeof(help),nullptr,nullptr)>0);
+  }
 
   {
     static char expanded[brooklyn::web::kStatusPageCapacity];
@@ -661,8 +677,8 @@ void testPageEscapingAndRequiredContent() {
   CHECK(strstr(page, "method=\"post\" action=\"/config/brightness\"") != nullptr);
   CHECK(strstr(page, "https://") == nullptr);
   CHECK(strstr(page, "cdn") == nullptr);
-  CHECK(strstr(page, "src=\"/ui.js?v=038\"") != nullptr);
-  CHECK(strstr(page, "href=\"/ui.css?v=038\"") != nullptr);
+  CHECK(strstr(page, "src=\"/ui.js?v=087\"") != nullptr);
+  CHECK(strstr(page, "href=\"/ui.css?v=087\"") != nullptr);
   CHECK(strstr(page, "value=\"password sentinel\"") == nullptr);
   CHECK(strstr(page, "password sentinel") == nullptr);
   CHECK(strstr(page, "Choose subway lines") != nullptr);

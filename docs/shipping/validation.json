@@ -7,12 +7,11 @@
   "bodyFontPoints": 11,
   "helpFontPoints": 9.2,
   "footerBottomPoints": 37,
-  "textWords": 362,
+  "textWords": 360,
   "privateNetworkDetailsExcluded": true,
   "renderedWith": "PyMuPDF 1.26.5",
   "checkedRequiredText": true,
   "renderedQrDecodedToExpectedUrl": true,
-  "publicGuideHttpStatus": 200,
   "finalRenderVisuallyInspected": true,
-  "noClippingOrOverlap": true
+  "helpNavigation": "Help > Make a support report"
 }

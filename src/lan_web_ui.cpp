@@ -217,6 +217,11 @@ void LanWebUi::registerRoutes() {
   server_.on("/admin/password", HTTP_POST,
              [this]() { handlePasswordChange(); });
   server_.on("/api/status", HTTP_GET, [this]() { handleStatus(); });
+  server_.on("/help",HTTP_GET,[this](){
+    const size_t length=renderHelpPage(gPage,sizeof(gPage),ota::WebOtaSession::firmwareVersion(),status_.target);
+    if(!length){server_.send(500,"text/plain","Unable to render Help page");return;}
+    sendHtml(gPage,length);
+  });
   server_.on("/support",HTTP_GET,[this](){
     server_.sendHeader("Cache-Control","no-store");server_.sendHeader("X-Content-Type-Options","nosniff");
     server_.send_P(200,"text/html; charset=utf-8",kSupportPage);

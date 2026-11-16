@@ -51,7 +51,7 @@ Default colors. Uses MTA reports and estimates, not GPS. Several trains can shar
 ## Need help?
 
 **Wi-Fi changed?** Hold the knob for **10 seconds** to reopen setup.
-**Send Joel a report:** Advanced > Get help > Make support report > Send report to Joel. Review the email to **goldwein@gmail.com** and tap Send. Attach the saved report file if asked.
+**Send Joel a report:** Help > Make a support report > Send report to Joel. Review the email to **goldwein@gmail.com** and tap Send. Attach the saved report file if asked.
 
 Quiet hours can darken the map or screen and mute sounds.
 
