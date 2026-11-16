@@ -196,6 +196,10 @@ void testPortal() {
     CHECK(len == strlen(page));
     CHECK(strstr(page, kSecret) == nullptr);  // no password ever rendered
     CHECK(strstr(page, "Wi-Fi setup mode") != nullptr);
+    CHECK(strstr(page,"https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/AVI_USER_GUIDE.md")!=nullptr);
+    CHECK(strstr(page,"Project on GitHub")!=nullptr);
+    CHECK(strstr(page,"target=\"_blank\" rel=\"noopener noreferrer\"")!=nullptr);
+    CHECK(strstr(page,s==PortalStatus::Saved || s==PortalStatus::SaveFailed ? "After your phone rejoins" : "These links need internet access")!=nullptr);
     CHECK(s == PortalStatus::Saved || s == PortalStatus::Connecting || strstr(page, "2.4 GHz") != nullptr);
     CHECK(strstr(page, "name=\"ssid\"") == nullptr);       // no manual/hidden entry
     CHECK(strstr(page, "<b>\"Wi&Fi\"") == nullptr);        // SSID is escaped
@@ -224,6 +228,7 @@ void testPortal() {
   CHECK(strstr(page, "name=\"pass\"") == nullptr);
   CHECK(strstr(page, "Save password and continue to Wi-Fi") != nullptr);
   CHECK(strstr(page, "The next page lets you choose your Wi-Fi") != nullptr);
+  CHECK(strstr(page,"Read the guide") && strstr(page,"These links need internet access"));
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::None, true,
                    nullptr, nullptr, true);
   CHECK(strstr(page, "Administrator password is set") != nullptr);

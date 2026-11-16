@@ -70,6 +70,12 @@ bool startsWith(const char *s, const char *prefix) {
   return strncmp(s, prefix, strlen(prefix)) == 0;
 }
 
+void appendOnlineHelp(Out &o,bool connected) {
+  o.put("<section><h2>Help &amp; instructions</h2><p><a href=\"https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/AVI_USER_GUIDE.md\" target=\"_blank\" rel=\"noopener noreferrer\">Read the guide</a> &middot; <a href=\"https://github.com/jgoldwein/BrooklynSubway\" target=\"_blank\" rel=\"noopener noreferrer\">Project on GitHub</a></p><p class=\"hint\">");
+  o.put(connected?"After your phone rejoins your home Wi-Fi, these links open online help in a new tab.":"These links need internet access. Finish setup, then reconnect your phone to your home Wi-Fi to open them.");
+  o.put("</p></section>");
+}
+
 }  // namespace
 
 CredentialCheck validateCredentials(const char *ssid, const char *password) {
@@ -207,7 +213,8 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
   o.put(">2. Wi-Fi</li><li");if(status==PortalStatus::Saved)o.put(" aria-current=\"step\"");o.put(">3. Open your map</li></ol></section>");
   if(status==PortalStatus::Connecting) {
     o.put("<section><h2>Connecting to Wi-Fi...</h2><progress aria-label=\"Connecting to Wi-Fi\"></progress>"
-          "<p>Please keep this page open. This can take up to 20 seconds.</p><p class=\"hint\">Your saved Wi-Fi settings are kept until a new network connects.</p></section></main></body></html>");
+          "<p>Please keep this page open. This can take up to 20 seconds.</p><p class=\"hint\">Your saved Wi-Fi settings are kept until a new network connects.</p></section>");
+    appendOnlineHelp(o,false);o.put("</main></body></html>");
     return o.completeLength();
   }
   if(status==PortalStatus::Saved || status==PortalStatus::SaveFailed) {
@@ -229,6 +236,7 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
     o.put("<p class=\"hint\">To return while setup Wi-Fi is available, go to <a href=\"http://192.168.4.1/\">192.168.4.1</a>. ");
     if(saved)o.put("The setup network closes shortly. This is normal; the map keeps using your home Wi-Fi.");o.put("</p></section>");
     if(saved) {
+      appendOnlineHelp(o,true);
       if(ipSafe) {
         o.put("<script>var ip=\"");o.put(connectedIp);
         o.put("\";function probe(){var c=new AbortController(),k=setTimeout(function(){c.abort()},2500);fetch(\"http://\"+ip+\"/api/status\",{mode:\"no-cors\",cache:\"no-store\",signal:c.signal}).then(function(){clearTimeout(k);location.replace(\"http://\"+ip+\"/\")}).catch(function(){clearTimeout(k);setTimeout(probe,2000)})}setTimeout(probe,10000)</script>");
@@ -247,7 +255,9 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
         "<label for=\"admin-confirm\">Type the map password again</label><input id=\"admin-confirm\" name=\"confirmation\" type=\"password\" minlength=\"8\" maxlength=\"128\" autocomplete=\"new-password\" required>");
   o.put(web::kPasswordVisibilityControl);o.put("<button type=\"submit\" class=\"submit\">");o.put(adminConfigured?"Save password and continue":"Save password and continue to Wi-Fi");o.put("</button></form>");
   if(adminConfigured)o.put("<p><a href=\"/\">Cancel and keep the current password</a></p>");
-  o.put("<p class=\"hint\">Save this password first. The next page lets you choose your Wi-Fi.</p></section></main><p class=\"footer\">Setup address: 192.168.4.1 &middot; Keep your map powered while connecting.</p></body></html>");
+  o.put("<p class=\"hint\">Save this password first. The next page lets you choose your Wi-Fi.</p></section>");
+  appendOnlineHelp(o,status==PortalStatus::SaveFailed);
+  o.put("</main><p class=\"footer\">Setup address: 192.168.4.1 &middot; Keep your map powered while connecting.</p></body></html>");
   return o.completeLength();
   }
   o.put("<section><p class=\"pill\">Administrator password is set</p><p>Step 1 is complete. Now connect the map to your Wi-Fi.</p><p><a href=\"/admin/setup\">Change the map password</a></p></section>");
@@ -265,8 +275,9 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
         "<input id=\"wifi-name\" name=\"pick\" type=\"text\" maxlength=\"32\" placeholder=\"Choose above, or type a network name\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\" required>"
         "<label for=\"wifi-password\">Wi-Fi password</label><input id=\"wifi-password\" name=\"pass\" type=\"password\" minlength=\"8\" maxlength=\"63\" autocomplete=\"off\" autocapitalize=\"off\" autocorrect=\"off\" spellcheck=\"false\">"
         "<p class=\"hint\">Leave the password empty only for an open network.</p>");
-  o.put(web::kPasswordVisibilityControl);o.put("<button type=\"submit\" class=\"submit\">Connect to Wi-Fi</button></form></section>"
-        "</main><p class=\"footer\">Setup address: 192.168.4.1 &middot; Keep your map powered while connecting.</p></body></html>");
+  o.put(web::kPasswordVisibilityControl);o.put("<button type=\"submit\" class=\"submit\">Connect to Wi-Fi</button></form></section>");
+  appendOnlineHelp(o,status==PortalStatus::SaveFailed);
+  o.put("</main><p class=\"footer\">Setup address: 192.168.4.1 &middot; Keep your map powered while connecting.</p></body></html>");
   return o.completeLength();
 }
 

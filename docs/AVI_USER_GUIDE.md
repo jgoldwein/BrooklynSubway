@@ -136,6 +136,10 @@ the 10-second knob hold shows the instructions immediately.
    check what you typed. The board uses 2.4 GHz Wi-Fi.
 5. Once it connects, put your phone or computer back on your home Wi-Fi.
 
+Setup pages include **Read the guide** and **Project on GitHub** links. These
+open online help in a new tab. Reconnect your phone to home Wi-Fi first; joining
+BrooklynMap-Avi alone does not provide internet access.
+
 To change Wi-Fi later, hold the knob for 10 seconds to reopen setup. Existing
 credentials are kept unless replacement credentials successfully connect.
 The Wi-Fi step includes **Change the map password** if you need to reset an
