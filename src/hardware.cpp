@@ -425,7 +425,7 @@ void serviceKnobClick(uint32_t nowMs,bool allowed) {
       if(ledcSetup(7,2000,8)!=0) {
         ledcWrite(7,0);ledcAttachPin(pins::BUZZER,7);ledcWrite(7,128);
         knobActive=true;knobUntilMs=nowMs+15;
-        recordSound(Sound::Knob);
+        // Routine navigation clicks must not replace the last meaningful cue.
       } else digitalWrite(pins::BUZZER,LOW);
     }
   }

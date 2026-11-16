@@ -625,6 +625,7 @@ void testPageEscapingAndRequiredContent() {
   CHECK(authenticatedPageSize < sizeof(page));
   CHECK(strstr(page,"data-status=\"firmwareVersion\"")!=nullptr);
   CHECK(strstr(page,"data-status=\"lastSound\"")!=nullptr);
+  CHECK(strstr(page,"<strong>Last Sound:</strong>")!=nullptr);
   CHECK(strstr(page,"Train data, colors &amp; beep tones")!=nullptr);
   CHECK(strstr(page,"data-status=\"lastSound\"")>strstr(page,"Train data, colors &amp; beep tones"));
   CHECK(countSubstring(page,"data-status=\"lastSound\"")==1);

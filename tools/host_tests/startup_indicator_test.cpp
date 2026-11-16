@@ -315,6 +315,9 @@ int main() {
   serviceKnobClick(250,true);CHECK(duty==64 && frequency==1200);
   serviceKnobClick(310,true);CHECK(duty==0);serviceKnobClick(360,true);CHECK(duty==64 && frequency==1800);
   serviceKnobClick(420,true);serviceKnobClick(470,true);CHECK(duty==0 && attachCalls==2 && detachCalls==2);
+  const auto savedSound=brooklyn::hardware::lastSound();
+  requestKnobClick();serviceKnobClick(500,true);CHECK(duty==128 && frequency==2000);
+  CHECK(brooklyn::hardware::lastSound().sound==brooklyn::hardware::Sound::Saved && brooklyn::hardware::lastSound().sequence==savedSound.sequence);
   reset(false);settingsCueMode=true;for(unsigned i=0;i<20;++i){soundNow=i;requestSettingsSaved();}
   serviceKnobClick(268,true);CHECK(duty==0);serviceKnobClick(269,true);CHECK(duty==64);
   brooklyn::hardware::setQuiet(true);serviceKnobClick(270,true);CHECK(duty==0);requestSettingsSaved();

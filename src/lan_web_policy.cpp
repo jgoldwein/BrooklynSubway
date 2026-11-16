@@ -585,7 +585,7 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<span><i class=\"swatch\" data-train-color=\"stopped\" style=\"background:#%02X%02X%02X\"></i>Stopped</span>"
                 "<span><i class=\"swatch\" data-train-color=\"leaving\" style=\"background:#%02X%02X%02X\"></i>Leaving</span>"
                 "<span><i class=\"swatch\" data-train-color=\"uncertain\" style=\"background:#%02X%02X%02X\"></i>Uncertain / last reported</span></div>"
-                "<p class=\"hint\">Last sound: <span data-status=\"lastSound\">Loading...</span></p><p class=\"hint\">Choose these colors in Train lights. Faint markers show the last reported place when selected. No traffic lights blink.</p></section>"
+                "<p class=\"hint\"><strong>Last Sound:</strong> <span data-status=\"lastSound\">Loading...</span></p><p class=\"hint\">Choose these colors in Train lights. Faint markers show the last reported place when selected. No traffic lights blink.</p></section>"
                 "<details class=\"card wide\" data-view=\"advanced\"><summary>Network diagnostics</summary><dl>"
                 "<dt>Diagnostic run</dt><dd>%s</dd>"
                 "<dt>NTP DNS</dt><dd>%s",

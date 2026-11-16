@@ -98,6 +98,8 @@ ago it started. It refreshes about every two seconds while the page is visible.
 Requests muted or cancelled before playback are not reported as new sounds. This is the latest
 cue, not a recording or a full history. **Help → Read the sound guide** opens
 this explanation.
+Routine knob ticks are omitted from **Last Sound**, so turning the knob does
+not replace the explanation of an important cue. The ticks still sound normally.
 
 **Optional service alerts:** Open **Screen → Quiet hours and startup greeting**
 and check **Play service lost and restored sounds**. Save settings. These alerts
