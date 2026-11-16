@@ -131,6 +131,9 @@ bool Portal::begin(bool hasStored, uint32_t nowMs) {
     server_.on("/scan", HTTP_GET, [this]() { handleScan(); });
     server_.on("/connect", HTTP_POST, [this]() { handleConnect(); });
     server_.on("/admin/setup", HTTP_POST, [this]() { handleAdminSetup(); });
+    server_.on("/admin/setup", HTTP_GET, [this]() {
+      sendPage(connecting_ ? PortalStatus::Connecting : (saved_ ? PortalStatus::Saved : PortalStatus::None),true);
+    });
     server_.on("/ui.css", HTTP_GET, [this]() { server_.send(200, "text/css", web::kWebUiCss); });
     server_.on("/setup.css", HTTP_GET, [this]() { server_.send(200, "text/css", kSetupCss); });
     server_.on("/setup.js", HTTP_GET, [this]() { server_.send(200, "text/javascript", kSetupScript); });
@@ -161,7 +164,7 @@ void Portal::redirectHome() {
   server_.send(302, "text/plain", "");
 }
 
-void Portal::sendPage(PortalStatus status) {
+void Portal::sendPage(PortalStatus status,bool editAdmin) {
   admin::Manager adminManager(admin::nvsCredentialStore(),
                               admin::espCryptoProvider());
   if (!adminManager.load()) {
@@ -174,7 +177,7 @@ void Portal::sendPage(PortalStatus status) {
   const char *connectedIp =
       (status == PortalStatus::Saved || status == PortalStatus::SaveFailed) ? connectedIp_ : nullptr;
   const size_t length = renderPortalPage(page_, sizeof(page_), scan_, scanCount_, status, hasStored_,
-                   connectedSsid, connectedIp, adminManager.configured());
+                   connectedSsid, connectedIp, adminManager.configured(),editAdmin);
   if (!length) { server_.send(500, "text/plain", "Unable to render Wi-Fi setup page"); return; }
   server_.sendHeader("Cache-Control", "no-store");
   server_.send(200, "text/html", page_);
@@ -273,6 +276,15 @@ void Portal::handleOther() {
 }
 
 void Portal::handleConnect() {
+  // Enforce the same order even for stale pages, disabled JavaScript or direct POSTs.
+  admin::Manager adminManager(admin::nvsCredentialStore(),admin::espCryptoProvider());
+  if (!adminManager.load()) {
+    server_.send(500,"text/plain","Unable to load administrator settings; Wi-Fi was not changed");return;
+  }
+  if (!adminManager.configured()) {
+    Serial.println("Provisioning: create administrator password before connecting Wi-Fi");
+    sendPage(PortalStatus::None);return;
+  }
   char ssid[kMaxSsidLen + 2];
   char pass[kMaxPassLen + 2];
   const String chosen = server_.arg("pick");

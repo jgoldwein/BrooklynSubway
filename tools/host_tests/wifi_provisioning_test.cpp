@@ -192,7 +192,7 @@ void testPortal() {
                               PortalStatus::SaveFailed,
                               PortalStatus::ConnectFailed, PortalStatus::InvalidInput};
   for (PortalStatus s : all) {
-    const size_t len = renderPortalPage(page, sizeof(page), e, 2, s, true);
+    const size_t len = renderPortalPage(page, sizeof(page), e, 2, s, true,nullptr,nullptr,true);
     CHECK(len == strlen(page));
     CHECK(strstr(page, kSecret) == nullptr);  // no password ever rendered
     CHECK(strstr(page, "Wi-Fi setup mode") != nullptr);
@@ -206,7 +206,8 @@ void testPortal() {
     } else {
       CHECK(strstr(page, "name=\"pass\"") != nullptr);
       CHECK(strstr(page, "name=\"pass\" type=\"password\"") != nullptr);
-      CHECK(strstr(page, "name=\"confirmation\"") != nullptr);
+      CHECK(strstr(page, "name=\"confirmation\"") == nullptr);
+      CHECK(strstr(page, "id=\"admin-form\"") == nullptr);
       CHECK(strstr(page, ">OpenNet</span>") != nullptr);
       CHECK(strstr(page, "&lt;b&gt;&quot;Wi&amp;Fi&quot;") != nullptr);
     }
@@ -219,10 +220,22 @@ void testPortal() {
   CHECK(strstr(page, "No app or account is needed") != nullptr);
   CHECK(strstr(page, "name=\"password\" type=\"password\"") != nullptr);
   CHECK(strstr(page, "value=\"password") == nullptr);
+  CHECK(strstr(page, "id=\"wifi-form\"") == nullptr);
+  CHECK(strstr(page, "name=\"pass\"") == nullptr);
+  CHECK(strstr(page, "Save password and continue to Wi-Fi") != nullptr);
+  CHECK(strstr(page, "The next page lets you choose your Wi-Fi") != nullptr);
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::None, true,
                    nullptr, nullptr, true);
+  CHECK(strstr(page, "Administrator password is set") != nullptr);
+  CHECK(strstr(page, "id=\"wifi-form\"") != nullptr);
+  CHECK(strstr(page, "id=\"admin-form\"") == nullptr);
+  CHECK(strstr(page, "href=\"/admin/setup\"") != nullptr);
+  renderPortalPage(page, sizeof(page), e, 2, PortalStatus::None, true,nullptr,nullptr,true,true);
   CHECK(strstr(page, "An administrator password is configured") != nullptr);
-  CHECK(strstr(page, "Reset administrator password") != nullptr);
+  CHECK(strstr(page, "Save password and continue") != nullptr);
+  CHECK(strstr(page, "id=\"admin-form\"") != nullptr);
+  CHECK(strstr(page, "id=\"wifi-form\"") == nullptr);
+  CHECK(strstr(page, "Cancel and keep the current password") != nullptr);
   renderPortalPage(page, sizeof(page), e, 2, PortalStatus::Saved, true, "TestNetwork", "192.168.1.42");
   CHECK(strstr(page, "Successfully connected to Wi-Fi: <b>TestNetwork</b>") != nullptr);
   CHECK(strstr(page, "Settings saved") != nullptr);
@@ -265,9 +278,12 @@ void testPortal() {
   ScanEntry maximum[24]{};
   for (auto &entry : maximum) { memset(entry.ssid, '&', 32); entry.rssi = -100; entry.encrypted = true; }
   for (auto state : all) {
-    CHECK(renderPortalPage(page, sizeof(page), maximum, 24, state, true,
-        maximum[0].ssid, "192.168.100.200", false) > 0);
-    CHECK(strstr(page, "</html>") != nullptr);
+    for (bool configured : {false,true}) {
+      CHECK(renderPortalPage(page, sizeof(page), maximum, 24, state, true,
+          maximum[0].ssid, "192.168.100.200", configured) > 0);
+      CHECK(strstr(page, "</html>") != nullptr);
+      CHECK(!(strstr(page,"id=\"admin-form\"") && strstr(page,"id=\"wifi-form\"")));
+    }
   }
   CHECK(renderScanJson(page, sizeof(page), maximum, 24, true, false) > 0);
   CHECK(strstr(page, "\"pending\":true") != nullptr);

@@ -125,13 +125,17 @@ old or missing data is labeled instead of presented as new.
 
 1. If setup is needed, join **BrooklynMap-Avi** on your phone or computer.
 2. Open **http://192.168.4.1/** in a browser.
-3. Create an administrator password if asked. Keep it somewhere safe.
+3. Create an administrator password if asked. Keep it somewhere safe. Press
+   **Save password and continue to Wi-Fi** to save it and open the Wi-Fi step.
+   If a map password is already set, setup goes straight to the Wi-Fi step.
 4. Choose your home Wi-Fi and enter its password. Use **Show passwords** to
    check what you typed. The board uses 2.4 GHz Wi-Fi.
 5. Once it connects, put your phone or computer back on your home Wi-Fi.
 
 To change Wi-Fi later, hold the knob for 10 seconds to reopen setup. Existing
 credentials are kept unless replacement credentials successfully connect.
+The Wi-Fi step includes **Change the map password** if you need to reset an
+existing administrator password while connected to setup Wi-Fi.
 
 ### Start over or prepare the map for someone else
 

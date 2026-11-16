@@ -137,7 +137,7 @@ size_t renderScanJson(char *out, size_t capacity, const ScanEntry *entries, size
 size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, size_t count,
                         PortalStatus status, bool hasStored, const char *connectedSsid = nullptr,
                         const char *connectedIp = nullptr,
-                        bool adminConfigured = false);
+                        bool adminConfigured = false, bool editAdmin = false);
 
 // Escapes &, <, >, ", ' for HTML text/attributes. Returns the length written.
 size_t htmlEscape(char *out, size_t capacity, const char *in);

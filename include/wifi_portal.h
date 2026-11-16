@@ -58,7 +58,7 @@ class Portal {
   void handleOther();
   void startScan();
   void redirectHome();
-  void sendPage(PortalStatus status);
+  void sendPage(PortalStatus status, bool editAdmin = false);
   void harvestScan();
 
   CredentialStore &store_;

@@ -185,7 +185,7 @@ size_t renderScanJson(char *out,size_t capacity,const ScanEntry *entries,size_t 
 
 size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, size_t count,
                         PortalStatus status, bool hasStored, const char *connectedSsid,
-                        const char *connectedIp, bool adminConfigured) {
+                        const char *connectedIp, bool adminConfigured, bool editAdmin) {
   Out o(out,capacity);
   o.put("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">");
   if(status==PortalStatus::Connecting)o.put("<meta http-equiv=\"refresh\" content=\"2\">");
@@ -202,8 +202,8 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
     o.put("<p>On your phone, open Wi-Fi settings and join <strong>BrooklynMap-Avi</strong>. Choose &ldquo;Stay connected&rdquo; or &ldquo;Use without internet&rdquo; if asked.</p>"
           "<p>Keep this setup page open while you enter your details. No app or account is needed.</p>");
   o.put("<ol class=\"steps\" aria-label=\"Setup progress\"><li");
-  if(!adminConfigured && status!=PortalStatus::Saved && status!=PortalStatus::Connecting)o.put(" aria-current=\"step\"");
-  o.put(">1. Map password</li><li");if(status==PortalStatus::Connecting || (adminConfigured && status!=PortalStatus::Saved))o.put(" aria-current=\"step\"");
+  if((!adminConfigured || editAdmin) && status!=PortalStatus::Saved && status!=PortalStatus::Connecting)o.put(" aria-current=\"step\"");
+  o.put(">1. Map password</li><li");if(status==PortalStatus::Connecting || (adminConfigured && !editAdmin && status!=PortalStatus::Saved))o.put(" aria-current=\"step\"");
   o.put(">2. Wi-Fi</li><li");if(status==PortalStatus::Saved)o.put(" aria-current=\"step\"");o.put(">3. Open your map</li></ol></section>");
   if(status==PortalStatus::Connecting) {
     o.put("<section><h2>Connecting to Wi-Fi...</h2><progress aria-label=\"Connecting to Wi-Fi\"></progress>"
@@ -238,14 +238,19 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
   }
   if(status==PortalStatus::ConnectFailed)o.put("<section class=\"alert error\" role=\"alert\"><h2>Let's try that again</h2><p>Could not connect. Check the name and password; previously saved settings were not changed.</p><p>Make sure your network supports 2.4 GHz.</p></section>");
   if(status==PortalStatus::InvalidInput)o.put("<section class=\"alert error\" role=\"alert\"><h2>Check your Wi-Fi details</h2><p>Choose or enter a Wi-Fi name. Use 8 to 63 password characters, or leave it empty for an open network.</p></section>");
+  if(!adminConfigured || editAdmin) {
   o.put("<section><h2 class=\"step-title\"><span class=\"step-number\">1</span>Protect your map settings</h2>");
-  if(adminConfigured)o.put("<p class=\"pill\">Administrator password is set</p><details><summary>Advanced: reset administrator password</summary><p>An administrator password is configured. Resetting it replaces the map password and signs out existing administrator sessions.</p>");
+  if(adminConfigured)o.put("<p>An administrator password is configured. Resetting it replaces the map password and signs out existing administrator sessions.</p>");
   else o.put("<p>Set the initial administrator password so you can change map settings later. This is just for your map &mdash; it can be different from your Wi-Fi password. Save it somewhere safe; you will use it to sign in when changing settings.</p>");
   o.put("<form method=\"POST\" action=\"/admin/setup\" id=\"admin-form\"><label for=\"admin-password\">New map password (at least 8 characters)</label>"
         "<input id=\"admin-password\" name=\"password\" type=\"password\" minlength=\"8\" maxlength=\"128\" autocomplete=\"new-password\" required>"
         "<label for=\"admin-confirm\">Type the map password again</label><input id=\"admin-confirm\" name=\"confirmation\" type=\"password\" minlength=\"8\" maxlength=\"128\" autocomplete=\"new-password\" required>");
-  o.put(web::kPasswordVisibilityControl);o.put("<button type=\"submit\" class=\"submit\">");o.put(adminConfigured?"Reset administrator password":"Set administrator password");o.put("</button></form>");
-  if(adminConfigured)o.put("</details>");o.put("</section>");
+  o.put(web::kPasswordVisibilityControl);o.put("<button type=\"submit\" class=\"submit\">");o.put(adminConfigured?"Save password and continue":"Save password and continue to Wi-Fi");o.put("</button></form>");
+  if(adminConfigured)o.put("<p><a href=\"/\">Cancel and keep the current password</a></p>");
+  o.put("<p class=\"hint\">Save this password first. The next page lets you choose your Wi-Fi.</p></section></main><p class=\"footer\">Setup address: 192.168.4.1 &middot; Keep your map powered while connecting.</p></body></html>");
+  return o.completeLength();
+  }
+  o.put("<section><p class=\"pill\">Administrator password is set</p><p>Step 1 is complete. Now connect the map to your Wi-Fi.</p><p><a href=\"/admin/setup\">Change the map password</a></p></section>");
   o.put("<section><h2 class=\"step-title\"><span class=\"step-number\">2</span>Choose your Wi-Fi</h2>"
         "<p>The map uses <strong>2.4 GHz</strong> Wi-Fi. A shared 2.4/5 GHz name is fine; a 5 GHz-only network will not work.</p>");
   if(hasStored)o.put("<p class=\"hint\">Saved Wi-Fi settings stay in place until a new network connects.</p>");
