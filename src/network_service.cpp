@@ -1114,6 +1114,12 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
   }
   webStatus_.freeInternalHeap =
       static_cast<uint32_t>(heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
+  const auto sound=hardware::lastSound();
+  const unsigned long soundAge=static_cast<uint32_t>(millis()-sound.atMs)/1000;
+  if(sound.sound==hardware::Sound::None)snprintf(webStatus_.lastSound,sizeof(webStatus_.lastSound),"No sound recorded this boot");
+  else if(sound.sound==hardware::Sound::Diagnostic)snprintf(webStatus_.lastSound,sizeof(webStatus_.lastSound),"Channel %u test: %u beeps (%lu s ago)",sound.detail,sound.detail,soundAge);
+  else if(sound.sound==hardware::Sound::Brightness)snprintf(webStatus_.lastSound,sizeof(webStatus_.lastSound),"Brightness feedback: level %u (%lu s ago)",sound.detail,soundAge);
+  else snprintf(webStatus_.lastSound,sizeof(webStatus_.lastSound),"%s (%lu s ago)",hardware::soundMeaning(sound.sound),soundAge);
   webStatus_.largestInternalBlock=heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL);
   runtimeReport_.uptimeMs=millis();runtimeReport_.freeHeap=webStatus_.freeInternalHeap;
   runtimeReport_.largestBlock=webStatus_.largestInternalBlock;

@@ -15,7 +15,8 @@ may work differently.
 3. After connecting, watch for **SYSTEM, NETWORK, and MTA FEED to turn green**.
    Red and amber are normal while starting.
 
-Each light gives a short readiness beep when it becomes green. You will also
+Readiness sounds play once per boot: one low SYSTEM beep, two middle NETWORK
+beeps, and three high MTA FEED beeps. You will also
 hear the startup tune. Quiet hours mute beeps; holding DIM during startup mutes
 the startup tune and readiness cues for that boot.
 The station lights stay dark until train data is ready.

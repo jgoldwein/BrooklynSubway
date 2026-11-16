@@ -552,7 +552,7 @@ void LanWebUi::handleSaveScreenOptions() {
   for(int i=0;i<server_.args();++i) {
     const String name=server_.argName(i);uint16_t bit=0;
     if(name=="csrf") bit=1;else if(name=="start") bit=2;else if(name=="end") bit=4;
-    else if(name=="contrast") bit=8;else if(name=="quiet") bit=16;else if(name=="startup") bit=32;else if(name=="mapMode") bit=64;else if(name=="mapBrightness") bit=128;else if(name=="waitWifi") bit=256;
+    else if(name=="contrast") bit=8;else if(name=="quiet") bit=16;else if(name=="startup") bit=32;else if(name=="mapMode") bit=64;else if(name=="mapBrightness") bit=128;else if(name=="waitWifi") bit=256;else if(name=="serviceSounds") bit=512;
     if(!bit || (seen&bit)) {server_.send(400,"text/plain","Invalid screen settings");return;} seen|=bit;
   }
   const String start=server_.arg("start"),end=server_.arg("end"),contrast=server_.arg("contrast"),quietFlag=server_.arg("quiet"),startupFlag=server_.arg("startup"),waitFlag=server_.arg("waitWifi");
@@ -568,6 +568,9 @@ void LanWebUi::handleSaveScreenOptions() {
   p.quietMapBrightness=mapMode=="off"?0:mapMode=="normal"?255:level;
   p.quietEnabled=seen&16;p.startupDedication=seen&32;
   p.startupUntilWifi=seen&256;
+  const String serviceFlag=server_.arg("serviceSounds");
+  if((seen&512) && (!hasNoEmbeddedNull(serviceFlag) || serviceFlag!="1")) {server_.send(400,"text/plain","Invalid service sound setting");return;}
+  p.serviceSounds=seen&512;
   const uint64_t word=config::packScreenPreferences(p);
   if(!config::validScreenPreferences(word)) {server_.send(400,"text/plain","Start and end times must differ");return;}
   if(!configuration_.setScreenPreferences(word)) {server_.send(500,"text/plain","Could not save screen settings");return;}

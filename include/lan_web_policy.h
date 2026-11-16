@@ -38,6 +38,7 @@ class ServerOwnership {
 };
 
 struct StatusSnapshot {
+  char lastSound[128]="No sound recorded this boot";
   uint32_t uptimeSeconds = 0;
   pipeline::BlueReport blueReport{};
   semantic::TrainColors trainColors=semantic::kDefaultTrainColors;

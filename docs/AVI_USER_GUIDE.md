@@ -2,7 +2,7 @@
 
 Specially Designed for Avi Yao
 
-Guide for firmware **0.2.80**. Start with the
+Guide for firmware **0.2.90**. Start with the
 [quick start](AVI_QUICK_START.md) if you just want to try the map.
 For the gift box, [print the one-page sheet](shipping/Brooklyn_Subway_Quick_Start.pdf).
 
@@ -46,8 +46,9 @@ The map can still show useful trains while MTA FEED is amber. Check the web
 page if amber lasts a long time. These colors do not identify weekday or
 weekend service.
 
-A short low, middle, or high tone marks SYSTEM, NETWORK, or MTA becoming green.
-A steady green light does not keep beeping. Quiet hours and startup mute apply.
+One low beep marks SYSTEM ready, two middle beeps mark NETWORK ready, and
+three high beeps mark MTA ready. Each pattern plays only once per boot.
+Quiet hours and startup mute apply.
 The separate dim Avi marker lights when a complete fresh feed is working.
 
 Station lights remain dark until usable train data arrives. Quiet hours, POWER,
@@ -62,15 +63,19 @@ The sounds tell you what the map is doing. They are not numbered error codes.
   Wait for Wi-Fi and train data; this tune alone does not mean they are ready.
 - **One low readiness beep:** SYSTEM has turned green. The board's startup
   checks passed.
-- **One middle readiness beep:** NETWORK has turned green. The network service
+- **Two middle readiness beeps:** NETWORK has turned green. The network service
   is ready.
-- **One high readiness beep:** MTA FEED has turned green. A complete, fresh
+- **Three high readiness beeps:** MTA FEED has turned green. A complete, fresh
   train update arrived. This also serves as the feed-ready sound for the dim
   Avi-location light; there is no extra beep for that light.
 - **Two gentle rising notes:** a setting was saved successfully. Several saves
   close together may share one confirmation sound.
 - **Two gentle descending notes:** a firmware update is starting. Read the
   OLED message and **do not unplug power**. Wait for **Update complete**.
+- **Three descending notes:** service has been unavailable for 60 continuous
+  seconds. This optional alert is off by default.
+- **Three ascending notes:** service returned after an announced loss. It
+  plays only if the loss sound actually started. This alert is also optional.
 - **One confirmation beep when setup opens:** BrooklynMap-Avi is ready.
   Follow the OLED instructions, including after holding the knob for 10 seconds.
 - **A short tick as you turn the knob:** the map recognized a knob turn.
@@ -83,21 +88,31 @@ The sounds tell you what the map is doing. They are not numbered error codes.
 - **Short and long notes in the Morse-code extra:** the map is spelling
   **Avi Yao** for fun. Other secret extras can also play sounds.
 
-A readiness beep can repeat if a service loses readiness and then recovers.
-A light that stays green does not keep beeping. Check the status lights or
-web page to find out what is happening rather than relying on pitch alone.
+Readiness patterns play once per service per boot, so routine returns to green
+stay quiet. Older firmware could repeat a high beep when the MTA feed recovered.
+That was a readiness cue, not necessarily a restart.
 
-**A short beep when nobody touched the map?** A common reason is the MTA feed
-recovering after a delayed or incomplete update: the MTA FEED light returns
-from amber to green and plays its high readiness tone. That does not mean the
-board restarted. Wi-Fi recovery can also play the middle readiness tone.
-Open **Help → Read the sound guide** to return to this explanation.
+**Wondering what you just heard?** Open **Overview → Train data, colors & beep
+tones**. Its **Last sound** line names the actual sound cue and shows how long
+ago it started. It refreshes about every two seconds while the page is visible.
+Requests muted or cancelled before playback are not reported as new sounds. This is the latest
+cue, not a recording or a full history. **Help → Read the sound guide** opens
+this explanation.
+
+**Optional service alerts:** Open **Screen → Quiet hours and startup greeting**
+and check **Play service lost and restored sounds**. Save settings. These alerts
+are off by default, wait until service has worked, and do not repeat during one
+outage. A Wi-Fi disconnect counts as unavailable. Train data counts as unavailable
+when the last usable update is more than 90 seconds old; it must then remain
+unavailable for another 60 seconds before the loss alert. Fresh partial updates
+can still count as usable, so one missing feed alone does not trigger a tone.
+Setup and quiet hours cancel pending alerts, with no catch-up sounds afterward.
 
 **Want it quiet?** Quiet hours mute the beeps, including manual tests and
 secret extras. The quiet-hours schedule applies after the clock is synchronized.
 Holding **DIM while powering on or restarting** mutes the startup tune and
 automatic readiness cues for that boot; it does not mute every later button,
-save or update sound. You may also hear no cue while another test or recovery
+save, update or optional service-alert sound. You may also hear no cue while another test or recovery
 operation is taking priority. A missing sound by itself does not prove a fault.
 
 ## The buttons and knob

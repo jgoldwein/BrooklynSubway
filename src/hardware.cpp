@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "hardware.h"
+#include "service_sound_policy.h"
 
 #include "board_pins.h"
 #include "controls.h"
@@ -16,9 +17,21 @@ namespace brooklyn::hardware {
 #if defined(BROOKLYN_TARGET_PCB)
 namespace {
 bool startupMuted = false;
+uint32_t soundSequence=0,soundCode=0,soundAtMs=0;
+void recordSound(Sound sound,uint8_t detail=0) {
+  __atomic_add_fetch(&soundSequence,1u,__ATOMIC_ACQ_REL);
+  __atomic_store_n(&soundCode,uint32_t(sound)|(uint32_t(detail)<<8),__ATOMIC_RELAXED);
+  __atomic_store_n(&soundAtMs,millis(),__ATOMIC_RELAXED);
+  __atomic_add_fetch(&soundSequence,1u,__ATOMIC_RELEASE);
+}
 uint32_t quietWord=0;
 uint32_t quietMapWord=255, feedCapWord=8;
 uint32_t statusCuesEnabled=0,observedGreen=0,readyPending=0;
+uint32_t readySeen=0,serviceWord=0;
+uint8_t readyNotes=0;uint32_t readyToneBit=0;
+audio::ServicePolicy servicePolicy;
+audio::ServiceEvent servicePending=audio::ServiceEvent::None,serviceKind=audio::ServiceEvent::None;
+uint8_t serviceStep=0;bool knobService=false;
 uint8_t lastFeedDuty=0;
 bool isQuiet() {return __atomic_load_n(&quietWord,__ATOMIC_RELAXED)!=0;}
 bool feedIndicatorAttached = false;
@@ -95,6 +108,7 @@ void playStartupChime() {
     Serial.printf("Startup buzzer: note %u, %u Hz, %u ms\n", note + 1,
                   kNotes[note].frequencyHz, kNotes[note].durationMs);
     ledcWrite(kBuzzerChannel, kStartupDuty);
+    if(note==0)recordSound(Sound::Startup);
     delay(kNotes[note].durationMs);
     ledcWrite(kBuzzerChannel, 0);
     if (kNotes[note].gapAfterMs != 0) delay(kNotes[note].gapAfterMs);
@@ -143,6 +157,7 @@ bool signalDiagnosticChannel(led::PhysicalChannel channel) {
   ledcAttachPin(pins::BUZZER, kChannel);
   bool ok = true;
   for (uint8_t beep = 0; beep < number && ok; ++beep) {
+    if(beep==0)recordSound(Sound::Diagnostic,number);
     ledcWrite(kChannel, isQuiet()?0:128);
     ok = wait(kBeepMs);
     ledcWrite(kChannel, 0);
@@ -236,6 +251,8 @@ void stopKnobToneLocked(bool preserveSettings) {
   }
   knobActive=knobGap=false;
   knobReady=knobSettings=false;settingsStep=0;
+  knobService=false;serviceStep=0;serviceKind=servicePending=audio::ServiceEvent::None;
+  readyNotes=0;readyToneBit=0;
   if(!preserveSettings)__atomic_store_n(&settingsPending,0u,__ATOMIC_RELAXED);
   __atomic_store_n(&readyPending,0u,__ATOMIC_RELAXED);
   __atomic_store_n(&knobPending,0u,__ATOMIC_RELAXED);
@@ -285,7 +302,7 @@ void setEasterEggTone(uint16_t frequency) {
   if(frequency!=playing) {
     if(playing) {ledcWrite(7,0);ledcDetachPin(pins::BUZZER);digitalWrite(pins::BUZZER,LOW);playing=0;}
     if(frequency && ledcSetup(7,frequency,8)!=0) {
-      ledcWrite(7,0);ledcAttachPin(pins::BUZZER,7);ledcWrite(7,128);playing=frequency;
+      ledcWrite(7,0);ledcAttachPin(pins::BUZZER,7);ledcWrite(7,128);playing=frequency;recordSound(Sound::Extra);
     }
   }
   unlockIndicator();
@@ -317,23 +334,56 @@ void observeStatusGreen(uint8_t bits) {
 #if defined(BROOKLYN_TARGET_PCB)
   if(!__atomic_load_n(&statusCuesEnabled,__ATOMIC_RELAXED)) return;
   bits&=7;
-  const uint32_t prior=__atomic_exchange_n(&observedGreen,uint32_t(bits),__ATOMIC_RELAXED);
+  __atomic_store_n(&observedGreen,uint32_t(bits),__ATOMIC_RELAXED);
+  const uint32_t prior=__atomic_fetch_or(&readySeen,uint32_t(bits),__ATOMIC_RELAXED);
   __atomic_fetch_and(&readyPending,uint32_t(bits),__ATOMIC_RELAXED);
   if(!isQuiet() && !startupMuted) __atomic_fetch_or(&readyPending,uint32_t(bits)&~prior,__ATOMIC_RELAXED);
 #else
   (void)bits;
 #endif
 }
+void observeService(bool available,bool operating,bool enabled) {
+#if defined(BROOKLYN_TARGET_PCB)
+  __atomic_store_n(&serviceWord,uint32_t(available)|(uint32_t(operating)<<1)|(uint32_t(enabled)<<2),__ATOMIC_RELAXED);
+#else
+  (void)available;(void)operating;(void)enabled;
+#endif
+}
+SoundStatus lastSound() {
+#if defined(BROOKLYN_TARGET_PCB)
+  for(unsigned attempt=0;attempt<3;++attempt) {
+    const auto sequence=__atomic_load_n(&soundSequence,__ATOMIC_ACQUIRE);
+    if(sequence&1)continue;
+    const auto code=__atomic_load_n(&soundCode,__ATOMIC_RELAXED);
+    const auto at=__atomic_load_n(&soundAtMs,__ATOMIC_RELAXED);
+    if(sequence==__atomic_load_n(&soundSequence,__ATOMIC_ACQUIRE)) {
+      SoundStatus result;result.sound=static_cast<Sound>(code&255);result.detail=static_cast<uint8_t>(code>>8);result.atMs=at;result.sequence=sequence/2;return result;
+    }
+  }
+#endif
+  return {};
+}
 void serviceKnobClick(uint32_t nowMs,bool allowed) {
 #if defined(BROOKLYN_TARGET_PCB)
   if(__atomic_exchange_n(&indicatorLock,1u,__ATOMIC_ACQUIRE)) return;
+  const uint32_t service=__atomic_load_n(&serviceWord,__ATOMIC_RELAXED);
+  const bool serviceEnabled=(service&6)==6;
+  const auto event=servicePolicy.observe(nowMs,service&1,serviceEnabled,isQuiet() || !allowed);
+  if((service&1) && servicePending==audio::ServiceEvent::Lost)servicePending=audio::ServiceEvent::None;
+  if(event!=audio::ServiceEvent::None)servicePending=event;
+  if(!serviceEnabled || isQuiet() || !allowed) {
+    servicePending=audio::ServiceEvent::None;
+    if(knobService)stopKnobToneLocked();
+  }
   if(!allowed || isQuiet() || (knobReady && !__atomic_load_n(&observedGreen,__ATOMIC_RELAXED))) stopKnobToneLocked();
   else if(knobActive) {
     if(static_cast<int32_t>(nowMs-knobUntilMs)>=0) {
       ledcWrite(7,0);ledcDetachPin(pins::BUZZER);digitalWrite(pins::BUZZER,LOW);
-      const uint32_t gap=knobSettings?50:knobReady?80:15;
+      const uint32_t gap=knobService?80:knobSettings?50:knobReady?80:15;
+      if(knobService){if(++serviceStep==3){serviceStep=0;serviceKind=audio::ServiceEvent::None;}}
+      if(knobReady && readyNotes && --readyNotes==0)readyToneBit=0;
       if(knobSettings)settingsStep=settingsStep==1?2:0;
-      knobActive=knobReady=knobSettings=false;knobGap=true;knobUntilMs=nowMs+gap;
+      knobActive=knobReady=knobSettings=knobService=false;knobGap=true;knobUntilMs=nowMs+gap;
     }
   } else if(!knobGap || static_cast<int32_t>(nowMs-knobUntilMs)>=0) {
     knobGap=false;
@@ -346,21 +396,36 @@ void serviceKnobClick(uint32_t nowMs,bool allowed) {
       if(ledcSetup(7,hz,8)!=0) {
         ledcWrite(7,0);ledcAttachPin(pins::BUZZER,7);ledcWrite(7,64);
         knobActive=knobSettings=true;knobUntilMs=nowMs+60;
+        if(settingsStep==1)recordSound(Sound::Saved);
       } else {settingsStep=0;digitalWrite(pins::BUZZER,LOW);}
-    } else if(ready) {
-      const uint32_t bit=ready&(~ready+1u);
-      __atomic_fetch_and(&readyPending,~bit,__ATOMIC_RELAXED);
+    } else if(serviceKind!=audio::ServiceEvent::None || servicePending!=audio::ServiceEvent::None) {
+      if(serviceKind==audio::ServiceEvent::None){serviceKind=servicePending;servicePending=audio::ServiceEvent::None;serviceStep=0;}
+      const uint16_t hz=serviceKind==audio::ServiceEvent::Lost?1300-serviceStep*300:700+serviceStep*300;
+      if(ledcSetup(7,hz,8)!=0) {
+        ledcWrite(7,0);ledcAttachPin(pins::BUZZER,7);ledcWrite(7,64);
+        knobActive=knobService=true;knobUntilMs=nowMs+100;
+        if(serviceStep==0) {
+          if(serviceKind==audio::ServiceEvent::Lost)servicePolicy.lossAnnounced();
+          recordSound(serviceKind==audio::ServiceEvent::Lost?Sound::Lost:Sound::Restored);
+          Serial.println(serviceKind==audio::ServiceEvent::Lost?"Service sound: lost, three descending notes":"Service sound: restored, three ascending notes");
+        }
+      } else {servicePolicy.reset();serviceKind=servicePending=audio::ServiceEvent::None;serviceStep=0;digitalWrite(pins::BUZZER,LOW);}
+    } else if(readyToneBit || ready) {
+      const uint32_t bit=readyToneBit?readyToneBit:ready&(~ready+1u);
+      if(!readyToneBit){readyToneBit=bit;readyNotes=bit==1?1:bit==2?2:3;__atomic_fetch_and(&readyPending,~bit,__ATOMIC_RELAXED);}
       const uint16_t hz=bit==1?1000:bit==2?1500:2000;
       if(ledcSetup(7,hz,8)!=0) {
         ledcWrite(7,0);ledcAttachPin(pins::BUZZER,7);ledcWrite(7,128);
         knobActive=knobReady=true;knobUntilMs=nowMs+(bit==4?100:90);
+        if(readyNotes==(bit==1?1:bit==2?2:3))recordSound(bit==1?Sound::System:bit==2?Sound::Network:Sound::Feed);
         Serial.printf("Ready beep: %s green, %u Hz\n",bit==1?"SYSTEM":bit==2?"NETWORK":"MTA",unsigned(hz));
-      } else digitalWrite(pins::BUZZER,LOW);
+      } else {readyToneBit=0;readyNotes=0;digitalWrite(pins::BUZZER,LOW);}
     } else if(__atomic_load_n(&knobPending,__ATOMIC_RELAXED)) {
       __atomic_sub_fetch(&knobPending,1u,__ATOMIC_RELAXED);
       if(ledcSetup(7,2000,8)!=0) {
         ledcWrite(7,0);ledcAttachPin(pins::BUZZER,7);ledcWrite(7,128);
         knobActive=true;knobUntilMs=nowMs+15;
+        recordSound(Sound::Knob);
       } else digitalWrite(pins::BUZZER,LOW);
     }
   }
@@ -370,7 +435,7 @@ void serviceKnobClick(uint32_t nowMs,bool allowed) {
 #endif
 }
 
-static void signalFeedback(uint8_t value, uint8_t maximum,uint16_t durationMs) {
+static void signalFeedback(uint8_t value, uint8_t maximum,uint16_t durationMs,Sound sound=Sound::Brightness) {
 #if defined(BROOKLYN_TARGET_PCB)
   if(isQuiet()) return;
   // Main-loop caller; serialize with the feed-ready cue on the same PWM timer.
@@ -381,19 +446,20 @@ static void signalFeedback(uint8_t value, uint8_t maximum,uint16_t durationMs) {
   const uint16_t frequency = 800 + (maximum ? uint32_t(bounded) * 2400 / maximum : 0);
   if (ledcSetup(channel, frequency, 8) != 0) {
     ledcWrite(channel, 0); ledcAttachPin(pins::BUZZER, channel);
+    recordSound(sound,value);
     ledcWrite(channel, 128); delay(durationMs); ledcWrite(channel, 0);
     ledcDetachPin(pins::BUZZER);
   }
   digitalWrite(pins::BUZZER, LOW);
   unlockIndicator();
 #else
-  (void)value; (void)maximum;(void)durationMs;
+  (void)value; (void)maximum;(void)durationMs;(void)sound;
 #endif
 }
 
 void signalBrightness(uint8_t value,uint8_t maximum) {signalFeedback(value,maximum,45);}
 void signalSetupReady() {
-  signalFeedback(1,3,120);
+  signalFeedback(1,3,120,Sound::Setup);
 #if defined(BROOKLYN_TARGET_PCB)
   Serial.println(isQuiet()?"Setup AP ready: confirmation muted by quiet hours":"Setup AP ready: confirmation beep complete");
 #endif
@@ -401,6 +467,7 @@ void signalSetupReady() {
 
 void signalUpgradeStarting() {
 #if defined(BROOKLYN_TARGET_PCB)
+  __atomic_store_n(&serviceWord,0u,__ATOMIC_RELAXED); // No service alerts during an upgrade.
   if(isQuiet()){Serial.println("Upgrade cue: muted by quiet hours");return;}
   lockIndicator();stopKnobToneLocked();
   constexpr uint8_t channel=7,kGentleDuty=64;
@@ -408,6 +475,7 @@ void signalUpgradeStarting() {
   for(uint8_t note=0;note<2;++note) {
     if(isQuiet() || ledcSetup(channel,frequencies[note],8)==0)break;
     ledcWrite(channel,0);ledcAttachPin(pins::BUZZER,channel);ledcWrite(channel,kGentleDuty);
+    if(note==0)recordSound(Sound::Upgrade);
     delay(100);ledcWrite(channel,0);ledcDetachPin(pins::BUZZER);digitalWrite(pins::BUZZER,LOW);
     if(note==0)delay(120);
   }
@@ -448,6 +516,9 @@ bool beginSafe() {
   __atomic_store_n(&statusCuesEnabled,0u,__ATOMIC_RELAXED);
   __atomic_store_n(&observedGreen,0u,__ATOMIC_RELAXED);
   __atomic_store_n(&readyPending,0u,__ATOMIC_RELAXED);
+  __atomic_store_n(&readySeen,0u,__ATOMIC_RELAXED);
+  __atomic_store_n(&serviceWord,0u,__ATOMIC_RELAXED);servicePolicy.reset();
+  __atomic_store_n(&soundSequence,0u,__ATOMIC_RELAXED);__atomic_store_n(&soundCode,0u,__ATOMIC_RELAXED);__atomic_store_n(&soundAtMs,0u,__ATOMIC_RELAXED);
   pinMode(pins::AVI_LOCATION_LED, OUTPUT);
 
   digitalWrite(pins::BUZZER, LOW);

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright 2026 Joel W. Goldwein
 # SPDX-License-Identifier: Apache-2.0
-"""Exercise the production screen-settings field loop, including its ninth flag."""
+"""Exercise the production screen-settings field loop, including optional sound alerts."""
 import subprocess
 import tempfile
 from pathlib import Path
@@ -32,7 +32,8 @@ uint16_t parse(const char **names,int count) {
   return seen;
 }
 int main() {
-  const char *fields[]={"csrf","start","end","contrast","quiet","startup","mapMode","mapBrightness","waitWifi"};
+  const char *fields[]={"csrf","start","end","contrast","quiet","startup","mapMode","mapBrightness","waitWifi","serviceSounds"};
+  if(parse(fields,10)!=1023) return 6;
   if(parse(fields,9)!=511) return 1;
   if(parse(fields,8)!=255) return 2;
   const char *checked[]={"waitWifi"};
@@ -41,6 +42,8 @@ int main() {
   if(parse(duplicate,2)!=0xffff) return 4;
   const char *unknown[]={"unknown"};
   if(parse(unknown,1)!=0xffff) return 5;
+  const char *service[]={"serviceSounds"};if(parse(service,1)!=512)return 7;
+  const char *twice[]={"serviceSounds","serviceSounds"};if(parse(twice,2)!=0xffff)return 8;
   return 0;
 }
 '''

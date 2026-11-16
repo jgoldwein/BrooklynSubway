@@ -205,9 +205,12 @@ void testBlueHoldConfiguration() {
   memory.unknownTiming = 1000; uncertain.load(); CHECK(uncertain.unknownTiming() == brooklyn::config::kDefaultUnknownTiming);
   CHECK(config.oledReturnSeconds()==60);
   CHECK(config.screenPreferences()==kDefaultScreenPreferences);
-  ScreenPreferences pref;pref.quietEnabled=true;pref.startupDedication=false;pref.quietMapBrightness=4;
+  CHECK(!unpackScreenPreferences(kDefaultScreenPreferences).serviceSounds);
+  ScreenPreferences pref;pref.quietEnabled=true;pref.startupDedication=false;pref.quietMapBrightness=4;pref.serviceSounds=true;
   const uint64_t word=packScreenPreferences(pref);
   CHECK(config.setScreenPreferences(word));DeviceConfiguration prefReloaded(configStore(memory));prefReloaded.load();CHECK(prefReloaded.screenPreferences()==word);
+  CHECK(unpackScreenPreferences(prefReloaded.screenPreferences()).serviceSounds);
+  CHECK(!validScreenPreferences(word|(1ull<<43)));
   memory.failSave=true;CHECK(!config.setScreenPreferences(kDefaultScreenPreferences) && config.screenPreferences()==word);memory.failSave=false;
   memory.screenPrefs=UINT64_MAX;prefReloaded.load();CHECK(prefReloaded.screenPreferences()==kDefaultScreenPreferences);
   char screenPage[6144];
@@ -226,6 +229,7 @@ void testBlueHoldConfiguration() {
   CHECK(strstr(screenPage,"name=\"startup\" value=\"1\" checked")!=nullptr);
   CHECK(strstr(screenPage,"name=\"quiet\" value=\"1\" checked")==nullptr);
   CHECK(strstr(screenPage,"name=\"waitWifi\" value=\"1\" checked")!=nullptr);
+  CHECK(strstr(screenPage,"name=\"serviceSounds\" value=\"1\" checked")==nullptr);
   CHECK(strstr(screenPage,"22:00") && strstr(screenPage,"07:00"));
   CHECK(brooklyn::web::renderScreenOptionsPage(screenPage,16,kDefaultScreenPreferences,false,"token")==0);
   CHECK(brooklyn::web::renderScreenOptionsPage(screenPage,sizeof(screenPage),UINT32_MAX,false,"token")==0);
@@ -620,6 +624,20 @@ void testPageEscapingAndRequiredContent() {
   CHECK(authenticatedPageSize > 0);
   CHECK(authenticatedPageSize < sizeof(page));
   CHECK(strstr(page,"data-status=\"firmwareVersion\"")!=nullptr);
+  CHECK(strstr(page,"data-status=\"lastSound\"")!=nullptr);
+  CHECK(strstr(page,"Train data, colors &amp; beep tones")!=nullptr);
+  CHECK(strstr(page,"data-status=\"lastSound\"")>strstr(page,"Train data, colors &amp; beep tones"));
+  CHECK(countSubstring(page,"data-status=\"lastSound\"")==1);
+  {
+    brooklyn::web::StatusSnapshot soundStatus;
+    strcpy(soundStatus.lastSound,"Setting saved: \"two notes\" (2 s ago)");
+    auto p=brooklyn::config::unpackScreenPreferences(soundStatus.screenPreferences);p.serviceSounds=true;
+    soundStatus.screenPreferences=brooklyn::config::packScreenPreferences(p);
+    char jsonSound[6144];
+    CHECK(brooklyn::web::renderStatusJson(jsonSound,sizeof(jsonSound),soundStatus,5,0)>0);
+    CHECK(strstr(jsonSound,"\"lastSound\":\"Setting saved: \\\"two notes\\\" (2 s ago)\"")!=nullptr);
+    CHECK(strstr(jsonSound,"\"serviceSoundsEnabled\":true")!=nullptr);
+  }
   CHECK(strstr(page,"data-status=\"firmwareVersion\"") < strstr(page,"id=\"advanced\""));
   const char *views[]={"overview","lights","screen","wifi","advanced"};
   for (const char *view:views) {
@@ -641,7 +659,7 @@ void testPageEscapingAndRequiredContent() {
     CHECK(strstr(help,"href=\"/#overview\"") && strstr(help,"href=\"/#advanced\""));
     CHECK(strstr(help,"id=\"about\"") && strstr(help,"id=\"licenses\""));
     CHECK(strstr(help,"id=\"sounds\"") && strstr(help,"Read the sound guide"));
-    CHECK(strstr(help,"AVI_USER_GUIDE.md#sounds-and-what-they-mean") && strstr(help,"MTA feed recovered"));
+    CHECK(strstr(help,"AVI_USER_GUIDE.md#sounds-and-what-they-mean") && strstr(help,"once per boot"));
     CHECK(strstr(help,"Project on GitHub") && strstr(help,"AVI_USER_GUIDE.md"));
     CHECK(strstr(help,"href=\"/support\"") && strstr(help,"Nothing is sent automatically"));
     CHECK(strstr(help,"Apache License 2.0") && strstr(help,"CERN Open Hardware Licence") && strstr(help,"Creative Commons Attribution 4.0"));
@@ -828,7 +846,7 @@ void testInlineLoginOnStatusPage() {
   CHECK(strstr(page, "<a href=\"/login\">Sign in</a>") != nullptr);
   CHECK(strstr(page, "http-equiv=\"refresh\"") == nullptr);
   CHECK(strstr(page, "fetch('/api/status'") != nullptr);
-  CHECK(strstr(page, "setTimeout(refresh,5000)") != nullptr);
+  CHECK(strstr(page, "setTimeout(refresh,2000)") != nullptr);
   CHECK(strstr(page, "e.textContent=") != nullptr);
   status.adminConfigured = false;
   CHECK(brooklyn::web::renderHomePage(

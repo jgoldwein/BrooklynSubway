@@ -17,6 +17,7 @@ bool feedReadyMode = false;
 bool brightnessMode = false;
 bool knobMode=false,probePriority=false,eggMode=false,readyMode=false;
 uint32_t lastFeedbackMs=0;
+bool serviceMode=false;
 bool settingsCueMode=false;uint32_t soundNow=0;
 uint32_t millis(){return soundNow;}
 bool upgradeCueMode=false;uint32_t upgradeCueMs=0;int upgradeNotes=0;
@@ -59,7 +60,8 @@ uint32_t ledcSetup(uint8_t channel, uint32_t hz, uint8_t resolution) {
     ++feedSetups; return failFeedSetup ? 0 : hz;
   }
   CHECK(channel == 7 && resolution == 8 && duty == 0);
-  if(settingsCueMode){CHECK(hz==1200 || hz==1800 || hz==2000 || hz==800);}
+  if(serviceMode){CHECK(hz==700 || hz==1000 || hz==1300);}
+  else if(settingsCueMode){CHECK(hz==1200 || hz==1800 || hz==2000 || hz==800);}
   else if(upgradeCueMode){CHECK(hz==(upgradeNotes?900u:1200u));++upgradeNotes;}
   else if(readyMode) {CHECK(hz==1000 || hz==1500 || hz==2000);}
   else if(eggMode) {CHECK(hz>=100 && hz<=4000);}
@@ -81,7 +83,7 @@ void ledcAttachPin(uint8_t pin, uint8_t channel) {
 }
 void ledcWrite(uint8_t channel, uint32_t value) {
   if (channel == 4) { CHECK(value <= 8); feedDuty = value; return; }
-  CHECK(channel == 7 && (value == 0 || value == 128 || ((upgradeCueMode || settingsCueMode) && value==64)));
+  CHECK(channel == 7 && (value == 0 || value == 128 || ((upgradeCueMode || settingsCueMode || serviceMode) && value==64)));
   if (cueMode && value == 128) ++beepStarts;
   duty = value;
 }
@@ -92,7 +94,7 @@ void ledcDetachPin(uint8_t pin) {
 }
 void delay(uint32_t ms) {
   if(upgradeCueMode){CHECK((ms==100 && duty==64)||(ms==120 && duty==0));upgradeCueMs+=ms;return;}
-  CHECK(!readyMode);
+  CHECK(!readyMode && !serviceMode);
   CHECK(enable == LOW);
   if (brightnessMode) { CHECK((ms == 45 || ms == 120) && duty == 128);lastFeedbackMs=ms;
     if(probePriority) {const auto before=frequency;brooklyn::hardware::serviceKnobClick(100,true);brooklyn::hardware::setFeedIndicatorAllowed(true);CHECK(frequency==before && duty==128);}
@@ -122,7 +124,7 @@ void delay(uint32_t ms) {
 }
 void reset(bool muted, int failAt = -1) {
   brooklyn::hardware::serviceKnobClick(0,false);
-  settingsCueMode=false;soundNow=0;
+  settingsCueMode=serviceMode=false;soundNow=0;
   knobMode=false;probePriority=false;readyMode=false;upgradeCueMode=false;upgradeCueMs=0;upgradeNotes=0;
   brightnessMode = false;
   cueMode = false;
@@ -282,23 +284,26 @@ int main() {
   reset(false);readyMode=true;
   using brooklyn::hardware::observeStatusGreen;using brooklyn::hardware::enableStatusReadyCues;
   enableStatusReadyCues();observeStatusGreen(1);serviceKnobClick(0,true);CHECK(duty==128 && frequency==1000);
-  observeStatusGreen(1);serviceKnobClick(90,true);CHECK(duty==0);serviceKnobClick(170,true);CHECK(attachCalls==1);
+  CHECK(brooklyn::hardware::lastSound().sound==brooklyn::hardware::Sound::System);
+  serviceKnobClick(90,true);serviceKnobClick(170,true);CHECK(attachCalls==1);
   observeStatusGreen(3);serviceKnobClick(171,true);CHECK(duty==128 && frequency==1500);
-  serviceKnobClick(261,true);observeStatusGreen(7);serviceKnobClick(341,true);CHECK(duty==128 && frequency==2000);
-  serviceKnobClick(441,true);brooklyn::hardware::setFeedIndicator(true);CHECK(readyBeeps==0 && attachCalls==3);
-  observeStatusGreen(7);serviceKnobClick(600,true);CHECK(attachCalls==3);
-  observeStatusGreen(3);observeStatusGreen(7);serviceKnobClick(601,true);CHECK(duty==128 && frequency==2000);
-  observeStatusGreen(0);serviceKnobClick(605,true);CHECK(duty==0);
+  serviceKnobClick(261,true);serviceKnobClick(341,true);CHECK(duty==128 && frequency==1500);
+  serviceKnobClick(431,true);serviceKnobClick(511,true);CHECK(duty==0 && attachCalls==3);
+  observeStatusGreen(7);serviceKnobClick(512,true);CHECK(duty==128 && frequency==2000);
+  serviceKnobClick(612,true);serviceKnobClick(692,true);serviceKnobClick(792,true);serviceKnobClick(872,true);serviceKnobClick(972,true);serviceKnobClick(1052,true);
+  CHECK(duty==0 && attachCalls==6 && brooklyn::hardware::lastSound().sequence==3);
+  brooklyn::hardware::setFeedIndicator(true);CHECK(readyBeeps==0 && attachCalls==6);
+  observeStatusGreen(3);observeStatusGreen(7);serviceKnobClick(1100,true);CHECK(duty==0 && attachCalls==6);
   const int cues=attachCalls;
-  brooklyn::hardware::setQuiet(true);observeStatusGreen(7);serviceKnobClick(700,true);CHECK(duty==0);
-  brooklyn::hardware::setQuiet(false);observeStatusGreen(7);serviceKnobClick(800,true);CHECK(attachCalls==cues);
-  observeStatusGreen(0);observeStatusGreen(7);serviceKnobClick(900,false);serviceKnobClick(1000,true);CHECK(duty==0 && attachCalls==cues);
+  brooklyn::hardware::setQuiet(true);observeStatusGreen(7);serviceKnobClick(1200,true);CHECK(duty==0);
+  brooklyn::hardware::setQuiet(false);observeStatusGreen(7);serviceKnobClick(1300,true);CHECK(attachCalls==cues);
+  observeStatusGreen(0);observeStatusGreen(7);serviceKnobClick(1400,false);serviceKnobClick(1500,true);CHECK(duty==0 && attachCalls==cues);
   reset(false,0);readyMode=true;enableStatusReadyCues();observeStatusGreen(2);serviceKnobClick(0,true);CHECK(duty==0 && attachCalls==0);
   reset(true);readyMode=true;enableStatusReadyCues();observeStatusGreen(7);serviceKnobClick(0,true);CHECK(duty==0 && attachCalls==0);
   reset(false);brightnessMode=true;brooklyn::hardware::signalSetupReady();CHECK(lastFeedbackMs==120 && frequency==1600 && duty==0 && buzzer==LOW && attachCalls==1 && detachCalls==1);
   brooklyn::hardware::setQuiet(true);brooklyn::hardware::signalSetupReady();CHECK(attachCalls==1 && duty==0);brooklyn::hardware::setQuiet(false);
   reset(false,0);brightnessMode=true;brooklyn::hardware::signalSetupReady();CHECK(duty==0 && buzzer==LOW && attachCalls==0);
-  puts("Ready cues: three pitches, green-edge only, repeated recovery, no U23 duplicate, quiet/DIM/maintenance/power cancellation and PWM failure PASS");
+  puts("Ready cues: one/two/three distinct pulses, once per service per boot, no U23 duplicate, quiet/DIM/maintenance/power cancellation and PWM failure PASS");
   reset(false);upgradeCueMode=true;brooklyn::hardware::signalUpgradeStarting();CHECK(upgradeNotes==2 && upgradeCueMs==320 && duty==0 && buzzer==LOW && attachCalls==2 && detachCalls==2);
   brooklyn::hardware::setQuiet(true);brooklyn::hardware::signalUpgradeStarting();CHECK(upgradeNotes==2 && upgradeCueMs==320 && duty==0);brooklyn::hardware::setQuiet(false);
   reset(false,0);upgradeCueMode=true;brooklyn::hardware::signalUpgradeStarting();CHECK(attachCalls==0 && duty==0 && buzzer==LOW);
@@ -321,5 +326,25 @@ int main() {
   reset(false,1);settingsCueMode=true;requestSettingsSaved();serviceKnobClick(250,true);serviceKnobClick(310,true);serviceKnobClick(360,true);CHECK(duty==0 && attachCalls==1 && detachCalls==1);serviceKnobClick(500,true);CHECK(attachCalls==1);
   reset(false);settingsCueMode=brightnessMode=true;requestSettingsSaved();brooklyn::hardware::signalBrightness(0,255);brightnessMode=false;serviceKnobClick(250,true);CHECK(frequency==1200 && duty==64);serviceKnobClick(310,false);CHECK(duty==0);
   puts("Saved settings cue: two nonblocking ascending notes, coalescing/debounce, quiet cancellation, maintenance, failure and timer rollover PASS");
+  reset(false);serviceMode=true;
+  using brooklyn::hardware::observeService;
+  using brooklyn::hardware::Sound;
+  observeService(true,true,true);serviceKnobClick(0,true);
+  observeService(false,true,true);serviceKnobClick(1,true);serviceKnobClick(60000,true);CHECK(attachCalls==0);
+  serviceKnobClick(60001,true);CHECK(duty==64 && frequency==1300 && brooklyn::hardware::lastSound().sound==Sound::Lost);
+  serviceKnobClick(60101,true);serviceKnobClick(60181,true);CHECK(frequency==1000 && duty==64);
+  serviceKnobClick(60281,true);serviceKnobClick(60361,true);CHECK(frequency==700 && duty==64);
+  serviceKnobClick(60461,true);serviceKnobClick(60541,true);serviceKnobClick(200000,true);CHECK(duty==0 && attachCalls==3);
+  observeService(true,true,true);serviceKnobClick(200001,true);CHECK(duty==64 && frequency==700 && brooklyn::hardware::lastSound().sound==Sound::Restored);
+  serviceKnobClick(200101,true);serviceKnobClick(200181,true);CHECK(frequency==1000 && duty==64);
+  serviceKnobClick(200281,true);serviceKnobClick(200361,true);CHECK(frequency==1300 && duty==64);
+  serviceKnobClick(200461,true);serviceKnobClick(200541,true);CHECK(duty==0 && attachCalls==6);
+  observeService(false,true,true);serviceKnobClick(300000,true);serviceKnobClick(360000,true);CHECK(duty==64);
+  brooklyn::hardware::setQuiet(true);serviceKnobClick(360001,true);CHECK(duty==0);
+  observeService(true,true,true);brooklyn::hardware::setQuiet(false);serviceKnobClick(360002,true);CHECK(duty==0 && attachCalls==7);
+  reset(false,0);serviceMode=true;observeService(true,true,true);serviceKnobClick(0,true);observeService(false,true,true);serviceKnobClick(1,true);serviceKnobClick(60001,true);
+  CHECK(duty==0 && attachCalls==0);observeService(true,true,true);serviceKnobClick(60002,true);CHECK(attachCalls==0);
+  reset(false);serviceMode=true;observeService(true,true,false);serviceKnobClick(0,true);observeService(false,true,false);serviceKnobClick(1,true);serviceKnobClick(60001,true);CHECK(attachCalls==0);
+  puts("Service cue: exact descending/ascending three notes, 60s delay, no repeats, quiet cancellation, opt-out, PWM failure and sound telemetry PASS");
   puts("Startup: U23 pulses, four rising notes plus descending pair, 2265 ms, 50%-duty PWM, DIM mute, failed-check silence, PWM failure cleanup, addressable outputs disabled PASS");
 }

@@ -183,6 +183,11 @@ void updateLogicalDisplay(uint32_t nowMs) {
       operationalDisplay.hasFrame() && operationalDisplay.dataAgeMs(nowMs) <= brooklyn::display::kPartialGraceMs &&
       networkService.state() == brooklyn::network::State::Ready);
   static brooklyn::display::StatusIndicators previousStatus{};
+  brooklyn::hardware::observeService(
+      networkService.state()==brooklyn::network::State::Ready && operationalDisplay.hasFrame() &&
+      operationalDisplay.dataAgeMs(nowMs)<=brooklyn::display::kPartialGraceMs,
+      systemHealthy && !status.provisioning,
+      (networkService.screenPreferences()&brooklyn::config::kServiceSoundsBit)!=0);
   static bool hasPreviousStatus = false;
   const bool statusChanged =
       !hasPreviousStatus ||
