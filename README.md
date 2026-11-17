@@ -2,6 +2,11 @@
 
 **Specially Designed for Avi Yao**
 
+[![Working Brooklyn Subway map with train LEDs and OLED screen](docs/media/brooklyn-subway-video-poster.jpg)](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/media/brooklyn-subway-demo.mp4)
+
+[Watch or download the 15-second working-map video](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/media/brooklyn-subway-demo.mp4)
+(silent MP4, about 6 MB). The image above is a frame from the actual footage.
+
 Brooklyn Subway is a connected, light-up map that brings Brooklyn's subway
 trains to your wall. It uses official MTA train reports to show where trains
 are reported and how they are moving, with colors for approaching, stopped,
