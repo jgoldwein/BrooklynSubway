@@ -60,6 +60,16 @@ parts. Treat it like an electronic device, even when the lights are off.
 - Keep loose metal objects and pets away from the exposed electronics. Ask an
   adult for help if a connector, cable or mounting part is damaged.
 
+### OLED mounting magnet
+
+The round magnet on the **back of the board** holds the OLED case against the
+**front of the PCB**. The case contains a matching counter-magnet.
+
+**Please do not move, loosen or remove the magnet on the board.** Its position
+keeps the OLED case aligned and supported. Handle the board gently around this
+area. If the magnet or case becomes loose, unplug all power and ask Joel for
+help rather than trying to reposition it yourself.
+
 ### Cleaning
 
 1. Unplug **all** power, including USB.
