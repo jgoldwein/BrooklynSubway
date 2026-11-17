@@ -32,5 +32,13 @@
   "care": "<b>CARE:</b> Unplug barrel power and USB before moving, cleaning or adjusting anything. The POWER button changes the displays; it does not disconnect electrical power.",
   "help": "If something seems wrong, contact <b>Joel: goldwein@gmail.com</b>. When the web page works, use <b>Help &gt; Make a support report</b>. Review the email draft before sending.",
   "guide_url": "https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/AVI_QUICK_START.md",
-  "repository_label": "github.com/jgoldwein/BrooklynSubway"
+  "repository_label": "github.com/jgoldwein/BrooklynSubway",
+  "included_parts": [
+    "PCB (map board)",
+    "power supply",
+    "5 V power extension cord",
+    "stand",
+    "wall-mounting screws",
+    "wall anchors"
+  ]
 }

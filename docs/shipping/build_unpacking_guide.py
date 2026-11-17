@@ -40,7 +40,9 @@ label(D['title'],L,742,26,NAVY)
 c.setFillColor(MUTED);c.setFont('Unpack',10.5);c.drawString(L,723,D['subtitle'])
 label(D['heading'],L,699,10)
 c.setStrokeColor(colors.HexColor('#CAD7E5'));c.line(L,712,R,712)
-y=paragraph(D['intro'],L,689,R-L,small)-13
+y=paragraph(D['intro'],L,689,R-L,small)-8
+parts=', '.join(D['included_parts'][:3])+';<br/>'+', '.join(D['included_parts'][3:-1])+' and '+D['included_parts'][-1]+'.'
+y=paragraph('<b>Included parts:</b> '+parts,L,y,R-L)-13
 for i,step in enumerate(D['steps'],1):
  c.setFillColor(colors.HexColor('#EDF3FA'));c.circle(46,y-6,10,fill=1,stroke=0)
  c.setFillColor(BLUE);c.setFont('Unpack-Bold',10);c.drawCentredString(46,y-9,str(i))
@@ -79,13 +81,14 @@ c.showPage();c.save()
 
 def plain(s):return html.unescape(s.replace('<b>','**').replace('</b>','**'))
 lines=['# '+D['title']+' - Unpacking and First Startup','',D['subtitle'],'',D['intro'],'']
+lines += ['## Included parts','']+['- '+item for item in D['included_parts']]+['','## Unpack and start','']
 for i,step in enumerate(D['steps'],1):lines += [str(i)+'. **'+step['title']+'.** '+plain(step['text']),'']
 lines+=['## '+D['update_title'],'',plain(D['update_text']),'','## '+D['after_title'],'',plain(D['after_text']),'',plain(D['care']),'','## Need help?','',plain(D['help']),'','[Quick Start]('+D['guide_url']+')']
 (ROOT/'Brooklyn_Subway_Unpacking_Guide.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
 pdf=PdfReader(ROOT/'Brooklyn_Subway_Unpacking_Guide.pdf');assert len(pdf.pages)==1
 assert list(pdf.pages[0].mediabox)==[0,0,612,792]
 text=" ".join(pdf.pages[0].extract_text().split())
-for phrase in ['bubble wrap','Do not unplug power','Update complete','BrooklynMap-Avi','192.168.4.1','direct sunlight','USB-C','magnet','antenna','5 V, 3 A']:
+for phrase in ['Included parts','5 V power extension cord','wall-mounting screws','wall anchors','bubble wrap','Do not unplug power','Update complete','BrooklynMap-Avi','192.168.4.1','direct sunlight','USB-C','magnet','antenna','5 V, 3 A']:
  assert phrase in text,phrase
 for secret in ['10.1.1.27','10.1.1.56','tsunami2']:assert secret not in text
 render=pymupdf.open(ROOT/'Brooklyn_Subway_Unpacking_Guide.pdf')
