@@ -2,10 +2,23 @@
 
 **Specially Designed for Avi Yao**
 
-## [How was this made?](docs/HOW_IT_WAS_MADE.md)
+## Start Here
 
-Read how Joel designed the circuitry with AI assistance, had the PCB made by
-JLCPCB, and designed and 3D-printed the frame and OLED case.
+- **Setting up your map?** Follow [Avi's quick start](docs/AVI_QUICK_START.md).
+- **Want a copy to print?** [Download the one-page Quick Start PDF](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/shipping/Brooklyn_Subway_Quick_Start.pdf).
+  Print on US Letter at **100% / Actual size**.
+- **Want to learn the controls, colors and sounds?** Open
+  [Avi's Brooklyn Subway Map - User Guide](docs/AVI_USER_GUIDE.md).
+- **Moving, cleaning or packing the board?** Read
+  [PCB handling and care](docs/AVI_USER_GUIDE.md#handling-cleaning-and-caring-for-the-pcb),
+  including the OLED magnet and frame-mounted antenna.
+- **Want to print the frame, OLED case or knob?** Download the [3D-print STL files](hardware/3d-print/README.md), individually or as one ZIP.
+- **Interested in the electronics?** Download the [Gerbers, BOM and placement files](hardware/README.md).
+- **Looking for upgraded firmware?** See the [latest signed release](https://github.com/jgoldwein/BrooklynSubway/releases/latest).
+  For an already programmed map, use **Advanced > Firmware updates** on its web page.
+
+If something looks wrong, open **Help > Make a support report** on the map's
+web page. **Send report to Joel** opens an email draft for you to review and send.
 
 <a href="docs/media/brooklyn-subway-photo-straightened-v2.jpg" title="Click to view the full-size photo"><img src="docs/media/brooklyn-subway-photo-straightened-v2.jpg" alt="The actual working Brooklyn Subway map with train LEDs and OLED screen" width="600"></a>
 
@@ -30,25 +43,6 @@ The map needs a 2.4 GHz Wi-Fi signal and the supplied barrel power adapter.
 Train reports arrive in batches, and some positions are estimates. Several
 trains can share one light. This is a display of MTA reports, not a GPS tracker
 or a guarantee of the next train's arrival.
-
-## Start here
-
-- **Did you make this? How?** Read [How Brooklyn Subway was made](docs/HOW_IT_WAS_MADE.md).
-- **Setting up your map?** Follow [Avi's quick start](docs/AVI_QUICK_START.md).
-- **Want a copy to print?** [Download the one-page Quick Start PDF](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/shipping/Brooklyn_Subway_Quick_Start.pdf).
-  Print on US Letter at **100% / Actual size**.
-- **Want to learn the controls, colors and sounds?** Open
-  [Avi's Brooklyn Subway Map - User Guide](docs/AVI_USER_GUIDE.md).
-- **Moving, cleaning or packing the board?** Read
-  [PCB handling and care](docs/AVI_USER_GUIDE.md#handling-cleaning-and-caring-for-the-pcb),
-  including the OLED magnet and frame-mounted antenna.
-- **Want to print the frame, OLED case or knob?** Download the [3D-print STL files](hardware/3d-print/README.md), individually or as one ZIP.
-- **Interested in the electronics?** Download the [Gerbers, BOM and placement files](hardware/README.md).
-- **Looking for upgraded firmware?** See the [latest signed release](https://github.com/jgoldwein/BrooklynSubway/releases/latest).
-  For an already programmed map, use **Advanced > Firmware updates** on its web page.
-
-If something looks wrong, open **Help > Make a support report** on the map's
-web page. **Send report to Joel** opens an email draft for you to review and send.
 
 ## Engineering: start here
 
@@ -232,3 +226,8 @@ smaller blocks use internal RAM. Internal fallback and allocation failures are
 counted in serial cycle diagnostics. Certificate verification remains enabled.
 This uses the already pinned ESP32 framework, with no additional dependency.
 See [the COM6 recovery investigation](docs/QUIET_RESUME_RECOVERY_0.2.79.md).
+
+## [How it was made](docs/HOW_IT_WAS_MADE.md)
+
+Read how Joel designed the circuitry with AI assistance, had the PCB made by
+JLCPCB, and designed and 3D-printed the frame and OLED case.
