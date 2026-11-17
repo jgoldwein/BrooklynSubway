@@ -4,7 +4,8 @@
 
 ## [How was this made?](docs/HOW_IT_WAS_MADE.md)
 
-Read the story behind the custom board, live train data, programming and testing.
+Read how Joel designed the circuitry with AI assistance, had the PCB made by
+JLCPCB, and designed and 3D-printed the frame and OLED case.
 
 <a href="docs/media/brooklyn-subway-photo-straightened-v2.jpg" title="Click to view the full-size photo"><img src="docs/media/brooklyn-subway-photo-straightened-v2.jpg" alt="The actual working Brooklyn Subway map with train LEDs and OLED screen" width="600"></a>
 

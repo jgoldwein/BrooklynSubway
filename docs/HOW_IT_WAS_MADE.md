@@ -8,14 +8,16 @@ a personal Bar Mitzvah gift that Avi can enjoy, explore and help improve.
 
 ## The short answer: "Did you make this?"
 
-> Yes. I developed this custom subway map for Avi. I had the circuit board
-> manufactured, brought the electronics and display together, and worked through
-> the features and testing. The software was developed with AI assistance and
+> Yes. I designed the circuitry for this custom subway map with AI assistance,
+> and JLCPCB manufactured the circuit board. I also designed and 3D-printed the
+> PCB frame and OLED case. I brought the parts together and worked through the
+> features and testing. The software was developed with AI assistance and
 > open-source tools, and the train information comes from the MTA.
 
 It is a collaborative kind of making: the project decisions and hands-on work,
-professional circuit-board manufacturing, existing electronic components,
-open-source libraries and AI-assisted programming all contribute to the result.
+custom 3D design and printing, professional circuit-board manufacturing, existing
+electronic components, open-source libraries and AI assistance all contribute
+to the result.
 
 <a href="media/brooklyn-subway-photo-straightened-v2.jpg" title="Click to view the full-size photo"><img src="media/brooklyn-subway-photo-straightened-v2.jpg" alt="The actual working framed Brooklyn Subway map" width="600"></a>
 
@@ -33,7 +35,8 @@ sounds and a few hidden extras, including **Avi Yao in Morse code**.
 
 ## 2. Turn the map into electronics
 
-The electronics were laid out as a **PCB**, or printed circuit board. Tiny
+**Joel designed the circuitry with AI assistance.** The design was laid out as
+a **PCB**, or printed circuit board. Tiny
 copper tracks connect the parts, replacing what would otherwise be a large
 bundle of individual wires. The manufactured hardware design was prepared in
 **EasyEDA Pro**.
@@ -47,9 +50,19 @@ The lights are divided into eight electronic chains. A subway line and an LED
 chain are different things: software connects each logical station or route
 to the correct physical light.
 
-A manufacturer produced the custom board. The working map then needed its
-screen, controls, antenna, power connection, frame and OLED case brought
-together into the finished object. 
+**JLCPCB manufactured the custom circuit board.** Joel then brought the screen,
+controls, antenna, power connection and mounting parts together into the working
+map.
+
+### Design and 3D-print the frame and case
+
+**Joel designed and 3D-printed both the PCB frame and the OLED case.** The frame
+supports the board, and the case houses the small screen. The OLED case is held
+at the front of the PCB by its counter-magnet and the round magnet on the back
+of the board.
+
+These mechanical parts were part of Joel's design work alongside the circuitry,
+software decisions, assembly and testing.
 
 The [manufacturing downloads](../hardware/README.md) include the supplied
 Gerbers, BOM and component placement files, with export dates and revision notes.
@@ -120,9 +133,12 @@ board provided a way to try changes while keeping the master prototype available
 
 ## Where AI helped - and where people did the work
 
-**Joel led the project**, chose and refined its behavior, worked with the
-physical boards and checked the results. **OpenAI Codex and ChatGPT** assisted
-with programming, tests, troubleshooting, explanations and documentation.
+**Joel led the project and designed the circuitry with AI assistance.** He
+also designed and 3D-printed the PCB frame and OLED case, chose and refined the
+map's behavior, worked with the physical boards and checked the results.
+**JLCPCB manufactured the PCB.** **OpenAI Codex and ChatGPT** assisted with
+circuit-design work, programming, tests, troubleshooting, explanations and
+documentation.
 
 AI assistance did not manufacture the PCB, attach the screen, measure the power
 rails, or replace observing the real device. Suggested changes
