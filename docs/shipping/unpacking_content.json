@@ -1,0 +1,36 @@
+{
+  "title": "Brooklyn Subway",
+  "subtitle": "Specially Designed for Avi Yao",
+  "heading": "UNPACKING & FIRST STARTUP",
+  "intro": "Read this before plugging in your map. Keep the Quick Start sheet nearby.",
+  "steps": [
+    {
+      "title": "Unpack with the power disconnected",
+      "text": "Remove all bags and padding before connecting power. Lift the map by its <b>frame or board edges</b>, never by the screen, knob, wires or small electronic parts. Keep the packaging for future moves."
+    },
+    {
+      "title": "Check the screen and antenna",
+      "text": "The <b>OLED case</b> is held at the front by magnets. Do not move or remove the round magnet on the back. The <b>antenna exits at the bottom-left</b> and is fastened to the frame; leave it attached. If anything looks loose or damaged, ask Joel before powering up."
+    },
+    {
+      "title": "Choose a safe place",
+      "text": "Use the map indoors on secure supports, with space around it. Keep it dry and <b>out of direct sunlight</b>, away from heaters, drinks and loose metal objects. Do not rest exposed contacts on metal."
+    },
+    {
+      "title": "Connect the supplied power adapter",
+      "text": "Use the <b>5 V, 3 A, center-positive barrel adapter</b> and the map's round power jack. <b>USB-C is for programming and service, not normal power.</b> A greeting, startup sounds and status lights are normal."
+    },
+    {
+      "title": "Connect it to your home Wi-Fi",
+      "text": "Follow the Quick Start sheet. On your phone, join <b>BrooklynMap-Avi</b>, then open <b>http://192.168.4.1/</b>. Save the administrator password, then home Wi-Fi details. Use a 2.4 GHz network; a shared 2.4/5 GHz name works."
+    }
+  ],
+  "update_title": "A FIRMWARE UPDATE MAY RUN AT STARTUP",
+  "update_text": "After home Wi-Fi connects and the clock synchronizes, the map checks for new firmware. Automatic updates are ON by default unless changed. It may download an update and restart itself. The OLED shows progress and <b>Do not unplug power</b>. Keep power connected until <b>Update complete</b> appears and normal operation returns. Train lights may pause during the update.",
+  "after_title": "Then open your map",
+  "after_text": "Rejoin home Wi-Fi on your phone, wait <b>10 seconds</b>, then open the map's address from setup or its Connection screen. Bookmark it. Train lights appear after usable train data arrives.",
+  "care": "<b>CARE:</b> Unplug barrel power and USB before moving, cleaning or adjusting anything. The POWER button changes the displays; it does not disconnect electrical power.",
+  "help": "If something seems wrong, contact <b>Joel: goldwein@gmail.com</b>. When the web page works, use <b>Help &gt; Make a support report</b>. Review the email draft before sending.",
+  "guide_url": "https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/AVI_QUICK_START.md",
+  "repository_label": "github.com/jgoldwein/BrooklynSubway"
+}

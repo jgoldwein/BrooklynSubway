@@ -1,4 +1,4 @@
-﻿# Packing guide for Avi
+# Packing guide for Avi
 
 Print **Brooklyn_Subway_Quick_Start.pdf** on **US Letter, portrait, one-sided, at 100% / Actual size**. Do not use a multiple-pages-per-sheet setting. Color is helpful; the written color labels also work when printed in black and white. Leave the map web-address line blank for Avi to fill after setup. Do not write passwords on the sheet.
 
@@ -26,3 +26,12 @@ PDF rendering uses PyMuPDF because Poppler was unavailable in this environment. 
 ## Before packing
 
 The shipping board must be prepared to open setup Wi-Fi instead of using the sender's saved credentials. That preparation belongs in the separate shipping checklist; this guide deliberately starts with Avi's first-time setup. Use the supplied tested adapter and retain the external antenna. The printed guide does not require Avi to wait for network-ready lights before connecting the map to his Wi-Fi.
+
+
+## Unpacking insert
+
+[Download the Unpacking & First Startup PDF](Brooklyn_Subway_Unpacking_Guide.pdf) or [read it on a phone](Brooklyn_Subway_Unpacking_Guide.md). Pack this one-page insert with the Quick Start sheet. Print US Letter, portrait, at 100% / Actual size.
+
+It covers unpowered unpacking, the frame-mounted antenna and OLED magnet, dry indoor placement away from direct sunlight, barrel power, initial Wi-Fi setup, and the automatic firmware update that may run after startup. The highlighted update notice says to keep power connected and wait for Update complete. CARE is bold.
+
+Edit `unpacking_content.json` and rebuild with `python docs/shipping/build_unpacking_guide.py`. It uses the same document-only dependencies and fonts as the Quick Start builder. The generated preview and `unpacking_validation.json` record one-page, required-text, bold-CARE and rendered-QR checks. Inspect the preview after changes.

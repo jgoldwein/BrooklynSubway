@@ -2,9 +2,11 @@
 
 Specially Designed for Avi Yao
 
+New arrival? Start with the [Unpacking & First Startup guide](shipping/Brooklyn_Subway_Unpacking_Guide.md) or its [printable PDF](shipping/Brooklyn_Subway_Unpacking_Guide.pdf). A firmware update may run after startup once home Wi-Fi is connected; keep power connected until it finishes.
+
 [Download the one-page packing sheet (PDF)](shipping/Brooklyn_Subway_Quick_Start.pdf)
 
-These instructions match firmware 0.2.93. Older releases
+These instructions match firmware 0.2.96. Older releases
 may work differently.
 
 Before moving or cleaning the board, unplug both barrel power and USB. Read

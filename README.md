@@ -4,6 +4,7 @@
 
 ## Start Here
 
+- **Unpacking your new map?** [Download the Unpacking & First Startup PDF](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/shipping/Brooklyn_Subway_Unpacking_Guide.pdf), including the startup firmware-update notice.
 - **Setting up your map?** Follow [Avi's quick start](docs/AVI_QUICK_START.md).
 - **Want a copy to print?** [Download the one-page Quick Start PDF](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/shipping/Brooklyn_Subway_Quick_Start.pdf).
   Print on US Letter at **100% / Actual size**.
