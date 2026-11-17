@@ -7,7 +7,10 @@ The public clip keeps the actual LED behavior, printed map and OLED contents.
   photograph. A crop to the outer black-frame corners, perspective correction, small brightness/contrast
   adjustments and light sharpening preserve the original printed and electronic
   details. No text or OLED content was painted in. Location/EXIF metadata removed.
-- `brooklyn-subway-demo.mp4`: 15.4 seconds, H.264, 1080 x 1050, 30 fps,
+- `brooklyn-subway-demo-stabilized.mp4`: the active browser-player version,
+  stabilized with FFmpeg vidstab in two passes. Smoothing reduces camera shake
+  without automatic zoom or generated map details. Field of view is retained.
+- `brooklyn-subway-demo.mp4`: the earlier unstabilized export; 15.4 seconds, H.264, 1080 x 1050, 30 fps,
   silent, with fast-start metadata for browser playback.
 - `brooklyn-subway-video-poster.jpg`: an actual frame at six seconds from the
   cropped public clip, not a generated rendering.

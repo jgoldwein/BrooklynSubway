@@ -2,9 +2,9 @@
 
 **Specially Designed for Avi Yao**
 
-<a href="docs/media/brooklyn-subway-photo-straightened-v2.jpg"><img src="docs/media/brooklyn-subway-photo-straightened-v2.jpg" alt="The actual working Brooklyn Subway map with train LEDs and OLED screen" width="600"></a>
+<a href="docs/media/brooklyn-subway-photo-straightened-v2.jpg" title="Click to view the full-size photo"><img src="docs/media/brooklyn-subway-photo-straightened-v2.jpg" alt="The actual working Brooklyn Subway map with train LEDs and OLED screen" width="600"></a>
 
-[Open the full-size photo](docs/media/brooklyn-subway-photo-straightened-v2.jpg) &middot; [Watch the 15-second video in your browser](https://jgoldwein.github.io/BrooklynSubway/#video)
+[Watch the 15-second video in your browser](https://jgoldwein.github.io/BrooklynSubway/#video)
 
 The photo shows the actual working map, conventionally cropped and adjusted.
 
@@ -38,7 +38,7 @@ or a guarantee of the next train's arrival.
   [PCB handling and care](docs/AVI_USER_GUIDE.md#handling-cleaning-and-caring-for-the-pcb),
   including the OLED magnet and frame-mounted antenna.
 - **Interested in the electronics?** Download the [Gerbers, BOM and placement files](hardware/README.md).
-- **Looking for firmware?** See the [latest signed release](https://github.com/jgoldwein/BrooklynSubway/releases/latest).
+- **Looking for upgraded firmware?** See the [latest signed release](https://github.com/jgoldwein/BrooklynSubway/releases/latest).
   For an already programmed map, use **Advanced > Firmware updates** on its web page.
 
 If something looks wrong, open **Help > Make a support report** on the map's

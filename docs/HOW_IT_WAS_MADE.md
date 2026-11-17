@@ -17,9 +17,7 @@ It is a collaborative kind of making: the project decisions and hands-on work,
 professional circuit-board manufacturing, existing electronic components,
 open-source libraries and AI-assisted programming all contribute to the result.
 
-<a href="media/brooklyn-subway-photo-straightened-v2.jpg"><img src="media/brooklyn-subway-photo-straightened-v2.jpg" alt="The actual working framed Brooklyn Subway map" width="600"></a>
-
-[Open the full-size photo](media/brooklyn-subway-photo-straightened-v2.jpg)
+<a href="media/brooklyn-subway-photo-straightened-v2.jpg" title="Click to view the full-size photo"><img src="media/brooklyn-subway-photo-straightened-v2.jpg" alt="The actual working framed Brooklyn Subway map" width="600"></a>
 
 [Watch the working map](https://jgoldwein.github.io/BrooklynSubway/#video)
 (silent, 15 seconds).
