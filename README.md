@@ -2,10 +2,11 @@
 
 **Specially Designed for Avi Yao**
 
-[![Working Brooklyn Subway map with train LEDs and OLED screen](docs/media/brooklyn-subway-photo-straightened-v2.jpg)](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/media/brooklyn-subway-demo.mp4)
+<a href="docs/media/brooklyn-subway-photo-straightened-v2.jpg"><img src="docs/media/brooklyn-subway-photo-straightened-v2.jpg" alt="The actual working Brooklyn Subway map with train LEDs and OLED screen" width="600"></a>
 
-[Watch or download the 15-second working-map video](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/media/brooklyn-subway-demo.mp4)
-(silent MP4, about 6 MB). The photo above is the actual working map, conventionally cropped and adjusted.
+[Open the full-size photo](docs/media/brooklyn-subway-photo-straightened-v2.jpg) &middot; [Watch the 15-second video in your browser](https://jgoldwein.github.io/BrooklynSubway/#video)
+
+The photo shows the actual working map, conventionally cropped and adjusted.
 
 Brooklyn Subway is a connected, light-up map that brings Brooklyn's subway
 trains to your wall. It uses official MTA train reports to show where trains
@@ -36,6 +37,7 @@ or a guarantee of the next train's arrival.
 - **Moving, cleaning or packing the board?** Read
   [PCB handling and care](docs/AVI_USER_GUIDE.md#handling-cleaning-and-caring-for-the-pcb),
   including the OLED magnet and frame-mounted antenna.
+- **Interested in the electronics?** Download the [Gerbers, BOM and placement files](hardware/README.md).
 - **Looking for firmware?** See the [latest signed release](https://github.com/jgoldwein/BrooklynSubway/releases/latest).
   For an already programmed map, use **Advanced > Firmware updates** on its web page.
 

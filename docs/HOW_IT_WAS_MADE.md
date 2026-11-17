@@ -17,9 +17,11 @@ It is a collaborative kind of making: the project decisions and hands-on work,
 professional circuit-board manufacturing, existing electronic components,
 open-source libraries and AI-assisted programming all contribute to the result.
 
-![The actual working framed Brooklyn Subway map](media/brooklyn-subway-photo-straightened-v2.jpg)
+<a href="media/brooklyn-subway-photo-straightened-v2.jpg"><img src="media/brooklyn-subway-photo-straightened-v2.jpg" alt="The actual working framed Brooklyn Subway map" width="600"></a>
 
-[Watch the working map](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/media/brooklyn-subway-demo.mp4)
+[Open the full-size photo](media/brooklyn-subway-photo-straightened-v2.jpg)
+
+[Watch the working map](https://jgoldwein.github.io/BrooklynSubway/#video)
 (silent, 15 seconds).
 
 ## 1. Start with the idea
@@ -50,6 +52,9 @@ to the correct physical light.
 A manufacturer produced the custom board. The working map then needed its
 screen, controls, antenna, power connection, frame and OLED case brought
 together into the finished object. 
+
+The [manufacturing downloads](../hardware/README.md) include the supplied
+Gerbers, BOM and component placement files, with export dates and revision notes.
 
 ## 3. Give it a small computer
 
