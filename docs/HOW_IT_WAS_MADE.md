@@ -134,7 +134,7 @@ board provided a way to try changes while keeping the master prototype available
 ## What did it cost?
 
 **Approximately US$150 per board** is a good estimate for this build, including
-parts, PCB manufacturing and shipping, with the printed case and power supply
+parts, PCB manufacturing, shipping, taxes and tariffs, with the printed case and power supply
 also allowed for in that approximate total.
 
 For context, Joel's case cost **less than US$1 to 3D-print**, and the power
