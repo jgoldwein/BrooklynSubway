@@ -2,7 +2,7 @@
 
 **Specially Designed for Avi Yao**
 
-[![Working Brooklyn Subway map with train LEDs and OLED screen](docs/media/brooklyn-subway-photo.jpg)](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/media/brooklyn-subway-demo.mp4)
+[![Working Brooklyn Subway map with train LEDs and OLED screen](docs/media/brooklyn-subway-photo-straightened-v2.jpg)](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/media/brooklyn-subway-demo.mp4)
 
 [Watch or download the 15-second working-map video](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/media/brooklyn-subway-demo.mp4)
 (silent MP4, about 6 MB). The photo above is the actual working map, conventionally cropped and adjusted.
