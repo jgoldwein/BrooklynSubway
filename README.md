@@ -2,6 +2,10 @@
 
 **Specially Designed for Avi Yao**
 
+## [How was this made?](docs/HOW_IT_WAS_MADE.md)
+
+Read the story behind the custom board, live train data, programming and testing.
+
 <a href="docs/media/brooklyn-subway-photo-straightened-v2.jpg" title="Click to view the full-size photo"><img src="docs/media/brooklyn-subway-photo-straightened-v2.jpg" alt="The actual working Brooklyn Subway map with train LEDs and OLED screen" width="600"></a>
 
 [Watch the 15-second video in your browser](https://jgoldwein.github.io/BrooklynSubway/#video)
