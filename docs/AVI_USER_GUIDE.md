@@ -2,7 +2,7 @@
 
 Specially Designed for Avi Yao
 
-Guide for firmware **0.2.93**. Start with the
+Guide for firmware **0.2.94**. Start with the
 [quick start](AVI_QUICK_START.md) if you just want to try the map.
 For the gift box, [print the one-page sheet](shipping/Brooklyn_Subway_Quick_Start.pdf).
 
@@ -401,3 +401,19 @@ If you see **Update failed**, open the web update page for details and retry.
 These messages apply to web updates; USB programming uses a separate bootloader.
 
 A successful settings save plays two gentle rising notes. Quiet hours mute them.
+
+
+## Personalize your map
+
+1. Open the map's web page and choose **Advanced > Personalization**.
+2. Sign in with the administrator password if asked.
+3. Edit the names, greeting, date, From line, scrolling names or support contact. The preview shows the greeting lines.
+4. Press **Save personalization**. The usual two-note save sound confirms the save, unless quiet hours mute it.
+
+Changes take effect right away and remain after a restart or firmware upgrade. The original Avi greeting is the default. Use plain English letters, numbers and punctuation; each field shows its maximum length. The OLED title displays its first 17 characters. Other greeting lines fit 21 characters, and the final names line scrolls.
+
+Leave optional dedication lines empty to hide them. Leave the celebration date empty to disable the annual greeting. The Morse easter egg spells the recipient name using letters and numbers; other punctuation is skipped. Made by is a display credit and does not change project copyright or licenses.
+
+The support button opens an email draft to the saved support email. Review the report and send it yourself. Nothing is sent automatically. The contact details are visible on your map's local Help page.
+
+The Wi-Fi setup network remains **BrooklynMap-Avi**, matching the printed instructions. Personalization does not change Wi-Fi or administrator passwords. **Reset to firmware defaults** restores the original personalization and erases Wi-Fi and administrator settings, so use that only when you want to start over.

@@ -25,5 +25,8 @@ const tiny={device:{},network:{},trains:{},display:{},memory:{}};
 assert.equal(context.buildSupportMail(tiny).shortened,false);
 const malicious=context.makeSupportReport({firmwareVersion:'\u2603'.repeat(180),oledStatus:'\u2603'.repeat(180),lastFeedFailure:{feed:'\u2603'.repeat(180),reason:'\u2603'.repeat(180)}},null);
 assert(context.buildSupportMail(malicious).url.length<=1800);
+context.document={body:{dataset:{supportEmail:'support@example.com',supportName:'Sam'}}};
+assert(context.buildSupportMail(tiny).url.startsWith('mailto:support@example.com?subject='));
+assert(decodeURIComponent(context.buildSupportMail(tiny).url).includes('Hi Sam,'));
 module.exports='Support report privacy, error bounds, restart/partial reports and email length/fallback PASS';
 if(require.main===module)console.log(module.exports);

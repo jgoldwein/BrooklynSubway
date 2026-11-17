@@ -1161,7 +1161,47 @@ void testServerOwnershipTransitions() {
 
 }  // namespace
 
+
+void testPersonalization() {
+  using namespace brooklyn;
+  personal::Settings p;CHECK(personal::valid(p));
+  CHECK(admin::isProtectedEndpoint("GET","/personalization"));
+  CHECK(admin::isMutationEndpoint("POST","/personalization"));
+  CHECK(strcmp(web::loginReturnPath("personalization"),"/personalization")==0);
+  CHECK(strcmp(web::loginTargetForRequest("/personalization"),"personalization")==0);
+  static char page[web::kStatusPageCapacity];
+  CHECK(web::renderPersonalizationPage(page,sizeof(page),p,"test-csrf")>0);
+  CHECK(strstr(page,"name=\"email\"") && strstr(page,"name=\"csrf\" value=\"test-csrf\""));
+  CHECK(strstr(page,"maxlength=\"21\"") && strstr(page,"id=\"preview\""));
+  strcpy(p.date,"2026-02-29");CHECK(!personal::valid(p));
+  strcpy(p.date,"2028-02-29");CHECK(personal::valid(p));
+  strcpy(p.date,"2100-02-29");CHECK(!personal::valid(p));
+  p.date[0]=0;CHECK(personal::valid(p));
+  strcpy(p.email,"owner@example.com?bcc=bad");CHECK(!personal::valid(p));
+  strcpy(p.email,"owner@example.com");
+  strcpy(p.greeting,"<script>&\"'");CHECK(personal::valid(p));
+  CHECK(web::renderPersonalizationPage(page,sizeof(page),p,"test-csrf")>0);
+  CHECK(strstr(page,"&lt;script&gt;&amp;&quot;&#39;"));CHECK(!strstr(page,"value=\"<script>"));
+  strcpy(p.title,"{{recipient}}");strcpy(p.recipient,"New Owner");personal::apply(p);
+  CHECK(web::renderHomePage(page,sizeof(page),sampleStatus(),5,semantic::kAllRoutesVisibleMask)>0);
+  CHECK(strstr(page,"<h1>{{recipient}}</h1>")); // inserted values are not templates
+  CHECK(strstr(page,"Specially Designed for New Owner"));
+  CHECK(strstr(page,"href=\"/personalization\""));
+  for(unsigned i=0;i<personal::kFieldCount;++i) {
+    if(i==6 || i==9)continue;
+    memset(personal::value(p,i),'&',personal::fields()[i].size-1);
+    personal::value(p,i)[personal::fields()[i].size-1]=0;
+  }
+  CHECK(personal::valid(p));personal::apply(p);
+  testFullProductionPageCapacity();
+  CHECK(web::renderHomePage(page,sizeof(page),sampleStatus(),5,semantic::kAllRoutesVisibleMask)>0);
+  CHECK(web::renderPersonalizationPage(page,sizeof(page),p,"test-csrf")>0);
+  char tiny[24];CHECK(web::renderPersonalizationPage(tiny,sizeof(tiny),p,"test-csrf")==0);
+  p.recipient[0]='\n';CHECK(!personal::valid(p));
+  personal::Settings defaults;personal::apply(defaults);
+}
 int main() {
+  testPersonalization();
   {
     MemoryStore memory;
     brooklyn::config::DeviceConfiguration c(configStore(memory));

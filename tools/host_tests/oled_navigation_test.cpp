@@ -1,3 +1,4 @@
+#include "personalization.h"
 #include "oled_screens.h"
 #include "screen_preferences.h"
 #include "rotary_policy.h"
@@ -144,6 +145,14 @@ int main() {
   data.hasUpdate=true;data.lightsEnabled=true;data.lines[9].trains=12;data.lines[9].lights=8;data.lines[9].atLeast=false;
   formatRouteFocus(brooklyn::semantic::Route::RouteF,data,text);CHECK(strcmp(text.lines[0],"Line F only")==0 && strcmp(text.lines[1],"Trains mapped: 12")==0);
   CHECK(strcmp(text.lines[4],"MODE: all saved lines")==0);for(const auto &line:text.lines) CHECK(strlen(line)<=21);
+  brooklyn::personal::Settings custom;
+  strcpy(custom.greeting,"Welcome!");strcpy(custom.shortName,"Sam");strcpy(custom.from,"From family");
+  strcpy(custom.names,"Alex, Jamie");strcpy(custom.date,"2028-02-29");
+  brooklyn::personal::apply(custom);formatScreen(Screen::Dedication,data,0,text,view);
+  CHECK(strcmp(text.lines[0],"Welcome!")==0 && strcmp(text.lines[1],"Sam")==0);
+  CHECK(strcmp(text.lines[2],"From family")==0 && strcmp(text.lines[3],"February 29, 2028")==0);
+  CHECK(strcmp(text.lines[4],"Alex, Jamie")==0);
+  brooklyn::personal::apply(brooklyn::personal::Settings{});
   puts("Dedication text, all eight scrolling names, 64-bit uptime and millis rollover PASS");
   puts("OLED navigation: turn screens / press to browse lines, context exit, auto pause, remembered line, timeout/Stay, rollover, rotary bounce, long press, SSID scrolling and shared-light counts PASS");
 }

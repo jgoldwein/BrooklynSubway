@@ -1,6 +1,7 @@
 // Copyright 2026 Joel W. Goldwein
 // SPDX-License-Identifier: Apache-2.0
 #include "oled_screens.h"
+#include "personalization.h"
 #include <stdio.h>
 #include <string.h>
 namespace brooklyn::oled {
@@ -48,7 +49,7 @@ const char *screenName(Screen screen) {
     case Screen::Connection: return "Connection";
     case Screen::Device: return "Device";
     case Screen::Lines: return "Subway lines";
-    case Screen::Dedication: return "For Avi";
+    case Screen::Dedication: return "Dedication";
     case Screen::Clock: return "Time & Date";
     case Screen::Weather: return "Brooklyn weather";
     default: return "Main";
@@ -104,10 +105,9 @@ void scrollText(const char *text, unsigned limit, uint32_t elapsedMs, char (&out
   }
   out[count]=0;
 }
-constexpr char kDedicationNames[]="Joel, Marlene, Marc, Kim, Juliana, Levi, Robbie, Eric";
 }
 void scrollName(const char *name,uint32_t elapsedMs,char (&out)[22]) {scrollText(name,32,elapsedMs,out);}
-void scrollDedicationNames(uint32_t elapsedMs,char (&out)[22]) {scrollText(kDedicationNames,sizeof(kDedicationNames)-1,elapsedMs,out);}
+void scrollDedicationNames(uint32_t elapsedMs,char (&out)[22]) {const auto p=personal::snapshot();scrollText(p.names,sizeof(p.names)-1,elapsedMs,out);}
 void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenText &out, const NavigationView &view) {
   out = {};
   const TextWriter write(out);
@@ -163,13 +163,14 @@ void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenT
       write(4,view.lineBrowsing?"Turn:line Press:back":"Turn:screen Press:go");
       break;
     }
-    case Screen::Dedication:
-      write(0,"Happy Bar Mitzvah!");
-      write(1,"Avi");
-      write(2,"From the Goldweins");
-      write(3,"September 26, 2026");
+    case Screen::Dedication: {
+      const auto p=personal::snapshot();
+      write(0,"%s",p.greeting);
+      write(1,"%s",p.shortName);
+      write(2,"%s",p.from);
+      personal::dateText(p,out.lines[3]);
       scrollDedicationNames(static_cast<uint32_t>(nowMs-view.changedAtMs),out.lines[4]);
-      break;
+      break;}
     case Screen::Weather: {
       write(0,"Brooklyn weather 7/8");
       const uint32_t now=data.unixTime>UINT32_MAX-elapsed?UINT32_MAX:data.unixTime+elapsed;

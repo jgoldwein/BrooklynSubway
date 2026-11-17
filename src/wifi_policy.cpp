@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "wifi_policy.h"
+#include "personalization.h"
 #include "password_visibility.h"
 
 #include <string.h>
@@ -193,13 +194,14 @@ size_t renderPortalPage(char *out, size_t capacity, const ScanEntry *entries, si
                         PortalStatus status, bool hasStored, const char *connectedSsid,
                         const char *connectedIp, bool adminConfigured, bool editAdmin) {
   Out o(out,capacity);
+  const auto identity=personal::snapshot();
   o.put("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">");
   if(status==PortalStatus::Connecting)o.put("<meta http-equiv=\"refresh\" content=\"2\">");
-  o.put("<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Brooklyn Subway - Wi-Fi setup</title>"
+  o.put("<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>");o.escaped(identity.title);o.put(" - Wi-Fi setup</title>"
         "<link rel=\"stylesheet\" href=\"/ui.css?v=038\"><link rel=\"stylesheet\" href=\"/setup.css?v=050\">"
         "<script defer src=\"/setup.js?v=050\"></script></head><body class=\"setup-shell\">"
         "<header><div class=\"brand\"><span class=\"brand-mark\" aria-hidden=\"true\">BK</span><div>"
-        "<h1>Brooklyn Subway</h1><p class=\"subtitle\">Specially Designed for Avi Yao</p></div></div></header>"
+        "<h1>");o.escaped(identity.title);o.put("</h1><p class=\"subtitle\">Specially Designed for ");o.escaped(identity.recipient);o.put("</p></div></div></header>"
         "<main><section class=\"hero\"><p class=\"kicker\">Wi-Fi setup mode</p><h2>Let's connect your map</h2>"
         );
   if(status==PortalStatus::Saved)

@@ -1,3 +1,4 @@
+#include "personalization.h"
 // Copyright 2026 Joel W. Goldwein
 // SPDX-License-Identifier: Apache-2.0
 
@@ -293,6 +294,7 @@ void setup() {
   brooklyn::led::begin();
 
   brooklyn::diagnostics::begin();
+  brooklyn::personal::load();
   networkService.begin(); // Load saved brightness/quiet policy before any status preview.
   brooklyn::oled::setScreenPreferences(networkService.screenPreferences());
   brooklyn::hardware::setQuiet(brooklyn::oled::quietHoursActive(time(nullptr)),brooklyn::oled::quietMapBrightness());

@@ -30,6 +30,8 @@ class LanWebUi {
  private:
   void registerRoutes();
   void handleHome();
+  void handlePersonalization(bool saving);
+  void sendTemplateHtml(const char *body, size_t length, int code=200);
   void handleLedDiagnosticPage();
   void handleLedDiagnosticRun();
   void handleStatus();

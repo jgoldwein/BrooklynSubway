@@ -11,6 +11,7 @@
 #include "ota_progress_script.h"
 #include "web_ui_assets.h"
 #include "support_assets.h"
+#include "personalization.h"
 #include "factory_reset.h"
 
 #if BROOKLYN_NETWORK_ENABLED
@@ -61,13 +62,13 @@ char gNetworkDiagnosticsJson[kNetworkDiagnosticsJsonCapacity];
 constexpr const char *kSetupStarting =
     "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
     "<meta http-equiv=\"refresh\" content=\"3;url=http://192.168.4.1/\">"
-    "<title>Brooklyn Subway</title></head><body>"
-    "<h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p><h2>Wi-Fi setup starting</h2><p>Join BrooklynMap-Avi, then open "
+    "<title>{{title}}</title></head><body>"
+    "<h1>{{title}}</h1><p class=\"muted\">Specially Designed for {{recipient}}</p><h2>Wi-Fi setup starting</h2><p>Join BrooklynMap-Avi, then open "
     "http://192.168.4.1/ if the setup page does not appear.</p></body></html>";
 
 constexpr const char *kRebooting =
     "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
-    "<title>Brooklyn Subway</title></head><body><h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p><h2>Rebooting</h2>"
+    "<title>{{title}}</title></head><body><h1>{{title}}</h1><p class=\"muted\">Specially Designed for {{recipient}}</p><h2>Rebooting</h2>"
     "<p>Configuration and Wi-Fi credentials are retained.</p></body></html>";
 
 constexpr const char *kUpdateStyle =
@@ -183,6 +184,8 @@ bool LanWebUi::begin() {
 }
 
 void LanWebUi::registerRoutes() {
+  server_.on("/personalization", HTTP_GET, [this]() { handlePersonalization(false); });
+  server_.on("/personalization", HTTP_POST, [this]() { handlePersonalization(true); });
   const char *headers[] = {"Cookie", "X-CSRF-Token", "Content-Type"};
   server_.collectHeaders(headers, 3);
   server_.on("/update", HTTP_GET, [this]() { handleUpdatePage(); });
@@ -224,7 +227,7 @@ void LanWebUi::registerRoutes() {
   });
   server_.on("/support",HTTP_GET,[this](){
     server_.sendHeader("Cache-Control","no-store");server_.sendHeader("X-Content-Type-Options","nosniff");
-    server_.send_P(200,"text/html; charset=utf-8",kSupportPage);
+    sendTemplateHtml(kSupportPage,strlen(kSupportPage));
   });
   server_.on("/support.js",HTTP_GET,[this](){
     server_.sendHeader("Cache-Control","public, max-age=3600");server_.sendHeader("X-Content-Type-Options","nosniff");
@@ -318,6 +321,21 @@ void LanWebUi::service(const StatusSnapshot &status) {
   serviceFirmwareUpdates(millis());
 }
 
+void LanWebUi::sendTemplateHtml(const char *body, size_t length, int code) {
+  String expanded;
+  if(strstr(body,"{{")) {
+    if(!expanded.reserve(length+4096)) {server_.send(503,"text/plain","Page temporarily unavailable; please retry");return;}
+    const auto p=personal::snapshot();
+    if(!personal::htmlTemplate(body,p,[&expanded](char c) {return expanded.concat(c);})) {server_.send(503,"text/plain","Page temporarily unavailable; please retry");return;}
+    body=expanded.c_str();length=expanded.length();
+  }
+  server_.sendHeader("Cache-Control","no-store");
+  server_.sendHeader("X-Content-Type-Options","nosniff");
+  server_.sendHeader("X-Frame-Options","DENY");
+  server_.sendHeader("Content-Security-Policy","frame-ancestors 'none'; object-src 'none'; base-uri 'none'");
+  server_.send(code,"text/html; charset=utf-8",body);
+}
+
 void LanWebUi::sendHtml(const char *body, size_t length) {
   server_.sendHeader("Cache-Control", "no-store");
   server_.sendHeader("X-Content-Type-Options", "nosniff");
@@ -345,7 +363,7 @@ void LanWebUi::sendNotice(int httpCode, const char *title, const char *message,
       gPage, kPageCapacity,
       "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-      "%s<title>Brooklyn Subway</title><style>%s</style></head><body><h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p><h2>%s</h2>"
+      "%s<title>{{title}}</title><style>%s</style></head><body><h1>{{title}}</h1><p class=\"muted\">Specially Designed for {{recipient}}</p><h2>%s</h2>"
       "<div class=\"card %s\" role=\"status\"><p>%s</p>%s</div>"
       "<p><a href=\"%s\">%s</a> &middot; "
       "<a href=\"/\">Status page</a></p></body></html>",
@@ -362,7 +380,7 @@ void LanWebUi::sendNotice(int httpCode, const char *title, const char *message,
   server_.sendHeader("X-Content-Type-Options", "nosniff");
   server_.sendHeader("X-Frame-Options", "DENY");
   server_.sendHeader("Referrer-Policy", "same-origin");
-  server_.send(httpCode, "text/html; charset=utf-8", gPage);
+  sendTemplateHtml(gPage,static_cast<size_t>(length),httpCode);
 }
 
 void LanWebUi::handleHome() {
@@ -534,6 +552,36 @@ void LanWebUi::handleUnknownTiming() {
   hardware::requestSettingsSaved();
   Serial.printf("Uncertain trains: style %s, brightness %u/255, fade %lu seconds\n",mode.c_str(),brightness,static_cast<unsigned long>(seconds));
   server_.sendHeader("Location","/"); server_.send(303,"text/plain","Uncertain train settings saved");
+}
+
+
+void LanWebUi::handlePersonalization(bool saving) {
+  if(!authorizeRequest(saving))return;
+  if(saving) {
+    if(server_.args()!=int(personal::kFieldCount+1)) {server_.send(400,"text/plain","Incomplete personalization settings");return;}
+    personal::Settings next;uint16_t seen=0;
+    for(int i=0;i<server_.args();++i) {
+      const String key=server_.argName(i);int index=-1;
+      if(key=="csrf")index=personal::kFieldCount;
+      else for(unsigned j=0;j<personal::kFieldCount;++j)if(key==personal::fields()[j].key) {index=j;break;}
+      if(index<0 || (seen&(1u<<index))) {server_.send(400,"text/plain","Unexpected or repeated setting");return;}
+      seen|=1u<<index;
+      if(index==int(personal::kFieldCount))continue;
+      const String text=server_.arg(i);
+      if(!hasNoEmbeddedNull(text) || text.length()>=personal::fields()[index].size) {server_.send(400,"text/plain","Text is too long; return and shorten it");return;}
+      memcpy(personal::value(next,index),text.c_str(),text.length()+1);
+    }
+    if(!personal::valid(next)) {server_.send(400,"text/plain","Use plain English letters, numbers and punctuation, no leading/trailing spaces, a valid date and email address. Return to correct the form.");return;}
+    if(!personal::save(next)) {server_.send(500,"text/plain","Could not save personalization; previous settings remain active");return;}
+    hardware::requestSettingsSaved();
+    server_.sendHeader("Location","/personalization?saved=1");server_.send(303,"text/plain","Personalization saved");return;
+  }
+  if(server_.args()>1 || (server_.args()==1 && (server_.argName(0)!="saved" || server_.arg(0)!="1"))) {server_.send(400,"text/plain","Invalid personalization request");return;}
+  char csrf[96]{};if(!requestSession(csrf,sizeof(csrf))) {sendSignInRequired();return;}
+  const auto settings=personal::snapshot();
+  const size_t n=renderPersonalizationPage(gPage,sizeof(gPage),settings,csrf);eraseBytes(csrf,sizeof(csrf));
+  if(!n) {server_.send(500,"text/plain","Unable to render personalization");return;}
+  sendHtml(gPage,n);
 }
 
 void LanWebUi::handleScreenOptions() {
@@ -799,7 +847,7 @@ void LanWebUi::handleSetupConfirmation() {
       gPage, sizeof(gPage),
       "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-      "<title>Brooklyn Subway</title></head><body><h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p><h2>Change Wi-Fi</h2>"
+      "<title>{{title}}</title></head><body><h1>{{title}}</h1><p class=\"muted\">Specially Designed for {{recipient}}</p><h2>Change Wi-Fi</h2>"
       "<p>The setup network will start; existing credentials are retained. "
       "A replacement is saved only after it successfully connects.</p>"
       "<form method=\"post\" action=\"/wifi/setup/confirm\">"
@@ -813,7 +861,7 @@ void LanWebUi::handleSetupConfirmation() {
     return;
   }
   eraseBytes(csrfToken, sizeof(csrfToken));
-  sendHtml(gPage, static_cast<size_t>(written));
+  sendTemplateHtml(gPage, static_cast<size_t>(written));
 }
 
 void LanWebUi::handleSetupRequest() {
@@ -823,7 +871,7 @@ void LanWebUi::handleSetupRequest() {
     return;
   }
   setupRequested_ = true;
-  sendHtml(kSetupStarting, strlen(kSetupStarting));
+  sendTemplateHtml(kSetupStarting, strlen(kSetupStarting));
 }
 
 void LanWebUi::handleReboot() {
@@ -834,7 +882,7 @@ void LanWebUi::handleReboot() {
   }
   display::live::disable();
   rebootRequested_ = true;
-  sendHtml(kRebooting, strlen(kRebooting));
+  sendTemplateHtml(kRebooting, strlen(kRebooting));
 }
 
 void LanWebUi::handleDefaultsPage() {
@@ -1196,8 +1244,8 @@ void LanWebUi::handleUpdatePage() {
       gPage, kPageCapacity,
       "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-      "<title>Brooklyn Subway</title><style>%s</style></head><body>"
-      "<h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p><h2>Update firmware</h2>"
+      "<title>{{title}}</title><style>%s</style></head><body>"
+      "<h1>{{title}}</h1><p class=\"muted\">Specially Designed for {{recipient}}</p><h2>Update firmware</h2>"
       "<dl><dt>Running</dt><dd>%s</dd><dt>Target</dt><dd>%s</dd>"
       "<dt>Latest release</dt><dd>%s</dd></dl>"
       "%s"
@@ -1259,7 +1307,7 @@ void LanWebUi::handleUpdatePage() {
     server_.send(500, "text/plain", "Page too large");
     return;
   }
-  sendHtml(gPage, static_cast<size_t>(length));
+  sendTemplateHtml(gPage, static_cast<size_t>(length));
 }
 
 void LanWebUi::handleUpdateCheck() {
@@ -1347,8 +1395,8 @@ void LanWebUi::handleUpdateReboot() {
       gPage, kPageCapacity,
       "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-      "<title>Brooklyn Subway</title><style>%s</style></head><body>"
-      "<h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p><h2 id=\"oh\">Restarting</h2><div class=\"card\" role=\"status\">"
+      "<title>{{title}}</title><style>%s</style></head><body>"
+      "<h1>{{title}}</h1><p class=\"muted\">Specially Designed for {{recipient}}</p><h2 id=\"oh\">Restarting</h2><div class=\"card\" role=\"status\">"
       "<progress id=\"pg\" max=\"100\" value=\"99\" style=\"width:100%%\"></progress>"
       "<p id=\"pt\">Waiting for the new firmware to restart and confirm startup...</p>"
       "<p id=\"power-warning\" class=\"muted\">Do not unplug power. You will need to sign in again.</p></div>"
@@ -1364,7 +1412,7 @@ void LanWebUi::handleUpdateReboot() {
   server_.sendHeader("X-Content-Type-Options", "nosniff");
   server_.sendHeader("X-Frame-Options", "DENY");
   server_.sendHeader("Referrer-Policy", "same-origin");
-  server_.send(200, "text/html; charset=utf-8", gPage);
+  sendTemplateHtml(gPage,strlen(gPage));
 }
 
 void LanWebUi::serviceFirmwareUpdates(uint32_t nowMs) {
@@ -1819,7 +1867,7 @@ void LanWebUi::handleLedDiagnosticPage() {
       : "";
   const int length = snprintf(gPage, kPageCapacity,
       "<!doctype html><html lang=\"en\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
-      "<title>Brooklyn Subway</title><h1>Brooklyn Subway</h1><p class=\"muted\">Specially Designed for Avi Yao</p><h2>LED diagnostics</h2>"
+      "<title>{{title}}</title><h1>{{title}}</h1><p class=\"muted\">Specially Designed for {{recipient}}</p><h2>LED diagnostics</h2>"
       "<p role=\"status\">%s</p>"
       "<p>Production PCB only. Diagnostics stop live output first. No test runs at startup.</p>"
       "<p>Startup gives two brief Avi-marker flashes, four rising notes, then a subway-style ding-dong. Hold DIM while powering on or resetting to mute that startup.</p>"
@@ -1854,7 +1902,7 @@ void LanWebUi::handleLedDiagnosticPage() {
     server_.send(500, "text/plain", "Diagnostic page unavailable");
     return;
   }
-  sendHtml(gPage, static_cast<size_t>(length));
+  sendTemplateHtml(gPage, static_cast<size_t>(length));
 }
 
 void LanWebUi::handleLedDiagnosticRun() {

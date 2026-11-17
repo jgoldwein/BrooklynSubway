@@ -10,6 +10,7 @@
 #include "blue_diagnostics.h"
 #include "oled_clock.h"
 #include "runtime_observation.h"
+#include "personalization.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -17,7 +18,8 @@
 namespace brooklyn::web {
 
 // Includes signed-in controls, all route diagnostics and escaped status text.
-constexpr size_t kStatusPageCapacity = 24576;
+constexpr size_t kStatusPageCapacity = 28672;
+size_t renderPersonalizationPage(char *out,size_t capacity,const personal::Settings &settings,const char *csrf);
 
 constexpr const char *kDefaultDeviceName = "BrooklynMap";
 constexpr const char *kHostname = "brooklynmap";

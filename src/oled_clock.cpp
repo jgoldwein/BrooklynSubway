@@ -1,3 +1,4 @@
+#include "personalization.h"
 #include "oled_clock.h"
 #include "oled_sound_badge.h"
 #if defined(BROOKLYN_TARGET_PCB)
@@ -159,7 +160,9 @@ void draw(const char *clock) {
     return;
   }
   screen.setFont(u8g2_font_6x12_tf);
-  screen.drawStr((128 - screen.getStrWidth("Brooklyn Subway 1/8")) / 2, 16, "Brooklyn Subway 1/8");
+  char mainTitle[22]{};const auto identity=personal::snapshot();
+  snprintf(mainTitle,sizeof(mainTitle),"%.17s 1/8",identity.title);
+  screen.drawStr((128-screen.getStrWidth(mainTitle))/2,16,mainTitle);
   const uint32_t trains = __atomic_load_n(&trackedTrainsWord, __ATOMIC_RELAXED);
   char count[24];
   if (trains & 0x80000000u) snprintf(count, sizeof(count), "Trains:%lu Lit:%u", static_cast<unsigned long>(trains & 0x7fffffffu), unsigned(__atomic_load_n(&visibleMapLights,__ATOMIC_RELAXED)));

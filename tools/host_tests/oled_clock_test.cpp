@@ -1,3 +1,4 @@
+#include "personalization.h"
 #include "oled_clock.h"
 #include <stdio.h>
 #include <string.h>
@@ -34,5 +35,9 @@ CHECK(brooklyn::oled::formatDate(1768498496,text,sizeof(text)) && strcmp(text,"T
 CHECK(brooklyn::oled::formatDate(1794632400,text,sizeof(text)) && strcmp(text,"Sat, Nov 14, 2026")==0);
 CHECK(!brooklyn::oled::formatDate(0,text,sizeof(text)) && strcmp(text,"Waiting for time")==0);
 CHECK(!brooklyn::oled::formatDate(1768498496,text,2));CHECK(!brooklyn::oled::formatDate(1768498496,nullptr,0));
+brooklyn::personal::Settings custom;strcpy(custom.date,"2026-11-14");brooklyn::personal::apply(custom);
+CHECK(brooklyn::oled::newYorkAnniversaryYear(1794632400)==2026);
+custom.date[0]=0;brooklyn::personal::apply(custom);CHECK(brooklyn::oled::newYorkAnniversaryYear(1794632400)==0);
+brooklyn::personal::apply(brooklyn::personal::Settings{});
 puts("OLED clock: synchronization, winter/summer, DST boundaries, noon/midnight and buffer limits PASS");
 }

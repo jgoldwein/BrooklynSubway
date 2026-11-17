@@ -1,3 +1,4 @@
+#include "personalization.h"
 #include "easter_eggs.h"
 #include <stdio.h>
 #include <stdlib.h>
@@ -55,5 +56,13 @@ int main() {
   chord.update(true,true,3000);chord.update(true,true,6000);
   chord=eggs::Chord{}; // Diagnostic exit forgets a held/pending chord.
   CHECK(!chord.update(true,true,7000));CHECK(!chord.update(false,false,7100));
+  personal::Settings custom;strcpy(custom.recipient,"Sam 123");strcpy(custom.shortName,"Sam");strcpy(custom.greeting,"Welcome!");personal::apply(custom);
+  eggs::Sample customized;CHECK(eggs::sample(eggs::Kind::Celebration,0,customized));
+  CHECK(strcmp(customized.text.lines[0],"Welcome!")==0 && strcmp(customized.text.lines[1],"Sam 123")==0);
+  bool sounded=false;for(uint32_t at=0;at<eggs::duration(eggs::Kind::Morse);at+=100) {
+    CHECK(eggs::sample(eggs::Kind::Morse,at,customized));sounded|=customized.frequency!=0;
+    for(const auto &line:customized.text.lines)CHECK(strlen(line)<=21);
+  }CHECK(sounded);CHECK(!eggs::sample(eggs::Kind::Morse,eggs::duration(eggs::Kind::Morse),customized));
+  personal::apply(personal::Settings{});
   puts("Easter eggs: bounded text/colors/duration, exact AVI YAO Morse, chord hold/release/boot/rollover PASS");
 }
