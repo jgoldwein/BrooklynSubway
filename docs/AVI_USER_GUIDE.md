@@ -30,6 +30,19 @@ The web settings let you change the default train colors:
 - Green: leaving.
 - Blue: uncertain or last-reported location.
 
+### Compare with another live view
+
+Open [SubwayNow's live train map](https://www.subwaynow.app/trains) for another
+view of subway activity. It needs internet access. Compare the same line,
+direction and station at roughly the same time.
+
+The displays may differ because of update timing, position estimates and the
+PCB's fixed LED locations. This board continues to get its train reports directly
+from the MTA feeds; SubwayNow is a reference link, not its data provider.
+
+If you notice a difference you want Joel to investigate, include the line,
+direction, station and time, along with a support report from the map.
+
 ## Handling, cleaning and caring for the PCB
 
 The **PCB** is the circuit board that carries the map, lights and electronic

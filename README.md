@@ -10,6 +10,7 @@
   Print on US Letter at **100% / Actual size**.
 - **Want to learn the controls, colors and sounds?** Open
   [Avi's Brooklyn Subway Map - User Guide](docs/AVI_USER_GUIDE.md).
+- **Want another live view?** Open [SubwayNow](https://www.subwaynow.app/trains). See the [comparison notes](docs/AVI_USER_GUIDE.md#compare-with-another-live-view) for why positions may differ.
 - **Moving, cleaning or packing the board?** Read
   [PCB handling and care](docs/AVI_USER_GUIDE.md#handling-cleaning-and-caring-for-the-pcb),
   including the OLED magnet and frame-mounted antenna.
