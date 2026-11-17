@@ -2,7 +2,7 @@
 
 Specially Designed for Avi Yao
 
-Guide for firmware **0.2.94**. Start with the
+Guide for firmware **0.2.95**. Start with the
 [quick start](AVI_QUICK_START.md) if you just want to try the map.
 For the gift box, [print the one-page sheet](shipping/Brooklyn_Subway_Quick_Start.pdf).
 
@@ -360,7 +360,11 @@ the power supply.
 
 Hold **TEST + ROUTE together for 2 seconds**, then release both. Repeat to cycle
 through the celebration, Subway Express light chaser, family credits, **Avi Yao
-in Morse code**, and anniversary preview. POWER exits. Quiet hours still apply.
+in Morse code**, anniversary preview, and a **Rangers synth-horn effect**.
+The Rangers effect is the sixth selection: three brief buzzer blasts cycling
+the F#3/A#3/C#4 horn chord, with dim red, white and blue flashes. It approximates
+the supplied synthesizer reference; it does not play the Slapshot song.
+POWER exits. Quiet hours still control sound and map brightness.
 
 The light chaser is just for fun; it is not a real train. The dedication also
 has a special September 26 greeting when the normal main screen is available.

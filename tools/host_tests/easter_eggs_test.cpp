@@ -1,3 +1,4 @@
+#include "led_power.h"
 #include "personalization.h"
 #include "easter_eggs.h"
 #include <stdio.h>
@@ -64,5 +65,24 @@ int main() {
     for(const auto &line:customized.text.lines)CHECK(strlen(line)<=21);
   }CHECK(sounded);CHECK(!eggs::sample(eggs::Kind::Morse,eggs::duration(eggs::Kind::Morse),customized));
   personal::apply(personal::Settings{});
+  CHECK(eggs::kCount==6 && eggs::duration(eggs::Kind::Rangers)==4800);
+  const uint32_t hornTimes[]={0,20,40,60,1100,1350,1370,1390,2450,2700,4100,4799};
+  const uint16_t hornNotes[]={185,233,277,185,0,185,233,277,0,185,0,0};
+  for(unsigned i=0;i<sizeof(hornTimes)/sizeof(hornTimes[0]);++i) {
+    CHECK(eggs::sample(eggs::Kind::Rangers,hornTimes[i],customized));
+    CHECK(customized.frequency==hornNotes[i] && customized.visual==eggs::Visual::All);
+    CHECK(strcmp(customized.text.lines[0],"New York Rangers")==0);
+    CHECK(strcmp(customized.text.lines[4],"POWER: exit")==0);
+  }
+  led::DisplayState hornFrame[306]{};
+  const uint32_t colorTimes[]={0,240,480,720,960,1200,4100,4799};
+  const led::Rgb colors[]={{3,0,0},{0,0,0},{2,2,2},{0,0,0},{0,0,3},{0,0,0},{0,0,0},{0,0,0}};
+  for(unsigned i=0;i<sizeof(colorTimes)/sizeof(colorTimes[0]);++i) {
+    CHECK(eggs::sample(eggs::Kind::Rangers,colorTimes[i],customized));
+    CHECK(customized.color.red==colors[i].red && customized.color.green==colors[i].green && customized.color.blue==colors[i].blue);
+    for(auto &pixel:hornFrame)pixel.color=customized.color;
+    CHECK(led::power::estimateFrameCurrentMa(hornFrame,306,255)<=led::power::FIRMWARE_LED_CURRENT_BUDGET_MA);
+  }
+  CHECK(!eggs::sample(eggs::Kind::Rangers,4800,customized));CHECK(customized.frequency==0);
   puts("Easter eggs: bounded text/colors/duration, exact AVI YAO Morse, chord hold/release/boot/rollover PASS");
 }

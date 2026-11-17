@@ -4,9 +4,9 @@
 #include "oled_screens.h"
 #include "led_types.h"
 namespace brooklyn::eggs {
-enum class Kind : uint8_t { Celebration, Express, Credits, Morse, Anniversary };
-constexpr uint8_t kCount=5;
-enum class Visual : uint8_t { None, Line, Chaser };
+enum class Kind : uint8_t { Celebration, Express, Credits, Morse, Anniversary, Rangers };
+constexpr uint8_t kCount=6;
+enum class Visual : uint8_t { None, Line, Chaser, All };
 struct Sample {
   oled::ScreenText text{};
   Visual visual=Visual::None;

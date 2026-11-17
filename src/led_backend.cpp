@@ -480,8 +480,9 @@ bool runEasterEgg(eggs::Kind kind) {
       uint16_t mappedPosition=0;
       for(uint16_t i=0;i<map::TOTAL_LED_COUNT;++i) {
         const auto *mapped=semantic::semanticForLed(i);
-        const bool lit=mapped && (sample.visual==eggs::Visual::Line?mapped->route==sample.route:
-            sample.visual==eggs::Visual::Chaser && mappedPosition==chaser);
+        const bool lit=mapped && (sample.visual==eggs::Visual::All ||
+            (sample.visual==eggs::Visual::Line?mapped->route==sample.route:
+             sample.visual==eggs::Visual::Chaser && mappedPosition==chaser));
         frame[i].color=lit?sample.color:Rgb{0,0,0};
         if(frame[i].color.red>cap) frame[i].color.red=cap;
         if(frame[i].color.green>cap) frame[i].color.green=cap;

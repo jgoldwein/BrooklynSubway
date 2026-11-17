@@ -28,6 +28,7 @@ uint32_t duration(Kind kind) {
     case Kind::Credits:return 12000;
     case Kind::Morse:{const auto p=personal::snapshot();const uint32_t ms=(morseUnits(p.recipient)+10)*100;return ms<7500?7500:ms;}
     case Kind::Anniversary:return 8000;
+    case Kind::Rangers:return 4800;
   }
   return 0;
 }
@@ -62,6 +63,28 @@ bool sample(Kind kind,uint32_t elapsed,Sample &out) {
       snprintf(lines[1],sizeof(lines[1]),"%.21s",identity.recipient);
       snprintf(lines[2],sizeof(lines[2]),"%s",identity.date);
       snprintf(lines[3],sizeof(lines[3]),"A day to remember!");break;
+    case Kind::Rangers: {
+      snprintf(lines[0],sizeof(lines[0]),"New York Rangers");
+      snprintf(lines[1],sizeof(lines[1]),"GOAL!");
+      snprintf(lines[2],sizeof(lines[2]),"F# major horn");
+      snprintf(lines[3],sizeof(lines[3]),"Buzzer approximation");
+      // User-supplied F#3/A#3/C#4 chord. One buzzer cycles the chord tones;
+      // it cannot reproduce three simultaneous synth voices or an air horn.
+      constexpr uint16_t pitchesHz[]={185,233,277};
+      struct Blast {uint16_t start,end;};
+      constexpr Blast blasts[]={{0,1100},{1350,2450},{2700,4100}};
+      for(const auto &blast:blasts) {
+        if(elapsed>=blast.start && elapsed<blast.end) {
+          out.frequency=pitchesHz[((elapsed-blast.start)/20)%3];break;
+        }
+      }
+      // Alternating 240 ms light / 240 ms black, cycling red/white/blue.
+      // Leave All selected during black frames so LED enable need not chatter.
+      constexpr led::Rgb colors[]={{3,0,0},{2,2,2},{0,0,3}};
+      out.visual=Visual::All;
+      if(elapsed<4100 && (elapsed/240)%2==0)out.color=colors[(elapsed/480)%3];
+      break;
+    }
     case Kind::Morse: {
       snprintf(lines[0],sizeof(lines[0]),"%.12s in Morse",identity.shortName);
       snprintf(lines[1],sizeof(lines[1]),"%.21s",identity.recipient);
