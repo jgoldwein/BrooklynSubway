@@ -131,6 +131,17 @@ restart behavior. Some problems required comparing hardware, firmware and
 network conditions rather than assuming the MTA data was at fault. A secondary
 board provided a way to try changes while keeping the master prototype available.
 
+## What did it cost?
+
+**Approximately US$150 per board** is a good estimate for this build, including
+parts, PCB manufacturing and shipping, with the printed case and power supply
+also allowed for in that approximate total.
+
+For context, Joel's case cost **less than US$1 to 3D-print**, and the power
+supply was **about US$10**. These are build-cost estimates, not a selling price
+or a quote for another production run. Design and software-development time
+are not included.
+
 ## Where AI helped - and where people did the work
 
 **Joel led the project and designed the circuitry with AI assistance.** He
