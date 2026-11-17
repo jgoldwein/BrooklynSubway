@@ -2,7 +2,7 @@
 
 Specially Designed for Avi Yao
 
-For firmware 0.2.93.
+For firmware 0.2.94.
 
 ## First time: connect to Wi-Fi
 
@@ -57,6 +57,6 @@ Default colors. Uses MTA reports and estimates, not GPS. Several trains can shar
 
 Quiet hours can darken the map or screen and mute sounds.
 
-CARE: Unplug barrel power and USB before handling. Keep dry. Leave the OLED magnet and bottom-left antenna attachment in place.
+**CARE:** Unplug barrel power and USB before handling. Keep dry and out of direct sunlight. Do not move the OLED magnet or antenna.
 
 [Full guide](https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/AVI_USER_GUIDE.md)

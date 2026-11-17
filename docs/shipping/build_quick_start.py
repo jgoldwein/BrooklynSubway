@@ -110,7 +110,7 @@ for i,s in enumerate(DATA['steps'],1):lines += [f"{i}. **{s['title']}.** {plain_
 lines += ['','My map web address: ______________________________','','## Everyday controls','']
 for item in DATA['left_controls']+DATA['right_controls']:lines += ['### '+item['title'],'',plain_markup(item['text']),'']
 lines += ['## Read the lights','']+[f"- **{x['name'].title()}:** {x['text']}." for x in DATA['colors']]
-lines += ['',DATA['map_note'],'','**'+DATA['warning']+'**','','## Need help?','',plain_markup(DATA['help_text']),'',DATA['quiet_note'],'',DATA['care_note'],'',f"[Full guide]({DATA['guide_url']})"]
+lines += ['',DATA['map_note'],'','**'+DATA['warning']+'**','','## Need help?','',plain_markup(DATA['help_text']),'',DATA['quiet_note'],'',plain_markup(DATA['care_note']),'',f"[Full guide]({DATA['guide_url']})"]
 (ROOT/'Brooklyn_Subway_Quick_Start.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
 # Render the finished PDF, then check page geometry and text.
 pdf=PdfReader(ROOT/'Brooklyn_Subway_Quick_Start.pdf');assert len(pdf.pages)==1
