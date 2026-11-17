@@ -6,4 +6,6 @@ Gerber ZIP, BOM and pick-and-place spreadsheets, with checksums and revision not
 The files are archived unchanged. See the export notes for the checks performed
 and the distinction between an export date and a confirmed manufactured revision.
 
+[Download the 3D-print files](3d-print/README.md): eight frame pieces, two OLED-case pieces and the 11 mm rotary knob, individually or as one ZIP.
+
 [How the map was made](../docs/HOW_IT_WAS_MADE.md) | [Project home](../README.md)

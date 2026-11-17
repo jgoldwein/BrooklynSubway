@@ -67,6 +67,8 @@ software decisions, assembly and testing.
 The [manufacturing downloads](../hardware/README.md) include the supplied
 Gerbers, BOM and component placement files, with export dates and revision notes.
 
+[Download the frame, OLED case and rotary-knob STL files](../hardware/3d-print/README.md), individually or as a single ZIP.
+
 ## 3. Give it a small computer
 
 The main controller is an **Espressif ESP32-S3-WROOM-1U-N16R8** module. It has

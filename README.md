@@ -42,6 +42,7 @@ or a guarantee of the next train's arrival.
 - **Moving, cleaning or packing the board?** Read
   [PCB handling and care](docs/AVI_USER_GUIDE.md#handling-cleaning-and-caring-for-the-pcb),
   including the OLED magnet and frame-mounted antenna.
+- **Want to print the frame, OLED case or knob?** Download the [3D-print STL files](hardware/3d-print/README.md), individually or as one ZIP.
 - **Interested in the electronics?** Download the [Gerbers, BOM and placement files](hardware/README.md).
 - **Looking for upgraded firmware?** See the [latest signed release](https://github.com/jgoldwein/BrooklynSubway/releases/latest).
   For an already programmed map, use **Advanced > Firmware updates** on its web page.
