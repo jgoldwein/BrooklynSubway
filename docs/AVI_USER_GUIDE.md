@@ -30,6 +30,62 @@ The web settings let you change the default train colors:
 - Green: leaving.
 - Blue: uncertain or last-reported location.
 
+## Handling, cleaning and caring for the PCB
+
+The **PCB** is the circuit board that carries the map, lights and electronic
+parts. Treat it like an electronic device, even when the lights are off.
+
+### Before handling or moving the board
+
+- **Unplug the barrel power adapter and any USB cable first.** The POWER button
+  changes the displays; it does not disconnect electrical power.
+- Hold the board by its edges. Avoid touching the small parts, solder joints and
+  exposed metal contacts. Keep your hands clean and dry, and avoid handling it
+  on carpet where static electricity can build up.
+- Lift the board itself, not the OLED, antenna, knob or cables. Do not bend it.
+  Unplug cables by holding the connector, not pulling the wire.
+- Disconnect power before plugging in, unplugging or adjusting the OLED,
+  antenna or other board connections. Ask Joel before changing wiring or parts.
+
+### Power and a safe place to use it
+
+- Use the supplied **5 V adapter**. The reviewed supply is **5 V, 3 A,
+  center-positive**, with the correct barrel plug. A plug that fits can still
+  have the wrong voltage or polarity; do not substitute a 9 V or 12 V adapter.
+- Keep the board on its stand or secure mounting supports. Exposed contacts
+  must not rest on metal, foil, loose screws or other conductive objects.
+- Keep drinks away. Use it indoors in a dry place, away from direct sunlight,
+  heaters and damp areas. Leave space around it; do not cover a powered board
+  with fabric or packing material.
+- Keep loose metal objects and pets away from the exposed electronics. Ask an
+  adult for help if a connector, cable or mounting part is damaged.
+
+### Cleaning
+
+1. Unplug **all** power, including USB.
+2. Remove loose dust gently with a clean, soft, dry brush. Wipe the OLED cover
+   and printed map gently with a soft, dry microfiber cloth. Do not scrub or
+   press on the display or small components.
+3. Do not spray cleaner onto the board or use water, alcohol, solvents or
+   household cleaners. These can damage the printed artwork, screen cover or
+   other materials.
+
+If liquid spills onto it, disconnect power if safe to do so and ask Joel for
+help before powering it again. Do not try to dry it with a hair dryer or heater.
+
+### Everyday care and packing
+
+Use a comfortable brightness. Dim or turn off the OLED when it is not needed;
+leaving a bright, fixed image on an OLED for long periods can cause uneven wear.
+
+If you notice a burning smell, smoke, unusual heat or a damaged power cable,
+disconnect power if safe and stop using the map. Do not keep restarting it.
+
+For storage or shipping, disconnect every cable and protect the unpowered board
+in an antistatic bag. Put padding around the bag in a sturdy box, leaving no
+pressure on the OLED, knob, antenna connector or components. Keep loose screws
+and other metal parts in a separate container.
+
 ## The three status lights
 
 **SYSTEM** starts red while the board checks itself. Green means those checks

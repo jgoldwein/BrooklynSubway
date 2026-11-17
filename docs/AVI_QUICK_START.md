@@ -7,6 +7,9 @@ Specially Designed for Avi Yao
 These instructions match the current preview firmware, 0.2.77. Older releases
 may work differently.
 
+Before moving or cleaning the board, unplug both barrel power and USB. Read
+[PCB handling, cleaning and care](AVI_USER_GUIDE.md#handling-cleaning-and-caring-for-the-pcb).
+
 ## Turn it on
 
 1. Plug in the supplied **5 V power adapter**. A computer is not needed.
