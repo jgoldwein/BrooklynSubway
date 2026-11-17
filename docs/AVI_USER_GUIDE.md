@@ -49,6 +49,8 @@ parts. Treat it like an electronic device, even when the lights are off.
 
 ### Power and a safe place to use it
 
+Choose a location near an electrical outlet with **good Wi-Fi reception**.
+
 The **USB-C connector is for programming and service, not for powering the map
 during normal use**. Use the supplied barrel power adapter to run the map.
 
@@ -66,7 +68,7 @@ during normal use**. Use the supplied barrel power adapter to run the map.
 
 ### Antenna
 
-The antenna comes out of the **bottom-left corner of the PCB** and is fastened
+The antenna comes out of the **left side of the PCB, near the bottom** and is fastened
 to the frame. **Take care not to pull on its cable, loosen its attachment or use
 it as a handle.** Keep the cable clear when moving the board, fitting the frame
 or packing the map, so it does not get pinched or caught.
