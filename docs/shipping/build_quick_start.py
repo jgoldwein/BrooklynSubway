@@ -46,6 +46,7 @@ c.setFillColor(colors.white);c.setFont('Guide-Bold',10);c.drawCentredString(52,7
 label(DATA['title'],80,738,25,NAVY)
 c.setFont('Guide',10.5);c.setFillColor(MUTED);c.drawString(80,721,DATA['subtitle'])
 label('QUICK START',R-76,744,8.5,MUTED)
+label('Firmware '+DATA['firmware_version'],R-76,729,8,MUTED)
 c.setStrokeColor(LINE);c.line(L,712,R,712)
 label('SET UP ONCE - NO APP OR ACCOUNT NEEDED',L,694,9.5)
 y=680
@@ -87,6 +88,7 @@ y-=38
 label(DATA['help_title'],L,y,11,NAVY)
 helpbottom=text(DATA['help_text'],L,y-8,424,ParagraphStyle('help',parent=style,fontSize=9.2,leading=12))
 helpbottom=text(DATA['quiet_note'],L,helpbottom-6,424,small)
+helpbottom=text(DATA['care_note'],L,helpbottom-4,424,small)
 qr=qrcode.QRCode(error_correction=qrcode.constants.ERROR_CORRECT_M,box_size=10,border=4)
 qr.add_data(DATA['guide_url']);qr.make(fit=True);qr.make_image(fill_color='black',back_color='white').save(ROOT/'guide_qr.png')
 matrix=qr.get_matrix();size=80;unit=size/len(matrix);qx=R-size;qy=y-82
@@ -103,12 +105,12 @@ c.setFillColor(MUTED);c.setFont('Guide',8);c.drawString(L,footer,DATA['repositor
 c.linkURL('https://'+DATA['repository_label'],(L,footer-1,L+250,footer+10),relative=0,thickness=0)
 c.showPage();c.save()
 # Friendly Markdown companion, generated from exactly the same text.
-lines=['# '+DATA['title'],'',DATA['subtitle'],'','## First time: connect to Wi-Fi','']
+lines=['# '+DATA['title'],'',DATA['subtitle'],'','For firmware '+DATA['firmware_version']+'.','','## First time: connect to Wi-Fi','']
 for i,s in enumerate(DATA['steps'],1):lines += [f"{i}. **{s['title']}.** {plain_markup(s['text'])}"]
 lines += ['','My map web address: ______________________________','','## Everyday controls','']
 for item in DATA['left_controls']+DATA['right_controls']:lines += ['### '+item['title'],'',plain_markup(item['text']),'']
 lines += ['## Read the lights','']+[f"- **{x['name'].title()}:** {x['text']}." for x in DATA['colors']]
-lines += ['',DATA['map_note'],'','**'+DATA['warning']+'**','','## Need help?','',plain_markup(DATA['help_text']),'',DATA['quiet_note'],'',f"[Full guide]({DATA['guide_url']})"]
+lines += ['',DATA['map_note'],'','**'+DATA['warning']+'**','','## Need help?','',plain_markup(DATA['help_text']),'',DATA['quiet_note'],'',DATA['care_note'],'',f"[Full guide]({DATA['guide_url']})"]
 (ROOT/'Brooklyn_Subway_Quick_Start.md').write_text('\n'.join(lines)+'\n',encoding='utf-8')
 # Render the finished PDF, then check page geometry and text.
 pdf=PdfReader(ROOT/'Brooklyn_Subway_Quick_Start.pdf');assert len(pdf.pages)==1

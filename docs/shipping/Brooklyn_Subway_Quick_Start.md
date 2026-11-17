@@ -2,6 +2,8 @@
 
 Specially Designed for Avi Yao
 
+For firmware 0.2.93.
+
 ## First time: connect to Wi-Fi
 
 1. **Power up.** Keep the antenna attached. Plug in the supplied **5 V, 3 A, center-positive adapter**. The small OLED screen will guide you through Wi-Fi setup.
@@ -54,5 +56,7 @@ Default colors. Uses MTA reports and estimates, not GPS. Several trains can shar
 **Send Joel a report:** Help > Make a support report > Send report to Joel. Review the email to **goldwein@gmail.com** and tap Send. Attach the saved report file if asked.
 
 Quiet hours can darken the map or screen and mute sounds.
+
+CARE: Unplug barrel power and USB before handling. Keep dry; leave the OLED mounting magnet in place.
 
 [Full guide](https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/AVI_USER_GUIDE.md)

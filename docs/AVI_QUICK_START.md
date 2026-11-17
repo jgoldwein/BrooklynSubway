@@ -4,7 +4,7 @@ Specially Designed for Avi Yao
 
 [Download the one-page packing sheet (PDF)](shipping/Brooklyn_Subway_Quick_Start.pdf)
 
-These instructions match the current preview firmware, 0.2.77. Older releases
+These instructions match firmware 0.2.93. Older releases
 may work differently.
 
 Before moving or cleaning the board, unplug both barrel power and USB. Read
@@ -89,5 +89,5 @@ Quiet hours can also dim the OLED, silence beeps, and turn off or dim the map.
 
 More help: [Avi’s Brooklyn Subway Map — User Guide](AVI_USER_GUIDE.md).
 
-If you need help, open **Advanced > Get help** to make a support report and
+If you need help, open **Help > Make a support report** to make a support report and
 open an email draft to Joel. Review it and tap Send in your email app.

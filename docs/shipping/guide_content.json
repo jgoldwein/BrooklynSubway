@@ -71,5 +71,7 @@
   "warning": "UPDATING? Do not unplug power. Wait for Update complete.",
   "help_title": "Need help?",
   "help_text": "<b>Wi-Fi changed?</b> Hold the knob for <b>10 seconds</b> to reopen setup.<br/><b>Send Joel a report:</b> Help &gt; Make a support report &gt; Send report to Joel. Review the email to <b>goldwein@gmail.com</b> and tap Send. Attach the saved report file if asked.",
-  "quiet_note": "Quiet hours can darken the map or screen and mute sounds."
+  "quiet_note": "Quiet hours can darken the map or screen and mute sounds.",
+  "firmware_version": "0.2.93",
+  "care_note": "CARE: Unplug barrel power and USB before handling. Keep dry; leave the OLED mounting magnet in place."
 }
