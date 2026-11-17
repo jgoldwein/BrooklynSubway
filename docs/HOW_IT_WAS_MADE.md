@@ -8,11 +8,13 @@ a personal Bar Mitzvah gift that Avi can enjoy, explore and help improve.
 
 ## The short answer: "Did you make this?"
 
-> Yes. I designed the circuitry for this custom subway map with AI assistance,
-> and JLCPCB manufactured the circuit board. I also designed and 3D-printed the
-> PCB frame and OLED case. I brought the parts together and worked through the
-> features and testing. The software was developed with AI assistance and
-> open-source tools, and the train information comes from the MTA.
+> Yes. I designed the circuitry for this custom subway map with some AI
+> assistance. I had the printed circuit board manufactured by JLCPCB according
+> to my specifications. I also designed and 3D-printed the frame and OLED case.
+> I procured and assembled all the parts and worked through the features and
+> testing. The software was also developed with AI assistance and open-source
+> tools. The train information comes from the Metropolitan Transportation
+> Authority (MTA)'s real-time subway data feeds.
 
 It is a collaborative kind of making: the project decisions and hands-on work,
 custom 3D design and printing, professional circuit-board manufacturing, existing
