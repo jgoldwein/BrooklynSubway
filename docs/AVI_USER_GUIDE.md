@@ -49,6 +49,9 @@ parts. Treat it like an electronic device, even when the lights are off.
 
 ### Power and a safe place to use it
 
+The **USB-C connector is for programming and service, not for powering the map
+during normal use**. Use the supplied barrel power adapter to run the map.
+
 - Use the supplied **5 V adapter**. The reviewed supply is **5 V, 3 A,
   center-positive**, with the correct barrel plug. A plug that fits can still
   have the wrong voltage or polarity; do not substitute a 9 V or 12 V adapter.
@@ -59,6 +62,17 @@ parts. Treat it like an electronic device, even when the lights are off.
   with fabric or packing material.
 - Keep loose metal objects and pets away from the exposed electronics. Ask an
   adult for help if a connector, cable or mounting part is damaged.
+
+### Antenna
+
+The antenna comes out of the **bottom-left corner of the PCB** and is fastened
+to the frame. **Take care not to pull on its cable, loosen its attachment or use
+it as a handle.** Keep the cable clear when moving the board, fitting the frame
+or packing the map, so it does not get pinched or caught.
+
+Leave the antenna connected and secured in its intended position. If it comes
+loose or looks damaged, unplug all power and ask Joel for help before adjusting
+it.
 
 ### OLED mounting magnet
 

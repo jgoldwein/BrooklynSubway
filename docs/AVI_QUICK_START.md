@@ -12,7 +12,10 @@ Before moving or cleaning the board, unplug both barrel power and USB. Read
 
 ## Turn it on
 
-1. Plug in the supplied **5 V power adapter**. A computer is not needed.
+1. Plug in the supplied **5 V barrel power adapter**. The **USB-C connector is
+   for programming and service, not normal power**. A computer is not needed.
+   Keep the antenna at the bottom-left of the board fastened to the frame; do
+   not pull its cable or loosen its attachment.
 2. If the OLED asks you to join **BrooklynMap-Avi**, do the first-time Wi-Fi
    setup below. You do not need to wait for green lights before setting up Wi-Fi.
 3. After connecting, watch for **SYSTEM, NETWORK, and MTA FEED to turn green**.

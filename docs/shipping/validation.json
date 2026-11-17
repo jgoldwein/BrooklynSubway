@@ -6,8 +6,8 @@
   "qrSizePoints": 80,
   "bodyFontPoints": 11,
   "helpFontPoints": 9.2,
-  "footerBottomPoints": 37,
-  "textWords": 379,
+  "footerBottomPoints": 32,
+  "textWords": 381,
   "privateNetworkDetailsExcluded": true,
   "renderedWith": "PyMuPDF 1.26.5",
   "checkedRequiredText": true,
@@ -15,5 +15,6 @@
   "finalRenderVisuallyInspected": true,
   "helpNavigation": "Help > Make a support report",
   "firmwareVersion": "0.2.93",
-  "careReminderIncluded": true
+  "careReminderIncluded": true,
+  "usbAndAntennaNotesIncluded": true
 }

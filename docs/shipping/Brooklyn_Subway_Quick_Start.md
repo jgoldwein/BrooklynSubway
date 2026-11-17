@@ -6,7 +6,7 @@ For firmware 0.2.93.
 
 ## First time: connect to Wi-Fi
 
-1. **Power up.** Keep the antenna attached. Plug in the supplied **5 V, 3 A, center-positive adapter**. The small OLED screen will guide you through Wi-Fi setup.
+1. **Power up.** Use the supplied **5 V, 3 A, center-positive barrel adapter**. **USB-C is for programming, not power.** Keep the antenna attached to the frame.
 2. **Connect your phone.** In your phone's Wi-Fi settings, join **BrooklynMap-Avi**. If it says no internet, choose **Stay connected** or **Use without internet**.
 3. **Connect your map.** Open **http://192.168.4.1/** if setup does not appear. Create and save a **map settings password**. Then select home Wi-Fi and enter the **Wi-Fi password**. The map needs 2.4 GHz; a shared 2.4/5 GHz name works.
 4. **Open your map.** When setup says **You're connected!**, note the map's address. Rejoin home Wi-Fi on your phone, wait **10 seconds**, then open that address in Safari or Chrome. **Bookmark it.** Train lights start when data is ready.
@@ -57,6 +57,6 @@ Default colors. Uses MTA reports and estimates, not GPS. Several trains can shar
 
 Quiet hours can darken the map or screen and mute sounds.
 
-CARE: Unplug barrel power and USB before handling. Keep dry; leave the OLED mounting magnet in place.
+CARE: Unplug barrel power and USB before handling. Keep dry. Leave the OLED magnet and bottom-left antenna attachment in place.
 
 [Full guide](https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/AVI_USER_GUIDE.md)
