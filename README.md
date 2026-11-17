@@ -1,14 +1,46 @@
-# Brooklyn Active Subway Map Firmware
+# Brooklyn Subway
 
-Firmware for the manufactured Brooklyn Active Subway Map V1.1 PCB.
+**Specially Designed for Avi Yao**
 
-**Packing the gift?** [Print the one-page quick start](docs/shipping/Brooklyn_Subway_Quick_Start.pdf) on US Letter at 100% size.
+Brooklyn Subway is a connected, light-up map that brings Brooklyn's subway
+trains to your wall. It uses official MTA train reports to show where trains
+are reported and how they are moving, with colors for approaching, stopped,
+leaving and uncertain locations.
 
-**Using the map?** Start with [Avi's quick start](docs/AVI_QUICK_START.md), then
-[Avi’s Brooklyn Subway Map — User Guide](docs/AVI_USER_GUIDE.md). These guides cover the current private
-preview; the public stable release may be older until the consolidated release.
+The small OLED screen can show the time, date, train counts, connection details
+and Brooklyn weather. A knob and front-panel buttons control the screens and
+lights. You can also change settings, get help and install signed firmware
+updates from the map's web page.
+
+Set it up with a phone and your home Wi-Fi; no special app or account is needed.
+The map needs a 2.4 GHz Wi-Fi signal and the supplied barrel power adapter.
+**USB-C is for programming and service, not normal power.**
+
+Train reports arrive in batches, and some positions are estimates. Several
+trains can share one light. This is a display of MTA reports, not a GPS tracker
+or a guarantee of the next train's arrival.
+
+## Start here
+
+- **Setting up your map?** Follow [Avi's quick start](docs/AVI_QUICK_START.md).
+- **Want a copy to print?** [Download the one-page Quick Start PDF](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/shipping/Brooklyn_Subway_Quick_Start.pdf).
+  Print on US Letter at **100% / Actual size**.
+- **Want to learn the controls, colors and sounds?** Open
+  [Avi's Brooklyn Subway Map - User Guide](docs/AVI_USER_GUIDE.md).
+- **Moving, cleaning or packing the board?** Read
+  [PCB handling and care](docs/AVI_USER_GUIDE.md#handling-cleaning-and-caring-for-the-pcb),
+  including the OLED magnet and frame-mounted antenna.
+- **Looking for firmware?** See the [latest signed release](https://github.com/jgoldwein/BrooklynSubway/releases/latest).
+  For an already programmed map, use **Advanced > Firmware updates** on its web page.
+
+If something looks wrong, open **Help > Make a support report** on the map's
+web page. **Send report to Joel** opens an email draft for you to review and send.
 
 ## Engineering: start here
+
+This repository contains firmware and engineering records for the manufactured
+Brooklyn Active Subway Map V1.1 PCB. The development-phase notes below describe
+earlier stages; use the guides above for normal operation.
 
 1. Read `PROJECT_CONTEXT.md`.
 2. After a computer or session reboot, follow [`RESUME.md`](RESUME.md) before
