@@ -3,6 +3,10 @@
 The project owner supplied the working-map video recorded November 17, 2026.
 The public clip keeps the actual LED behavior, printed map and OLED contents.
 
+- `brooklyn-subway-photo.jpg`: the selected conventional edit of the supplied
+  photograph. A tight crop, mild perspective correction, small brightness/contrast
+  adjustments and light sharpening preserve the original printed and electronic
+  details. No text or OLED content was painted in. Location/EXIF metadata removed.
 - `brooklyn-subway-demo.mp4`: 15.4 seconds, H.264, 1080 x 1050, 30 fps,
   silent, with fast-start metadata for browser playback.
 - `brooklyn-subway-video-poster.jpg`: an actual frame at six seconds from the

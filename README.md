@@ -2,10 +2,10 @@
 
 **Specially Designed for Avi Yao**
 
-[![Working Brooklyn Subway map with train LEDs and OLED screen](docs/media/brooklyn-subway-video-poster.jpg)](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/media/brooklyn-subway-demo.mp4)
+[![Working Brooklyn Subway map with train LEDs and OLED screen](docs/media/brooklyn-subway-photo.jpg)](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/media/brooklyn-subway-demo.mp4)
 
 [Watch or download the 15-second working-map video](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/media/brooklyn-subway-demo.mp4)
-(silent MP4, about 6 MB). The image above is a frame from the actual footage.
+(silent MP4, about 6 MB). The photo above is the actual working map, conventionally cropped and adjusted.
 
 Brooklyn Subway is a connected, light-up map that brings Brooklyn's subway
 trains to your wall. It uses official MTA train reports to show where trains
@@ -27,6 +27,7 @@ or a guarantee of the next train's arrival.
 
 ## Start here
 
+- **Did you make this? How?** Read [How Brooklyn Subway was made](docs/HOW_IT_WAS_MADE.md).
 - **Setting up your map?** Follow [Avi's quick start](docs/AVI_QUICK_START.md).
 - **Want a copy to print?** [Download the one-page Quick Start PDF](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/shipping/Brooklyn_Subway_Quick_Start.pdf).
   Print on US Letter at **100% / Actual size**.

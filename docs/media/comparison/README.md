@@ -20,4 +20,5 @@ explain why the conventional photograph is recommended.
 
 [Open the AI comparison](ai-inaccurate-comparison.jpg)
 
-The project's main README still uses a genuine frame from the supplied video.
+The project's main README uses the selected conventional photograph. The AI
+version remains here only as a clearly labeled editing comparison.
