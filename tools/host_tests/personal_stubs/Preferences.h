@@ -13,6 +13,8 @@ struct Blob {
   bool operator==(const Blob &b) const {return n==b.n && memcmp(data_,b.data_,n)==0;}
 };
 inline Blob &bytes() {static Blob b;return b;}
+inline Blob &extraBytes() {static Blob b;return b;}
+inline Blob &forKey(const char *key) {return strcmp(key,"extras_v1")==0?extraBytes():bytes();}
 inline bool &failWrite() {static bool b=false;return b;}
 inline bool &failOpen() {static bool b=false;return b;}
 }
@@ -20,10 +22,10 @@ class Preferences {
  public:
   bool begin(const char *name,bool) {return strcmp(name,"bkmap_cfg")==0 && !fakeNvs::failOpen();}
   void end() {}
-  size_t getBytesLength(const char *key) {return strcmp(key,"personal_v1")==0?fakeNvs::bytes().size():0;}
-  size_t getBytes(const char *,void *out,size_t n) {if(n!=fakeNvs::bytes().size())return 0;memcpy(out,fakeNvs::bytes().data(),n);return n;}
+  size_t getBytesLength(const char *key) {return (strcmp(key,"personal_v1")==0 || strcmp(key,"extras_v1")==0)?fakeNvs::forKey(key).size():0;}
+  size_t getBytes(const char *key,void *out,size_t n) {if(n!=fakeNvs::forKey(key).size())return 0;memcpy(out,fakeNvs::forKey(key).data(),n);return n;}
   size_t putBytes(const char *key,const void *data,size_t n) {
-    if(fakeNvs::failWrite() || strcmp(key,"personal_v1")!=0)return 0;
-    const auto *p=static_cast<const unsigned char *>(data);fakeNvs::bytes().assign(p,p+n);return n;
+    if(fakeNvs::failWrite() || (strcmp(key,"personal_v1")!=0 && strcmp(key,"extras_v1")!=0))return 0;
+    const auto *p=static_cast<const unsigned char *>(data);fakeNvs::forKey(key).assign(p,p+n);return n;
   }
 };

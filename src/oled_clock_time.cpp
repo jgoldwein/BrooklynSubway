@@ -33,6 +33,7 @@ bool newYorkMinutes(time_t utc,uint16_t &minute) {
 }
 uint16_t newYorkAnniversaryYear(time_t utc) {
   struct tm local{};
+  if(!(personal::extraSnapshot().enabledMask&2))return 0;
   const auto p=personal::snapshot();int y,m,d;
   if(!personal::dateParts(p.date,y,m,d) || !newYorkCalendar(utc,local) || local.tm_mon!=m-1 || local.tm_mday!=d || local.tm_year+1900<y) return 0;
   return static_cast<uint16_t>(local.tm_year+1900);

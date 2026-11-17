@@ -106,6 +106,7 @@ void scrollText(const char *text, unsigned limit, uint32_t elapsedMs, char (&out
   out[count]=0;
 }
 }
+void scrollMessage(const char *message,uint32_t elapsedMs,char (&out)[22]) {scrollText(message,63,elapsedMs,out);}
 void scrollName(const char *name,uint32_t elapsedMs,char (&out)[22]) {scrollText(name,32,elapsedMs,out);}
 void scrollDedicationNames(uint32_t elapsedMs,char (&out)[22]) {const auto p=personal::snapshot();scrollText(p.names,sizeof(p.names)-1,elapsedMs,out);}
 void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenText &out, const NavigationView &view) {

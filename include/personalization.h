@@ -80,6 +80,60 @@ inline void apply(const Settings &s) {
   portEXIT_CRITICAL(&mutex());
 #endif
 }
+
+struct ExtraSettings {
+  uint8_t enabledMask=15; // Celebration, anniversary, family credits, Rangers.
+  char celebrationNote[22]="Let's celebrate!";
+  char anniversaryNote[22]="A day to remember!";
+  char creditsTitle[22]=""; // Empty: For <recipient>.
+  char teamTitle[22]="New York Rangers";
+  char teamNote[22]=""; // Empty: <short name>'s favorite team.
+  char teamCheer[22]="GO RANGERS!";
+};
+constexpr unsigned kExtraFieldCount=6;
+inline const Field *extraFields() {
+  static const Field list[]={
+#define E(key,label,optional) {#key,label,offsetof(ExtraSettings,key),sizeof(ExtraSettings::key),optional}
+    E(celebrationNote,"Celebration message",true),E(anniversaryNote,"Anniversary message",true),
+    E(creditsTitle,"Family credits heading (blank = For recipient)",true),
+    E(teamTitle,"Team heading (sound and colors stay Rangers)",false),
+    E(teamNote,"Team caption (blank = name's favorite team)",true),
+    E(teamCheer,"Flashing team cheer",true)
+#undef E
+  };return list;
+}
+inline const char *extraValue(const ExtraSettings &s,unsigned i) {return reinterpret_cast<const char *>(&s)+extraFields()[i].offset;}
+inline char *extraValue(ExtraSettings &s,unsigned i) {return reinterpret_cast<char *>(&s)+extraFields()[i].offset;}
+inline bool validExtras(const ExtraSettings &s) {
+  if(s.enabledMask&~15u)return false;
+  for(unsigned i=0;i<kExtraFieldCount;++i) {
+    const auto &f=extraFields()[i];const char *v=extraValue(s,i);size_t n=0;
+    for(;n<f.size && v[n];++n)if(static_cast<unsigned char>(v[n])<32 || static_cast<unsigned char>(v[n])>126)return false;
+    if(n==f.size || (!n && !f.optional) || (n && (v[0]==' ' || v[n-1]==' ')))return false;
+  }return true;
+}
+inline ExtraSettings &extraStorage() {static ExtraSettings s;return s;}
+inline ExtraSettings extraSnapshot() {
+#if defined(ARDUINO_ARCH_ESP32)
+  portENTER_CRITICAL(&mutex());
+#endif
+  const ExtraSettings s=extraStorage();
+#if defined(ARDUINO_ARCH_ESP32)
+  portEXIT_CRITICAL(&mutex());
+#endif
+  return s;
+}
+inline void applyExtras(const ExtraSettings &s) {
+#if defined(ARDUINO_ARCH_ESP32)
+  portENTER_CRITICAL(&mutex());
+#endif
+  extraStorage()=s;
+#if defined(ARDUINO_ARCH_ESP32)
+  portEXIT_CRITICAL(&mutex());
+#endif
+}
+bool loadExtras();
+bool saveExtras(const ExtraSettings &s);
 inline void dateText(const Settings &s,char (&out)[22]) {
   int y,m,d;out[0]=0;if(!dateParts(s.date,y,m,d))return;
   const char *months[]={"January","February","March","April","May","June","July","August","September","October","November","December"};

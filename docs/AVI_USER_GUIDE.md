@@ -2,7 +2,7 @@
 
 Specially Designed for Avi Yao
 
-Guide for firmware **0.2.95**. Start with the
+Guide for firmware **0.2.96**. Start with the
 [quick start](AVI_QUICK_START.md) if you just want to try the map.
 For the gift box, [print the one-page sheet](shipping/Brooklyn_Subway_Quick_Start.pdf).
 
@@ -361,13 +361,14 @@ the power supply.
 Hold **TEST + ROUTE together for 2 seconds**, then release both. Repeat to cycle
 through the celebration, Subway Express light chaser, family credits, **Avi Yao
 in Morse code**, anniversary preview, and a **Rangers synth-horn effect**.
-The Rangers effect is the sixth selection: three brief buzzer blasts cycling
-the F#3/A#3/C#4 horn chord, with dim red, white and blue flashes. It approximates
+With all extras enabled, Rangers is sixth. It repeats three brief buzzer blasts
+cycling the F#3/A#3/C#4 horn chord twice, with dim red, white and blue flashes
+and a flashing OLED cheer. It approximates
 the supplied synthesizer reference; it does not play the Slapshot song.
 POWER exits. Quiet hours still control sound and map brightness.
 
 The light chaser is just for fun; it is not a real train. The dedication also
-has a special September 26 greeting when the normal main screen is available.
+has an annual greeting on the saved celebration date when the normal main screen is available and Anniversary is enabled.
 
 Weather data: [Open-Meteo](https://open-meteo.com/), licensed under
 [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).
@@ -422,3 +423,20 @@ Leave optional dedication lines empty to hide them. Leave the celebration date e
 The support button opens an email draft to the saved support email. Review the report and send it yourself. Nothing is sent automatically. The contact details are visible on your map's local Help page.
 
 The Wi-Fi setup network remains **BrooklynMap-Avi**, matching the printed instructions. Personalization does not change Wi-Fi or administrator passwords. **Reset to firmware defaults** restores the original personalization and erases Wi-Fi and administrator settings, so use that only when you want to start over.
+
+
+### Personal extras
+
+Under **Advanced > Personalization**, the **Personalized extras** form controls Celebration, Anniversary, Family Credits and Rangers. Turn off extras you do not want; the button cycle skips them. Subway Express and Morse remain available.
+
+You can edit the celebration and anniversary messages, the family-credits heading, and the team heading, caption and flashing cheer. Names, the From line and scrolling names still come from the main personalization form. A blank family-credits heading uses the recipient name. A blank team caption uses the short OLED name followed by "'s favorite team" and scrolls long text. Changing a team label does not change the Rangers sound or colors.
+
+Press **Save extras** to save this form separately. Your existing names and dedication remain unchanged. The Anniversary switch also controls the annual automatic greeting; the startup-greeting switch remains under Screen settings.
+
+### Startup firmware checks and automatic updates
+
+The map checks for new firmware after startup once Wi-Fi, time synchronization and administrator setup are ready. If a check fails, it retries after 1 minute, then 2 minutes, then 5 minutes, then at most every 15 minutes, capped by a shorter saved check interval. A successful check returns to the saved interval. The first attempt can fail because of a temporary connection problem; this does not mean no update exists.
+
+Starting with 0.2.96, automatic updates default to **ON** when no preference is saved, including after a firmware-default reset. Existing saved ON or OFF choices are preserved during an upgrade. To change an existing board, use **Advanced > Firmware updates > Turn automatic updates on/off**. With updates OFF, the map still checks but waits for your approval before installing. Only signed packages for the correct hardware are accepted.
+
+The Rangers extra lasts about 10 seconds, flashes the saved cheer (default **GO RANGERS!**) on the OLED, and repeats its short horn/color sequence twice. POWER can stop it early.

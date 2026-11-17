@@ -31,6 +31,7 @@ class LanWebUi {
   void registerRoutes();
   void handleHome();
   void handlePersonalization(bool saving);
+  void handleExtraPersonalization();
   void sendTemplateHtml(const char *body, size_t length, int code=200);
   void handleLedDiagnosticPage();
   void handleLedDiagnosticRun();
@@ -111,6 +112,8 @@ class LanWebUi {
   uint32_t installReceived_ = 0;
   uint32_t installTotal_ = 0;
   bool hasReleaseCheck_ = false;
+  bool releaseCheckSucceeded_ = false;
+  uint8_t releaseCheckFailures_ = 0;
   bool updateAvailable_ = false;
   uint32_t lastReleaseCheckMs_ = 0;
   char availableVersion_[33] = {};

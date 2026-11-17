@@ -904,7 +904,7 @@ const char *loginReturnPath(const char *target) {
 const char *loginTargetForRequest(const char *path) {
   if (!path) return "";
   if (strcmp(path,"/defaults")==0) return "defaults";
-  if (strcmp(path,"/personalization")==0) return "personalization";
+  if (strcmp(path,"/personalization")==0 || strcmp(path,"/personalization/extras")==0) return "personalization";
   if (strcmp(path,"/screen-options")==0 || strcmp(path,"/config/screen-options")==0) return "screen-options";
   if (strcmp(path,"/update")==0 || strncmp(path,"/update/",8)==0) return "update";
   if (strcmp(path,"/hardware-test")==0 || strcmp(path,"/hardware-test/run")==0) return "hardware-test";
@@ -1404,7 +1404,21 @@ size_t renderPersonalizationPage(char *out,size_t capacity,const personal::Setti
     w.html(personal::value(p,i));w.append("\"");if(!f.optional)w.append(" required");
     w.format(" aria-describedby=\"limit%u\"><p class=\"hint\" id=\"limit%u\">Up to %u characters.</p>",i,i,unsigned(f.size-1));
   }
-  w.append("<h3>OLED greeting preview</h3><p class=\"hint\">The first four lines are centered on the OLED; the final names line scrolls.</p><pre id=\"preview\" style=\"background:#071827;color:#b3efff;padding:1rem;text-align:center;white-space:pre-wrap\"></pre><button type=\"submit\">Save personalization</button></form><p>Reset to firmware defaults restores the original Avi greeting and contact details. It also erases Wi-Fi and administrator settings; it is not needed to edit these words.</p><p class=\"hint\">Made by is a display credit. Original project authorship and license notices remain unchanged.</p></section></main><script>const f=document.getElementById('personal');function preview(){document.getElementById('preview').textContent=['greeting','shortName','from','date','names'].map(k=>f.elements[k].value).join('\\n');}f.addEventListener('input',preview);preview();</script></body></html>");
+  w.append("<h3>OLED greeting preview</h3><p class=\"hint\">The first four lines are centered on the OLED; the final names line scrolls.</p><pre id=\"preview\" style=\"background:#071827;color:#b3efff;padding:1rem;text-align:center;white-space:pre-wrap\"></pre><button type=\"submit\">Save personalization</button></form><p>Reset to firmware defaults restores the original Avi greeting and contact details. It also erases Wi-Fi and administrator settings; it is not needed to edit these words.</p><p class=\"hint\">Made by is a display credit. Original project authorship and license notices remain unchanged.</p>");
+  const auto extras=personal::extraSnapshot();
+  w.append("<h2>Personalized extras</h2><p>Choose which personal extras appear in the TEST + ROUTE cycle. Names, From line and scrolling family names come from the settings above. Subway Express and Morse remain available.</p><form method=\"post\" action=\"/personalization/extras\"><input type=\"hidden\" name=\"csrf\" value=\"");w.html(csrf);w.append("\">");
+  const char *keys[]={"celebration","anniversary","credits","rangers"};
+  const char *labels[]={"Celebration","Anniversary (also enables the annual greeting)","Family credits","Rangers (favorite-team extra)"};
+  for(unsigned i=0;i<4;++i) {
+    w.format("<label><input type=\"checkbox\" name=\"%s\" value=\"1\"%s> ",keys[i],(extras.enabledMask&(1u<<i))?" checked":"");w.html(labels[i]);w.append("</label>");
+  }
+  w.append("<p class=\"hint\">The startup greeting has its own switch under Screen settings. Team heading and caption change the words only; the horn and red/white/blue colors stay Rangers.</p>");
+  for(unsigned i=0;i<personal::kExtraFieldCount;++i) {
+    const auto &f=personal::extraFields()[i];w.format("<label for=\"extra%u\">",i);w.html(f.label);w.append("</label>");
+    w.format("<input id=\"extra%u\" name=\"%s\" maxlength=\"21\" value=\"",i,f.key);w.html(personal::extraValue(extras,i));w.append("\">");
+  }
+  w.append("<p class=\"hint\">Up to 21 characters per message. Blank team caption uses the OLED name followed by &rsquo;s favorite team, scrolling when needed.</p><button>Save extras</button></form>");
+  w.append("</section></main><script>const f=document.getElementById('personal');function preview(){document.getElementById('preview').textContent=['greeting','shortName','from','date','names'].map(k=>f.elements[k].value).join('\\n');}f.addEventListener('input',preview);preview();</script></body></html>");
   return w.size();
 }
 }  // namespace brooklyn::web

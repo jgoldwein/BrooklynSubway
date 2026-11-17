@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "lan_web_ui.h"
+#include "ota_release_schedule.h"
 #include "hardware.h"
 #include "oled_clock.h"
 #include "live_display.h"
@@ -41,7 +42,7 @@ constexpr size_t kNetworkDiagnosticsJsonCapacity = 1536;
 #define BROOKLYN_RELEASE_CHECK_INTERVAL_MS (6u * 60u * 60u * 1000u)  // bench tests may override
 #endif
 #ifndef BROOKLYN_AUTO_INSTALL_RELEASES
-#define BROOKLYN_AUTO_INSTALL_RELEASES 0  // 1 = install and reboot unattended
+#define BROOKLYN_AUTO_INSTALL_RELEASES 1  // Default ON; a saved administrator choice still wins.
 #endif
 constexpr uint32_t kReleaseCheckIntervalMs = BROOKLYN_RELEASE_CHECK_INTERVAL_MS;
 constexpr uint32_t kIntervalChoicesMin[] = {5, 15, 60, 360, 1440};
@@ -176,6 +177,7 @@ bool LanWebUi::begin() {
   }
   server_.begin();
   active_ = true;
+  if(!hasReleaseCheck_)Serial.println("OTA startup check queued: waiting for Wi-Fi, synchronized clock and administrator setup");
   Serial.printf(
       "LAN UI: HTTP server started on station interface; administrator %s; "
       "read-only status is public; HTTP is unencrypted\n",
@@ -184,6 +186,7 @@ bool LanWebUi::begin() {
 }
 
 void LanWebUi::registerRoutes() {
+  server_.on("/personalization/extras", HTTP_POST, [this]() { handleExtraPersonalization(); });
   server_.on("/personalization", HTTP_GET, [this]() { handlePersonalization(false); });
   server_.on("/personalization", HTTP_POST, [this]() { handlePersonalization(true); });
   const char *headers[] = {"Cookie", "X-CSRF-Token", "Content-Type"};
@@ -555,6 +558,31 @@ void LanWebUi::handleUnknownTiming() {
 }
 
 
+
+void LanWebUi::handleExtraPersonalization() {
+  if(!authorizeRequest(true))return;
+  personal::ExtraSettings next;next.enabledMask=0;uint16_t seen=0;
+  constexpr const char *flags[]={"celebration","anniversary","credits","rangers"};
+  for(int i=0;i<server_.args();++i) {
+    const String key=server_.argName(i),text=server_.arg(i);int index=-1;
+    for(unsigned j=0;j<personal::kExtraFieldCount;++j)if(key==personal::extraFields()[j].key)index=j;
+    for(unsigned j=0;j<4;++j)if(key==flags[j])index=personal::kExtraFieldCount+j;
+    if(key=="csrf")index=personal::kExtraFieldCount+4;
+    if(index<0 || (seen&(1u<<index)) || !hasNoEmbeddedNull(text)) {server_.send(400,"text/plain","Invalid or repeated extra setting");return;}
+    seen|=1u<<index;
+    if(index<int(personal::kExtraFieldCount)) {
+      if(text.length()>=personal::extraFields()[index].size) {server_.send(400,"text/plain","Extra message is too long");return;}
+      memcpy(personal::extraValue(next,index),text.c_str(),text.length()+1);
+    } else if(index<int(personal::kExtraFieldCount+4)) {
+      if(text!="1") {server_.send(400,"text/plain","Invalid extra selection");return;}
+      next.enabledMask|=1u<<(index-personal::kExtraFieldCount);
+    }
+  }
+  constexpr uint16_t required=((1u<<personal::kExtraFieldCount)-1)|(1u<<(personal::kExtraFieldCount+4));
+  if((seen&required)!=required || !personal::validExtras(next)) {server_.send(400,"text/plain","Use plain text within the message limits; a team heading is required");return;}
+  if(!personal::saveExtras(next)) {server_.send(500,"text/plain","Could not save extras; previous settings remain active");return;}
+  hardware::requestSettingsSaved();server_.sendHeader("Location","/personalization?saved=1");server_.send(303,"text/plain","Extras saved");
+}
 void LanWebUi::handlePersonalization(bool saving) {
   if(!authorizeRequest(saving))return;
   if(saving) {
@@ -1428,14 +1456,18 @@ void LanWebUi::serviceFirmwareUpdates(uint32_t nowMs) {
       !auth_.configured() || otaSession_.activationPending()) {
     return;
   }
-  const bool intervalElapsed =
-      !hasReleaseCheck_ || nowMs - lastReleaseCheckMs_ >=
-                               checkIntervalMs_;
-  if (!forceReleaseCheck_ && !intervalElapsed) return;
+  if(!ota::releaseCheckDue(hasReleaseCheck_,forceReleaseCheck_,nowMs,lastReleaseCheckMs_,checkIntervalMs_,releaseCheckFailures_))return;
+  if(!hasReleaseCheck_)Serial.println("OTA startup check: Wi-Fi, clock and administrator ready; checking GitHub");
   forceReleaseCheck_ = false;
   lastReleaseCheckMs_ = nowMs;
   hasReleaseCheck_ = true;
   checkLatestRelease();
+  lastReleaseCheckMs_=millis(); // Retry delay starts after the request finishes.
+  if(releaseCheckSucceeded_)releaseCheckFailures_=0;
+  else {
+    if(releaseCheckFailures_<255)++releaseCheckFailures_;
+    Serial.printf("OTA release check: failed; retry in %lu seconds (not the full saved interval)\n",static_cast<unsigned long>(ota::releaseCheckDelayMs(checkIntervalMs_,releaseCheckFailures_)/1000));
+  }
   // Opt-in unattended mode (admin setting): the same signed-image
   // verification applies, and the boot health gate still rolls back a bad image.
   if (autoInstall_ && updateAvailable_) {
@@ -1510,6 +1542,7 @@ void LanWebUi::handleUpdateAuto() {
 }
 
 bool LanWebUi::checkLatestRelease() {
+  releaseCheckSucceeded_ = false;
   updateAvailable_ = false;
   availableVersion_[0] = '\0';
 
@@ -1573,6 +1606,7 @@ bool LanWebUi::checkLatestRelease() {
     Serial.println("OTA release check: running firmware version is invalid");
     return false;
   }
+  releaseCheckSucceeded_ = true;
   if (order > 0) {
     memcpy(availableVersion_, latestVersion, sizeof(availableVersion_));
     updateAvailable_ = true;

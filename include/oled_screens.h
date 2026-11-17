@@ -79,6 +79,7 @@ void formatRouteFocus(semantic::Route route,const ScreenData &data,ScreenText &o
 // Five 6x12-font lines, each <=21 characters (126 pixels).
 void formatScreen(Screen screen, const ScreenData &data, uint32_t nowMs, ScreenText &out,
                   const NavigationView &view = {});
+void scrollMessage(const char *message,uint32_t elapsedMs,char (&out)[22]);
 void scrollName(const char *name, uint32_t elapsedMs, char (&out)[22]);
 void scrollDedicationNames(uint32_t elapsedMs,char (&out)[22]);
 void setLineCounts(ScreenData &data, const semantic::TrainFrame &frame,

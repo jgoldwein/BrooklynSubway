@@ -14,6 +14,8 @@ struct Sample {
   uint16_t position=0, frequency=0;
   led::Rgb color{};
 };
+bool enabled(Kind kind);
+bool nextEnabled(uint8_t &cursor,Kind &out);
 uint32_t duration(Kind kind);
 bool sample(Kind kind,uint32_t elapsed,Sample &out);
 // TEST+ROUTE: two-second simultaneous hold, release both to launch.

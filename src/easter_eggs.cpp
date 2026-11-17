@@ -21,14 +21,31 @@ uint32_t morseUnits(const char *name) {
 }
 }
 
+bool enabled(Kind kind) {
+  const uint8_t mask=personal::extraSnapshot().enabledMask;
+  switch(kind) {
+    case Kind::Celebration:return mask&1;
+    case Kind::Anniversary:return mask&2;
+    case Kind::Credits:return mask&4;
+    case Kind::Rangers:return mask&8;
+    case Kind::Express:case Kind::Morse:return true;
+  }return false;
+}
+bool nextEnabled(uint8_t &cursor,Kind &out) {
+  for(unsigned i=0;i<kCount;++i) {
+    const auto kind=static_cast<Kind>(cursor%kCount);cursor=(cursor+1)%kCount;
+    if(enabled(kind)) {out=kind;return true;}
+  }return false;
+}
 uint32_t duration(Kind kind) {
+  if(!enabled(kind))return 0;
   switch(kind) {
     case Kind::Celebration:return 6000;
     case Kind::Express:return 7000;
     case Kind::Credits:return 12000;
     case Kind::Morse:{const auto p=personal::snapshot();const uint32_t ms=(morseUnits(p.recipient)+10)*100;return ms<7500?7500:ms;}
     case Kind::Anniversary:return 8000;
-    case Kind::Rangers:return 4800;
+    case Kind::Rangers:return 9600;
   }
   return 0;
 }
@@ -36,12 +53,13 @@ bool sample(Kind kind,uint32_t elapsed,Sample &out) {
   out={};if(elapsed>=duration(kind)) return false;
   auto &lines=out.text.lines;
   const auto identity=personal::snapshot();
+  const auto extras=personal::extraSnapshot();
   snprintf(lines[4],sizeof(lines[4]),"POWER: exit");
   switch(kind) {
     case Kind::Celebration: {
       snprintf(lines[0],sizeof(lines[0]),"%s",identity.greeting);
       snprintf(lines[1],sizeof(lines[1]),"%.20s",identity.recipient);
-      snprintf(lines[2],sizeof(lines[2]),"Let's celebrate!");
+      snprintf(lines[2],sizeof(lines[2]),"%s",extras.celebrationNote);
       out.visual=Visual::Line;
       out.route=static_cast<semantic::Route>(1+(elapsed/300)%semantic::kRouteCount);
       constexpr uint16_t notes[]={523,659,784,1047,784,659,523,784};
@@ -54,7 +72,8 @@ bool sample(Kind kind,uint32_t elapsed,Sample &out) {
       snprintf(lines[2],sizeof(lines[2]),"Just a light chaser");
       out.visual=Visual::Chaser;out.position=elapsed*semantic::kMapLedCount/7000;out.color={0,3,3};break;
     case Kind::Credits:
-      snprintf(lines[0],sizeof(lines[0]),"For %.17s",identity.recipient);
+      if(extras.creditsTitle[0])snprintf(lines[0],sizeof(lines[0]),"%s",extras.creditsTitle);
+      else snprintf(lines[0],sizeof(lines[0]),"For %.17s",identity.recipient);
       snprintf(lines[1],sizeof(lines[1]),"%s",identity.from);
       snprintf(lines[2],sizeof(lines[2]),"By %.18s",identity.creator);
       oled::scrollDedicationNames(elapsed*3,lines[3]);break;
@@ -62,27 +81,29 @@ bool sample(Kind kind,uint32_t elapsed,Sample &out) {
       snprintf(lines[0],sizeof(lines[0]),"%s",identity.greeting);
       snprintf(lines[1],sizeof(lines[1]),"%.21s",identity.recipient);
       snprintf(lines[2],sizeof(lines[2]),"%s",identity.date);
-      snprintf(lines[3],sizeof(lines[3]),"A day to remember!");break;
+      snprintf(lines[3],sizeof(lines[3]),"%s",extras.anniversaryNote);break;
     case Kind::Rangers: {
-      snprintf(lines[0],sizeof(lines[0]),"New York Rangers");
-      snprintf(lines[1],sizeof(lines[1]),"GOAL!");
+      snprintf(lines[0],sizeof(lines[0]),"%s",extras.teamTitle);
+      if((elapsed/500)%2==0)snprintf(lines[1],sizeof(lines[1]),"%s",extras.teamCheer);
       snprintf(lines[2],sizeof(lines[2]),"F# major horn");
-      snprintf(lines[3],sizeof(lines[3]),"Buzzer approximation");
+      if(extras.teamNote[0])snprintf(lines[3],sizeof(lines[3]),"%s",extras.teamNote);
+      else {char caption[64]{};snprintf(caption,sizeof(caption),"%s's favorite team",identity.shortName);oled::scrollMessage(caption,elapsed,lines[3]);}
       // User-supplied F#3/A#3/C#4 chord. One buzzer cycles the chord tones;
       // it cannot reproduce three simultaneous synth voices or an air horn.
       constexpr uint16_t pitchesHz[]={185,233,277};
       struct Blast {uint16_t start,end;};
       constexpr Blast blasts[]={{0,1100},{1350,2450},{2700,4100}};
+      const uint32_t phase=elapsed%4800; // Repeat the short celebration twice.
       for(const auto &blast:blasts) {
-        if(elapsed>=blast.start && elapsed<blast.end) {
-          out.frequency=pitchesHz[((elapsed-blast.start)/20)%3];break;
+        if(phase>=blast.start && phase<blast.end) {
+          out.frequency=pitchesHz[((phase-blast.start)/20)%3];break;
         }
       }
       // Alternating 240 ms light / 240 ms black, cycling red/white/blue.
       // Leave All selected during black frames so LED enable need not chatter.
       constexpr led::Rgb colors[]={{3,0,0},{2,2,2},{0,0,3}};
       out.visual=Visual::All;
-      if(elapsed<4100 && (elapsed/240)%2==0)out.color=colors[(elapsed/480)%3];
+      if(phase<4100 && (phase/240)%2==0)out.color=colors[(phase/480)%3];
       break;
     }
     case Kind::Morse: {

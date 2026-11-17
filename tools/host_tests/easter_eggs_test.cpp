@@ -65,7 +65,7 @@ int main() {
     for(const auto &line:customized.text.lines)CHECK(strlen(line)<=21);
   }CHECK(sounded);CHECK(!eggs::sample(eggs::Kind::Morse,eggs::duration(eggs::Kind::Morse),customized));
   personal::apply(personal::Settings{});
-  CHECK(eggs::kCount==6 && eggs::duration(eggs::Kind::Rangers)==4800);
+  CHECK(eggs::kCount==6 && eggs::duration(eggs::Kind::Rangers)==9600);
   const uint32_t hornTimes[]={0,20,40,60,1100,1350,1370,1390,2450,2700,4100,4799};
   const uint16_t hornNotes[]={185,233,277,185,0,185,233,277,0,185,0,0};
   for(unsigned i=0;i<sizeof(hornTimes)/sizeof(hornTimes[0]);++i) {
@@ -83,6 +83,28 @@ int main() {
     for(auto &pixel:hornFrame)pixel.color=customized.color;
     CHECK(led::power::estimateFrameCurrentMa(hornFrame,306,255)<=led::power::FIRMWARE_LED_CURRENT_BUDGET_MA);
   }
-  CHECK(!eggs::sample(eggs::Kind::Rangers,4800,customized));CHECK(customized.frequency==0);
+  CHECK(!eggs::sample(eggs::Kind::Rangers,9600,customized));CHECK(customized.frequency==0);
+  CHECK(eggs::sample(eggs::Kind::Rangers,4800,customized) && customized.frequency==185);
+  CHECK(eggs::sample(eggs::Kind::Rangers,0,customized) && strcmp(customized.text.lines[1],"GO RANGERS!")==0);
+  CHECK(eggs::sample(eggs::Kind::Rangers,500,customized) && customized.text.lines[1][0]==0);
+  CHECK(eggs::sample(eggs::Kind::Rangers,1000,customized) && strcmp(customized.text.lines[1],"GO RANGERS!")==0);
+  personal::ExtraSettings extras;extras.enabledMask=0;personal::applyExtras(extras);
+  CHECK(!eggs::enabled(eggs::Kind::Celebration) && !eggs::enabled(eggs::Kind::Anniversary));
+  CHECK(!eggs::enabled(eggs::Kind::Credits) && !eggs::enabled(eggs::Kind::Rangers));
+  CHECK(eggs::enabled(eggs::Kind::Express) && eggs::enabled(eggs::Kind::Morse));
+  uint8_t cursor=0;eggs::Kind selected;
+  CHECK(eggs::nextEnabled(cursor,selected) && selected==eggs::Kind::Express);
+  CHECK(eggs::nextEnabled(cursor,selected) && selected==eggs::Kind::Morse);
+  CHECK(eggs::nextEnabled(cursor,selected) && selected==eggs::Kind::Express);
+  CHECK(!eggs::sample(eggs::Kind::Rangers,0,customized) && customized.frequency==0);
+  extras.enabledMask=15;strcpy(extras.celebrationNote,"Congratulations!");strcpy(extras.anniversaryNote,"Remember this day");
+  strcpy(extras.creditsTitle,"Our family");strcpy(extras.teamTitle,"NY Rangers");strcpy(extras.teamNote,"Sam's favorite team");strcpy(extras.teamCheer,"Go team!");personal::applyExtras(extras);
+  CHECK(eggs::sample(eggs::Kind::Celebration,0,customized) && strcmp(customized.text.lines[2],"Congratulations!")==0);
+  CHECK(eggs::sample(eggs::Kind::Anniversary,0,customized) && strcmp(customized.text.lines[3],"Remember this day")==0);
+  CHECK(eggs::sample(eggs::Kind::Credits,0,customized) && strcmp(customized.text.lines[0],"Our family")==0);
+  CHECK(eggs::sample(eggs::Kind::Rangers,0,customized) && strcmp(customized.text.lines[0],"NY Rangers")==0);
+  CHECK(strcmp(customized.text.lines[3],"Sam's favorite team")==0 && strcmp(customized.text.lines[1],"Go team!")==0);
+  personal::applyExtras(personal::ExtraSettings{});
+  CHECK(eggs::sample(eggs::Kind::Rangers,0,customized) && strcmp(customized.text.lines[3],"Avi's favorite team")==0);
   puts("Easter eggs: bounded text/colors/duration, exact AVI YAO Morse, chord hold/release/boot/rollover PASS");
 }

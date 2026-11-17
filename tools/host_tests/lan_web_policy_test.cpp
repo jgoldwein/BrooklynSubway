@@ -1167,6 +1167,7 @@ void testPersonalization() {
   personal::Settings p;CHECK(personal::valid(p));
   CHECK(admin::isProtectedEndpoint("GET","/personalization"));
   CHECK(admin::isMutationEndpoint("POST","/personalization"));
+  CHECK(admin::isMutationEndpoint("POST","/personalization/extras"));
   CHECK(strcmp(web::loginReturnPath("personalization"),"/personalization")==0);
   CHECK(strcmp(web::loginTargetForRequest("/personalization"),"personalization")==0);
   static char page[web::kStatusPageCapacity];
@@ -1198,6 +1199,11 @@ void testPersonalization() {
   CHECK(web::renderPersonalizationPage(page,sizeof(page),p,"test-csrf")>0);
   char tiny[24];CHECK(web::renderPersonalizationPage(tiny,sizeof(tiny),p,"test-csrf")==0);
   p.recipient[0]='\n';CHECK(!personal::valid(p));
+  personal::ExtraSettings extras;extras.enabledMask=0;strcpy(extras.teamTitle,"<Rangers>&");personal::applyExtras(extras);
+  CHECK(web::renderPersonalizationPage(page,sizeof(page),p,"test-csrf")>0);
+  CHECK(strstr(page,"action=\"/personalization/extras\"") && strstr(page,"&lt;Rangers&gt;&amp;"));
+  CHECK(!strstr(page,"name=\"rangers\" value=\"1\" checked"));
+  personal::applyExtras(personal::ExtraSettings{});
   personal::Settings defaults;personal::apply(defaults);
 }
 int main() {

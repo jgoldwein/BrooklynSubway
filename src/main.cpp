@@ -294,8 +294,8 @@ void setup() {
   brooklyn::led::begin();
 
   brooklyn::diagnostics::begin();
+  networkService.begin(); // Complete any pending defaults reset before loading saved text.
   brooklyn::personal::load();
-  networkService.begin(); // Load saved brightness/quiet policy before any status preview.
   brooklyn::oled::setScreenPreferences(networkService.screenPreferences());
   brooklyn::hardware::setQuiet(brooklyn::oled::quietHoursActive(time(nullptr)),brooklyn::oled::quietMapBrightness());
   bool startupIndicatorsReady=true;
@@ -443,8 +443,8 @@ void loop() {
     static uint8_t nextEgg=0;
     const auto before=brooklyn::display::live::stats();
     const bool resume=brooklyn::display::live::enabled() || before.automaticStartPending;
-    const bool completed=brooklyn::led::backend::runEasterEgg(static_cast<brooklyn::eggs::Kind>(nextEgg));
-    nextEgg=(nextEgg+1)%brooklyn::eggs::kCount;
+    brooklyn::eggs::Kind selected;
+    const bool completed=brooklyn::eggs::nextEnabled(nextEgg,selected) && brooklyn::led::backend::runEasterEgg(selected);
     if(completed && resume) brooklyn::display::live::restoreAfterSuccessfulTest(true);
   }
   const bool backgroundTest = brooklyn::display::live::consumeTestRequest();

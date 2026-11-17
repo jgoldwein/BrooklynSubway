@@ -29,6 +29,8 @@ CHECK(brooklyn::oled::newYorkMinutes(1793512800,minute) && minute==60);
 CHECK(brooklyn::oled::newYorkAnniversaryYear(0)==0);
 CHECK(brooklyn::oled::newYorkAnniversaryYear(1790395199)==0);
 CHECK(brooklyn::oled::newYorkAnniversaryYear(1790395200)==2026);
+{brooklyn::personal::ExtraSettings p;p.enabledMask=13;brooklyn::personal::applyExtras(p);
+CHECK(brooklyn::oled::newYorkAnniversaryYear(1790395200)==0);brooklyn::personal::applyExtras(brooklyn::personal::ExtraSettings{});}
 CHECK(brooklyn::oled::newYorkAnniversaryYear(1790481599)==2026);
 CHECK(brooklyn::oled::newYorkAnniversaryYear(1790481600)==0);
 CHECK(brooklyn::oled::formatDate(1768498496,text,sizeof(text)) && strcmp(text,"Thu, Jan 15, 2026")==0);
