@@ -57,9 +57,10 @@ during normal use**. Use the supplied barrel power adapter to run the map.
   have the wrong voltage or polarity; do not substitute a 9 V or 12 V adapter.
 - Keep the board on its stand or secure mounting supports. Exposed contacts
   must not rest on metal, foil, loose screws or other conductive objects.
-- Keep drinks away. Use it indoors in a dry place, away from direct sunlight,
-  heaters and damp areas. Leave space around it; do not cover a powered board
-  with fabric or packing material.
+- **Keep the PCB out of direct sunlight.** Place the map indoors, away from
+  sunny windows and heaters.
+- Keep drinks away. Use it in a dry place, away from damp areas. Leave space
+  around it; do not cover a powered board with fabric or packing material.
 - Keep loose metal objects and pets away from the exposed electronics. Ask an
   adult for help if a connector, cable or mounting part is damaged.
 
