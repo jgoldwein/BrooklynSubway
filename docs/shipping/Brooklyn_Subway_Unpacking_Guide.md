@@ -15,11 +15,11 @@ Read this before plugging in your map. Keep the Quick Start sheet nearby.
 
 ## Unpack and start
 
-1. **Unpack with the power disconnected.** Carefully unwrap the **PCB (circuit board) from its bubble wrap**. Work slowly to avoid catching the wrapping on any parts. Remove all bags and padding before connecting power. Lift the map by its **frame or board edges**, never by the screen, knob, wires or small electronic parts. Keep the packaging for future moves.
+1. **Carefully unwrap your map.** Carefully unwrap the **PCB (circuit board) from its bubble wrap**. Work slowly to avoid catching the wrapping on any parts. Lift the map by its **frame or board edges**, never by the screen, knob, wires or small electronic parts. Keep the packaging for future moves.
 
 2. **Check the screen and antenna.** The **OLED case** is held at the front by magnets. Do not move or remove the round magnet on the back. The **antenna exits at the bottom-left** and is fastened to the frame; leave it attached. If anything looks loose or damaged, ask Joel before powering up.
 
-3. **Choose a safe place.** Use the map indoors on secure supports, with space around it. Keep it dry and **out of direct sunlight**, away from heaters, drinks and loose metal objects. Do not rest exposed contacts on metal.
+3. **Choose a safe place.** Choose a spot near an electrical outlet. Use the **included stand**, or mount the map on the wall with the **included screws and anchors**. Keep it dry and **out of direct sunlight**, away from heaters, drinks and loose metal. Leave space around it.
 
 4. **Connect the supplied power adapter.** Use the **5 V, 3 A, center-positive barrel adapter** and the map's round power jack. **USB-C is for programming and service, not normal power.** A greeting, startup sounds and status lights are normal.
 

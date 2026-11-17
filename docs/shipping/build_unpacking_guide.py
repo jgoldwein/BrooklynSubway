@@ -47,7 +47,7 @@ for i,step in enumerate(D['steps'],1):
  c.setFillColor(colors.HexColor('#EDF3FA'));c.circle(46,y-6,10,fill=1,stroke=0)
  c.setFillColor(BLUE);c.setFont('Unpack-Bold',10);c.drawCentredString(46,y-9,str(i))
  label(step['title'],64,y-9)
- y=paragraph(step['text'],64,y-18,512)-12
+ y=paragraph(step['text'],64,y-18,512)-9
 
 # Strong warning remains readable on color or monochrome printers.
 warning=Paragraph(D['update_text'],body);_,height=warning.wrap(R-L-20,720)
@@ -88,7 +88,7 @@ lines+=['## '+D['update_title'],'',plain(D['update_text']),'','## '+D['after_tit
 pdf=PdfReader(ROOT/'Brooklyn_Subway_Unpacking_Guide.pdf');assert len(pdf.pages)==1
 assert list(pdf.pages[0].mediabox)==[0,0,612,792]
 text=" ".join(pdf.pages[0].extract_text().split())
-for phrase in ['Included parts','5 V power extension cord','wall-mounting screws','wall anchors','bubble wrap','Do not unplug power','Update complete','BrooklynMap-Avi','192.168.4.1','direct sunlight','USB-C','magnet','antenna','5 V, 3 A']:
+for phrase in ['electrical outlet','included stand','included screws and anchors','Included parts','5 V power extension cord','wall-mounting screws','wall anchors','bubble wrap','Do not unplug power','Update complete','BrooklynMap-Avi','192.168.4.1','direct sunlight','USB-C','magnet','antenna','5 V, 3 A']:
  assert phrase in text,phrase
 for secret in ['10.1.1.27','10.1.1.56','tsunami2']:assert secret not in text
 render=pymupdf.open(ROOT/'Brooklyn_Subway_Unpacking_Guide.pdf')

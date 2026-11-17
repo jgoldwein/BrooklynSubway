@@ -5,8 +5,8 @@
   "intro": "Read this before plugging in your map. Keep the Quick Start sheet nearby.",
   "steps": [
     {
-      "title": "Unpack with the power disconnected",
-      "text": "Carefully unwrap the <b>PCB (circuit board) from its bubble wrap</b>. Work slowly to avoid catching the wrapping on any parts. Remove all bags and padding before connecting power. Lift the map by its <b>frame or board edges</b>, never by the screen, knob, wires or small electronic parts. Keep the packaging for future moves."
+      "title": "Carefully unwrap your map",
+      "text": "Carefully unwrap the <b>PCB (circuit board) from its bubble wrap</b>. Work slowly to avoid catching the wrapping on any parts. Lift the map by its <b>frame or board edges</b>, never by the screen, knob, wires or small electronic parts. Keep the packaging for future moves."
     },
     {
       "title": "Check the screen and antenna",
@@ -14,7 +14,7 @@
     },
     {
       "title": "Choose a safe place",
-      "text": "Use the map indoors on secure supports, with space around it. Keep it dry and <b>out of direct sunlight</b>, away from heaters, drinks and loose metal objects. Do not rest exposed contacts on metal."
+      "text": "Choose a spot near an electrical outlet. Use the <b>included stand</b>, or mount the map on the wall with the <b>included screws and anchors</b>. Keep it dry and <b>out of direct sunlight</b>, away from heaters, drinks and loose metal. Leave space around it."
     },
     {
       "title": "Connect the supplied power adapter",
