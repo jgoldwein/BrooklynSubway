@@ -4,7 +4,7 @@ Specially Designed for Avi Yao
 
 Read this before plugging in your map. Keep the Quick Start sheet nearby.
 
-1. **Unpack with the power disconnected.** Remove all bags and padding before connecting power. Lift the map by its **frame or board edges**, never by the screen, knob, wires or small electronic parts. Keep the packaging for future moves.
+1. **Unpack with the power disconnected.** Carefully unwrap the **PCB (circuit board) from its bubble wrap**. Work slowly to avoid catching the wrapping on any parts. Remove all bags and padding before connecting power. Lift the map by its **frame or board edges**, never by the screen, knob, wires or small electronic parts. Keep the packaging for future moves.
 
 2. **Check the screen and antenna.** The **OLED case** is held at the front by magnets. Do not move or remove the round magnet on the back. The **antenna exits at the bottom-left** and is fastened to the frame; leave it attached. If anything looks loose or damaged, ask Joel before powering up.
 

@@ -6,7 +6,7 @@
   "steps": [
     {
       "title": "Unpack with the power disconnected",
-      "text": "Remove all bags and padding before connecting power. Lift the map by its <b>frame or board edges</b>, never by the screen, knob, wires or small electronic parts. Keep the packaging for future moves."
+      "text": "Carefully unwrap the <b>PCB (circuit board) from its bubble wrap</b>. Work slowly to avoid catching the wrapping on any parts. Remove all bags and padding before connecting power. Lift the map by its <b>frame or board edges</b>, never by the screen, knob, wires or small electronic parts. Keep the packaging for future moves."
     },
     {
       "title": "Check the screen and antenna",

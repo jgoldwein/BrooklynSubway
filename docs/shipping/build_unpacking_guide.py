@@ -85,7 +85,7 @@ lines+=['## '+D['update_title'],'',plain(D['update_text']),'','## '+D['after_tit
 pdf=PdfReader(ROOT/'Brooklyn_Subway_Unpacking_Guide.pdf');assert len(pdf.pages)==1
 assert list(pdf.pages[0].mediabox)==[0,0,612,792]
 text=" ".join(pdf.pages[0].extract_text().split())
-for phrase in ['Do not unplug power','Update complete','BrooklynMap-Avi','192.168.4.1','direct sunlight','USB-C','magnet','antenna','5 V, 3 A']:
+for phrase in ['bubble wrap','Do not unplug power','Update complete','BrooklynMap-Avi','192.168.4.1','direct sunlight','USB-C','magnet','antenna','5 V, 3 A']:
  assert phrase in text,phrase
 for secret in ['10.1.1.27','10.1.1.56','tsunami2']:assert secret not in text
 render=pymupdf.open(ROOT/'Brooklyn_Subway_Unpacking_Guide.pdf')
