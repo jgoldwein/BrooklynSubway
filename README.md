@@ -17,6 +17,7 @@
 - **Want to print the frame, OLED case or knob?** Download the [3D-print STL files](hardware/3d-print/README.md), individually or as one ZIP.
 - **Recreating the printed map?** See the [overlay preparation tool and its current calibration limits](tools/overlay/README.md).
 - **Interested in the electronics?** Download the [Gerbers, BOM and placement files](hardware/README.md).
+- **What changed?** Read the [changelog and release notes](CHANGELOG.md), directly on GitHub.
 - **Looking for upgraded firmware?** See the [latest signed release](https://github.com/jgoldwein/BrooklynSubway/releases/latest).
   For an already programmed map, use **Advanced > Firmware updates** on its web page.
 
