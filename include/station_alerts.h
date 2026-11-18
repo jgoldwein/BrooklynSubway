@@ -49,6 +49,11 @@ struct Summary {
   uint8_t nowCount=0,soonCount=0;
   bool enabled=false,available=false,attempted=false,lastFailed=false,overflow=false;
 };
+// A current matching notice, not an urgency classification. Fail closed on old/unknown data.
+inline bool mainIndicator(const Summary &s,uint32_t now) {
+  return s.enabled && s.available && s.nowCount && now>=1700000000 &&
+      now>=s.checkedUnix && now-s.checkedUnix<=kStaleSeconds;
+}
 inline Summary summary(uint32_t now) {
   const auto &s=state();Summary v;v.enabled=s.preferences.enabled;v.available=usable(s,now);
   v.attempted=s.attempted;v.lastFailed=s.lastFailed;v.checkedUnix=s.snapshot.checkedUnix;v.overflow=s.snapshot.overflow;

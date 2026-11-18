@@ -12,6 +12,7 @@ FakeSerial Serial; FakeWire Wire;
 uint32_t fakeNowMs=120000;
 uint32_t millis() { return fakeNowMs; }
 char lastScreenTitle[24]{};
+int mainAlertDraws=0;
 int soundBadgeDraws=0,lastSoundBadgeX=0,mainClockDraws=0;
 char lastSoundBadgeLabel[24]{};
 int borderDraws=0,upgradeDraws=0,powerWarnings=0,completeDraws=0,failedDraws=0;
@@ -45,6 +46,10 @@ void delay(uint32_t ms){OLED_CHECK(ms==100);++retryDelays;}
 void vTaskDelete(void *) {++deletes;}
 void vTaskDelay(uint32_t ms) {
  OLED_CHECK(ms==20);++delays;fakeNowMs+=(scenario==19 || scenario==39)?1000:20;
+ if(scenario==83 && delays==1) {
+   brooklyn::oled::ScreenData d;d.alerts.enabled=d.alerts.available=true;d.alerts.checkedUnix=1768498496;
+   brooklyn::oled::publishScreenData(d);return;
+ }
  if((scenario==66 || scenario==67) && delays<=2) {
    if(delays==1) {OLED_CHECK(soundBadgeDraws==2 && strcmp(lastSoundBadgeLabel,"Saved")==0);fakeNowMs+=3979;}
    else {OLED_CHECK(soundBadgeDraws==3);fakeNowMs-=19;}
@@ -228,6 +233,17 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
      for(auto kind:ignored){d.sound.sound=kind;OLED_CHECK(!soundBadge(d.sound,fakeNowMs).label);}
    }
  }
+ if(scenario>=76 && scenario<=83) {
+   using namespace brooklyn::oled;ScreenData d;d.alerts.enabled=d.alerts.available=true;
+   d.alerts.nowCount=1;d.alerts.checkedUnix=1768498496;
+   if(scenario==77){d.alerts.nowCount=0;d.alerts.soonCount=1;}
+   if(scenario==78)d.alerts.available=false;
+   if(scenario==79)d.alerts.enabled=false;
+   if(scenario==80)d.alerts.checkedUnix-=901;
+   if(scenario==81)advanceScreen();
+   if(scenario==82){d.sound.sound=brooklyn::hardware::Sound::Saved;d.sound.sequence=1;d.sound.atMs=fakeNowMs;}
+   publishScreenData(d);
+ }
  const uint8_t preferred=scenario==11?0x3c:0x38;
  brooklyn::oled::begin(preferred,scenario==12||scenario==13?32:207);OLED_CHECK(starts==0 && frames==0); // Startup must return without any I2C work.
  if(scenario==6){OLED_CHECK(worker==nullptr);puts("OLED task allocation failure isolated PASS");return 0;}
@@ -303,5 +319,9 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==72)OLED_CHECK(soundBadgeDraws==3 && strcmp(lastSoundBadgeLabel,"Restored")==0 && mainClockDraws==3);
  if(scenario==74)OLED_CHECK(soundBadgeDraws==2 && frames==3);
  if(scenario==75)OLED_CHECK(soundBadgeDraws==0);
+ if(scenario==76 || scenario==82)OLED_CHECK(mainAlertDraws==2 && mainClockDraws==2);
+ if(scenario>=77 && scenario<=81)OLED_CHECK(mainAlertDraws==0);
+ if(scenario==82)OLED_CHECK(soundBadgeDraws==2);
+ if(scenario==83)OLED_CHECK(mainAlertDraws==2 && mainClockDraws==3 && frames==3);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

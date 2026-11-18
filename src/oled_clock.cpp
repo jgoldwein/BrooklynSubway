@@ -161,7 +161,10 @@ void draw(const char *clock) {
   }
   screen.setFont(u8g2_font_6x12_tf);
   char mainTitle[22]{};const auto identity=personal::snapshot();
-  snprintf(mainTitle,sizeof(mainTitle),"%.17s 1/9",identity.title);
+  alerts::Summary alertStatus;
+  portENTER_CRITICAL(&screenDataMux);alertStatus=screenData.alerts;portEXIT_CRITICAL(&screenDataMux);
+  const bool showAlert=alerts::mainIndicator(alertStatus,static_cast<uint32_t>(time(nullptr)));
+  snprintf(mainTitle,sizeof(mainTitle),showAlert?"%.8s ! Alert 1/9":"%.17s 1/9",identity.title);
   screen.drawStr((128-screen.getStrWidth(mainTitle))/2,16,mainTitle);
   const uint32_t trains = __atomic_load_n(&trackedTrainsWord, __ATOMIC_RELAXED);
   char count[24];

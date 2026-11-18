@@ -2,7 +2,7 @@
 
 Personalize the names, greeting and support contact for your map.
 
-Guide for firmware **0.2.98**. Start with the
+Guide for firmware **0.2.99**. Start with the
 [quick start](QUICK_START.md) if you just want to try the map.
 For the gift box, [print the one-page sheet](shipping/Brooklyn_Subway_Quick_Start.pdf).
 
@@ -468,3 +468,9 @@ The map checks about every five minutes after train polling. The page shows the 
 ### Generic labels and the original project
 
 **The Developer** means the person providing support for your map; set their name and email in Personalization. The display creator, recipient, greeting, From line, scrolling credits and date are also editable. The repository guides cannot read settings from your map, so they use generic labels. Historical build notes and authorship/license credits retain the original project names. The fixed **BrooklynMap-Avi** setup network matches the manufactured board and is not renamed by personalization.
+
+### Main-screen alert indicator
+
+On OLED screen 1/9, a steady **! Alert** appears in the title when fresh alert data contains a notice active now for your chosen stations or enabled line-wide notices. The map title is shortened while the indicator is present; train/light counts and the clock keep their usual places. Turn the knob to **Station alerts (8/9)** or open **Advanced > Station alerts** to read the notice.
+
+Upcoming notices do not trigger the main-screen indicator. It clears when no matching notice is active, alerts are disabled, or the alert check is unavailable/too old to confirm the notice. No indicator is not a guarantee of normal service. It means a current matching notice, not a classification of severity. There is no flashing, new sound, change to train-light colors or wake-up of a display you turned off.

@@ -55,5 +55,10 @@ int main(int argc,char **argv) {
  assert(!summary(now+kStaleSeconds+1).available);
  assert(due(300000,300000));state().attemptedAtMs=300000;assert(!due(300001,300000));assert(due(600000,600000));
  p.enabled=false;configure(p);assert(!due(900000,900000));
+ Summary badge;badge.enabled=badge.available=true;badge.nowCount=1;badge.checkedUnix=now;
+ assert(mainIndicator(badge,now));assert(!mainIndicator(badge,now+kStaleSeconds+1));
+ badge.nowCount=0;badge.soonCount=2;assert(!mainIndicator(badge,now));badge.nowCount=1;
+ badge.available=false;assert(!mainIndicator(badge,now));badge.available=true;badge.enabled=false;assert(!mainIndicator(badge,now));
+ badge.enabled=true;assert(!mainIndicator(badge,0));assert(!mainIndicator(badge,now-1));
  puts("Station alerts: station/route matching, suffixes, current/upcoming/expiry, bounded cache, failure/stale/disabled, full-dataset and malformed protobuf PASS");
 }
