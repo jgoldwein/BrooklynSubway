@@ -6,9 +6,11 @@ Brooklyn Subway combines a custom circuit board, hundreds of colored lights,
 a small computer, live transit data and a lot of testing. It was developed as
 a personal Bar Mitzvah gift that Avi can enjoy, explore and help improve.
 
-The idea was inspired by a conversation with Avi and by Joel noticing the MTA
-maps on the walls of Avi's bedroom. Those maps sparked the idea of making a
-custom map that could light up with live subway information.
+Avi lives in Brooklyn and is absolutely fascinated by New York City's MTA
+subway system, especially the lines that run through Brooklyn. The idea was
+inspired by a conversation with him and by Joel noticing the MTA maps on the
+walls of Avi's bedroom. His enthusiasm and those maps sparked the idea of
+making a custom map that could light up with live subway information.
 
 ## The short answer: "Did you make this?"
 
