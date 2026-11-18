@@ -17,3 +17,6 @@ dist/
 *.bkota
 *.pem
 *.key
+
+# Isolated Python environment for artwork preparation
+/.venv-overlay/

@@ -15,6 +15,7 @@
   [PCB handling and care](docs/USER_GUIDE.md#handling-cleaning-and-caring-for-the-pcb),
   including the OLED magnet and frame-mounted antenna.
 - **Want to print the frame, OLED case or knob?** Download the [3D-print STL files](hardware/3d-print/README.md), individually or as one ZIP.
+- **Recreating the printed map?** See the [overlay preparation tool and its current calibration limits](tools/overlay/README.md).
 - **Interested in the electronics?** Download the [Gerbers, BOM and placement files](hardware/README.md).
 - **Looking for upgraded firmware?** See the [latest signed release](https://github.com/jgoldwein/BrooklynSubway/releases/latest).
   For an already programmed map, use **Advanced > Firmware updates** on its web page.

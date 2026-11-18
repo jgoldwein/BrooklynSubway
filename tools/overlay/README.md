@@ -1,0 +1,128 @@
+# Reproducing the map overlay
+
+This is a **host-side artwork preparation tool**, not firmware. It never edits an EasyEDA project, the submitted Gerber archive, copper, holes or routing. It can prepare a registered image and package a new archive **after EasyEDA Pro generates the color fabrication files**.
+
+**Current status:** the tool is implemented and tested. There is **no approved, exact MTA-source-to-production-artwork profile yet**. Calibration outputs are marked DRAFT. Do not treat a successful script run as manufacturing approval. The opaque color layers do not expose the original crop/placement parameters. The EasyEDA project used for the original artwork still needs to be identified or the original map alignment independently reconstructed and reviewed.
+
+## What has been established
+
+- The owner's supplied October 9 Gerber ZIP is byte-identical to `hardware/exports/2026-10-09/Gerbers.zip` (SHA-256 below).
+- The manufacturer production archive contains two embedded source ZIPs. Every one of their 20 file payloads matches the submitted archive. The production archive itself is kept private; its order metadata is not needed by this tool.
+- This establishes which fabrication export was submitted. It does **not** establish whether the source EasyEDA project was called V1.0 or V1.1. The recorded firmware hardware authority is unchanged.
+- The supplied placement workbook contains 306 LED designators. Coordinates are read directly from that workbook, not inferred from the firmware's virtual-map calibration.
+- The design outline uses millimeters and absolute 4.5-format coordinates. Its **centerline** bounding rectangle is X -10.712 to 351.495 mm and Y -8.674 to 307.810 mm: 362.207 by 316.484 mm, including its notch. A Gerber viewer's stroked bounding box can be larger by the outline aperture radius; it is not the same measurement.
+
+Submitted archive SHA-256:
+
+```text
+90e487dd1cd208731659e0bb4dcc82b3d4df092b5b778cc3053aefc6b4ec29b6
+```
+
+## Install
+
+Use Python 3.12 or newer (tested with Python 3.13) from the repository root. Windows PowerShell example:
+
+```powershell
+python -m venv .venv-overlay
+.\.venv-overlay\Scripts\python -m pip install -r tools/overlay/requirements.txt
+.\.venv-overlay\Scripts\python tools/overlay/test_overlay.py
+```
+
+The pinned host dependencies are Pillow 13.0.0 (raster handling), NumPy 2.5.4 (affine fitting), and PyMuPDF 1.26.5 (PDF/SVG rendering). They are not added to firmware. Use `python tools/overlay/overlay.py --help` for commands; replace `python` below with your virtual-environment Python when needed. Outputs never overwrite existing paths.
+
+## 1. Inspect and pin the board export
+
+```powershell
+python tools/overlay/overlay.py inspect hardware/exports/2026-10-09/Gerbers.zip --placements hardware/exports/2026-10-09/PickAndPlace.xlsx --output captures/my-board.json
+```
+
+The report lists every file hash, the outline and LED coordinates. The parser intentionally rejects unfamiliar outline units, formats, arcs and multiple paths rather than approximating them. This implementation targets the supplied design export; it is not a general Gerber CAM editor.
+
+If you have a JLCPCB production download, identify embedded submitted-source archives separately:
+
+```powershell
+python tools/overlay/overlay.py production-audit --production YOUR_PRODUCTION_DOWNLOAD.zip --submitted hardware/exports/2026-10-09/Gerbers.zip --output captures/production-source-check.json
+```
+
+Do not use manufacturer CAM outputs as replacement design files. They can contain different coordinate origins, process rails and production adjustments. Reports can include local production member names: review them before sharing. No archives are extracted to filesystem paths.
+
+## 2. Obtain a specific source map
+
+Start at the [official MTA maps page](https://www.mta.info/maps). Select the same diagram edition and layout used by the calibration. Record its SHA-256 from a known, reviewed copy; a hash verifies identity, not rights or authenticity by itself. Do not substitute the latest map: stations, labels and route geometry can change.
+
+```powershell
+Get-FileHash -Algorithm SHA256 YOUR_REVIEWED_MAP.pdf
+python tools/overlay/overlay.py fetch --url "https://www.mta.info/YOUR_EXACT_MAP_URL" --sha256 YOUR_REVIEWED_64_CHARACTER_HASH --output captures/map-source.pdf
+```
+
+The URL and hash above are placeholders, not a supplied production source. Fetch accepts HTTPS MTA hosts and rejects redirects outside those hosts. If the original reviewed edition is unavailable online, use a legitimately obtained local copy. A mismatch fails rather than accepting another map edition.
+
+The tool does not bundle source MTA artwork, register artwork rights, or make a legal determination. Obtaining an image separately does not itself establish reproduction permission. Follow the project's third-party notices and your applicable permissions review.
+
+## 3. Rasterize and crop
+
+```powershell
+python tools/overlay/overlay.py rasterize captures/map-source.pdf --sha256 PDF_HASH --page 1 --dpi 300 --output captures/map-full.png
+Get-FileHash -Algorithm SHA256 captures/map-full.png
+python tools/overlay/overlay.py crop captures/map-full.png --sha256 RASTER_HASH --box LEFT TOP RIGHT BOTTOM --output captures/map-crop.png
+```
+
+`--box` requires four integer **source-pixel** coordinates. PDF page numbers start at 1. Choose the Brooklyn region broadly enough to include every intended map LED. PDF and flattened, self-contained SVG inputs are supported; external SVG resources and active content are rejected. Rasterization/crop sidecars record source/output hashes, page, renderer or crop rectangle. Retain those sidecars with your calibration. PNG/JPEG images can be used directly for picking. No AI image editing is used.
+
+## 4. Pick and fit landmarks once
+
+```powershell
+python tools/overlay/overlay.py pick --source captures/map-crop.png --gerber hardware/exports/2026-10-09/Gerbers.zip --placements hardware/exports/2026-10-09/PickAndPlace.xlsx --output captures/pick-landmarks.html
+```
+
+Open that HTML file locally in a browser. It embeds your image, operates offline and sends nothing. Select an LED designator, inspect its highlighted board position, then click the intended location on the source image. Use map LEDs, not the four status-panel LEDs, when calibrating a map-only image. Use zoom for precision. Pick at least six distinct LEDs spread across the top, bottom, left, right and center, then download `landmarks.json`. Anchor spans must cover at least 45% of both source-image dimensions; crop a whole-city map first rather than calibrating a tiny clustered region.
+
+```powershell
+python tools/overlay/overlay.py fit --source captures/map-crop.png --landmarks YOUR_DOWNLOADED_landmarks.json --gerber hardware/exports/2026-10-09/Gerbers.zip --placements hardware/exports/2026-10-09/PickAndPlace.xlsx --tolerance-mm 0.35 --output captures/map-profile.json
+```
+
+The profile pins the source raster, Gerber and workbook hashes. It stores the affine matrix and maximum anchor residual in millimeters. Fit rejects collinear, clustered, repeated, mirrored or inconsistent points. **A small fitting residual only describes the selected anchors.** Independently check additional stations, shared-line LED lanes, terminals and all edges. Do not raise the tolerance merely to make a wrong map fit. This uses a single affine transformation; it does not reproduce unidentified local warps or edits.
+
+Profiles are draft records, not automatically approved registrations. Once a specific source, crop and profile have been reviewed, preparation is repeatable without picking again.
+
+## 5. Prepare the import image
+
+```powershell
+python tools/overlay/overlay.py prepare --source captures/map-crop.png --profile captures/map-profile.json --gerber hardware/exports/2026-10-09/Gerbers.zip --placements hardware/exports/2026-10-09/PickAndPlace.xlsx --dpi 300 --output captures/prepared-map
+```
+
+Outputs:
+
+- `prepared-artwork.png`: transformed artwork clipped to the design outline, including the notch; no review labels are printed into it.
+- `alignment-review.png`: separate top-view preview with LED designators and board outline.
+- `placement-reference.svg`: image with explicit physical dimensions, for placement reference rather than direct fabrication.
+- `EASYEDA_IMPORT.md`: dimensions and Gerber-coordinate registration instructions.
+- `manifest.json`: source, profile and output hashes; no manufacturing-approval flag is set true.
+
+The image's full-board bounding rectangle is deliberate. Set both physical dimensions explicitly; PNG DPI alone is not an origin/placement specification. Gerber Y increases upward; image Y increases downward. The script performs that conversion and rejects reflections. An EasyEDA project origin can differ from the Gerber origin; verify that offset against known LEDs. Image pixels introduce finite resolution and interpolation: this is not a bit-identical regeneration of opaque original color files.
+
+## 6. Export color fabrication files with EasyEDA Pro
+
+Follow [JLCPCB's color-silkscreen instructions](https://jlcpcb.com/help/article/how-to-design-multi-color-silkscreen-using-easyeda): enable its color process, import the prepared PNG at original quality, and export color fabrication files. Use a COPY of the correct project. Replace only the map image; retain the custom legends, component labels, OLED area, QR codes, other artwork, and pad/hole clearances.
+
+A downloaded map alone does not recreate those custom additions. This tool does not edit a project, convert PNG into FCTS/FCBS, decode those opaque files or automate EasyEDA clicks. The final map registration and full-color production preview need review before ordering.
+
+## 7. Verify and package
+
+```powershell
+python tools/overlay/overlay.py verify --baseline hardware/exports/2026-10-09/Gerbers.zip --candidate YOUR_NEW_EASYEDA_EXPORT.zip --output captures/export-check.json
+python tools/overlay/overlay.py package --baseline hardware/exports/2026-10-09/Gerbers.zip --candidate YOUR_NEW_EASYEDA_EXPORT.zip --output captures/rebuilt-gerbers
+```
+
+`verify` exits 2 when protected content differs. It allows changes only to `.FCTS`, `.FCBS`, `.FCBO` and `.FCBM`; other members must match, apart from comments/line endings and the standard Gerber creation-date attribute. It does not claim general geometric equivalence between differently expressed Gerbers. Normal top/bottom silkscreen GTO/GBO are protected too: if EasyEDA changes their drawing content, stop and review instead of weakening the check. Added or missing members also fail.
+
+`package` first runs those checks, then creates `Gerbers-with-prepared-artwork.zip` and `integrity-report.json`. Only the new opaque color files are taken from the candidate; **every other file's payload comes from the original archive, byte-for-byte**. It verifies that property before writing the output. A passing integrity report is not artwork alignment approval, electrical sign-off, legal clearance or manufacturer acceptance. Review JLCPCB's production preview before ordering.
+
+## Validation performed
+
+- 17 synthetic tests: outline/CPL parsing, source hashes and download-host checks, SVG rendering/resource rejection, crop bounds, affine fitting, mirrored/tampered profiles, protected-layer changes, unsafe ZIP members, embedded source comparisons, no-overwrite behavior and package payload preservation.
+- Submitted and manufacturer-embedded source files compared: all 20 payloads identical in both embedded source archives.
+- Read-only real-board coordinate exercise: 302 existing board-preview reference points fitted to the supplied placement workbook, maximum residual about 0.000631 mm; full-board LED preview generated and inspected. This checks coordinate plumbing and is **not** a fit of a newly downloaded MTA map or independent proof of the source artwork's identity.
+- Original local PDF and edited SVG rasterization exercised. Identity packaging of the actual 20-member design archive also preserved every file payload. Generated artwork and production-order metadata are kept out of this tool's public files.
+
+The remaining production task is to reconstruct and independently review the exact original source-map crop/registration and custom-artwork composition. No order-ready replacement Gerber is supplied with this initial tool.

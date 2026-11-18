@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "status": "SUBMITTED_ARCHIVE_IDENTIFIED_ARTWORK_CALIBRATION_PENDING",
+  "submittedArchiveSha256": "90e487dd1cd208731659e0bb4dcc82b3d4df092b5b778cc3053aefc6b4ec29b6",
+  "productionArchiveSha256": "6a81718a47b69e99179f00bc2c6ea87fc819a702cded032dafb675ff4d891050",
+  "matchingEmbeddedSourceArchives": 2,
+  "matchingFilePayloadsPerArchive": 20,
+  "designOutlineCenterlineBoundsMm": [
+    -10.712,
+    -8.674,
+    351.495,
+    307.81
+  ],
+  "sourceProjectRevision": "Unverified; no change to recorded firmware hardware authority",
+  "exactArtworkRegistrationRecovered": false,
+  "manufacturingApproval": false
+}
