@@ -164,7 +164,7 @@ void draw(const char *clock) {
   alerts::Summary alertStatus;
   portENTER_CRITICAL(&screenDataMux);alertStatus=screenData.alerts;portEXIT_CRITICAL(&screenDataMux);
   const bool showAlert=alerts::mainIndicator(alertStatus,static_cast<uint32_t>(time(nullptr)));
-  snprintf(mainTitle,sizeof(mainTitle),showAlert?"%.8s ! Alert 1/9":"%.17s 1/9",identity.title);
+  snprintf(mainTitle,sizeof(mainTitle),showAlert?"! Alert: see page 8":"%.17s 1/9",identity.title);
   screen.drawStr((128-screen.getStrWidth(mainTitle))/2,16,mainTitle);
   const uint32_t trains = __atomic_load_n(&trackedTrainsWord, __ATOMIC_RELAXED);
   char count[24];

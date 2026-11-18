@@ -8,6 +8,7 @@ The latest page stays compact so older maps can continue discovering updates.
 
 ## Published firmware
 
+- **[0.2.100](https://github.com/jgoldwein/BrooklynSubway/releases/tag/v0.2.100)** - [Full notes online](https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/RELEASE_0.2.100.md)
 - **[0.2.99](https://github.com/jgoldwein/BrooklynSubway/releases/tag/v0.2.99)** - [Full notes online](https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/RELEASE_0.2.99.md)
 - **[0.2.98](https://github.com/jgoldwein/BrooklynSubway/releases/tag/v0.2.98)** - [Full notes online](https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/RELEASE_0.2.98.md)
 - **[0.2.97](https://github.com/jgoldwein/BrooklynSubway/releases/tag/v0.2.97)** - [Full notes online](https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/RELEASE_0.2.97.md)
