@@ -6,12 +6,13 @@
 #include "semantic_api.h"
 #include "train_frame.h"
 #include "weather.h"
+#include "station_alerts.h"
 #include <stdint.h>
 namespace brooklyn::oled {
-enum class Screen : uint8_t { Main, Activity, Connection, Device, Lines, Dedication, Clock, Weather };
-constexpr uint8_t kScreenCount = static_cast<uint8_t>(Screen::Weather)+1;
+enum class Screen : uint8_t { Main, Activity, Connection, Device, Lines, Dedication, Clock, Weather, Alerts };
+constexpr uint8_t kScreenCount = static_cast<uint8_t>(Screen::Alerts)+1;
 constexpr Screen kScreenOrder[]={Screen::Main,Screen::Activity,Screen::Connection,Screen::Device,
-    Screen::Lines,Screen::Clock,Screen::Weather,Screen::Dedication};
+    Screen::Lines,Screen::Clock,Screen::Weather,Screen::Alerts,Screen::Dedication};
 constexpr uint8_t screenPosition(Screen screen,uint8_t at=0) {
   return at>=kScreenCount?0:kScreenOrder[at]==screen?at:screenPosition(screen,at+1);
 }
@@ -47,6 +48,7 @@ enum class FeedHealth : uint8_t { Waiting, Fresh, Partial, Held, Stale, NoData }
 struct ScreenData {
   hardware::SoundStatus sound{};
   weather::Snapshot weather{};
+  alerts::Summary alerts{};
   uint32_t unixTime=0;
   display::IndicationCounts indications{};
   uint32_t sampledAtMs = 0, updateAgeSeconds = 0;

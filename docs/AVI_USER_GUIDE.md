@@ -2,7 +2,7 @@
 
 Specially Designed for Avi Yao
 
-Guide for firmware **0.2.96**. Start with the
+Guide for firmware **0.2.97**. Start with the
 [quick start](AVI_QUICK_START.md) if you just want to try the map.
 For the gift box, [print the one-page sheet](shipping/Brooklyn_Subway_Quick_Start.pdf).
 
@@ -197,7 +197,7 @@ this explanation.
 Routine knob ticks are omitted from **Last Sound**, so turning the knob does
 not replace the explanation of an important cue. The ticks still sound normally.
 
-On OLED **page 1/8**, a meaningful sound can also briefly replace the train-count
+On OLED **page 1/9**, a meaningful sound can also briefly replace the train-count
 line with an icon and a short label: a checkmark for **Saved** or **System ready**,
 Wi-Fi arcs for **Connected**, a train for **Feed ready**, a down arrow for
 **Service lost**, or an up arrow for **Restored**. The clock stays visible.
@@ -452,6 +452,14 @@ Press **Save extras** to save this form separately. Your existing names and dedi
 
 The map checks for new firmware after startup once Wi-Fi, time synchronization and administrator setup are ready. If a check fails, it retries after 1 minute, then 2 minutes, then 5 minutes, then at most every 15 minutes, capped by a shorter saved check interval. A successful check returns to the saved interval. The first attempt can fail because of a temporary connection problem; this does not mean no update exists.
 
-Starting with 0.2.96, automatic updates default to **ON** when no preference is saved, including after a firmware-default reset. Existing saved ON or OFF choices are preserved during an upgrade. To change an existing board, use **Advanced > Firmware updates > Turn automatic updates on/off**. With updates OFF, the map still checks but waits for your approval before installing. Only signed packages for the correct hardware are accepted.
+Starting with 0.2.97, automatic updates default to **ON** when no preference is saved, including after a firmware-default reset. Existing saved ON or OFF choices are preserved during an upgrade. To change an existing board, use **Advanced > Firmware updates > Turn automatic updates on/off**. With updates OFF, the map still checks but waits for your approval before installing. Only signed packages for the correct hardware are accepted.
 
 The Rangers extra lasts about 10 seconds, flashes the saved cheer (default **GO RANGERS!**) on the OLED, and repeats its short horn/color sequence twice. POWER can stop it early.
+
+## My station alerts
+
+Open **Advanced > Personalization > My station alerts**. Choose York St (F), High St (A/C), or Jay St-MetroTech (A/C/F/R), then save. York St is the default. You can include line-wide notices or turn station alerts off. Both directions are included.
+
+Open **Advanced > Station alerts** to read the notices, or turn the knob to the OLED Station alerts screen (8/9). **Now** means the notice is currently scheduled to apply; **Upcoming** means it starts within the next 48 hours. **Unavailable** means the map could not verify current notices. Check the MTA before traveling. A station tag means it is included in an affected area; read the details rather than assuming the station is closed.
+
+The map checks about every five minutes after train polling. The page shows the last successful check and refreshes every minute. Up to six notices are retained, with current station notices first. Long text may be shortened; follow the MTA link for full details. These alerts are silent and do not change train-light colors. A failed alert download does not mean there is a service disruption, and no matching notices does not guarantee normal service.

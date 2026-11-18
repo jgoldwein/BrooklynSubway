@@ -5,6 +5,7 @@
 // Not validated on hardware (ESP32-S3 not connected during Phase 4J).
 
 #include "network_service.h"
+#include <new>
 #include "live_display.h"
 #include "hardware.h"
 
@@ -851,6 +852,19 @@ void NetworkService::pollWorker(void *context) {
   auto &self=*static_cast<NetworkService *>(context);
   for (;;) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    if(self.workerAlerts_) {
+      size_t length=0;
+      const auto status=transport::downloadFeed(weatherConnection(),alerts::kUrl,
+          {self.alertsBuffer_,alerts::kMaxBody},true,length);
+      self.workerAlertsOk_=status==transport::DownloadStatus::Ok &&
+          alerts::decode(self.alertsBuffer_,length,self.workerAlertsPreferences_,
+              static_cast<uint32_t>(time(nullptr)),*self.workerAlertsResult_);
+      self.workerCompletedAtMs_=millis();
+      Serial.printf("Station alerts: %s; transport %s; bytes %u; matching %u; retained %u\n",
+          self.workerAlertsOk_?"updated":"unavailable",transport::downloadStatusName(status),unsigned(length),
+          self.workerAlertsOk_?self.workerAlertsResult_->matched:0,self.workerAlertsOk_?self.workerAlertsResult_->count:0);
+      self.pollHandoff_.finish();continue;
+    }
     if(self.workerWeather_) {
       size_t length=0;
       const auto status=transport::downloadFeed(weatherConnection(),weather::kUrl,
@@ -897,7 +911,7 @@ void NetworkService::pollNow(uint32_t nowMs) {
     Serial.println("Network: bounded feed worker ready; loop remains available for web and controls");
   }
   workerConfig_={};
-  workerWeather_=false;
+  workerWeather_=false;workerAlerts_=false;
   workerConfig_.brightness=configuration_.brightness();
   workerConfig_.blueHoldSeconds=configuration_.blueHoldSeconds();
   workerCounters_=counters_;
@@ -908,6 +922,13 @@ void NetworkService::pollNow(uint32_t nowMs) {
 
 void NetworkService::collectPollResult() {
   if (!pollHandoff_.take()) return;
+  if(workerAlerts_) {
+    auto &state=alerts::state();
+    if(alerts::settingsWord(state.preferences)!=alerts::settingsWord(workerAlertsPreferences_))return;
+    state.attempted=true;state.attemptedAtMs=workerCompletedAtMs_;state.lastFailed=!workerAlertsOk_;
+    if(workerAlertsOk_)state.snapshot=*workerAlertsResult_;
+    return;
+  }
   if(workerWeather_) {
     weatherAttemptAtMs_=workerCompletedAtMs_;
     if(workerWeatherOk_) weather_=workerWeatherResult_;
@@ -991,8 +1012,21 @@ void NetworkService::update(uint32_t nowMs) {
         }
         if(scheduler_.due(nowMs)) pollNow(nowMs);
         else if(hasLatestCycle_ && pollTask_ && weather::due(weather_.attempted,weatherAttemptAtMs_,nowMs,completedCycleAtMs_,weather_.lastFailed)) {
-          workerWeather_=true;workerWeatherOk_=false;workerWeatherResult_={};
+          workerWeather_=true;workerAlerts_=false;workerWeatherOk_=false;workerWeatherResult_={};
           if(pollHandoff_.start()) xTaskNotifyGive(static_cast<TaskHandle_t>(pollTask_));
+        } else if(hasLatestCycle_ && completedCycle_.downloaded && pollTask_ && alerts::due(nowMs,completedCycleAtMs_)) {
+          if(!alertsBuffer_) {
+            alertsBuffer_=static_cast<uint8_t *>(heap_caps_calloc(1,alerts::kMaxBody+sizeof(alerts::Snapshot),MALLOC_CAP_SPIRAM|MALLOC_CAP_8BIT));
+            if(alertsBuffer_)workerAlertsResult_=new(alertsBuffer_+alerts::kMaxBody) alerts::Snapshot{};
+            Serial.printf("Station alerts: external-RAM buffer %s (%u bytes)\n",alertsBuffer_?"ready":"unavailable",unsigned(alerts::kMaxBody+sizeof(alerts::Snapshot)));
+          }
+          if(!alertsBuffer_) {
+            auto &state=alerts::state();state.attempted=true;state.attemptedAtMs=nowMs;state.lastFailed=true;
+          } else {
+            workerAlerts_=true;workerWeather_=false;workerAlertsOk_=false;
+            workerAlertsPreferences_=alerts::state().preferences;
+            if(pollHandoff_.start()) xTaskNotifyGive(static_cast<TaskHandle_t>(pollTask_));
+          }
         }
       }
       return;
@@ -1141,7 +1175,7 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
   webStatus_.transportCounters = counters_;
   webStatus_.networkDiagnostics = networkDiagnostics_.snapshot();
   webStatus_.networkBusy=fetchingFeeds();
-  webStatus_.fetchingFeeds=webStatus_.networkBusy && !workerWeather_;
+  webStatus_.fetchingFeeds=webStatus_.networkBusy && !workerWeather_ && !workerAlerts_;
   lanWebUi_.service(webStatus_);
   applyDnsOverride();
 

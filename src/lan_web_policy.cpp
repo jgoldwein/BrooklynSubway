@@ -9,6 +9,7 @@
 #include "semantic_api.h"
 
 #include <stdarg.h>
+#include <time.h>
 #include <stdio.h>
 #include <string.h>
 
@@ -385,13 +386,13 @@ size_t renderHomePage(char *out, size_t capacity,
                 static_cast<unsigned long>(status.resolvedTrains),status.feedsSucceeded,status.feedsTotal);
   if (status.hasDataAge) writer.format("%lu seconds",static_cast<unsigned long>(status.dataAgeSeconds)); else writer.append("Waiting");
   writer.append("</strong><span>Latest update</span></div></div><p class=\"hint\"><strong data-status=\"visibleMapLeds\">");
-  writer.format("%u</strong> lit map LEDs. Several trains can share one light; uncertain markers may fade. <a href=\"/monitor\">Train monitor</a></p>",status.visibleMapLeds);
+  writer.format("%u</strong> lit map LEDs. Several trains can share one light; uncertain markers may fade. <a href=\"/monitor\">Train monitor</a><a class=\"button secondary\" href=\"/alerts\">Station alerts</a></p>",status.visibleMapLeds);
   writer.append("<p class=\"hint\">POWER switches displays; hold 3 seconds to restart. BRIGHT/DIM work with one display on.</p>"
                 "<div class=\"actions\"><a class=\"button\" href=\"#lights\">Adjust train lights</a>"
                 "<a class=\"button secondary\" href=\"#screen\">Screen brightness</a></div></section>"
                 "<section class=\"wide\" data-view=\"advanced\" id=\"advanced\"><p class=\"kicker\">Tools &amp; help</p><h2>Keep your map running</h2>"
                 "<p>Check for updates or test the lights. You may need to sign in first.</p><div class=\"actions\">"
-                "<a class=\"button\" href=\"/update\">Firmware updates</a><a class=\"button secondary\" href=\"/hardware-test\">Test the lights</a><a class=\"button secondary\" href=\"/monitor\">Train monitor</a><a class=\"button secondary\" href=\"/personalization\">Personalization</a></div></section>"
+                "<a class=\"button\" href=\"/update\">Firmware updates</a><a class=\"button secondary\" href=\"/hardware-test\">Test the lights</a><a class=\"button secondary\" href=\"/monitor\">Train monitor</a><a class=\"button secondary\" href=\"/alerts\">Station alerts</a><a class=\"button secondary\" href=\"/personalization\">Personalization</a></div></section>"
                 "<details class=\"card wide\" data-view=\"advanced\"><summary>Device information</summary><dl><dt>Device name</dt><dd>");
   writer.html(status.deviceName);
   writer.append("</dd><dt>Firmware</dt><dd>");
@@ -904,7 +905,7 @@ const char *loginReturnPath(const char *target) {
 const char *loginTargetForRequest(const char *path) {
   if (!path) return "";
   if (strcmp(path,"/defaults")==0) return "defaults";
-  if (strcmp(path,"/personalization")==0 || strcmp(path,"/personalization/extras")==0) return "personalization";
+  if (strcmp(path,"/personalization")==0 || strcmp(path,"/personalization/extras")==0 || strcmp(path,"/personalization/stations")==0) return "personalization";
   if (strcmp(path,"/screen-options")==0 || strcmp(path,"/config/screen-options")==0) return "screen-options";
   if (strcmp(path,"/update")==0 || strncmp(path,"/update/",8)==0) return "update";
   if (strcmp(path,"/hardware-test")==0 || strcmp(path,"/hardware-test/run")==0) return "hardware-test";
@@ -1391,6 +1392,40 @@ size_t renderNetworkDiagnosticsJson(
 }
 
 
+namespace {
+void alertTime(Writer &w,uint32_t stamp) {
+  if(!stamp) {w.append("Not specified");return;}
+  char clock[24]{},date[32]{};
+  if(!oled::formatClock(stamp,clock,sizeof(clock)) || !oled::formatDate(stamp,date,sizeof(date))) {w.append("Time unavailable");return;}
+  w.html(date);w.append(" ");w.html(clock);w.append(" New York time");
+}
+}
+size_t renderStationAlerts(char *out,size_t capacity,uint32_t now,bool json) {
+  Writer w(out,capacity);const auto &state=alerts::state();const auto status=alerts::summary(now);
+  if(json) {
+    w.format("{\"enabled\":%s,\"available\":%s,\"attempted\":%s,\"lastFailed\":%s,\"now\":%u,\"upcoming\":%u,\"checkedUnix\":%lu,\"sourceUnix\":%lu,\"overflow\":%s,\"station\":\"",status.enabled?"true":"false",status.available?"true":"false",status.attempted?"true":"false",status.lastFailed?"true":"false",unsigned(status.nowCount),unsigned(status.soonCount),static_cast<unsigned long>(status.checkedUnix),static_cast<unsigned long>(state.snapshot.sourceUnix),status.overflow?"true":"false");w.json(status.station);w.append("\",\"items\":[");
+    for(unsigned i=0;i<state.snapshot.count;++i) {
+      if(i)w.append(",");const auto &item=state.snapshot.items[i];
+      w.append("{\"headline\":\"");w.json(item.headline);w.format("\",\"start\":%lu,\"end\":%lu,\"stationMask\":%u,\"lineWide\":%s,\"shortened\":%s}",static_cast<unsigned long>(item.start),static_cast<unsigned long>(item.end),unsigned(item.stations),item.lineWide?"true":"false",item.shortened?"true":"false");
+    }w.append("]}");return w.size();
+  }
+  w.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><meta http-equiv=\"refresh\" content=\"60\"><title>Station alerts - {{title}}</title><link rel=\"stylesheet\" href=\"/ui.css?v=097\"></head><body><header><div><h1>My station alerts</h1><p>");w.html(status.station);
+  w.append("</p></div><a href=\"/\">Back to map</a></header><main style=\"display:block;max-width:48rem\"><section><h2>");
+  w.append(!status.enabled?"Alerts are off":!status.attempted?"Waiting for the first check":!status.available?"Alerts unavailable":"Latest station notices");
+  w.append("</h2><p>Both directions. Notices come directly from the MTA. This page refreshes every minute.</p>");
+  if(status.enabled && !status.available)w.append("<p><strong>We cannot confirm current service conditions.</strong> Please check the MTA before traveling. Older notices below may have changed.</p>");
+  if(status.available && !status.nowCount && !status.soonCount)w.append("<p>No matching notices in the latest check. This does not guarantee normal service.</p>");
+  if(status.overflow)w.append("<p>Showing the first six matching notices, with current station notices first. More notices may be available from the MTA.</p>");
+  w.append("<p>Last successful check: ");alertTime(w,state.snapshot.checkedUnix);w.append("<br>MTA feed updated: ");alertTime(w,state.snapshot.sourceUnix);w.append("</p><p><a href=\"/alerts\">Refresh page</a> &middot; <a href=\"/personalization\">Choose stations</a> &middot; <a href=\"https://www.mta.info/\" target=\"_blank\" rel=\"noopener noreferrer\">MTA service updates</a></p></section>");
+  for(unsigned i=0;i<state.snapshot.count;++i) {
+    const auto &item=state.snapshot.items[i];if(!alerts::current(item,now) && !alerts::upcoming(item,now))continue;
+    w.append("<section><p class=\"kicker\">");w.append(alerts::current(item,now)?"Now":"Upcoming");w.append(item.stations?" &middot; Station notice":" &middot; Line-wide notice");
+    w.append("</p><h2>");w.html(item.headline);w.append("</h2><p style=\"white-space:pre-wrap\">");w.html(item.description);w.append("</p><p>Starts: ");alertTime(w,item.start);w.append("<br>Ends: ");alertTime(w,item.end);w.append("</p>");
+    if(item.shortened)w.append("<p class=\"hint\">Text shortened to fit this device. Check the MTA for full details.</p>");
+    w.append("</section>");
+  }w.append("</main></body></html>");return w.size();
+}
+
 size_t renderPersonalizationPage(char *out,size_t capacity,const personal::Settings &p,const char *csrf) {
   Writer w(out,capacity);
   w.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Personalization</title><link rel=\"stylesheet\" href=\"/ui.css?v=094\"></head><body><header><div><h1>Personalization</h1><p>Make this map your own</p></div><a href=\"/#advanced\">Back to Advanced</a></header><main style=\"display:block;max-width:48rem\"><section><h2>Names, greeting and support</h2><p>Change the words on your map and its web pages. Saving applies them right away. These settings survive restarts and firmware updates.</p><p class=\"hint\">Use plain English letters, numbers and punctuation. Leave optional lines or the date empty to hide them. The OLED title shows the first 17 characters. Wi-Fi setup still uses BrooklynMap-Avi.</p><form id=\"personal\" method=\"post\" action=\"/personalization\"><input type=\"hidden\" name=\"csrf\" value=\"");
@@ -1405,6 +1440,15 @@ size_t renderPersonalizationPage(char *out,size_t capacity,const personal::Setti
     w.format(" aria-describedby=\"limit%u\"><p class=\"hint\" id=\"limit%u\">Up to %u characters.</p>",i,i,unsigned(f.size-1));
   }
   w.append("<h3>OLED greeting preview</h3><p class=\"hint\">The first four lines are centered on the OLED; the final names line scrolls.</p><pre id=\"preview\" style=\"background:#071827;color:#b3efff;padding:1rem;text-align:center;white-space:pre-wrap\"></pre><button type=\"submit\">Save personalization</button></form><p>Reset to firmware defaults restores the original Avi greeting and contact details. It also erases Wi-Fi and administrator settings; it is not needed to edit these words.</p><p class=\"hint\">Made by is a display credit. Original project authorship and license notices remain unchanged.</p>");
+  const auto &stations=alerts::state().preferences;
+  w.append("<h2>My station alerts</h2><p>Check planned work and service notices for your stations, in both directions. Alerts are silent and do not change train-light colors.</p><form method=\"post\" action=\"/personalization/stations\"><input type=\"hidden\" name=\"csrf\" value=\"");w.html(csrf);w.append("\">");
+  const char *stationKeys[]={"enabled","york","high","jay","linewide"};
+  const char *stationLabels[]={"Show station alerts","York St (F)","High St (A/C)","Jay St-MetroTech (A/C/F/R)","Include line-wide notices for these stations"};
+  const bool selected[]={stations.enabled,bool(stations.stations&1),bool(stations.stations&2),bool(stations.stations&4),stations.lineWide};
+  for(unsigned i=0;i<5;++i) {
+    w.format("<label><input type=\"checkbox\" name=\"%s\" value=\"1\"%s> ",stationKeys[i],selected[i]?" checked":"");w.html(stationLabels[i]);w.append("</label>");
+  }
+  w.append("<button>Save station alerts</button></form><p><a href=\"/alerts\">View station alerts</a></p><p class=\"hint\">Checked about every five minutes after train polling. Upcoming notices cover the next 48 hours. A station match means it is mentioned as affected; read the notice before making travel plans.</p>");
   const auto extras=personal::extraSnapshot();
   w.append("<h2>Personalized extras</h2><p>Choose which personal extras appear in the TEST + ROUTE cycle. Names, From line and scrolling family names come from the settings above. Subway Express and Morse remain available.</p><form method=\"post\" action=\"/personalization/extras\"><input type=\"hidden\" name=\"csrf\" value=\"");w.html(csrf);w.append("\">");
   const char *keys[]={"celebration","anniversary","credits","rangers"};

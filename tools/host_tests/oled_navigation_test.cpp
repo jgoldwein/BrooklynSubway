@@ -9,18 +9,20 @@
 #define CHECK(x) do {if(!(x)){printf("FAIL %d: %s\n",__LINE__,#x);exit(1);}}while(0)
 using namespace brooklyn::oled;
 int main() {
-  CHECK(nextScreen(Screen::Lines)==Screen::Clock && nextScreen(Screen::Clock)==Screen::Weather && nextScreen(Screen::Weather)==Screen::Dedication);
+  CHECK(nextScreen(Screen::Lines)==Screen::Clock && nextScreen(Screen::Clock)==Screen::Weather && nextScreen(Screen::Weather)==Screen::Alerts && nextScreen(Screen::Alerts)==Screen::Dedication);
   Navigation nav;
   CHECK(nav.view().screen==Screen::Main && !nav.view().automatic);
   nav.input(Action::TurnPrevious,10);CHECK(nav.view().screen==Screen::Dedication);
+  nav.input(Action::TurnPrevious,11);CHECK(nav.view().screen==Screen::Alerts);
   nav.input(Action::TurnPrevious,12);CHECK(nav.view().screen==Screen::Weather);
   nav.input(Action::TurnPrevious,13);CHECK(nav.view().screen==Screen::Clock);
   nav.input(Action::TurnPrevious,15);CHECK(nav.view().screen==Screen::Lines && !nav.view().lineBrowsing);
   nav.input(Action::TurnNext,20);CHECK(nav.view().screen==Screen::Clock);
   nav.input(Action::TurnNext,22);CHECK(nav.view().screen==Screen::Weather);
+  nav.input(Action::TurnNext,23);CHECK(nav.view().screen==Screen::Alerts);
   nav.input(Action::TurnNext,24);CHECK(nav.view().screen==Screen::Dedication);
   nav.input(Action::TurnNext,25);CHECK(nav.view().screen==Screen::Main);
-  nav.input(Action::TurnPrevious,30);nav.input(Action::TurnPrevious,32);nav.input(Action::TurnPrevious,33);nav.input(Action::TurnPrevious,35);nav.input(Action::Select,40);
+  nav.input(Action::TurnPrevious,30);nav.input(Action::TurnPrevious,31);nav.input(Action::TurnPrevious,32);nav.input(Action::TurnPrevious,33);nav.input(Action::TurnPrevious,35);nav.input(Action::Select,40);
   CHECK(nav.view().lineBrowsing);
   nav.input(Action::TurnPrevious,50);CHECK(nav.view().line==brooklyn::semantic::kRouteCount);
   nav.input(Action::TurnNext,60);CHECK(nav.view().line==1);
@@ -28,7 +30,7 @@ int main() {
   nav.input(Action::Select,80);CHECK(!nav.view().lineBrowsing);
   nav.input(Action::TurnNext,90);CHECK(nav.view().screen==Screen::Clock && nav.view().line==2);
   nav.input(Action::TurnNext,92);nav.input(Action::TurnNext,94);
-  nav.input(Action::TurnNext,95);CHECK(nav.view().screen==Screen::Main);
+  nav.input(Action::TurnNext,94);nav.input(Action::TurnNext,95);CHECK(nav.view().screen==Screen::Main);
   nav.input(Action::OpenLines,100);CHECK(nav.view().screen==Screen::Lines && nav.view().line==2);
   nav.input(Action::ToggleAuto,200);CHECK(nav.view().automatic);
   CHECK(!nav.update(5199));CHECK(nav.update(5200));CHECK(nav.view().line==3);
@@ -50,7 +52,7 @@ int main() {
   CHECK(!nav.update(28999));CHECK(nav.update(29000));
   CHECK(!nav.input(Action::Select,30000));
 
-  { Navigation clock;clock.input(Action::TurnPrevious,1);clock.input(Action::TurnPrevious,2);clock.input(Action::TurnPrevious,3);
+  { Navigation clock;clock.input(Action::TurnPrevious,1);clock.input(Action::TurnPrevious,2);clock.input(Action::TurnPrevious,3);clock.input(Action::TurnPrevious,4);
     CHECK(clock.view().screen==Screen::Clock);clock.setReturnSeconds(30,3);
     CHECK(!clock.update(300000) && clock.view().screen==Screen::Clock);
     clock.input(Action::TurnNext,300001);CHECK(clock.view().screen==Screen::Weather);
@@ -124,6 +126,15 @@ int main() {
   preferences.quietMapBrightness=17;CHECK(!validScreenPreferences(packScreenPreferences(preferences)));
   uint16_t minute=0;CHECK(parseClockMinute("22:00",minute) && minute==1320);
   CHECK(!parseClockMinute("24:00",minute));CHECK(!parseClockMinute("12:60",minute));CHECK(!parseClockMinute("9:00",minute));CHECK(!parseClockMinute("09:00x",minute));
+  {
+    ScreenData alertData;ScreenText alertText;alertData.alerts.enabled=true;
+    formatScreen(Screen::Alerts,alertData,0,alertText);CHECK(strcmp(alertText.lines[2],"Waiting for alerts")==0);
+    alertData.alerts.attempted=true;formatScreen(Screen::Alerts,alertData,0,alertText);CHECK(strcmp(alertText.lines[2],"Alerts unavailable")==0);
+    alertData.alerts.available=true;alertData.alerts.nowCount=2;alertData.alerts.soonCount=3;
+    strcpy(alertData.alerts.headline,"A longer station notice to scroll on the display");
+    formatScreen(Screen::Alerts,alertData,0,alertText);CHECK(strcmp(alertText.lines[2],"Now: 2  Upcoming: 3")==0);
+    for(auto &line:alertText.lines)CHECK(strlen(line)<=21);
+  }
   const char *names[]={"Joel","Marlene","Marc","Kim","Juliana","Levi","Robbie","Eric"};
   bool seen[8]{};view.screen=Screen::Dedication;view.changedAtMs=0;
   for(uint32_t at=0;at<60000;at+=1000) {

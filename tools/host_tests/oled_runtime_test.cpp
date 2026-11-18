@@ -176,6 +176,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
    if(scenario==45) brooklyn::oled::setEnabled(false);
  }
  if(scenario==47 || scenario==48 || scenario==49) {
+   brooklyn::oled::navigate(brooklyn::oled::Action::TurnPrevious,fakeNowMs);
    using namespace brooklyn::oled;
    navigate(Action::TurnPrevious,fakeNowMs);
    navigate(Action::TurnPrevious,fakeNowMs);
@@ -184,7 +185,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  }
  if(scenario>=50 && scenario<=53) {
    using namespace brooklyn::oled;
-   if(scenario==50) for(int i=0;i<3;++i) navigate(Action::TurnPrevious,fakeNowMs);
+   if(scenario==50) for(int i=0;i<4;++i) navigate(Action::TurnPrevious,fakeNowMs);
    ScreenData data;data.hasUpdate=true;data.lightsEnabled=true;data.lines[9].trains=13;data.lines[9].lights=5;publishScreenData(data);
    setRouteFocus(true,brooklyn::semantic::Route::RouteF);
    if(scenario==51) setSetupMode(true);
@@ -195,7 +196,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
    brooklyn::oled::ScreenData data;strcpy(data.mac,"28:84:85:34:1F:74");brooklyn::oled::publishScreenData(data);
    for(int i=0;i<3;++i) brooklyn::oled::advanceScreen();
  }
- if(scenario==55) for(int i=0;i<3;++i) brooklyn::oled::navigate(brooklyn::oled::Action::TurnPrevious,fakeNowMs);
+ if(scenario==55) for(int i=0;i<4;++i) brooklyn::oled::navigate(brooklyn::oled::Action::TurnPrevious,fakeNowMs);
  if(scenario>=56 && scenario<=61) {
    using namespace brooklyn::oled;
    UpgradeView v;v.phase=UpgradePhase::Complete;v.shownAtMs=UINT32_MAX-100;
@@ -262,8 +263,8 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario>=27 && scenario<=29) OLED_CHECK(frames==2 && titles==0 && setupTitles==0);
  if(scenario==30) OLED_CHECK(frames==2 && setupTitles==2 && titles==0);
  if(scenario==31) OLED_CHECK(frames==1 && powerCommands==1 && titles==0);
- if(scenario==33) OLED_CHECK(frames==3 && titles==2 && strcmp(lastScreenTitle,"Map lights OFF   2/8")==0 && fakeNowMs==120040);
- if(scenario==34) OLED_CHECK(frames==3 && titles==0 && strcmp(lastScreenTitle,"Line 3 Paused 5/8")==0 && fakeNowMs==120040);
+ if(scenario==33) OLED_CHECK(frames==3 && titles==2 && strcmp(lastScreenTitle,"Map lights OFF   2/9")==0 && fakeNowMs==120040);
+ if(scenario==34) OLED_CHECK(frames==3 && titles==0 && strcmp(lastScreenTitle,"Line 3 Paused 5/9")==0 && fakeNowMs==120040);
  if(scenario==35) OLED_CHECK(frames==3 && titles==3 && delays==51);
  if(scenario==36) OLED_CHECK(frames==2 && titles==0 && strcmp(lastScreenTitle,"Happy Bar Mitzvah!")==0);
  if(scenario==37) OLED_CHECK(frames==2 && titles==0 && borderDraws==0 && strcmp(lastScreenTitle,"Happy Bar Mitzvah!")==0);
@@ -277,7 +278,7 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario==45) OLED_CHECK(frames==1 && powerCommands==1 && titles==0);
  if(scenario==46) OLED_CHECK(frames==4 && titles==3 && brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Main);
  if(scenario==47) OLED_CHECK(frames==2 && titles==0 && clockOnlyDraws==2 && dateOnlyDraws==2 && borderDraws==2);
- if(scenario==48) OLED_CHECK(frames==2 && titles==0 && strcmp(lastScreenTitle,"Brooklyn weather 7/8")==0 && borderDraws==2);
+ if(scenario==48) OLED_CHECK(frames==2 && titles==0 && strcmp(lastScreenTitle,"Brooklyn weather 7/9")==0 && borderDraws==2);
  if(scenario==49) OLED_CHECK(frames==2 && borderDraws==2 && strcmp(lastOutside,"Outside: 48.6 \xB0" "F")==0);
  if(scenario==50) OLED_CHECK(frames==3 && clockOnlyDraws==1 && brooklyn::oled::selectedScreen()==brooklyn::oled::Screen::Clock);
  if(scenario==51) OLED_CHECK(frames==2 && setupTitles==2);

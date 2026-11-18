@@ -161,7 +161,7 @@ void draw(const char *clock) {
   }
   screen.setFont(u8g2_font_6x12_tf);
   char mainTitle[22]{};const auto identity=personal::snapshot();
-  snprintf(mainTitle,sizeof(mainTitle),"%.17s 1/8",identity.title);
+  snprintf(mainTitle,sizeof(mainTitle),"%.17s 1/9",identity.title);
   screen.drawStr((128-screen.getStrWidth(mainTitle))/2,16,mainTitle);
   const uint32_t trains = __atomic_load_n(&trackedTrainsWord, __ATOMIC_RELAXED);
   char count[24];

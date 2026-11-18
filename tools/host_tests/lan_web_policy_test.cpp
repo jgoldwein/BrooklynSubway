@@ -1278,6 +1278,32 @@ int main() {
    CHECK(brooklyn::web::renderStatusJson(result,sizeof(result),focus,5,0)>0);
    CHECK(strstr(result,"\"routeVisibilityMask\":0") && strstr(result,"\"routeFocusActive\":true") && strstr(result,"\"routeFocusRoute\":\"F\"") && strstr(result,"\"effectiveRouteMask\":256"));
    focus.routeFocusActive=false;CHECK(brooklyn::web::effectiveRouteMask(focus)==0);}
+  {
+    using namespace brooklyn::alerts;
+    configure(Preferences{});static char html[brooklyn::web::kStatusPageCapacity];
+    CHECK(brooklyn::web::renderStationAlerts(html,sizeof(html),1794960000)>0);
+    CHECK(strstr(html,"Waiting for the first check"));
+    state().attempted=true;state().lastFailed=true;
+    CHECK(brooklyn::web::renderStationAlerts(html,sizeof(html),1794960000)>0);
+    CHECK(strstr(html,"cannot confirm current service conditions"));
+    state().snapshot.available=true;state().snapshot.checkedUnix=1794960000;state().lastFailed=false;
+    state().snapshot.count=kMaxItems;
+    for(auto &item:state().snapshot.items) {
+      memset(item.headline,'"',sizeof(item.headline)-1);memset(item.description,'"',sizeof(item.description)-1);
+      item.stations=1;item.start=1794959999;
+    }
+    CHECK(brooklyn::web::renderStationAlerts(html,sizeof(html),1794960000)>0);
+    CHECK(strstr(html,"&quot;") && !strstr(html,"No matching notices"));
+    strcpy(state().snapshot.items[0].headline,"<script>alert('x')</script>");
+    CHECK(brooklyn::web::renderStationAlerts(html,sizeof(html),1794960000)>0);
+    CHECK(!strstr(html,"<script>alert") && strstr(html,"&lt;script&gt;"));
+    CHECK(brooklyn::web::renderStationAlerts(html,sizeof(html),1794960000,true)>0);
+    CHECK(strstr(html,"\"available\":true") && strstr(html,"\"stationMask\":1"));
+    CHECK(brooklyn::web::renderStationAlerts(html,20,1794960000)==0);
+    CHECK(brooklyn::admin::isMutationEndpoint("POST","/personalization/stations"));
+    CHECK(strcmp(brooklyn::web::loginTargetForRequest("/personalization/stations"),"personalization")==0);
+    configure(Preferences{});
+  }
   testPersistentConfiguration();
   testDnsConfigurationAndValidation();
   testDnsSettingsFormParsing();

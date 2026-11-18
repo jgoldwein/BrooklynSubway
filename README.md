@@ -33,8 +33,8 @@ trains to your wall. It uses official MTA train reports to show where trains
 are reported and how they are moving, with colors for approaching, stopped,
 leaving and uncertain locations.
 
-The small OLED screen can show the time, date, train counts, connection details
-and Brooklyn weather. A knob and front-panel buttons control the screens and
+The small OLED screen can show the time, date, train counts, connection details,
+Brooklyn weather and personalized station service alerts. A knob and front-panel buttons control the screens and
 lights. You can also change settings, get help and install signed firmware
 updates from the map's web page.
 

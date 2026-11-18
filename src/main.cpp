@@ -296,6 +296,9 @@ void setup() {
   brooklyn::diagnostics::begin();
   networkService.begin(); // Complete any pending defaults reset before loading saved text.
   brooklyn::personal::load();
+#if BROOKLYN_NETWORK_ENABLED
+  brooklyn::alerts::loadPreferences();
+#endif
   brooklyn::oled::setScreenPreferences(networkService.screenPreferences());
   brooklyn::hardware::setQuiet(brooklyn::oled::quietHoursActive(time(nullptr)),brooklyn::oled::quietMapBrightness());
   bool startupIndicatorsReady=true;
@@ -360,6 +363,7 @@ void publishOledScreenData(uint32_t nowMs) {
   data.sound=brooklyn::hardware::lastSound();
   data.unixTime=static_cast<uint32_t>(time(nullptr));
   data.weather=networkService.weatherStatus();
+  data.alerts=brooklyn::alerts::summary(static_cast<uint32_t>(time(nullptr)));
   data.uptimeSeconds = static_cast<uint64_t>(esp_timer_get_time())/1000000u;
   const auto live = brooklyn::display::live::stats();
   brooklyn::oled::setReturnSeconds(networkService.oledReturnSeconds());

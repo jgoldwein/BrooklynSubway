@@ -32,6 +32,8 @@ class LanWebUi {
   void handleHome();
   void handlePersonalization(bool saving);
   void handleExtraPersonalization();
+  void handleStationAlertPreferences();
+  void handleStationAlerts(bool json);
   void sendTemplateHtml(const char *body, size_t length, int code=200);
   void handleLedDiagnosticPage();
   void handleLedDiagnosticRun();

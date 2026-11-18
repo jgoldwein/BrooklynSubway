@@ -186,6 +186,9 @@ bool LanWebUi::begin() {
 }
 
 void LanWebUi::registerRoutes() {
+  server_.on("/alerts", HTTP_GET, [this]() { handleStationAlerts(false); });
+  server_.on("/api/station-alerts", HTTP_GET, [this]() { handleStationAlerts(true); });
+  server_.on("/personalization/stations", HTTP_POST, [this]() { handleStationAlertPreferences(); });
   server_.on("/personalization/extras", HTTP_POST, [this]() { handleExtraPersonalization(); });
   server_.on("/personalization", HTTP_GET, [this]() { handlePersonalization(false); });
   server_.on("/personalization", HTTP_POST, [this]() { handlePersonalization(true); });
@@ -559,6 +562,33 @@ void LanWebUi::handleUnknownTiming() {
 
 
 
+void LanWebUi::handleStationAlerts(bool json) {
+  server_.sendHeader("Cache-Control","no-store");
+  if(server_.args()) {server_.send(400,"text/plain","Invalid alert request");return;}
+  const size_t n=renderStationAlerts(gPage,sizeof(gPage),static_cast<uint32_t>(time(nullptr)),json);
+  if(!n) {server_.send(500,"text/plain","Unable to render station alerts");return;}
+  if(json)server_.send(200,"application/json",gPage);else sendHtml(gPage,n);
+}
+void LanWebUi::handleStationAlertPreferences() {
+  if(!authorizeRequest(true))return;
+  alerts::Preferences next;next.enabled=false;next.lineWide=false;next.stations=0;
+  constexpr const char *keys[]={"enabled","york","high","jay","linewide","csrf"};
+  uint8_t seen=0;
+  for(int i=0;i<server_.args();++i) {
+    const String key=server_.argName(i),value=server_.arg(i);int index=-1;
+    for(unsigned j=0;j<6;++j)if(key==keys[j])index=j;
+    if(index<0 || (seen&(1u<<index)) || !hasNoEmbeddedNull(value) || (index!=5 && value!="1")) {
+      server_.send(400,"text/plain","Invalid or repeated station setting");return;
+    }
+    seen|=1u<<index;
+    if(index==0)next.enabled=true;
+    if(index>=1 && index<=3)next.stations|=1u<<(index-1);
+    if(index==4)next.lineWide=true;
+  }
+  if(!(seen&32) || !alerts::validPreferences(next)) {server_.send(400,"text/plain","Choose at least one station, or turn alerts off");return;}
+  if(!alerts::savePreferences(next)) {server_.send(500,"text/plain","Could not save station alerts");return;}
+  hardware::requestSettingsSaved();server_.sendHeader("Location","/personalization?saved=1");server_.send(303,"text/plain","Station alerts saved");
+}
 void LanWebUi::handleExtraPersonalization() {
   if(!authorizeRequest(true))return;
   personal::ExtraSettings next;next.enabledMask=0;uint16_t seen=0;

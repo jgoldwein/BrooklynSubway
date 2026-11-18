@@ -458,7 +458,7 @@ bool isMutationEndpoint(const char *method, const char *path) {
          strcmp(path, "/config/oled") == 0 ||
          strcmp(path, "/config/oled-dimmer") == 0 ||
          strcmp(path, "/config/oled-return") == 0 ||
-         strcmp(path, "/personalization/extras") == 0 || strcmp(path, "/config/screen-options") == 0 || strcmp(path, "/personalization") == 0 ||
+         strcmp(path, "/personalization/stations") == 0 || strcmp(path, "/personalization/extras") == 0 || strcmp(path, "/config/screen-options") == 0 || strcmp(path, "/personalization") == 0 ||
          strcmp(path, "/config/unknown-timing") == 0 ||
          strcmp(path, "/config/blue-hold") == 0 ||
          strcmp(path, "/hardware-test/run") == 0 ||

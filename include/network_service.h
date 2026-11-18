@@ -19,6 +19,7 @@
 #include "poll_handoff.h"
 #include "runtime_observation.h"
 #include "weather.h"
+#include "station_alerts.h"
 
 #if BROOKLYN_NETWORK_ENABLED
 #include "lan_web_policy.h"
@@ -112,6 +113,10 @@ class NetworkService {
   weather::Snapshot weather_{};
 #if BROOKLYN_NETWORK_ENABLED
   bool workerWeather_=false,workerWeatherOk_=false;
+  bool workerAlerts_=false,workerAlertsOk_=false;
+  uint8_t *alertsBuffer_=nullptr;
+  alerts::Snapshot *workerAlertsResult_=nullptr;
+  alerts::Preferences workerAlertsPreferences_{};
   RecoveryPolicy connectionRecovery_;
   weather::Snapshot workerWeatherResult_{};
   uint32_t weatherAttemptAtMs_=0;
