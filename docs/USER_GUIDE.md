@@ -38,7 +38,7 @@ direction and station at roughly the same time.
 
 The displays may differ because of update timing, position estimates and the
 PCB's fixed LED locations. This board continues to get its train reports directly
-from the MTA feeds; SubwayNow is a reference link, not its data provider.
+from the [official MTA feeds](https://api.mta.info/#/subwayRealTimeFeeds); SubwayNow is a reference link, not its data provider.
 
 If you notice a difference you want The Developer to investigate, include the line,
 direction, station and time, along with a support report from the map.

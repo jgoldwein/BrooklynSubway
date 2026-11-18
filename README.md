@@ -29,7 +29,7 @@ web page. **Send report to The Developer** (or your saved support name) opens an
 The photo shows the actual working map, conventionally cropped and adjusted.
 
 Brooklyn Subway is a connected, light-up map that brings Brooklyn's subway
-trains to your wall. It uses official MTA train reports to show where trains
+trains to your wall. It uses [official MTA train reports](https://api.mta.info/#/subwayRealTimeFeeds) to show where trains
 are reported and how they are moving, with colors for approaching, stopped,
 leaving and uncertain locations.
 

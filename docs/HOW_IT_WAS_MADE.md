@@ -20,7 +20,7 @@ making a custom map that could light up with live subway information.
 > I procured and assembled all the parts and worked through the features and
 > testing. The software was also developed with AI assistance and open-source
 > tools. The train information comes from the Metropolitan Transportation
-> Authority (MTA)'s real-time subway data feeds.
+> Authority (MTA)'s [real-time subway data feeds](https://api.mta.info/#/subwayRealTimeFeeds).
 
 It is a collaborative kind of making: the project decisions and hands-on work,
 custom 3D design and printing, professional circuit-board manufacturing, existing
@@ -90,7 +90,7 @@ programming and service.
 
 ## 4. Turn MTA reports into lights
 
-The map connects directly to the MTA's official subway data feeds. The data
+The map connects directly to the [MTA's official subway data feeds](https://api.mta.info/#/subwayRealTimeFeeds). The data
 format is called **GTFS-Realtime**: a structured set of reports that software
 can read.
 
