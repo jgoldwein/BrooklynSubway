@@ -1,4 +1,4 @@
-"""Build Avi's one-page, US Letter packing guide from guide_content.json.
+"""Build the one-page, US Letter packing guide from guide_content.json.
 Document-only tools; no firmware libraries. See README.md for dependencies.
 """
 from pathlib import Path
@@ -25,7 +25,7 @@ pdfmetrics.registerFontFamily('Guide',normal='Guide',bold='Guide-Bold',italic='G
 NAVY=colors.HexColor('#17365D');BLUE=colors.HexColor('#205C9F');TEXT=colors.HexColor('#17283D');MUTED=colors.HexColor('#516174');PALE=colors.HexColor('#EDF3FA');LINE=colors.HexColor('#CAD7E5')
 W,H=612,792;L,R=36,576
 c=canvas.Canvas(str(ROOT/'Brooklyn_Subway_Quick_Start.pdf'),pagesize=(W,H),pageCompression=1)
-c.setTitle('Brooklyn Subway - Quick Start for Avi Yao');c.setAuthor('Joel Goldwein')
+c.setTitle('Brooklyn Subway - Quick Start');c.setAuthor('Joel Goldwein')
 style=ParagraphStyle('body',fontName='Guide',fontSize=11,leading=14,textColor=TEXT,spaceAfter=0)
 small=ParagraphStyle('small',parent=style,fontSize=8.5,leading=11,textColor=MUTED)
 boxes=[]
@@ -116,7 +116,7 @@ lines += ['',DATA['map_note'],'','**'+DATA['warning']+'**','','## Need help?',''
 pdf=PdfReader(ROOT/'Brooklyn_Subway_Quick_Start.pdf');assert len(pdf.pages)==1
 assert list(pdf.pages[0].mediabox)==[0,0,612,792]
 extracted=pdf.pages[0].extract_text()
-for required in ['BrooklynMap-Avi','192.168.4.1','10 seconds','Do not unplug power','goldwein@gmail.com','3 seconds']:
+for required in ['BrooklynMap-Avi','192.168.4.1','10 seconds','Do not unplug power','The Developer','3 seconds']:
  assert required in extracted,required
 for forbidden in ['10.1.1.27','10.1.1.56','tsunami2','0.2.78']:
  assert forbidden not in extracted,forbidden

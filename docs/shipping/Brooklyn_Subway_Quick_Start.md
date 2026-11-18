@@ -1,8 +1,8 @@
 # Brooklyn Subway
 
-Specially Designed for Avi Yao
+A customizable, connected subway map
 
-For firmware 0.2.94.
+For firmware 0.2.98.
 
 ## First time: connect to Wi-Fi
 
@@ -53,10 +53,10 @@ Default colors. Uses MTA reports and estimates, not GPS. Several trains can shar
 ## Need help?
 
 **Wi-Fi changed?** Hold the knob for **10 seconds** to reopen setup.
-**Send Joel a report:** Help > Make a support report > Send report to Joel. Review the email to **goldwein@gmail.com** and tap Send. Attach the saved report file if asked.
+**Support:** Help > Make a support report. Copy/Save it or email **The Developer** (your saved contact). Set the name and email in Advanced > Personalization. Review before sending.
 
 Quiet hours can darken the map or screen and mute sounds.
 
 **CARE:** Unplug barrel power and USB before handling. Keep dry and out of direct sunlight. Do not move the OLED magnet or antenna.
 
-[Full guide](https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/AVI_USER_GUIDE.md)
+[Full guide](https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/USER_GUIDE.md)

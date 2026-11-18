@@ -1,6 +1,6 @@
 {
   "title": "Brooklyn Subway",
-  "subtitle": "Specially Designed for Avi Yao",
+  "subtitle": "A customizable, connected subway map",
   "heading": "UNPACKING & FIRST STARTUP",
   "intro": "Read this before plugging in your map. Keep the Quick Start sheet nearby.",
   "steps": [
@@ -10,7 +10,7 @@
     },
     {
       "title": "Check the screen and antenna",
-      "text": "The <b>OLED case</b> is held at the front by magnets. Do not move or remove the round magnet on the back. The <b>antenna is on the left side of the PCB, near the bottom</b>, and is fastened to the frame; leave it attached. If anything looks loose or damaged, ask Joel before powering up."
+      "text": "The <b>OLED case</b> is held at the front by magnets. Do not move or remove the round magnet on the back. The <b>antenna is on the left side of the PCB, near the bottom</b>, and is fastened to the frame; leave it attached. If anything looks loose or damaged, ask The Developer (your support contact) before powering up."
     },
     {
       "title": "Choose a safe place",
@@ -30,8 +30,8 @@
   "after_title": "Then open your map",
   "after_text": "Rejoin home Wi-Fi on your phone, wait <b>10 seconds</b>, then open the map's address from setup or its Connection screen. Bookmark it. Train lights appear after usable train data arrives.",
   "care": "<b>CARE:</b> Unplug barrel power and USB before moving, cleaning or adjusting anything. The POWER button changes the displays; it does not disconnect electrical power.",
-  "help": "If something seems wrong, contact <b>Joel: goldwein@gmail.com</b>. When the web page works, use <b>Help &gt; Make a support report</b>. Review the email draft before sending.",
-  "guide_url": "https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/AVI_QUICK_START.md",
+  "help": "If something seems wrong, contact <b>The Developer</b> (your saved support contact). Use <b>Help &gt; Make a support report</b>; copy/save it or review the email draft. Set the contact in <b>Advanced &gt; Personalization</b>.",
+  "guide_url": "https://github.com/jgoldwein/BrooklynSubway/blob/main/docs/QUICK_START.md",
   "repository_label": "github.com/jgoldwein/BrooklynSubway",
   "included_parts": [
     "PCB (map board)",

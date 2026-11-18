@@ -660,8 +660,8 @@ void testPageEscapingAndRequiredContent() {
     CHECK(strstr(help,"href=\"/#overview\"") && strstr(help,"href=\"/#advanced\""));
     CHECK(strstr(help,"id=\"about\"") && strstr(help,"id=\"licenses\""));
     CHECK(strstr(help,"id=\"sounds\"") && strstr(help,"Read the sound guide"));
-    CHECK(strstr(help,"AVI_USER_GUIDE.md#sounds-and-what-they-mean") && strstr(help,"once per boot"));
-    CHECK(strstr(help,"Project on GitHub") && strstr(help,"AVI_USER_GUIDE.md"));
+    CHECK(strstr(help,"USER_GUIDE.md#sounds-and-what-they-mean") && strstr(help,"once per boot"));
+    CHECK(strstr(help,"Project on GitHub") && strstr(help,"USER_GUIDE.md"));
     CHECK(strstr(help,"href=\"/support\"") && strstr(help,"Nothing is sent automatically"));
     CHECK(strstr(help,"Apache License 2.0") && strstr(help,"CERN Open Hardware Licence") && strstr(help,"Creative Commons Attribution 4.0"));
     CHECK(strstr(help,"THIRD_PARTY_NOTICES.md") && strstr(help,"LGPL-3.0-or-later") && strstr(help,"BSD-2-Clause"));

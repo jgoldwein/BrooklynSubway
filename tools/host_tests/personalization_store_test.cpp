@@ -3,12 +3,17 @@
 #include "personalization.h"
 #include "Preferences.h"
 #include "personal_stubs/Arduino.h"
+#ifdef NDEBUG
+#undef NDEBUG
+#endif
 #include <assert.h>
 #include <stdio.h>
 PersonalSerial Serial;
 int main() {
   using namespace brooklyn::personal;
   assert(load());assert(strcmp(snapshot().recipient,"Avi Yao")==0);
+  assert(valid(Settings{}) && strcmp(snapshot().support,"Joel")==0);
+  {Settings noMail;noMail.email[0]=0;assert(valid(noMail));}
   Settings p;strcpy(p.recipient,"Sam");strcpy(p.email,"sam@example.com");
   assert(save(p));assert(strcmp(snapshot().recipient,"Sam")==0);
   apply(Settings{});assert(load());assert(strcmp(snapshot().recipient,"Sam")==0);
@@ -31,6 +36,7 @@ int main() {
   fakeNvs::extraBytes()[7]^=1;assert(!loadExtras());assert(extraSnapshot().enabledMask==15);
   fakeNvs::extraBytes().clear();assert(loadExtras());extras.enabledMask=16;assert(!saveExtras(extras));
   assert(extraSnapshot().enabledMask==15);
+  {Settings noMail=snapshot();noMail.email[0]=0;assert(save(noMail));assert(load());assert(snapshot().email[0]==0);}
   puts("Personalization NVS: default, save, reload, failed-write retention, corruption/version/size fallback and cleared-namespace defaults PASS");
 }
 

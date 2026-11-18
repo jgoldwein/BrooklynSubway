@@ -1,18 +1,18 @@
 # Brooklyn Subway
 
-**Specially Designed for Avi Yao**
+**A customizable, connected subway map**
 
 ## Start Here
 
 - **Unpacking your new map?** [Download the Unpacking & First Startup PDF](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/shipping/Brooklyn_Subway_Unpacking_Guide.pdf), including the startup firmware-update notice.
-- **Setting up your map?** Follow [Avi's quick start](docs/AVI_QUICK_START.md).
+- **Setting up your map?** Follow [the quick start guide](docs/QUICK_START.md).
 - **Want a copy to print?** [Download the one-page Quick Start PDF](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/docs/shipping/Brooklyn_Subway_Quick_Start.pdf).
   Print on US Letter at **100% / Actual size**.
 - **Want to learn the controls, colors and sounds?** Open
-  [Avi's Brooklyn Subway Map - User Guide](docs/AVI_USER_GUIDE.md).
-- **Want another live view?** Open [SubwayNow](https://www.subwaynow.app/trains). See the [comparison notes](docs/AVI_USER_GUIDE.md#compare-with-another-live-view) for why positions may differ.
+  [Brooklyn Subway Map - User Guide](docs/USER_GUIDE.md).
+- **Want another live view?** Open [SubwayNow](https://www.subwaynow.app/trains). See the [comparison notes](docs/USER_GUIDE.md#compare-with-another-live-view) for why positions may differ.
 - **Moving, cleaning or packing the board?** Read
-  [PCB handling and care](docs/AVI_USER_GUIDE.md#handling-cleaning-and-caring-for-the-pcb),
+  [PCB handling and care](docs/USER_GUIDE.md#handling-cleaning-and-caring-for-the-pcb),
   including the OLED magnet and frame-mounted antenna.
 - **Want to print the frame, OLED case or knob?** Download the [3D-print STL files](hardware/3d-print/README.md), individually or as one ZIP.
 - **Interested in the electronics?** Download the [Gerbers, BOM and placement files](hardware/README.md).
@@ -20,7 +20,7 @@
   For an already programmed map, use **Advanced > Firmware updates** on its web page.
 
 If something looks wrong, open **Help > Make a support report** on the map's
-web page. **Send report to Joel** opens an email draft for you to review and send.
+web page. **Send report to The Developer** (or your saved support name) opens an email draft for you to review and send.
 
 <a href="docs/media/brooklyn-subway-photo-straightened-v2.jpg" title="Click to view the full-size photo"><img src="docs/media/brooklyn-subway-photo-straightened-v2.jpg" alt="The actual working Brooklyn Subway map with train LEDs and OLED screen" width="600"></a>
 
@@ -45,6 +45,12 @@ The map needs a 2.4 GHz Wi-Fi signal and the supplied barrel power adapter.
 Train reports arrive in batches, and some positions are estimates. Several
 trains can share one light. This is a display of MTA reports, not a GPS tracker
 or a guarantee of the next train's arrival.
+
+## Make it your own
+
+Open **Advanced > Personalization** on the map to set the recipient, short screen name, greeting, From line, scrolling credits, celebration date, display creator, support contact name and email. **The Developer** is a generic support label; replace it with the person supporting your map. The support button uses these saved details. See the [personalization guide](docs/PERSONALIZATION.md). You can also choose station alerts and enable or customize personal extras.
+
+The guides use generic labels. The build story, photographs and historical engineering notes describe the original gift and retain its names. The setup Wi-Fi name **BrooklynMap-Avi** stays fixed to match the printed board and recovery instructions.
 
 ## Engineering: start here
 
@@ -84,7 +90,7 @@ channel/designator map. On XIAO startup, its self-test runs before a brief
 status/map simulation. The production board does not illuminate LEDs during
 normal startup.
 
-The separate discrete Avi-location indicator is U23 on GPIO14 (`USER_LED`,
+The separate discrete feed-ready indicator is U23 on GPIO14 (`USER_LED`,
 active HIGH). It is outside the 306 addressable LEDs. Those 306 comprise four
 CH8 status LEDs and 302 addressable map LEDs; LED291 remains a normal map LED.
 
@@ -183,7 +189,7 @@ old and after three hours the numbers are hidden. No weather is saved to NVS.
 Clock/date and weather screens respect OLED POWER/quiet-hour settings. The clock
 stays displayed until you turn away; weather retains the ordinary return timeout.
 Both screens have a thin border. Clock also shows valid outside temperature.
-Screen order ends with Lines, Clock, Weather, then Happy Bar Mitzvah.
+Screen order ends with Lines, Clock, Weather, Station alerts, then your personalized greeting.
 Alarm clock is a future feature, not included in this preview.
 
 
@@ -217,7 +223,7 @@ pixels stay black until usable data. Known failure/recovery keeps GPIO1 LOW;
 POWER and saved quiet/brightness settings retain priority. Readiness edges give
 short1000/1500/2000Hz cues, serialized without runtime input delays. The MTA cue
 also serves U23 feed-ready, avoiding a duplicate sound. Quiet hours and DIM-at-boot
-mute automatic cues. See the Avi guides for normal operation.
+mute automatic cues. See the user guides for normal operation.
 
 
 ## Production TLS memory

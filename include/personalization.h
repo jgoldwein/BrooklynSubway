@@ -29,7 +29,7 @@ inline const Field *fields() {
     F(title,"Map title",false),F(recipient,"Recipient name",false),F(shortName,"Name on OLED greeting",false),
     F(greeting,"Greeting",false),F(from,"From line",true),F(names,"Scrolling names",true),
     F(date,"Celebration date (YYYY-MM-DD)",true),F(creator,"Made by",true),
-    F(support,"Support contact name",false),F(email,"Support email",false)
+    F(support,"Support contact name",false),F(email,"Support email (optional)",true)
 #undef F
   };return list;
 }
@@ -52,6 +52,7 @@ inline bool valid(const Settings &s) {
     if(n && (v[0]==' ' || v[n-1]==' '))return false;
   }
   int y,m,d;if(s.date[0] && !dateParts(s.date,y,m,d))return false;
+  if(!s.email[0])return true; // Copy/Save reports can be used without email.
   const char *at=strchr(s.email,'@');
   if(!at || at==s.email || strchr(at+1,'@') || !strchr(at+1,'.') || !at[1])return false;
   for(const char *p=s.email;*p;++p)if(!((*p>='a'&&*p<='z')||(*p>='A'&&*p<='Z')||(*p>='0'&&*p<='9')||strchr("._+-@",*p)))return false;
