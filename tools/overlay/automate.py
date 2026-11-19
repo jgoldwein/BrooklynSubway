@@ -114,13 +114,44 @@ def handler_for(job):
             if route is None:
                 return
             try:
-                size = int(self.headers.get('Content-Length', '-1'))
-                if not 0 < size <= overlay.MAX_ARCHIVE:
-                    raise ValueError('Invalid request size')
                 self.connection.settimeout(30)
-                data = self.rfile.read(size)
-                if len(data) != size:
-                    raise ValueError('Incomplete request')
+                transfer = self.headers.get('Transfer-Encoding', '').lower().strip()
+                if transfer:
+                    if transfer != 'chunked' or self.headers.get('Content-Length') is not None:
+                        raise ValueError('Unsupported request framing')
+                    chunks, total = [], 0
+                    while True:
+                        line = self.rfile.readline(128)
+                        if not line.endswith(b'\r\n'):
+                            raise ValueError('Invalid chunk header')
+                        size = int(line.split(b';', 1)[0].strip(), 16)
+                        if size < 0 or total + size > overlay.MAX_ARCHIVE:
+                            raise ValueError('Request exceeds size limit')
+                        if size == 0:
+                            trailer_bytes = 0
+                            while True:
+                                trailer = self.rfile.readline(8193)
+                                trailer_bytes += len(trailer)
+                                if not trailer.endswith(b'\r\n') or trailer_bytes > 8192:
+                                    raise ValueError('Invalid chunk trailer')
+                                if trailer == b'\r\n':
+                                    break
+                            break
+                        chunk = self.rfile.read(size)
+                        if len(chunk) != size or self.rfile.read(2) != b'\r\n':
+                            raise ValueError('Incomplete request chunk')
+                        chunks.append(chunk)
+                        total += size
+                    data = b''.join(chunks)
+                    if not data:
+                        raise ValueError('Empty request body')
+                else:
+                    size = int(self.headers.get('Content-Length', '-1'))
+                    if not 0 < size <= overlay.MAX_ARCHIVE:
+                        raise ValueError('Missing or invalid Content-Length (expected a nonempty request body)')
+                    data = self.rfile.read(size)
+                    if len(data) != size:
+                        raise ValueError('Incomplete request')
                 if route == 'baseline':
                     answer = job.baseline_check(data)
                 elif route == 'finish':
@@ -136,6 +167,9 @@ def handler_for(job):
                     return
                 self.reply(200, answer)
             except (ValueError, KeyError, OSError, zipfile.BadZipFile) as error:
+                print('Request failed:', route, str(error),
+                      'Content-Length=' + str(self.headers.get('Content-Length')),
+                      'Transfer-Encoding=' + str(self.headers.get('Transfer-Encoding')), flush=True)
                 job.error = str(error)
                 job.state = 'failed'
                 self.reply(409, dict(error=job.error))

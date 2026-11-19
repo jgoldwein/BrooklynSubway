@@ -11,6 +11,7 @@ import xml.etree.ElementTree as ET
 MAX_FILE = 128 * 1024 * 1024
 MAX_ARCHIVE = 256 * 1024 * 1024
 COLOR = {'.FCTS', '.FCBS', '.FCBO', '.FCBM'}
+ORDER_NOTES = {'How-to-order-PCB.txt', 'PCB\u4e0b\u5355\u5fc5\u8bfb.txt'}
 GERBER = {'.GTL', '.GBL', '.GTO', '.GBO', '.GTS', '.GBS', '.GTP', '.GBP', '.GKO', '.GDL', '.GDD'}
 
 def digest(data): return hashlib.sha256(data).hexdigest()
@@ -107,7 +108,8 @@ def compare(baseline, candidate):
     a, b = archive(baseline), archive(candidate); items = []; failed = []
     for name in sorted(a.keys() | b.keys()):
         old, new = a.get(name), b.get(name); color = Path(name).suffix.upper() in COLOR
-        if old is None or new is None: status = 'member_added_or_removed'; failed.append(name)
+        if name in ORDER_NOTES: status = 'ordering_note_only_baseline_preserved'
+        elif old is None or new is None: status = 'member_added_or_removed'; failed.append(name)
         elif old == new: status = 'identical'
         elif color: status = 'color_artwork_changed_requires_visual_review'
         elif normalized(name, old) == normalized(name, new): status = 'comments_only'

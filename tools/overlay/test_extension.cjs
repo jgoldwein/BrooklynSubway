@@ -23,7 +23,7 @@ function mock(options={}) {
    delete:async id=>{events.push('delete');if(options.badCleanup)return false;objects=objects.filter(o=>o.getState_PrimitiveId()!==id);return true}
   },
   pcb_Document:{convertCanvasOriginToDataOrigin:async(x,y)=>({x:x+10,y:y+20})},
-  pcb_ManufactureData:{getGerberFile:async(name,color)=>{assert.strictEqual(color,true);events.push('export');if(++count===2&&options.exportFailure)throw Error('export failed');return 'ZIP'}}
+  pcb_ManufactureData:{getGerberFile:async(name,color,unit,format,other,layers)=>{assert.strictEqual(color,true);assert.strictEqual(unit,'mm');assert.strictEqual(format.integerNumber,4);assert.strictEqual(format.decimalNumber,5);assert(other.drillTable);assert(layers.some(l=>l.layerId===56));events.push('export');if(++count===2&&options.exportFailure)throw Error('export failed');return 'ZIP'}}
  };
  return{eda,events,args:()=>createdArgs,objects:()=>objects};
 }
@@ -42,7 +42,7 @@ function mock(options={}) {
   showInputDialog:(...args)=>{confirm=args[6]},
   showInformationMessage:(...args)=>messages.push(args)
  }};
- api.run();assert(logs[0].includes('0.1.2'));confirm('');assert(messages[0][0].includes('No URL'));
+ api.run();assert(logs[0].includes('0.1.3'));confirm('');assert(messages[0][0].includes('No URL'));
  confirm('not a job URL');await new Promise(resolve=>setImmediate(resolve));
  assert(logs.some(text=>text.includes('Failed:')));assert(messages.some(args=>args[1]==='Overlay failed'));
  console.log('Extension checks PASS: unit/origin conversion, blank guard, baseline gate, placement, cleanup, failed export and local-only URL.');

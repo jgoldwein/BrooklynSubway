@@ -34,7 +34,7 @@ It is in the **project's top folder**, beside `README.md`, not inside `tools/ove
 
 1. Open **EasyEDA Pro > Advanced > Extension Manager**.
 2. Choose **Import**, browse to the full path printed by the command above, and select `Brooklyn-Overlay-Builder.eext`.
-3. Follow the installation prompts. Allow **external interaction** for this extension so it can reach the local helper. You make this permission choice yourself; do not disable general security controls or enable unrelated permissions.
+3. After import, select **Installed**, then click the **Brooklyn Overlay Builder** name. Its details appear on the right. Click **Config** beside **Detail**, check **Allow interactive with external**, then click **Close**. This lets the extension reach the local helper. You make this permission choice yourself; do not disable general security controls or enable unrelated permissions. If selecting the extension closes the manager, rebuild/import version **0.1.2 or newer**; older packages omitted metadata needed by EasyEDA 3.2's details panel.
 4. Restart EasyEDA if its installer requests it. Leave EasyEDA at the Start Page for now. You will open the copied PCB and use **Advanced > Overlay Builder > Build map** in step 4, after the helper has created it.
 
 Installation does not start a build or change a PCB. The helper below must be running before the menu can work.
@@ -167,6 +167,8 @@ python tools/overlay/automate.py --project "Blank_Map.eprj2" --baseline "Blank_G
 The local-file path still checks the recipe's hash. There is no switch to ignore map-edition mismatches. An unfamiliar edition needs calibration review. Use a new output folder when retrying a failed run; originals and prior results are never overwritten.
 
 ## Preservation and limits
+
+Version 0.1.3 explicitly requests millimeters, 4:5 coordinates and the standard layers including drill drawings, matching this template's One Key Export settings. Other templates/export settings may need a different adapter. The comparison treats only the two known English/Chinese ordering-instruction text filenames as informational; the output still preserves the baseline's original note. Geometry, drilling and manufacturing layers remain protected. The helper accepts bounded Content-Length and chunked uploads, as used by the desktop editor.
 
 - The helper binds only to 127.0.0.1 and requires an unpredictable per-run token. It serves only this job's prepared image and accepts only bounded exports, not arbitrary filesystem access.
 - The native project is copied. Open that copy, not your original. The helper does not replace original project/Gerber files or submit orders.

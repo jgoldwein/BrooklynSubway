@@ -35,7 +35,12 @@ var edaEsbuildExportName = (() => {
       objectCount: before.length, widthMil: width, heightMil: height,
       editorVersion: api.sys_Environment?.getEditorCurrentVersion?.() || 'unknown'
     }));
-    const blank = await api.pcb_ManufactureData.getGerberFile('overlay-before', true);
+    // Match the selected template's One Key Export: mm, 4:5, all standard layers.
+    const exportGerbers = name => api.pcb_ManufactureData.getGerberFile(name, true, 'mm',
+      {integerNumber: 4, decimalNumber: 5},
+      {metallicDrillingInformation: true, nonMetallicDrillingInformation: true, drillTable: true, flyingProbeTestingFile: true},
+      [1,2,3,4,5,6,7,8,9,10,11,13,14,56].map(layerId => ({layerId, isMirror: false})));
+    const blank = await exportGerbers('overlay-before');
     if (!blank) throw new Error('EasyEDA did not produce a blank-template export');
     await request('baseline', 'POST', blank);
     const position = await api.pcb_Document.convertCanvasOriginToDataOrigin(
@@ -51,7 +56,7 @@ var edaEsbuildExportName = (() => {
           || created.getState_Layer() !== 3) throw new Error('Created image dimensions/layer do not match');
       const placed = await api.pcb_PrimitiveObject.getAll(3);
       if (placed.length !== before.length + 1) throw new Error('Unexpected image count after placement');
-      candidate = await api.pcb_ManufactureData.getGerberFile('overlay-with-map', true);
+      candidate = await exportGerbers('overlay-with-map');
       if (!candidate) throw new Error('EasyEDA did not produce the mapped export');
     } finally {
       if (created) {
@@ -67,7 +72,7 @@ var edaEsbuildExportName = (() => {
   function run() {
     const log = message => eda.sys_Log?.add('[Overlay Builder] ' + message);
     const notify = (message, title) => eda.sys_Dialog.showInformationMessage(message, title, 'OK');
-    log('Version 0.1.2: opened job URL dialog.');
+    log('Version 0.1.3: opened job URL dialog.');
     eda.sys_Dialog.showInputDialog('Paste the local job URL from the Python helper.',
       'Open Blank-template-COPY.eprj2 and activate its map-less PCB first.',
       'Build subway map', 'text', '', {}, value => {

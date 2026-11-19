@@ -33,6 +33,26 @@ class WorkflowTests(unittest.TestCase):
  def test_changed_circuit_in_map_rejected(self):
   self.job.baseline_check(zipped());self.assertRaises(ValueError,self.job.finish,zipped(copper=b'changed',color=b'map'))
   self.assertFalse((self.output/'result').exists())
+ def test_chunked_editor_upload(self):
+  server=a.HTTPServer(('127.0.0.1',0),a.handler_for(self.job));thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
+  try:
+   for route,data in [('probe',b'{"editorVersion":"3.2"}'),('baseline',zipped()),('finish',zipped(color=b'map'))]:
+    c=http.client.HTTPConnection('127.0.0.1',server.server_port,timeout=3)
+    c.request('POST','/'+self.job.token+'/'+route,body=iter([data[:5],data[5:]]),encode_chunked=True)
+    r=c.getresponse();answer=r.read();self.assertEqual(r.status,200,answer);c.close()
+   self.assertEqual(self.job.state,'complete')
+  finally:server.shutdown();thread.join();server.server_close()
+ def test_localized_order_note_preserves_original(self):
+  def with_note(data,name):
+   b=io.BytesIO(data)
+   with zipfile.ZipFile(b,'a') as z:z.writestr(name,b'Ordering instructions')
+   return b.getvalue()
+  self.blank.write_bytes(with_note(zipped(),'How-to-order-PCB.txt'))
+  self.job.baseline_check(with_note(zipped(),'PCB\u4e0b\u5355\u5fc5\u8bfb.txt'))
+  self.job.finish(with_note(zipped(color=b'map'),'PCB\u4e0b\u5355\u5fc5\u8bfb.txt'))
+  result=o.archive(self.output/'result/Gerbers-with-prepared-artwork.zip')
+  self.assertEqual(result['How-to-order-PCB.txt'],b'Ordering instructions')
+  self.assertNotIn('PCB\u4e0b\u5355\u5fc5\u8bfb.txt',result)
  def test_loopback_token_and_http_pipeline(self):
   server=a.HTTPServer(('127.0.0.1',0),a.handler_for(self.job));thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
   def call(path,body=None):
