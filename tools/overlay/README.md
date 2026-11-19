@@ -58,6 +58,10 @@ This one command produces `prepared-map.png`, `placement.json`, `EASYEDA_IMPORT.
 
 The crop was recovered from the 2852 by 2665 intermediate image at pixel rectangle `[1589,2732,4441,5397]` inside a 4600 by 5600 full-map raster, corresponding to PDF points `[572.04,983.52,1598.76,1942.92]`. Spatial image matching supported the recovery, including 14 held-out features. These checks do not replace station-by-station review. The clean PDF output does not reproduce manual annotations embedded in the earlier JPEG.
 
+### Depersonalize before reinserting the map
+
+For a reusable blank template, remove or change personal markings in the EasyEDA source first, then export that blank project. Use it as the artwork-comparison baseline. Insert the prepared map into a copy of that same depersonalized project and export a matching mapped candidate. Do not transplant the color files from an older personalized mapped export: they can restore the removed names and other markings. Inspect both front and back previews. Selecting an artwork template does not establish that its circuitry matches the original manufacturing archive; keep that comparison separate.
+
 ### Blank-map workflow established with the owner
 
 Work on copies. First export an unchanged project, then remove only the selected map image and export a blank candidate. In this case the QR code, logo, dedication, OLED area and control labels were separate and remained visible. Preserve the original map object, its image file, and its position/size record before deletion.
