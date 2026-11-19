@@ -1,4 +1,4 @@
-﻿# Brooklyn Overlay Builder: step-by-step Windows guide
+# Brooklyn Overlay Builder: step-by-step Windows guide
 
 This guide helps you add subway map artwork to a blank Brooklyn Subway PCB design. Python prepares the image; EasyEDA Pro places it at the recorded coordinates and exports the color fabrication files. You then check the exported board before ordering.
 
@@ -21,7 +21,7 @@ You also need these files:
 - **[A blank `.eprj2` project](#1-check-that-you-have-the-three-build-inputs):** the editable [EasyEDA Pro](#2-install-easyeda-pro) source, including the PCB and attached schematics. EasyEDA needs this to insert the image. It must match your blank Gerber ZIP, including the labels. A Gerber ZIP cannot replace this file. The linked section explains the requirements; the public project download is still being prepared.
 - **[The MTA `.pdf`](https://www.mta.info/map/5256):** the source subway map downloaded or otherwise obtained from the MTA. The PDF edition must match the selected recipe. You provide this locally; it is not bundled with the tools. The MTA link may serve a newer edition; read the [edition requirement](#1-check-that-you-have-the-three-build-inputs) before proceeding.
 - **[A recipe `.json`](recipes/brooklyn-september-2026.json):** a small text file supplied with the tools. It records the approved PDF's fingerprint, crop rectangle, size and placement. It contains calibration numbers, not map artwork. Do not edit it to bypass a PDF mismatch. The link opens the included September 2026 recipe for reference; it is already present in your software download.
-- **[Brooklyn-Overlay-Builder.eext](#6-prepare-python-and-create-the-extension-installer):** the EasyEDA extension installer. You create it in step 6, then [import it into EasyEDA in step 7](#7-install-the-extension-in-easyeda-pro). It adds **Advanced > Overlay Builder > Build map**. It is not the board project. This link takes you to the creation instructions, not an installer download.
+- **[Brooklyn-Overlay-Builder.eext](#6-prepare-python-and-locate-the-included-installer):** the EasyEDA extension installer. It is already included in the software download at `tools/overlay/easyeda/Brooklyn-Overlay-Builder.eext`; [import it into EasyEDA in step 7](#7-install-the-extension-in-easyeda-pro). It adds **Advanced > Overlay Builder > Build map**. It is not the board project. You can also [download the ready-built installer directly](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/tools/overlay/easyeda/Brooklyn-Overlay-Builder.eext).
 
 **Files you do not have yet:** [Blank-template-COPY.eprj2 and the prepared image](#8-start-the-helper-and-create-your-working-pcb-copy), and the [final Gerber ZIP](#11-find-and-check-your-finished-fabrication-zip), are generated later. Do not search for them inside the software download.
 
@@ -122,7 +122,7 @@ Test-Path .\tools\overlay\automate.py
 
 Keep this PowerShell window open. Run the remaining commands there, not in EasyEDA or its file picker.
 
-## 6. Prepare Python and create the extension installer
+## 6. Prepare Python and locate the included installer
 
 Run each command separately. Wait for it to finish before entering the next.
 
@@ -142,29 +142,17 @@ Next, install the image/PDF packages listed in `requirements.txt`:
 
 `requirements.txt` is the supplied list of package versions. Wait for installation to finish without errors.
 
-Finally, build the EasyEDA extension installer:
+**The extension installer is already built. You do not need another command.** In File Explorer, open the repository folder, then **tools > overlay > easyeda**. The file is **[Brooklyn-Overlay-Builder.eext](easyeda/Brooklyn-Overlay-Builder.eext)**. You will select it in EasyEDA in the next step.
 
-```powershell
-.\.venv-overlay\Scripts\python tools/overlay/build_extension.py --output Brooklyn-Overlay-Builder.eext
-```
+You can also [download the installer directly](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/tools/overlay/easyeda/Brooklyn-Overlay-Builder.eext). Downloading it separately is unnecessary if you extracted the latest software ZIP.
 
-**Expected result:** `Installer created:` followed by its full path. The installer is beside `README.md` in the repository folder, not inside `tools/overlay`.
-
-For example, if you extracted directly to Downloads, its path might be:
-
-```text
-C:\Users\YOUR_WINDOWS_NAME\Downloads\BrooklynSubway-main\Brooklyn-Overlay-Builder.eext
-```
-
-`YOUR_WINDOWS_NAME` is an example placeholder. **Use the actual full path printed by your command.** A nested extraction folder will produce a longer path. No map or copied PCB has been created by this step.
-
-If the installer filename already exists, the command refuses to overwrite it. Use a new name with `--output`, then import that newly generated file in step 7.
+**Expected result:** the Python package installation finished without errors, and the included installer is visible. No map or copied PCB has been created yet.
 
 ## 7. Install the extension in EasyEDA Pro
 
 1. In EasyEDA, choose **Advanced > Extensions Manager**.
 2. Click **Import** at the bottom left.
-3. Select the `.eext` file whose full path was printed in step 6. Accept replacement if you are updating an existing installation.
+3. Select `Brooklyn-Overlay-Builder.eext` inside the repository folder under **tools > overlay > easyeda**. Accept replacement if you are updating an existing installation.
 4. Select the **Installed** tab.
 5. Click the **Brooklyn Overlay Builder** name in the left list. Its details should appear on the right.
 6. Verify the version is **0.1.3 or newer**. In the tested version it appears on a version button near the top of the details.
@@ -244,8 +232,8 @@ Keep the installed extension and Python environment. Repeat steps 8-11 with a ne
 ## Troubleshooting
 
 - **No `Blank-template-COPY.eprj2`:** step 8 has not finished successfully. The file is not included in the downloaded software ZIP.
-- **Cannot find the extension installer:** use the absolute path printed in step 6. It is created beside `README.md`.
-- **Extensions Manager closes when selecting the extension:** rebuild/import a current package. Versions before 0.1.2 omitted metadata required by EasyEDA 3.2's details panel.
+- **Cannot find the extension installer:** open **tools > overlay > easyeda** inside the extracted repository folder, or use the direct installer download in step 6.
+- **Extensions Manager closes when selecting the extension:** download/import a current package. Versions before 0.1.2 omitted metadata required by EasyEDA 3.2's details panel.
 - **External interaction permission error:** Advanced > Extensions Manager > Installed > Brooklyn Overlay Builder > Config > Allow interactive with external.
 - **No Overlay Builder menu:** activate the PCB drawing and look under **Advanced**. Check that the extension is Enabled.
 - **Nothing happens:** inspect EasyEDA's bottom **Log** tab for `[Overlay Builder]` entries. Check the version printed there, not just the installer filename. Versions 0.1.1 and newer show failures in a dialog and Log.
