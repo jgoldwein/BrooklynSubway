@@ -49,7 +49,7 @@ def main(argv=None):
     if missing:
         print('BUILD CANNOT START: this download is missing the required PCB template pair.', flush=True)
         for path in missing: print('  Missing:', path, flush=True)
-        print('The public clean template pair is still being prepared. A README is not a substitute.\nDo not use the historical art-free manufacturing ZIP as the builder baseline.', flush=True)
+        print('Download and extract the latest complete software ZIP; it includes this matching pair. A README is not a substitute.\nDo not use the historical art-free manufacturing ZIP as the builder baseline.', flush=True)
         return 1
     if args.bootstrap:
         environment = ROOT/'.venv-overlay'

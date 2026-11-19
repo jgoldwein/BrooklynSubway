@@ -60,7 +60,7 @@
     "geometry": "Same 14 held-out feature positions as the September reference; same crop and placement.",
     "pixelComparison": "1776 pixels differ by more than 10 channel values out of 4043x3517; difference confined near the bottom Coney Island annotation.",
     "annotationChange": "The September yellow warning triangle is absent in the October edition.",
-    "liveExportTested": false,
+    "liveExportTested": true,
     "note": "Image geometry review does not establish station-by-station PCB alignment or manufacturing approval."
   }
 }

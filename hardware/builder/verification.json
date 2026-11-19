@@ -1,0 +1,28 @@
+{
+  "schema": 1,
+  "testedEditor": "EasyEDA Pro 3.2.149",
+  "testedExtension": "0.1.3",
+  "files": {
+    "inputs/Blank_Map.eprj2": "92d07863bebb3c77c482e61ef6de7a710620a5d39052a7011b795e213a49b054",
+    "inputs/Blank_Gerbers.zip": "1ecfffce0650c60e80128d8b3d7f9e13391e328c714fade02e65cace39f74e62"
+  },
+  "schematicPagesRetained": 11,
+  "pcbCount": 1,
+  "removedGraphicObjects": 7,
+  "removedEmbeddedImageResources": 3,
+  "genericAccountHeaders": 551,
+  "nativeCredentialFieldsCleared": true,
+  "nativeDesignTablesPreserved": true,
+  "nativeImportAndReopenVerified": true,
+  "matchingBaselineCapturedByNativeAPI": true,
+  "liveOctoberOverlayExportPassed": true,
+  "allOutputNonColorPayloadsByteIdenticalToBaseline": true,
+  "userMtaPdfIncluded": false,
+  "manufacturingApproval": false,
+  "note": "Builder working revision, not the archived October 9 manufacturing authority. Copyright attribution, fixed setup SSID and restored front setup QR remain. Other removed PCB graphics and serial personalization are absent.",
+  "strictBundledPairLiveTestPassed": true,
+  "launcherLiveTestPassed": true,
+  "liveTestPdfEdition": "October 27, 2026",
+  "schematicImageResourcesRetained": 3,
+  "frontSetupQrRestored": true
+}

@@ -29,4 +29,6 @@ dist/
 # Overlay users supply their own project, baseline and licensed artwork.
 /inputs/*
 !/inputs/README.md
+!/inputs/Blank_Map.eprj2
+!/inputs/Blank_Gerbers.zip
 /builds/

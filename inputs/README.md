@@ -1,22 +1,19 @@
-# Overlay build inputs
+# Included overlay build inputs
 
-This folder is included in the repository download. Put copies of these three
-files here before running the overlay builder:
+These files already come in the latest repository ZIP. **Do not copy or rename them.**
 
-1. **Blank_Map.eprj2** - the editable, map-less EasyEDA Pro project.
-2. **Blank_Gerbers.zip** - the matching blank fabrication ZIP exported from that
-   same project. Keep it compressed.
-3. **Source_Map.pdf** - your locally obtained, reviewed MTA map PDF matching the
-   supplied crop recipe.
+- **[Blank_Map.eprj2](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/inputs/Blank_Map.eprj2):** clean native EasyEDA PCB project, with all 11 schematic pages and libraries retained.
+- **[Blank_Gerbers.zip](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/inputs/Blank_Gerbers.zip):** its verified matching map-less fabrication baseline. Keep it compressed.
 
-These filenames are used by the commands in the
-[step-by-step guide](../tools/overlay/AUTOMATION.md#4-put-copies-of-your-inputs-in-one-place).
-Renaming files does not make mismatched contents compatible.
+The links above download the actual files if you need them individually. Normal
+users should download the whole software ZIP so the folder layout is already correct.
+See [template details and verification](../hardware/builder/README.md).
 
-The public blank builder pair is still being prepared. This folder does not
-include an editable PCB project, a blank Gerber baseline or MTA artwork.
-See the [input requirements](../tools/overlay/AUTOMATION.md#1-check-that-you-have-the-three-build-inputs).
+**You supply only the MTA map PDF.** Double-click `Start_Overlay.cmd` in the
+repository folder, then choose your downloaded PDF in its file picker. You do not
+need to rename the PDF or put it here. The optional manual command instead expects
+`inputs/Source_Map.pdf`; user PDFs remain ignored by Git and are not redistributed.
 
-Your input copies stay local and are ignored by Git. Keep originals elsewhere.
-
-For the simplest route, double-click `Start_Overlay.cmd` in the repository folder. It checks for the PCB/Gerber pair before doing any setup, then lets you choose the PDF without renaming or copying it here. The `Source_Map.pdf` filename is only needed by the optional manual command.
+Follow the [simple Windows workflow](../tools/overlay/AUTOMATION.md#simplest-windows-route).
+Keep supplied originals unchanged; the helper creates a separate project copy
+for each build. Edited/custom templates need a new matching baseline.
