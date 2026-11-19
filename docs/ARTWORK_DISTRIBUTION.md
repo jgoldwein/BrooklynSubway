@@ -35,6 +35,13 @@ in current public downloads. The existing manufactured-authority project is unch
 
 ## Earlier copies
 
-This change does not rewrite Git history. Earlier commits, tags, forks, clones
-and previously downloaded ZIPs may still contain the removed artwork. A November 19, 2026 audit checked all 74 published releases and 294 asset names; none indicated Gerbers, overlay artwork or editable PCB projects. Release source ZIPs and tags still expose their historical Git contents.
-Any history rewrite or removal of published release assets needs a separate decision.
+On November 19, 2026, the identified artwork paths and historical silkscreen SVG
+content were also removed from all published branch/tag histories. All 120
+branch/tag names were retained. Photos, videos and firmware release assets were
+preserved. A private pre-cleanup backup remains with the developer.
+
+An audit checked all 74 published releases and 294 asset names; none indicated
+Gerbers, overlay artwork or editable PCB projects. Release source archives now
+follow the rewritten tags. Existing clones, forks, previously downloaded ZIPs,
+old commit URLs and hosting caches can still retain earlier material; rewriting
+the published refs cannot recall external copies or guarantee removal from caches.

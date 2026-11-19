@@ -29,7 +29,7 @@ web page. **Send report to The Developer** (or your saved support name) opens an
 
 [Watch the 15-second video in your browser](https://jgoldwein.github.io/BrooklynSubway/#video)
 
-The photo shows the actual working map, conventionally cropped and adjusted.
+Photo of the working Brooklyn Subway project. The displayed map artwork is © Metropolitan Transportation Authority (MTA); this independent project is not affiliated with or endorsed by the MTA. See the [MTA licensing program](https://www.mta.info/doing-business-with-us/licensing-program) for information about using MTA artwork.
 
 Brooklyn Subway is a connected, light-up map that brings Brooklyn's subway
 trains to your wall. It uses [official MTA train reports](https://api.mta.info/#/subwayRealTimeFeeds) to show where trains
