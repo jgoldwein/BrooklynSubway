@@ -2,7 +2,7 @@
 
 This is a **host-side artwork preparation tool**, not firmware. It never edits an EasyEDA project, the submitted Gerber archive, copper, holes or routing. It can prepare a registered image and package a new archive **after EasyEDA Pro generates the color fabrication files**.
 
-**Current status:** a PDF crop recipe has now been recovered for the preserved September 2026 edition, with explicit placement from the owner's visually checked replacement image. It remains **DRAFT** until the generated PDF-derived image is reviewed on the board. The source working project differs electrically from the manufactured Gerbers. The original fabrication archive remains the electrical baseline. No order-ready replacement archive or manufacturing approval is supplied.
+**Current status:** a PDF crop recipe has now been recovered for the preserved September 2026 edition, with explicit placement from the owner's visually checked replacement image. The owner has now visually confirmed the generated PDF-derived image in the board preview. The recipe remains **DRAFT** for manufacturing: the final export and alignment against the original manufactured board still require review. The source working project differs electrically from the manufactured Gerbers. The original fabrication archive remains the electrical baseline. No order-ready replacement archive or manufacturing approval is supplied.
 
 ## What has been established
 
@@ -51,7 +51,7 @@ python tools/overlay/overlay.py prepare-pdf "YOUR_MATCHING_ORIGINAL_MAP.pdf" --r
 This one command produces `prepared-map.png`, `placement.json`, `EASYEDA_IMPORT.md` and a hash manifest. Default output is 300 DPI, 4043 by 3517 pixels. No Gerber or source project is modified.
 
 1. Open a separate copy of the blank-map EasyEDA project. Preserve its QR code, dedication and custom labels.
-2. Place the generated PNG with original quality selected on **Top Silkscreen Layer**.
+2. Place the generated PNG with original quality selected on **Top Silkscreen Layer**. Click once to place it temporarily, then select it and enter the numeric properties below. The PNG contains artwork and DPI, not EasyEDA board coordinates; it cannot position itself on the PCB.
 3. Enter both dimensions: **342.310 mm wide, 297.810 mm high**. The independent horizontal/vertical scaling deliberately reproduces the owner-checked fit; do not force the PDF's original aspect ratio.
 4. Enter **Start X 0.000 mm, Start Y 297.810 mm, rotation 0, mirror No**. These are EasyEDA image-property values, not a proven generic Gerber origin conversion.
 5. Inspect top, center, bottom and far-edge LED/station alignment and the custom labels in the color preview. Export colorful fabrication files only after that check.
