@@ -10,6 +10,10 @@ This helper automates image preparation, numerical placement, color fabrication 
 
 ### 1. Download and prepare
 
+**Install EasyEDA Pro on your computer before continuing.** This workflow requires the **EasyEDA Pro desktop application**, not EasyEDA Standard. Download the installer for your operating system from the [official EasyEDA Download Center](https://easyeda.com/page/download), choose **EasyEDA Pro Edition**, run the installer, and open the application to complete its first-run setup.
+
+The illustrated menu paths and successful test use **EasyEDA Pro 3.2.149**. If you need that exact tested version, use EasyEDA's [official older-client downloads](https://prodocs.easyeda.com/en/faq/client-version/). Newer versions may have different menus and have not yet been validated with this builder. If EasyEDA Pro is already installed, you do not need to reinstall it to follow this guide.
+
 **[Download the project ZIP directly](https://github.com/jgoldwein/BrooklynSubway/archive/refs/heads/main.zip).** You do not need to find GitHub's Code menu. To browse just these tools, open the [overlay code directory](https://github.com/jgoldwein/BrooklynSubway/tree/main/tools/overlay).
 
 In Windows File Explorer, right-click the downloaded ZIP, choose **Extract All**, and extract it to your Downloads folder. Open the extracted `BrooklynSubway-main` folder: it should contain both `README.md` and `tools`. If you see another folder with the same name instead, open that inner folder.

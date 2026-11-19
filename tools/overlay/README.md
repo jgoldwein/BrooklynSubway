@@ -22,6 +22,8 @@ Submitted archive SHA-256:
 
 ## Install
 
+For PCB image placement and colorful fabrication export, install the **EasyEDA Pro desktop application** from the [official download page](https://easyeda.com/page/download). Choose **EasyEDA Pro Edition**, not EasyEDA Standard. The automated extension workflow was tested with Pro 3.2.149; see the [installation guide](AUTOMATION.md) for version notes and the complete setup sequence.
+
 Use Python 3.12 or newer (tested with Python 3.13) from the repository root. Windows PowerShell example:
 
 ```powershell
