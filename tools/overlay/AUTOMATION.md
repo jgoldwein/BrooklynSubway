@@ -32,6 +32,8 @@ The detailed file explanations below remain useful. The longer manual route is o
 
 The command window separates setup, **SETUP COMPLETE - BUILD YOUR MAP**, and **BUILD COMPLETE - READY TO PREVIEW** with divider lines. The URL and file paths appear on their own lines for copying. During automatic project opening, EasyEDA's background messages are directed to **EasyEDA-launch.log** in the dated build folder, rather than mixed into the instructions. If EasyEDA was already running from an older console, it may continue writing to that older console.
 
+The CMD launcher leaves its command window open after success or failure, until you close it with **X** or type **exit**. It saves the launcher output, including installation errors and Python tracebacks, to **Overlay-launch.log** beside **Start_Overlay.cmd**. This is separate from EasyEDA's background log. If setup stops before the checklist appears, read or send **Overlay-launch.log**; it records the last completed step and any reported error. If Python itself cannot start, the command window remains open with the Python installation instructions.
+
 On success, the final block identifies the root upload ZIP and repeats **White / ENIG / EasyEDA multi-color silkscreen**. **Latest-overlay-build.txt**, beside the launcher, keeps those instructions, the dated original's path and the upload ZIP checksum. You do not have to search the build subfolders to locate the upload file. Existing logs and dated results remain available for troubleshooting.
 
 The November 19 fresh walkthrough confirmed the workflow through JLCPCB's full-color preview. The clearer console presentation and root-copy convenience are subsequent improvements; they do not change the artwork placement or fabrication settings. This guide covers the tested Windows/EasyEDA version, not every possible installation or future PDF edition.
@@ -304,6 +306,7 @@ Keep the installed extension and Python environment. Repeat steps 8-11 with a ne
 ## Troubleshooting
 
 - **No `Blank-template-COPY.eprj2`:** step 8 has not finished successfully. The file is not included in the downloaded software ZIP.
+- **Launcher stopped before the setup checklist:** leave its command window open and inspect **Overlay-launch.log** in the root folder. Do not assume the PDF, project opening or extension setup succeeded. Use the last error to identify the failed step. Older launchers that closed unexpectedly should be replaced by the latest package.
 - **Cannot find the extension installer:** look beside **Start_Overlay.cmd** in the root of the extracted repository folder, or use the direct installer download in step 6.
 - **Extensions Manager closes when selecting the extension:** download/import a current package. Versions before 0.1.2 omitted metadata required by EasyEDA 3.2's details panel.
 - **External interaction permission error / Config not available:** first close Extensions Manager and open the PCB drawing (Project Design > Brooklyn MTA Active Map PCB). With the drawing visible, return to Advanced > Extensions Manager > Installed > Brooklyn Overlay Builder > Config > Allow interactive with external.

@@ -34,4 +34,5 @@ dist/
 /builds/
 /Gerbers-with-prepared-artwork.zip
 /Latest-overlay-build.txt
+/Overlay-launch.log
 /.overlay-result-*.tmp
