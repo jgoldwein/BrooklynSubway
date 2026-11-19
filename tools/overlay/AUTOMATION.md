@@ -6,6 +6,8 @@ This helper automates image preparation, numerical placement, color fabrication 
 
 **Status: experimental.** Python and simulated editor tests pass. A complete export inside a real EasyEDA session has not yet been verified.
 
+**Follow the numbered sections in order.** Installing the extension does not create the PCB copy. The Python helper creates it in step 4. Do not open **Build map** or search for `Blank-template-COPY.eprj2` until step 4 prints **Prepared the map** and **Open:**.
+
 ### 1. Download and prepare
 
 **[Download the project ZIP directly](https://github.com/jgoldwein/BrooklynSubway/archive/refs/heads/main.zip).** You do not need to find GitHub's Code menu. To browse just these tools, open the [overlay code directory](https://github.com/jgoldwein/BrooklynSubway/tree/main/tools/overlay).
@@ -33,7 +35,7 @@ It is in the **project's top folder**, beside `README.md`, not inside `tools/ove
 1. Open **EasyEDA Pro > Advanced > Extension Manager**.
 2. Choose **Import**, browse to the full path printed by the command above, and select `Brooklyn-Overlay-Builder.eext`.
 3. Follow the installation prompts. Allow **external interaction** for this extension so it can reach the local helper. You make this permission choice yourself; do not disable general security controls or enable unrelated permissions.
-4. Open a **PCB editor tab**. Look for **Overlay Builder > Build map**. The menu is not on the schematic or start page. Restart EasyEDA first if its installer requests it.
+4. Restart EasyEDA if its installer requests it. Leave EasyEDA at the Start Page for now. You will open the copied PCB and use **Overlay Builder > Build map** in step 4, after the helper has created it.
 
 Installation does not start a build or change a PCB. The helper below must be running before the menu can work.
 
@@ -41,19 +43,35 @@ Installation does not start a build or change a PCB. The helper below must be ru
 
 Keep a backup of your **map-less `.eprj2` project** and its **matching blank Gerber ZIP**. Both are required. A project with the old map still inserted is not blank.
 
+Before continuing, identify these three existing files:
+
+- **Project:** the editable map-less EasyEDA project, ending in `.eprj2`.
+- **Baseline:** the colorful Gerber export made from that same map-less project, ending in `.zip`.
+- **PDF:** the reviewed MTA source PDF matching the recipe, ending in `.pdf`.
+
+These inputs are not supplied by downloading the code ZIP. A Gerber ZIP cannot substitute for the editable EasyEDA project. If you do not have all three, stop here rather than searching for the generated output file.
+
 The included September recipe needs the preserved September 2026 PDF. The MTA URL may now serve a different edition. Use a reviewed local PDF matching the recipe until a recipe for the newer edition is available. The tool rejects a mismatched edition.
 
 ### 4. Build
 
-From the repository folder, substitute your actual file paths:
+**Run this in PowerShell, not in EasyEDA's file picker or Build map dialog.** Keep PowerShell in the extracted repository folder from step 1. In the command below, replace each example input path with the full path to its actual file. `C:\Maps` is an example, not a folder the tool creates:
 
 ```powershell
 .\.venv-overlay\Scripts\python tools/overlay/automate.py --project "C:\Maps\Blank_Map.eprj2" --baseline "C:\Maps\Blank_Gerbers.zip" --pdf "C:\Maps\Reviewed_Source_Map.pdf" --output "Map_Build_01"
 ```
 
-Leave PowerShell open. After preparing the image, it prints a copied-project path and a URL starting with `http://127.0.0.1:`. This means **your own computer**. The helper is now waiting for EasyEDA to connect.
+**Expected result:** PowerShell prints **Prepared the map. Original files are unchanged.**, then **Open:** followed by the complete path to `Blank-template-COPY.eprj2`, then a local job URL. If you see **ERROR** instead, stop and resolve that message. The copy is not ready merely because you downloaded or extracted the code.
 
-1. Open the generated **`Map_Build_01/Blank-template-COPY.eprj2`** in EasyEDA and activate its blank PCB tab, using the steps below.
+The `--output "Map_Build_01"` option creates a new folder under the folder where you ran the command. With the step 1 example location, the copied PCB is exactly:
+
+```text
+C:\Users\YOUR_WINDOWS_NAME\Downloads\BrooklynSubway-main\Map_Build_01\Blank-template-COPY.eprj2
+```
+
+Your actual location may differ. **Use the full path printed after `Open:`; do not guess it from this example.** Leave PowerShell open: the helper is waiting for EasyEDA. Its URL starts with `http://127.0.0.1:`, which means **your own computer**.
+
+1. In EasyEDA, choose **Open Project**. Paste the full path printed after **Open:** into the file picker's **File name** field and click **Open**. Activate its blank PCB tab using the steps below.
 2. Choose **Overlay Builder > Build map**.
 3. In the **Build subway map** dialog's empty field, paste the **entire URL** printed by PowerShell and click **Confirm**. Use this run's URL, not an older one.
 4. Wait for **COMPLETE** in PowerShell. The helper waits up to 20 minutes. An error or timeout is not completion.
