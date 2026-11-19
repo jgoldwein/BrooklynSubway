@@ -20,3 +20,8 @@ dist/
 
 # Isolated Python environment for artwork preparation
 /.venv-overlay/
+
+# User-provided/generated map artwork stays local, not in public source.
+/tools/virtual_map/artwork/brooklyn_subway_diagram.jpeg
+/tools/virtual_map/generated/Brooklyn Subway diagram.jpeg
+/tools/virtual_map/artwork/local-map.*

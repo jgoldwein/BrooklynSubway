@@ -3,7 +3,7 @@
 [Download the October 9, 2026 manufacturing exports](exports/2026-10-09/README.md):
 Gerber ZIP, BOM and pick-and-place spreadsheets, with checksums and revision notes.
 
-The files are archived unchanged. See the export notes for the checks performed
+The spreadsheets are archived unchanged; the Gerber is a clearly labeled art-free derivative. See the export notes for the checks performed
 and the distinction between an export date and a confirmed manufactured revision.
 
 [Download the 3D-print files](3d-print/README.md): eight frame pieces, two OLED-case pieces and the 11 mm rotary knob, individually or as one ZIP.
@@ -14,4 +14,4 @@ and the distinction between an export date and a confirmed manufactured revision
 
 ## Reproduce the map artwork
 
-The [overlay preparation tool](../tools/overlay/README.md) provides source hashing, crop/alignment, an offline landmark picker, LED previews and protected-layer verification/packaging. It uses an EasyEDA color export for final fabrication files. Exact source-map calibration remains pending; it does not supply an approved replacement artwork or manufacturing order.
+The [overlay preparation tool](../tools/overlay/README.md) provides source hashing, crop/alignment, an offline landmark picker, LED previews and protected-layer verification/packaging. It uses an EasyEDA color export for final fabrication files. A calibrated PDF workflow has completed one live export; visual/manufacturing approval remains separate. See the [artwork distribution notes](../docs/ARTWORK_DISTRIBUTION.md).

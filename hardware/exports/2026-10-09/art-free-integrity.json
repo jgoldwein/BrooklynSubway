@@ -1,0 +1,34 @@
+{
+  "schema": 1,
+  "sourceSha256": "90e487dd1cd208731659e0bb4dcc82b3d4df092b5b778cc3053aefc6b4ec29b6",
+  "outputSha256": "35dcfe6bbdf7ec37a2d613bda607a3a2e902c11a2718e8928143856530478dd4",
+  "removedColorMembers": [
+    "Fabrication_ColorfulBoardOutlineMark.FCBM",
+    "Fabrication_ColorfulTopSilkscreen.FCTS",
+    "Fabrication_ColorfulBottomSilkscreen.FCBS",
+    "Fabrication_ColorfulBoardOutlineLayer.FCBO"
+  ],
+  "clearedPrintedMembers": [
+    "Gerber_TopSilkscreenLayer.GTO",
+    "Gerber_BottomSilkscreenLayer.GBO",
+    "Gerber_DocumentLayer.GDL"
+  ],
+  "preservedMembers": [
+    "Gerber_TopLayer.GTL",
+    "Gerber_BottomLayer.GBL",
+    "Gerber_TopSolderMaskLayer.GTS",
+    "Gerber_BottomSolderMaskLayer.GBS",
+    "Gerber_TopPasteMaskLayer.GTP",
+    "Gerber_BottomPasteMaskLayer.GBP",
+    "Gerber_BoardOutlineLayer.GKO",
+    "Gerber_DrillDrawingLayer.GDD",
+    "Drill_PTH_Through.DRL",
+    "Drill_NPTH_Through.DRL",
+    "Drill_PTH_Through_Via.DRL",
+    "FlyingProbeTesting.json",
+    "How-to-order-PCB.txt"
+  ],
+  "protectedPayloadsByteIdentical": true,
+  "manufacturingApproval": false,
+  "note": "All printed labels are removed along with artwork. This is an art-free derivative, not a matching editable builder template or manufacturing approval."
+}

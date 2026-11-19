@@ -70,3 +70,7 @@ D/B bridge-route reversal; LED291 is the human-confirmed F segment rather than
 historical D; LED304 remains Botanic Garden -> Park Pl; LED285 is B / Grand
 St -> DeKalb Av; LED286 is D / Grand St -> Atlantic Av-Barclays Ctr; and LED287
 is A / Hoyt-Schermerhorn Sts -> Nostrand Av.
+
+## Public artwork distribution
+
+Historical map-based screenshots have been removed from the current branch. Mapping coordinates and textual decisions remain. See [artwork distribution notes](../../ARTWORK_DISTRIBUTION.md).

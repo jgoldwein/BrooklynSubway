@@ -17,7 +17,7 @@
 - **Want to print the frame, OLED case or knob?** Download the [3D-print STL files](hardware/3d-print/README.md), individually or as one ZIP.
 - **Adding subway map artwork to your PCB?** Follow the [overlay guide](tools/overlay/README.md) to download the map directly from the MTA and prepare it locally. The blank builder package does not include MTA map artwork. Users are responsible for obtaining any permissions required for their intended use.
   For the experimental automated workflow, follow [Overlay Builder installation and first build](tools/overlay/AUTOMATION.md).
-- **Interested in the electronics?** Download the [Gerbers, BOM and placement files](hardware/README.md).
+- **Interested in the electronics?** Download the [art-free Gerber derivative, BOM and placement files](hardware/README.md). Read the [artwork distribution notes](docs/ARTWORK_DISTRIBUTION.md) for what was removed and what remains in history.
 - **What changed?** Read the [changelog and release notes](CHANGELOG.md), directly on GitHub.
 - **Looking for upgraded firmware?** See the [latest signed release](https://github.com/jgoldwein/BrooklynSubway/releases/latest).
   For an already programmed map, use **Advanced > Firmware updates** on its web page.

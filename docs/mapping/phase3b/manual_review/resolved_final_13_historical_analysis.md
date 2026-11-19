@@ -135,11 +135,11 @@ These review images reuse existing accepted-artwork crops without resampling
 the map panels. Older marker/status overlays are identified in the crop
 footers where later human confirmations supersede them.
 
-- Cluster A1, LED187: [cluster_A_LED187_nassau.png](../manual_review/remaining_clusters/cluster_A_LED187_nassau.png)
-- Cluster A2, LED188: [cluster_A_LED188_york.png](../manual_review/remaining_clusters/cluster_A_LED188_york.png)
-- Cluster B, LEDs255-259: [cluster_B_LED255_LED259_lower_east_side.png](../manual_review/remaining_clusters/cluster_B_LED255_LED259_lower_east_side.png)
-- Cluster C, LEDs285-288: [cluster_C_LED285_LED288_bridge_downtown.png](../manual_review/remaining_clusters/cluster_C_LED285_LED288_bridge_downtown.png)
-- Cluster D, LEDs201-202: [cluster_D_LED201_LED202_eastern_brooklyn.png](../manual_review/remaining_clusters/cluster_D_LED201_LED202_eastern_brooklyn.png)
+- Cluster A1, LED187: [cluster_A_LED187_nassau.png](../../../ARTWORK_DISTRIBUTION.md)
+- Cluster A2, LED188: [cluster_A_LED188_york.png](../../../ARTWORK_DISTRIBUTION.md)
+- Cluster B, LEDs255-259: [cluster_B_LED255_LED259_lower_east_side.png](../../../ARTWORK_DISTRIBUTION.md)
+- Cluster C, LEDs285-288: [cluster_C_LED285_LED288_bridge_downtown.png](../../../ARTWORK_DISTRIBUTION.md)
+- Cluster D, LEDs201-202: [cluster_D_LED201_LED202_eastern_brooklyn.png](../../../ARTWORK_DISTRIBUTION.md)
 
 No firmware or manufacturing files were modified. No build, upload, commit,
 push, release, or tag action was performed.

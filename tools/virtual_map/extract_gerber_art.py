@@ -53,7 +53,7 @@ def inner(svg: str) -> str:
 
 
 def main() -> None:
-    zip_path = Path(sys.argv[1]) if len(sys.argv) > 1 else next(HERE.glob("Gerber_*.zip"))
+    zip_path = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "hardware/exports/2026-10-09/Gerbers_Art_Free.zip"
     leds = [(float(r["x"]), float(r["y"])) for r in csv.DictReader(open(LED_CSV, newline=""))]
     with tempfile.TemporaryDirectory() as tmp, zipfile.ZipFile(zip_path) as z:
         z.extractall(tmp)

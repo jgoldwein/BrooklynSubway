@@ -468,7 +468,8 @@ class Handler(BaseHTTPRequestHandler):
         elif request_path == "/map-image.jpg":
             art = HERE / "artwork" / "brooklyn_subway_diagram.jpeg"
             if not art.is_file():
-                self.respond(404, b"Not found\n", "text/plain; charset=utf-8")
+                placeholder = HERE / "artwork" / "map-unavailable.svg"
+                self.respond(200, placeholder.read_bytes(), "image/svg+xml")
                 return
             self.respond(200, art.read_bytes(), "image/jpeg")
             return

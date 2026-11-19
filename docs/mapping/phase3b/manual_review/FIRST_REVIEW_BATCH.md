@@ -1,6 +1,6 @@
 # Completed manual review batch: R Bay Ridge corridor
 
-Inspect [first_batch_R_bay_ridge.png](./first_batch_R_bay_ridge.png). It
+Inspect [first_batch_R_bay_ridge.png](../../../ARTWORK_DISTRIBUTION.md). It
 was the first human-review crop, containing 13 LEDs subsequently identified
 and promoted from the final V1.1 artwork. Its printed station names and route
 lanes were shown at native artwork resolution.
