@@ -38,6 +38,21 @@ class WorkflowTests(unittest.TestCase):
   result=o.archive(self.output/'result/Gerbers-with-prepared-artwork.zip')
   self.assertEqual(result['board.GTL'],o.archive(self.blank)['board.GTL']);self.assertEqual(result['map.FCTS'],b'map')
   self.assertEqual(self.job.state,'complete');self.assertRaises(ValueError,self.job.baseline_check,zipped())
+ def test_guided_setup_opens_project_before_confirmation_and_url_file(self):
+  events=[]
+  def confirm(project):
+   events.append('confirm')
+   self.assertFalse((self.output/'Build-map-URL.txt').exists())
+   self.job.state='complete'
+   return True
+  with mock.patch.object(a,'prepare_job',return_value=self.job), mock.patch.object(a,'open_project',side_effect=lambda p:events.append('open')), mock.patch.object(a,'confirm_extension_setup',side_effect=confirm):
+   self.assertEqual(a.main(['--project','fixture','--baseline','fixture','--output',str(self.output),'--open-project','--guided-setup']),0)
+  self.assertEqual(events,['open','confirm'])
+  self.assertIn(self.job.token,(self.output/'Build-map-URL.txt').read_text())
+ def test_cancelled_setup_does_not_offer_build_url(self):
+  with mock.patch.object(a,'prepare_job',return_value=self.job), mock.patch.object(a,'confirm_extension_setup',return_value=False):
+   self.assertEqual(a.main(['--project','fixture','--baseline','fixture','--output',str(self.output),'--guided-setup']),0)
+  self.assertFalse((self.output/'Build-map-URL.txt').exists())
  def test_wrong_template_and_changed_circuit_rejected(self):
   self.assertRaises(ValueError,self.job.baseline_check,zipped(copper=b'changed'))
   self.assertEqual(self.job.state,'waiting');self.assertFalse((self.output/'result').exists())

@@ -268,6 +268,38 @@ def open_project(project):
         return False
 
 
+def confirm_extension_setup(project):
+    """Wait for the operator; never change or approve the editor's permissions."""
+    import tkinter
+    from tkinter import messagebox
+    root = tkinter.Tk()
+    root.withdraw()
+    try:
+        root.attributes('-topmost', True)
+        return messagebox.askokcancel('Brooklyn Overlay Builder - configure EasyEDA first',
+            'Before clicking OK:\n\n'
+            '1. In EasyEDA Project Design, double-click Brooklyn MTA Active Map PCB. '
+            'The PCB drawing must be visible.\n\n'
+            '2. Advanced > Extensions Manager > Import: select '
+            'tools/overlay/easyeda/Brooklyn-Overlay-Builder.eext from the extracted package. '
+            'Skip importing if already installed.\n\n'
+            '3. Installed > Brooklyn Overlay Builder > Config: check '
+            'Allow interactive with external. Close Extensions Manager.\n\n'
+            'Return here and click OK only after the PCB is visible and the extension is configured. '
+            'The Build map URL will then be displayed. Cancel stops this build session.\n\n'
+            'Working copy: '+str(project.resolve()), parent=root)
+    finally:
+        root.destroy()
+
+
+def write_connection_instructions(output, url):
+    path = output / 'Build-map-URL.txt'
+    overlay.write_new(path, ('With the working PCB drawing visible and the extension configured:\n'
+        'Advanced > Overlay Builder > Build map\n\nPaste this entire URL:\n'+url+
+        '\n\nKeep the helper command window open. This URL expires when this build session ends.\n').encode('utf-8'))
+    return path
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project', required=True, help='Depersonalized blank EasyEDA .eprj2 template')
@@ -279,6 +311,7 @@ def main(argv=None):
     parser.add_argument('--timeout', type=int, default=1200)
     parser.add_argument('--easyeda-cli', help='Optional EasyEDA 4.1.60+ executable for unattended, hidden-window operation')
     parser.add_argument('--open-project', action='store_true', help='Open the generated working copy with its Windows file association')
+    parser.add_argument('--guided-setup', action='store_true', help='Wait for the user to finish PCB and extension setup before showing the job URL')
     args = parser.parse_args(argv)
     try:
         job = prepare_job(args)
@@ -288,10 +321,17 @@ def main(argv=None):
             print('Prepared the map. Original files are unchanged.', flush=True)
             print('Open:', (job.output / 'Blank-template-COPY.eprj2').resolve(), flush=True)
             print('One-time setup AFTER the PCB drawing is visible: import Brooklyn-Overlay-Builder.eext, then Config > Allow interactive with external.', flush=True)
-            print('In the blank PCB choose Advanced > Overlay Builder > Build map, then paste this local job URL:', flush=True)
-            print(url, flush=True)
             if args.open_project and not args.easyeda_cli:
                 open_project(job.output / 'Blank-template-COPY.eprj2')
+            if args.guided_setup and not args.easyeda_cli:
+                print('Finish PCB/extension setup, then click OK in the setup checklist. Waiting has no build timeout.', flush=True)
+                if not confirm_extension_setup(job.output / 'Blank-template-COPY.eprj2'):
+                    print('Cancelled before Build map. Original inputs are unchanged.', flush=True)
+                    return 0
+            connection_file = write_connection_instructions(job.output, url)
+            print('SETUP COMPLETE. In the PCB choose Advanced > Overlay Builder > Build map.', flush=True)
+            print('Paste this local job URL:\n'+url, flush=True)
+            print('If EasyEDA messages hide the URL, open:', connection_file.resolve(), flush=True)
             if args.easyeda_cli:
                 thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
                 try:
@@ -300,8 +340,12 @@ def main(argv=None):
                     server.shutdown();thread.join(timeout=5)
                 if job.state!='complete':raise ValueError('Editor returned without a verified Gerber result')
             until = time.monotonic() + args.timeout
+            remind_at = time.monotonic() + 5
             while job.state not in ('complete', 'failed') and time.monotonic() < until:
                 server.handle_request()
+                if job.state == 'waiting' and time.monotonic() >= remind_at:
+                    print('Waiting for Build map. Paste this URL: '+url, flush=True)
+                    remind_at = time.monotonic() + 60
             if job.state != 'complete':
                 raise ValueError(job.error or 'Timed out waiting for the EasyEDA extension')
             print('COMPLETE:', (job.output / 'result/Gerbers-with-prepared-artwork.zip').resolve())

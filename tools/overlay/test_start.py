@@ -44,6 +44,7 @@ class LauncherTests(unittest.TestCase):
             self.assertEqual(start.main(['--pdf', str(pdf)]), 0)
             args = call.call_args.args[0]
             self.assertIn('--open-project', args)
+            self.assertIn('--guided-setup', args)
             self.assertEqual(args[args.index('--pdf')+1], str(pdf.resolve()))
             self.assertEqual(args[args.index('--recipe')+1], str(recipe))
             self.assertIn(str(self.root/'builds'), args[-1])

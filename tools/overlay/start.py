@@ -105,11 +105,11 @@ def main(argv=None):
     pdf = Path(selection).resolve()
     recipe = recipe_for(pdf)
     print('Using calibrated recipe:', recipe.name, flush=True)
-    print('The generated working copy will open in EasyEDA automatically.\nThen select Advanced > Overlay Builder > Build map and paste THIS RUN\'S local URL.\nKeep this window open until COMPLETE.', flush=True)
+    print('The generated working copy will open in EasyEDA automatically.\nFinish the PCB/extension setup checklist before clicking OK; the Build map URL appears afterward.\nKeep this window open until COMPLETE.', flush=True)
     return subprocess.call([sys.executable, str(HERE/'automate.py'),
                             '--project', str(ROOT/'inputs/Blank_Map.eprj2'),
                             '--baseline', str(ROOT/'inputs/Blank_Gerbers.zip'),
-                            '--open-project', '--pdf', str(pdf), '--recipe', str(recipe), '--output', str(output)], cwd=ROOT)
+                            '--open-project', '--guided-setup', '--pdf', str(pdf), '--recipe', str(recipe), '--output', str(output)], cwd=ROOT)
 
 
 if __name__ == '__main__':
