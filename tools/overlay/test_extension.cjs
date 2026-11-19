@@ -1,6 +1,8 @@
-﻿// Copyright 2026 Joel W. Goldwein
+// Copyright 2026 Joel W. Goldwein
 // SPDX-License-Identifier: Apache-2.0
 const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const manifest=JSON.parse(fs.readFileSync(__dirname+'/easyeda/extension.json','utf8'));
+assert(Array.isArray(manifest.keywords),'EasyEDA 3.2 details panel requires keywords');
 const context={console};vm.runInNewContext(fs.readFileSync(__dirname+'/easyeda/index.js','utf8'),context);
 const api=context.edaEsbuildExportName;
 function mock(options={}) {
@@ -40,7 +42,7 @@ function mock(options={}) {
   showInputDialog:(...args)=>{confirm=args[6]},
   showInformationMessage:(...args)=>messages.push(args)
  }};
- api.run();assert(logs[0].includes('0.1.1'));confirm('');assert(messages[0][0].includes('No URL'));
+ api.run();assert(logs[0].includes('0.1.2'));confirm('');assert(messages[0][0].includes('No URL'));
  confirm('not a job URL');await new Promise(resolve=>setImmediate(resolve));
  assert(logs.some(text=>text.includes('Failed:')));assert(messages.some(args=>args[1]==='Overlay failed'));
  console.log('Extension checks PASS: unit/origin conversion, blank guard, baseline gate, placement, cleanup, failed export and local-only URL.');

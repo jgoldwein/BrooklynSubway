@@ -1,4 +1,4 @@
-﻿// Copyright 2026 Joel W. Goldwein
+// Copyright 2026 Joel W. Goldwein
 // SPDX-License-Identifier: Apache-2.0
 // EasyEDA's documented extension entry format (same IIFE global as its SDK).
 var edaEsbuildExportName = (() => {
@@ -67,7 +67,7 @@ var edaEsbuildExportName = (() => {
   function run() {
     const log = message => eda.sys_Log?.add('[Overlay Builder] ' + message);
     const notify = (message, title) => eda.sys_Dialog.showInformationMessage(message, title, 'OK');
-    log('Version 0.1.1: opened job URL dialog.');
+    log('Version 0.1.2: opened job URL dialog.');
     eda.sys_Dialog.showInputDialog('Paste the local job URL from the Python helper.',
       'Open Blank-template-COPY.eprj2 and activate its map-less PCB first.',
       'Build subway map', 'text', '', {}, value => {
