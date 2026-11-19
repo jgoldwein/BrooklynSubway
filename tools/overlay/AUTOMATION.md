@@ -1,0 +1,126 @@
+﻿# Automated overlay builder (experimental)
+
+This helper automates image preparation, numerical placement, color fabrication export and packaging. It uses EasyEDA's documented API to generate its own color files; it does not guess or rewrite the opaque FCTS/FCBS format. **Live EasyEDA compatibility is still being tested.** The API documentation marks some operations as beta. Outputs are review candidates, not automatic manufacturing approval.
+
+## Installation and first build
+
+**Status: experimental.** Python and simulated editor tests pass. A complete export inside a real EasyEDA session has not yet been verified.
+
+### 1. Download and prepare
+
+On the [repository home page](https://github.com/jgoldwein/BrooklynSubway), choose **Code > Download ZIP** and extract it. Open PowerShell in the extracted folder, where `README.md` and `tools` are visible. Install Python 3.12 or newer if needed, then run these commands one at a time:
+
+```powershell
+python -m venv .venv-overlay
+.\.venv-overlay\Scripts\python -m pip install -r tools/overlay/requirements.txt
+.\.venv-overlay\Scripts\python tools/overlay/build_extension.py --output Brooklyn-Overlay-Builder.eext
+```
+
+The last command creates the installer in this folder without downloading a map. If that filename exists, use a new output filename. No npm or EasyEDA SDK installation is needed.
+
+### 2. Install in EasyEDA once
+
+1. Open **EasyEDA Pro > Advanced > Extension Manager**.
+2. Choose **Import** and select the generated `Brooklyn-Overlay-Builder.eext`.
+3. Follow the installation prompts. Allow **external interaction** for this extension so it can reach the local helper. You make this permission choice yourself; do not disable general security controls or enable unrelated permissions.
+4. Open a **PCB editor tab**. Look for **Overlay Builder > Build map**. The menu is not on the schematic or start page. Restart EasyEDA first if its installer requests it.
+
+Installation does not start a build or change a PCB. The helper below must be running before the menu can work.
+
+### 3. Choose matching inputs
+
+Keep a backup of your **map-less `.eprj2` project** and its **matching blank Gerber ZIP**. Both are required. A project with the old map still inserted is not blank.
+
+The included September recipe needs the preserved September 2026 PDF. The MTA URL may now serve a different edition. Use a reviewed local PDF matching the recipe until a recipe for the newer edition is available. The tool rejects a mismatched edition.
+
+### 4. Build
+
+From the repository folder, substitute your actual file paths:
+
+```powershell
+.\.venv-overlay\Scripts\python tools/overlay/automate.py --project "C:\Maps\Blank_Map.eprj2" --baseline "C:\Maps\Blank_Gerbers.zip" --pdf "C:\Maps\Reviewed_Source_Map.pdf" --output "Map_Build_01"
+```
+
+Leave PowerShell open. It prints a copied-project path and a URL starting with `http://127.0.0.1:`. This means **your own computer**.
+
+1. Open the generated **`Map_Build_01/Blank-template-COPY.eprj2`** in EasyEDA and activate its blank PCB tab.
+2. Choose **Overlay Builder > Build map**.
+3. Paste the **entire URL** printed by PowerShell and confirm. Use this run's URL, not an older one.
+4. Wait for **COMPLETE** in PowerShell. The helper waits up to 20 minutes. An error or timeout is not completion.
+
+The intended process needs no manual image sizing, dragging or Gerber export. Omit `--pdf` to attempt downloading from the recipe URL; if the MTA server refuses, use the reviewed local file.
+
+### 5. Review
+
+Your output is **`Map_Build_01/result/Gerbers-with-prepared-artwork.zip`**, with an integrity report beside it. Preview it in a viewer supporting JLCPCB colorful silkscreen. Check LED/station alignment at the top, middle, bottom and far edges; check the labels, QR code and both sides for unwanted personal text. A successful script result is not manufacturing approval.
+
+### Troubleshooting
+
+- **Missing menu:** activate a PCB tab and check that the extension is installed and enabled in Extension Manager.
+- **Cannot reach helper:** keep PowerShell open, use the complete current job URL and check the extension's external-interaction permission. Keep the job URL private.
+- **Missing API:** the installed editor lacks a required operation. Use the [manual workflow](README.md#quick-path-prepare-the-recovered-brooklyn-crop) and report the error plus your EasyEDA version.
+- **Template mismatch:** choose the project copy matching your blank ZIP. Do not bypass the check.
+- **Map-size image already present:** start with a genuinely map-less source copy. The extension does not guess which existing graphic to delete.
+- **HTTP 403/hash mismatch:** the download was refused or the map edition changed. Use a reviewed matching PDF and recipe.
+- **Retry after an error:** choose a new output folder. Preserve the error and reports for troubleshooting.
+
+## What a user needs once
+
+- Python 3.12+ and the normal pinned `tools/overlay/requirements.txt` dependencies.
+- EasyEDA Pro with the required color-image and Gerber-export APIs. The extension targets 3.2.x; exact runtime support is checked before changing an image.
+- The matching blank EasyEDA **project** (.eprj2), in addition to the blank Gerber ZIP. The source project is needed so EasyEDA retains existing labels, QR codes and color graphics. The Gerber ZIP alone is not a reversible editable source document.
+- A reviewed crop recipe whose source PDF hash matches the edition being downloaded.
+
+The extension entry uses the documented `edaEsbuildExportName` IIFE format and `.eext` ZIP layout. No SDK/npm installation is needed by users. The local helper uses the Python standard library plus the existing crop dependencies. The extension has no third-party JavaScript dependencies.
+
+## One-command backend, EasyEDA 4.1.60+
+
+EasyEDA documents a command-line interface starting at 4.1.60. With a compatible executable, the helper can open a hidden session on a COPY of the project, select its single PCB, place the image, export and close only that session:
+
+```powershell
+python tools/overlay/automate.py --project "Blank_Map.eprj2" --baseline "Blank_Gerbers.zip" --output "Map_Build" --easyeda-cli "C:\Program Files\easyeda-pro\easyeda-pro.exe"
+```
+
+The helper refuses to invoke an older Windows GUI-only executable as a CLI. The owner's installed 3.2.149 is not CLI-capable; it uses the extension method below. The CLI adapter is simulated in tests and has not yet been exercised against a live 4.1.60+ installation.
+
+## Existing EasyEDA 3.2: local helper plus one extension action
+
+```powershell
+python tools/overlay/automate.py --project "Blank_Map.eprj2" --baseline "Blank_Gerbers.zip" --output "Map_Build"
+```
+
+This downloads the recipe's PDF, checks its hash, crops and sizes it, creates a project copy and an extension package, then prints a local job URL.
+
+One-time setup in EasyEDA: **Advanced > Extension Manager > Import** the generated `Brooklyn-Overlay-Builder.eext`. Enable its external-interaction permission so it can communicate with the helper on your own computer. Do not change your general application permissions.
+
+For each build:
+
+1. Open the generated `Blank-template-COPY.eprj2` and activate its map-less PCB.
+2. Choose **Overlay Builder > Build map** and paste the printed local job URL.
+3. Wait for `COMPLETE` in the helper terminal. The script prepares and places the image, exports color files and produces `result/Gerbers-with-prepared-artwork.zip` plus its integrity report. No manual cropping, sizing, dragging or export dialog is needed.
+
+The extension exports the active template first. If its non-color contents differ from the chosen blank Gerber, it stops before placing an image. A map-size image already in the template also stops the run. The extension converts millimeters to API mil units, then converts the canvas origin to the data origin explicitly. It temporarily creates only the new color image and removes that object after export, including on export failure. It never calls save on the source project.
+
+## Download failures and changed maps
+
+The MTA server can reject an automated download (HTTP 403 was observed on the development computer). A URL may also change to a newer map. These are explicit errors, not successful builds. For a reviewed, already downloaded source use:
+
+```powershell
+python tools/overlay/automate.py --project "Blank_Map.eprj2" --baseline "Blank_Gerbers.zip" --pdf "Reviewed_Source_Map.pdf" --output "Map_Build"
+```
+
+The local-file path still checks the recipe's hash. There is no switch to ignore map-edition mismatches. An unfamiliar edition needs calibration review. Use a new output folder when retrying a failed run; originals and prior results are never overwritten.
+
+## Preservation and limits
+
+- The helper binds only to 127.0.0.1 and requires an unpredictable per-run token. It serves only this job's prepared image and accepts only bounded exports, not arbitrary filesystem access.
+- The native project is copied. Open that copy, not your original. The helper does not replace original project/Gerber files or submit orders.
+- The result takes the four color-fabrication payloads from the generated export; every non-color payload comes byte-for-byte from the selected blank Gerber.
+- This preserves the **chosen blank's** circuitry. It does not turn the working-project circuit into the original manufactured circuit.
+- Review the resulting color preview. Native API availability, exporter behavior, input-template correctness, artwork rights and manufacturing acceptance remain separate from automated packaging.
+
+## Tests
+
+Run `python tools/overlay/test_overlay.py`, `python tools/overlay/test_automate.py` and `node tools/overlay/test_extension.cjs`. These cover crop provenance/geometry, protected-layer preservation, local-helper sequencing/token checks, source-template rejection, API unit/origin conversion, image count and cleanup, export failures and rejection of an old Windows executable as a CLI.
+
+Official API references: [color object creation](https://prodocs.easyeda.com/en/api/reference/pro-api.pcb_primitiveobject.create.html), [canvas/data origin conversion](https://prodocs.easyeda.com/en/api/reference/pro-api.pcb_document.convertcanvasorigintodataorigin.html), [color Gerber export](https://prodocs.easyeda.com/en/api/reference/pro-api.pcb_manufacturedata.getgerberfile.html), [command-line client](https://prodocs.easyeda.com/en/api/guide/cli.html), [extension packaging](https://prodocs.easyeda.com/en/api/guide/how-to-start.html).
