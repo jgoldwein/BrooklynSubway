@@ -60,5 +60,14 @@ int main(int argc,char **argv) {
  badge.nowCount=0;badge.soonCount=2;assert(!mainIndicator(badge,now));badge.nowCount=1;
  badge.available=false;assert(!mainIndicator(badge,now));badge.available=true;badge.enabled=false;assert(!mainIndicator(badge,now));
  badge.enabled=true;assert(!mainIndicator(badge,0));assert(!mainIndicator(badge,now-1));
+ state()=State{};auto active=feed(entity("notice","F18","F",now-1,now+100));
+ assert(decode(active.data,active.n,p=Preferences{},now,state().snapshot));state().attempted=true;
+ assert(observe(now,100));assert(state().noticeSequence==1 && state().noticeAtMs==100);assert(!observe(now,200));
+ state().lastFailed=true;assert(!observe(now,300));state().lastFailed=false;assert(!observe(now,400));
+ configure(Preferences{});assert(!observe(now,500)); // Saving unchanged choices does not re-arm it.
+ state().snapshot.items[0].start=now+10;assert(!observe(now,600));assert(observe(now+10,700));
+ Summary flash=summary(now+10);for(unsigned cycle=0;cycle<5;++cycle){assert(iconVisible(flash,700+cycle*1000));assert(!iconVisible(flash,700+cycle*1000+500));}
+ assert(iconVisible(flash,5700) && iconVisible(flash,6200));
+ flash.noticeAtMs=UINT32_MAX-250;assert(!iconVisible(flash,249));assert(iconVisible(flash,4749));
  puts("Station alerts: station/route matching, suffixes, current/upcoming/expiry, bounded cache, failure/stale/disabled, full-dataset and malformed protobuf PASS");
 }

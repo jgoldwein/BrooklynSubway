@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <Wire.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 
 FakeSerial Serial;
@@ -17,7 +18,7 @@ bool feedReadyMode = false;
 bool brightnessMode = false;
 bool knobMode=false,probePriority=false,eggMode=false,readyMode=false;
 uint32_t lastFeedbackMs=0;
-bool serviceMode=false;
+bool serviceMode=false,stationCueMode=false;
 bool settingsCueMode=false;uint32_t soundNow=0;
 uint32_t millis(){return soundNow;}
 bool upgradeCueMode=false;uint32_t upgradeCueMs=0;int upgradeNotes=0;
@@ -62,6 +63,7 @@ uint32_t ledcSetup(uint8_t channel, uint32_t hz, uint8_t resolution) {
   CHECK(channel == 7 && resolution == 8 && duty == 0);
   if(serviceMode){CHECK(hz==700 || hz==1000 || hz==1300);}
   else if(settingsCueMode){CHECK(hz==1200 || hz==1800 || hz==2000 || hz==800);}
+  else if(stationCueMode){CHECK(hz==900 || hz==1800);}
   else if(upgradeCueMode){CHECK(hz==(upgradeNotes?900u:1200u));++upgradeNotes;}
   else if(readyMode) {CHECK(hz==1000 || hz==1500 || hz==2000);}
   else if(eggMode) {CHECK(hz>=100 && hz<=4000);}
@@ -94,7 +96,7 @@ void ledcDetachPin(uint8_t pin) {
 }
 void delay(uint32_t ms) {
   if(upgradeCueMode){CHECK((ms==100 && duty==64)||(ms==120 && duty==0));upgradeCueMs+=ms;return;}
-  CHECK(!readyMode && !serviceMode);
+  CHECK(!readyMode && !serviceMode && !stationCueMode);
   CHECK(enable == LOW);
   if (brightnessMode) { CHECK((ms == 45 || ms == 120) && duty == 128);lastFeedbackMs=ms;
     if(probePriority) {const auto before=frequency;brooklyn::hardware::serviceKnobClick(100,true);brooklyn::hardware::setFeedIndicatorAllowed(true);CHECK(frequency==before && duty==128);}
@@ -124,7 +126,7 @@ void delay(uint32_t ms) {
 }
 void reset(bool muted, int failAt = -1) {
   brooklyn::hardware::serviceKnobClick(0,false);
-  settingsCueMode=serviceMode=false;soundNow=0;
+  settingsCueMode=serviceMode=stationCueMode=false;soundNow=0;
   knobMode=false;probePriority=false;readyMode=false;upgradeCueMode=false;upgradeCueMs=0;upgradeNotes=0;
   brightnessMode = false;
   cueMode = false;
@@ -349,5 +351,17 @@ int main() {
   CHECK(duty==0 && attachCalls==0);observeService(true,true,true);serviceKnobClick(60002,true);CHECK(attachCalls==0);
   reset(false);serviceMode=true;observeService(true,true,false);serviceKnobClick(0,true);observeService(false,true,false);serviceKnobClick(1,true);serviceKnobClick(60001,true);CHECK(attachCalls==0);
   puts("Service cue: exact descending/ascending three notes, 60s delay, no repeats, quiet cancellation, opt-out, PWM failure and sound telemetry PASS");
+  reset(false);stationCueMode=true;brooklyn::hardware::requestStationAlert();brooklyn::hardware::requestStationAlert();
+  serviceKnobClick(0,true);CHECK(frequency==900 && duty==128 && brooklyn::hardware::lastSound().sound==Sound::StationAlert);
+  serviceKnobClick(120,true);CHECK(duty==0);serviceKnobClick(190,true);CHECK(frequency==1800 && duty==128);
+  serviceKnobClick(310,true);serviceKnobClick(560,true);CHECK(frequency==900 && duty==128);
+  serviceKnobClick(680,true);serviceKnobClick(750,true);CHECK(frequency==1800 && duty==128);
+  serviceKnobClick(870,true);serviceKnobClick(1120,true);serviceKnobClick(5000,true);CHECK(attachCalls==4 && duty==0 && buzzer==LOW);
+  CHECK(strstr(brooklyn::hardware::soundMeaning(brooklyn::hardware::lastSound().sound),"two low-high warning pairs"));
+  reset(false);stationCueMode=true;brooklyn::hardware::requestStationAlert();brooklyn::hardware::setQuiet(true);serviceKnobClick(0,true);brooklyn::hardware::setQuiet(false);serviceKnobClick(1000,true);CHECK(attachCalls==0);
+  reset(false);stationCueMode=true;brooklyn::hardware::requestStationAlert();serviceKnobClick(0,true);serviceKnobClick(1,false);serviceKnobClick(1000,true);CHECK(duty==0 && attachCalls==1);
+  reset(false,0);stationCueMode=true;brooklyn::hardware::requestStationAlert();serviceKnobClick(0,true);serviceKnobClick(1000,true);CHECK(attachCalls==0 && duty==0);
+  puts("Station alert cue: exactly two low/high pairs, coalescing, quiet suppression, cancellation and PWM failure PASS");
+
   puts("Startup: U23 pulses, four rising notes plus descending pair, 2265 ms, 50%-duty PWM, DIM mute, failed-check silence, PWM failure cleanup, addressable outputs disabled PASS");
 }

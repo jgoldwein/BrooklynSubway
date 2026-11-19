@@ -242,6 +242,7 @@ uint32_t allowedWord = 1;
 #if defined(BROOKLYN_TARGET_PCB)
 uint32_t knobPending = 0,settingsPending=0,settingsAtMs=0;
 uint8_t settingsStep=0;bool knobSettings=false;
+uint32_t stationAlertPending=0;uint8_t alertStep=0;bool knobAlert=false;
 bool knobActive = false, knobGap = false;
 bool knobReady=false;
 uint32_t knobUntilMs = 0;
@@ -250,10 +251,10 @@ void stopKnobToneLocked(bool preserveSettings) {
     ledcWrite(7,0);ledcDetachPin(pins::BUZZER);digitalWrite(pins::BUZZER,LOW);
   }
   knobActive=knobGap=false;
-  knobReady=knobSettings=false;settingsStep=0;
+  knobReady=knobSettings=false;settingsStep=0;knobAlert=false;alertStep=0;
   knobService=false;serviceStep=0;serviceKind=servicePending=audio::ServiceEvent::None;
   readyNotes=0;readyToneBit=0;
-  if(!preserveSettings)__atomic_store_n(&settingsPending,0u,__ATOMIC_RELAXED);
+  if(!preserveSettings){__atomic_store_n(&settingsPending,0u,__ATOMIC_RELAXED);__atomic_store_n(&stationAlertPending,0u,__ATOMIC_RELAXED);}
   __atomic_store_n(&readyPending,0u,__ATOMIC_RELAXED);
   __atomic_store_n(&knobPending,0u,__ATOMIC_RELAXED);
 }
@@ -325,6 +326,13 @@ void requestSettingsSaved() {
   Serial.println("Settings saved: confirmation queued");
 #endif
 }
+void requestStationAlert() {
+#if defined(BROOKLYN_TARGET_PCB)
+  if(isQuiet() || startupMuted){Serial.println("Station alert warning: muted; no deferred cue");return;}
+  __atomic_store_n(&stationAlertPending,1u,__ATOMIC_RELEASE);
+  Serial.println("Station alert warning: queued, GPIO21 two 900/1800 Hz pairs");
+#endif
+}
 void enableStatusReadyCues() {
 #if defined(BROOKLYN_TARGET_PCB)
   __atomic_store_n(&statusCuesEnabled,1u,__ATOMIC_RELAXED);
@@ -379,11 +387,12 @@ void serviceKnobClick(uint32_t nowMs,bool allowed) {
   else if(knobActive) {
     if(static_cast<int32_t>(nowMs-knobUntilMs)>=0) {
       ledcWrite(7,0);ledcDetachPin(pins::BUZZER);digitalWrite(pins::BUZZER,LOW);
-      const uint32_t gap=knobService?80:knobSettings?50:knobReady?80:15;
+      const uint32_t gap=knobAlert?(alertStep%2?250:70):knobService?80:knobSettings?50:knobReady?80:15;
+      if(knobAlert){if(++alertStep==4)alertStep=0;}
       if(knobService){if(++serviceStep==3){serviceStep=0;serviceKind=audio::ServiceEvent::None;}}
       if(knobReady && readyNotes && --readyNotes==0)readyToneBit=0;
       if(knobSettings)settingsStep=settingsStep==1?2:0;
-      knobActive=knobReady=knobSettings=knobService=false;knobGap=true;knobUntilMs=nowMs+gap;
+      knobActive=knobReady=knobSettings=knobService=knobAlert=false;knobGap=true;knobUntilMs=nowMs+gap;
     }
   } else if(!knobGap || static_cast<int32_t>(nowMs-knobUntilMs)>=0) {
     knobGap=false;
@@ -398,6 +407,14 @@ void serviceKnobClick(uint32_t nowMs,bool allowed) {
         knobActive=knobSettings=true;knobUntilMs=nowMs+60;
         if(settingsStep==1)recordSound(Sound::Saved);
       } else {settingsStep=0;digitalWrite(pins::BUZZER,LOW);}
+    } else if(alertStep || __atomic_load_n(&stationAlertPending,__ATOMIC_ACQUIRE)) {
+      if(!alertStep)__atomic_store_n(&stationAlertPending,0u,__ATOMIC_RELAXED);
+      const uint16_t hz=alertStep%2?1800:900;
+      if(ledcSetup(7,hz,8)!=0) {
+        ledcWrite(7,0);ledcAttachPin(pins::BUZZER,7);ledcWrite(7,128);
+        knobActive=knobAlert=true;knobUntilMs=nowMs+120;
+        if(!alertStep)recordSound(Sound::StationAlert);
+      } else {alertStep=0;digitalWrite(pins::BUZZER,LOW);}
     } else if(serviceKind!=audio::ServiceEvent::None || servicePending!=audio::ServiceEvent::None) {
       if(serviceKind==audio::ServiceEvent::None){serviceKind=servicePending;servicePending=audio::ServiceEvent::None;serviceStep=0;}
       const uint16_t hz=serviceKind==audio::ServiceEvent::Lost?1300-serviceStep*300:700+serviceStep*300;

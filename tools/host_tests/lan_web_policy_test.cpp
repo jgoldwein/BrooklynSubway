@@ -1304,6 +1304,16 @@ int main() {
     CHECK(strcmp(brooklyn::web::loginTargetForRequest("/personalization/stations"),"personalization")==0);
     configure(Preferences{});
   }
+  {
+    auto status=sampleStatus();status.adminSessionActive=false;status.timeSynchronized=true;status.unixTime=1795090019;
+    brooklyn::config::ScreenPreferences p;p.quietEnabled=true;p.endMinute=480;status.screenPreferences=brooklyn::config::packScreenPreferences(p);status.quietHoursActive=true;
+    static char page[brooklyn::web::kStatusPageCapacity];char json[6144];
+    CHECK(brooklyn::web::renderHomePage(page,sizeof(page),status,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
+    CHECK(strstr(page,"id=\"quiet-hours\"><h2>Quiet hours and startup greeting</h2>"));
+    CHECK(strstr(page,"10:00 PM to 8:00 AM (New York time)") && strstr(page,"Edit quiet hours and greeting"));
+    CHECK(brooklyn::web::renderStatusJson(json,sizeof(json),status,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
+    CHECK(strstr(json,"\"quietHoursEndMinute\":480") && strstr(json,"\"quietLocalMinute\":426"));
+  }
   testPersistentConfiguration();
   testDnsConfigurationAndValidation();
   testDnsSettingsFormParsing();

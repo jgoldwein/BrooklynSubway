@@ -5,7 +5,7 @@
 #include "led_types.h"
 
 namespace brooklyn::hardware {
-enum class Sound : uint8_t {None,Startup,System,Network,Feed,Saved,Upgrade,Setup,Knob,Brightness,Diagnostic,Extra,Lost,Restored};
+enum class Sound : uint8_t {None,Startup,System,Network,Feed,Saved,Upgrade,Setup,Knob,Brightness,Diagnostic,Extra,Lost,Restored,StationAlert};
 struct SoundStatus {Sound sound=Sound::None;uint8_t detail=0;uint32_t atMs=0;uint32_t sequence=0;};
 SoundStatus lastSound();
 inline const char *soundMeaning(Sound sound) {
@@ -22,6 +22,7 @@ inline const char *soundMeaning(Sound sound) {
     case Sound::Diagnostic:return "Channel test: beep count identifies channel";
     case Sound::Extra:return "Secret extra sound";
     case Sound::Lost:return "Service lost: three descending notes";
+    case Sound::StationAlert:return "Station alert: two low-high warning pairs";
     case Sound::Restored:return "Service restored: three rising notes";
     default:return "No sound recorded this boot";
   }
@@ -48,6 +49,8 @@ void signalUpgradeStarting();
 void requestKnobClick();
 // Successful persistence only; coalesced, nonblocking two-note confirmation.
 void requestSettingsSaved();
+// A new active station notice; two quiet-aware low/high warning pairs, nonblocking.
+void requestStationAlert();
 void serviceKnobClick(uint32_t nowMs, bool allowed);
 void setQuiet(bool quiet,uint8_t mapBrightness=255);
 // Manual easter-egg tone; zero stops. Shared timer/quiet policy, no delay.

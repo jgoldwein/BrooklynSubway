@@ -360,6 +360,10 @@ void publishOledScreenData(uint32_t nowMs) {
   published = true; lastAtMs = nowMs;
   brooklyn::oled::ScreenData data;
   data.sampledAtMs = nowMs;
+  if(brooklyn::alerts::observe(static_cast<uint32_t>(time(nullptr)),nowMs)) {
+    Serial.println("Station alerts: new active notice; five icon flashes and two warning pairs requested");
+    brooklyn::hardware::requestStationAlert();
+  }
   data.sound=brooklyn::hardware::lastSound();
   data.unixTime=static_cast<uint32_t>(time(nullptr));
   data.weather=networkService.weatherStatus();

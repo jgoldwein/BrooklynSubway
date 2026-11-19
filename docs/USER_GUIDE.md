@@ -471,6 +471,13 @@ The map checks about every five minutes after train polling. The page shows the 
 
 ### Main-screen alert indicator
 
-On OLED screen 1/9, a steady **! Alert: see page 8** appears in the title when fresh alert data contains a notice active now for your chosen stations or enabled line-wide notices. The alert prompt replaces the map title while it is present; train/light counts and the clock keep their usual places. Turn the knob to **Station alerts (8/9)** or open **Advanced > Station alerts** to read the notice.
+On OLED screen 1/9, a triangle and **!-see pg 8** appear in the title when fresh alert data contains a notice active now for your chosen stations or enabled line-wide notices. The alert prompt replaces the map title while it is present; train/light counts and the clock keep their usual places. Turn the knob to **Station alerts (8/9)** or open **Advanced > Station alerts** to read the notice.
 
 Upcoming notices do not trigger the main-screen indicator. It clears when no matching notice is active, alerts are disabled, or the alert check is unavailable/too old to confirm the notice. No indicator is not a guarantee of normal service. It means a current matching notice, not a classification of severity. There is no flashing, new sound, change to train-light colors or wake-up of a display you turned off.
+
+
+### Finding quiet hours and new alert cues
+
+Open **Screen > Quiet hours and startup greeting**. This has its own card, showing the saved schedule in New York time and whether quiet hours are active. Choose **Edit quiet hours and greeting** to change it; signing in may be required.
+
+For a newly active matching station notice, the main screen triangle flashes five times, then stays visible. The text stays steady. Two low-high warning pairs play once for each newly detected notice window. Quiet hours and startup sound muting suppress them, with no catch-up sound afterward. Turn to screen 8 for details. This does not change the map-light colors or wake a screen you turned off.

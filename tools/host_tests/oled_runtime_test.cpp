@@ -12,7 +12,7 @@ FakeSerial Serial; FakeWire Wire;
 uint32_t fakeNowMs=120000;
 uint32_t millis() { return fakeNowMs; }
 char lastScreenTitle[24]{};
-int mainAlertDraws=0;
+int mainAlertDraws=0,mainWarningIcons=0;
 int soundBadgeDraws=0,lastSoundBadgeX=0,mainClockDraws=0;
 char lastSoundBadgeLabel[24]{};
 int borderDraws=0,upgradeDraws=0,powerWarnings=0,completeDraws=0,failedDraws=0;
@@ -46,6 +46,7 @@ void delay(uint32_t ms){OLED_CHECK(ms==100);++retryDelays;}
 void vTaskDelete(void *) {++deletes;}
 void vTaskDelay(uint32_t ms) {
  OLED_CHECK(ms==20);++delays;fakeNowMs+=(scenario==19 || scenario==39)?1000:20;
+ if((scenario==84 || scenario==85) && delays<=12){fakeNowMs+=480;return;}
  if(scenario==83 && delays==1) {
    brooklyn::oled::ScreenData d;d.alerts.enabled=d.alerts.available=true;d.alerts.checkedUnix=1768498496;
    brooklyn::oled::publishScreenData(d);return;
@@ -233,9 +234,11 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
      for(auto kind:ignored){d.sound.sound=kind;OLED_CHECK(!soundBadge(d.sound,fakeNowMs).label);}
    }
  }
- if(scenario>=76 && scenario<=83) {
+ if(scenario>=76 && scenario<=85) {
+   if(scenario==85)fakeNowMs=UINT32_MAX-499;
    using namespace brooklyn::oled;ScreenData d;d.alerts.enabled=d.alerts.available=true;
    d.alerts.nowCount=1;d.alerts.checkedUnix=1768498496;
+   if(scenario>=84){d.alerts.noticeSequence=1;d.alerts.noticeAtMs=fakeNowMs;}
    if(scenario==77){d.alerts.nowCount=0;d.alerts.soonCount=1;}
    if(scenario==78)d.alerts.available=false;
    if(scenario==79)d.alerts.enabled=false;
@@ -323,5 +326,6 @@ int main(int argc,char **argv){OLED_CHECK(argc==2);scenario=atoi(argv[1]);
  if(scenario>=77 && scenario<=81)OLED_CHECK(mainAlertDraws==0);
  if(scenario==82)OLED_CHECK(soundBadgeDraws==2);
  if(scenario==83)OLED_CHECK(mainAlertDraws==2 && mainClockDraws==3 && frames==3);
+ if(scenario==84 || scenario==85)OLED_CHECK(mainAlertDraws==13 && mainWarningIcons==8 && mainClockDraws==13);
  printf("OLED runtime scenario %d PASS\n",scenario);
 }

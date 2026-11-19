@@ -1,6 +1,7 @@
 #include "personalization.h"
 #include "oled_clock.h"
 #include "oled_sound_badge.h"
+#include "oled_alert_badge.h"
 #if defined(BROOKLYN_TARGET_PCB)
 #include "board_pins.h"
 #include <Arduino.h>
@@ -164,8 +165,14 @@ void draw(const char *clock) {
   alerts::Summary alertStatus;
   portENTER_CRITICAL(&screenDataMux);alertStatus=screenData.alerts;portEXIT_CRITICAL(&screenDataMux);
   const bool showAlert=alerts::mainIndicator(alertStatus,static_cast<uint32_t>(time(nullptr)));
-  snprintf(mainTitle,sizeof(mainTitle),showAlert?"! Alert: see page 8":"%.17s 1/9",identity.title);
-  screen.drawStr((128-screen.getStrWidth(mainTitle))/2,16,mainTitle);
+  if(showAlert) {
+    const int x=(128-15-screen.getStrWidth(kAlertPrompt))/2;
+    if(alerts::iconVisible(alertStatus,millis()))screen.drawXBMP(x,5,11,11,kAlertTriangle);
+    screen.drawStr(x+15,16,kAlertPrompt);
+  } else {
+    snprintf(mainTitle,sizeof(mainTitle),"%.17s 1/9",identity.title);
+    screen.drawStr((128-screen.getStrWidth(mainTitle))/2,16,mainTitle);
+  }
   const uint32_t trains = __atomic_load_n(&trackedTrainsWord, __ATOMIC_RELAXED);
   char count[24];
   if (trains & 0x80000000u) snprintf(count, sizeof(count), "Trains:%lu Lit:%u", static_cast<unsigned long>(trains & 0x7fffffffu), unsigned(__atomic_load_n(&visibleMapLights,__ATOMIC_RELAXED)));
@@ -211,6 +218,11 @@ uint8_t boundedI2c(u8x8_t *display, uint8_t message, uint8_t length, void *bytes
     default: return 0;
   }
   return transportFailed ? 0 : 1;
+}
+bool currentAlertIcon(uint32_t nowMs) {
+  alerts::Summary status;Screen selected;
+  portENTER_CRITICAL(&screenDataMux);status=screenData.alerts;selected=navigation.view().screen;portEXIT_CRITICAL(&screenDataMux);
+  return selected==Screen::Main && alerts::mainIndicator(status,static_cast<uint32_t>(time(nullptr))) && alerts::iconVisible(status,nowMs);
 }
 void run(void *) {
   Serial.printf("OLED clock: worker starting, SDA GPIO%u SCL GPIO%u\n", pins::I2C_SDA, pins::I2C_SCL);
@@ -279,6 +291,7 @@ void run(void *) {
   bool synchronized = false;
   bool awake = true,wasUpgrade=false,wasSetupGreeting=setupGreetingVisible(millis());
   bool hadSoundBadge=currentSoundBadge(millis()).label!=nullptr;
+  bool hadAlertIcon=currentAlertIcon(millis());
   uint32_t lastFeedback = 0;
   bool feedbackActive = false, firstRefresh = true;
   uint32_t feedbackAtMs = 0, lastRenderAtMs = 0, lastRevision = 0;
@@ -288,7 +301,8 @@ void run(void *) {
     const bool greeting=setupGreetingVisible(nowMs);
     const bool hasSoundBadge=currentSoundBadge(nowMs).label!=nullptr;
     const uint32_t revision = __atomic_load_n(&uiRevision,__ATOMIC_RELAXED);
-    bool redraw=firstRefresh || upgrading!=wasUpgrade || greeting!=wasSetupGreeting || hasSoundBadge!=hadSoundBadge || revision!=lastRevision || static_cast<uint32_t>(nowMs-lastRenderAtMs)>=1000;
+    const bool alertIcon=currentAlertIcon(nowMs);
+    bool redraw=alertIcon!=hadAlertIcon || firstRefresh || upgrading!=wasUpgrade || greeting!=wasSetupGreeting || hasSoundBadge!=hadSoundBadge || revision!=lastRevision || static_cast<uint32_t>(nowMs-lastRenderAtMs)>=1000;
     char text[24]{};
     const bool valid = formatClock(time(nullptr), text, sizeof(text));
     if (valid && !synchronized) Serial.println("OLED clock: New York time synchronized (automatic DST)");
@@ -328,7 +342,7 @@ void run(void *) {
     }
     wasUpgrade=upgrading;
     wasSetupGreeting=greeting;
-    hadSoundBadge=hasSoundBadge;
+    hadSoundBadge=hasSoundBadge;hadAlertIcon=alertIcon;
     if(redraw) {lastRevision=revision;lastRenderAtMs=nowMs;firstRefresh=false;}
     if (transportFailed) {
       setStatus(State::TransferFailed, transferError);
