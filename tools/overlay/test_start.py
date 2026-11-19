@@ -15,9 +15,12 @@ class LauncherTests(unittest.TestCase):
         (self.root/'inputs').mkdir()
         self.patch = mock.patch.object(start, 'ROOT', self.root)
         self.patch.start()
+        self.cache_patch=mock.patch.object(start,'cache_directory',return_value=self.root/'cache')
+        self.cache_patch.start()
 
     def tearDown(self):
         self.patch.stop()
+        self.cache_patch.stop()
         self.temp.cleanup()
 
     def inputs(self):
@@ -104,6 +107,57 @@ class LauncherTests(unittest.TestCase):
         with mock.patch.object(start,'download_pdf',return_value=pdf), mock.patch.object(start,'choose_pdf') as pick, mock.patch.object(start.subprocess,'call') as launch:
             self.assertRaises(ValueError,start.main,[])
             pick.assert_not_called();launch.assert_not_called()
+
+    def known_pdf(self):
+        folder=self.root/'recipes';folder.mkdir(exist_ok=True)
+        pdf=self.root/'known.pdf';pdf.write_bytes(b'%PDF-supported fixture')
+        recipe=folder/'known.json'
+        recipe.write_text(json.dumps({'name':'Supported fixture','source':{'sha256':hashlib.sha256(pdf.read_bytes()).hexdigest()}}))
+        return pdf,recipe
+
+    def test_cache_rehashes_actual_file_and_rejects_tampering(self):
+        pdf,recipe=self.known_pdf()
+        with mock.patch.object(start,'HERE',self.root):
+            cached=start.cache_validated_pdf(pdf)
+            self.assertEqual(start.validated_cache(),(cached,recipe))
+            cached.write_bytes(b'tampered')
+            self.assertIsNone(start.validated_cache())
+
+    def test_unfamiliar_pdf_never_enters_validated_cache(self):
+        pdf=self.root/'unknown.pdf';pdf.write_bytes(b'%PDF-unknown')
+        with mock.patch.object(start,'HERE',self.root):
+            self.assertRaises(ValueError,start.cache_validated_pdf,pdf)
+        self.assertFalse((self.root/'cache').exists())
+
+    def test_unknown_download_can_use_only_confirmed_validated_cache(self):
+        self.inputs();pdf,recipe=self.known_pdf()
+        newer=self.root/'newer.pdf';newer.write_bytes(b'%PDF-unreviewed edition')
+        with mock.patch.object(start,'HERE',self.root):
+            cached=start.cache_validated_pdf(pdf)
+            with mock.patch.object(start,'download_pdf',return_value=newer),mock.patch.object(start,'offer_cached_pdf',return_value=True) as offer,mock.patch.object(start.subprocess,'call',return_value=0) as call:
+                self.assertEqual(start.main([]),0)
+                offer.assert_called_once()
+                args=call.call_args.args[0]
+                self.assertEqual(args[args.index('--pdf')+1],str(cached))
+                self.assertEqual(args[args.index('--recipe')+1],str(recipe))
+            self.assertEqual(newer.read_bytes(),b'%PDF-unreviewed edition')
+
+    def test_declining_cache_does_not_launch_helper(self):
+        self.inputs();pdf,recipe=self.known_pdf()
+        newer=self.root/'new.pdf';newer.write_bytes(b'%PDF-new')
+        with mock.patch.object(start,'HERE',self.root):
+            start.cache_validated_pdf(pdf)
+            with mock.patch.object(start,'download_pdf',return_value=newer),mock.patch.object(start,'offer_cached_pdf',return_value=False),mock.patch.object(start.subprocess,'call') as call:
+                self.assertEqual(start.main([]),0);call.assert_not_called()
+
+    def test_offline_download_can_reuse_confirmed_cache_without_picker(self):
+        self.inputs();pdf,recipe=self.known_pdf()
+        with mock.patch.object(start,'HERE',self.root):
+            cached=start.cache_validated_pdf(pdf)
+            with mock.patch.object(start,'download_pdf',side_effect=OSError('offline')),mock.patch.object(start,'offer_cached_pdf',return_value=True),mock.patch.object(start,'choose_pdf') as pick,mock.patch.object(start.subprocess,'call',return_value=0) as call:
+                self.assertEqual(start.main([]),0);pick.assert_not_called()
+                args=call.call_args.args[0]
+                self.assertEqual(args[args.index('--pdf')+1],str(cached))
 
 
 if __name__ == '__main__': unittest.main()

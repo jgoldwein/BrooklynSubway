@@ -76,6 +76,52 @@ def recipe_for(pdf):
     raise ValueError('This PDF edition has not been calibrated. Keep the PDF and report this fingerprint to the maintainer: ' + sha)
 
 
+def cache_directory():
+    base=os.environ.get('LOCALAPPDATA')
+    return Path(base)/'BrooklynOverlayBuilder/pdf-cache' if base else Path.home()/'.cache/BrooklynOverlayBuilder/pdf-cache'
+
+
+def cache_validated_pdf(pdf):
+    recipe_for(pdf)  # Never cache an unfamiliar edition as validated.
+    data=pdf.read_bytes();folder=cache_directory();folder.mkdir(parents=True,exist_ok=True)
+    target=folder/(hashlib.sha256(data).hexdigest()+'.pdf')
+    temporary=None
+    try:
+        with tempfile.NamedTemporaryFile(dir=folder,prefix='.pdf-',delete=False) as file:
+            temporary=Path(file.name);file.write(data)
+        os.replace(temporary,target)
+    finally:
+        if temporary and temporary.exists():temporary.unlink()
+    return target
+
+
+def validated_cache():
+    folder=cache_directory()
+    if not folder.is_dir():return None
+    for pdf in sorted(folder.glob('*.pdf'),key=lambda p:p.stat().st_mtime,reverse=True):
+        try:
+            if pdf.stat().st_size>MAX_PDF_BYTES:continue
+            recipe=recipe_for(pdf)  # Rehash the actual bytes on every reuse.
+            return pdf,recipe
+        except (OSError,ValueError,KeyError):continue
+    return None
+
+
+def offer_cached_pdf(cached, reason):
+    import tkinter
+    from tkinter import messagebox
+    pdf,recipe=cached
+    name=json.loads(recipe.read_text(encoding='utf-8-sig')).get('name',recipe.stem)
+    window=tkinter.Tk();window.withdraw()
+    try:
+        window.attributes('-topmost',True)
+        return messagebox.askyesno('Use the previously validated map?',
+            reason+'\n\nA supported PDF is already saved on this computer:\n'+name+
+            '\n\nUse this previously validated map for your PCB? It may be older than the current MTA map. '
+            'Its fingerprint was checked again. The unfamiliar/new PDF will not be used.\n\nCached file:\n'+str(pdf),parent=window)
+    finally:window.destroy()
+
+
 def choose_pdf():
     import tkinter
     from tkinter import filedialog
@@ -116,19 +162,41 @@ def main(argv=None):
     run_name = datetime.now().strftime('Map_%Y%m%d_%H%M%S_%f')
     output = ROOT/'builds'/run_name
     selection = args.pdf
+    downloaded=False
     if not selection and not args.choose_pdf:
         try:
             selection = download_pdf(ROOT/'builds'/(run_name+'_source'))
+            downloaded=True
         except (OSError, ValueError) as error:
             print('Automatic MTA download could not finish:', error, flush=True)
-            print('Download the PDF in your browser from '+MTA_URL+' and select it in the file picker. Cancel to stop.', flush=True)
+            cached=validated_cache()
+            if cached and offer_cached_pdf(cached,'The current MTA download could not finish.'):
+                selection=cached[0]
+            else:
+                print('Download the PDF in your browser from '+MTA_URL+' and select it in the file picker. Cancel to stop.', flush=True)
     if not selection:
         selection = choose_pdf()
     if not selection:
         print('Cancelled; no board files changed.')
         return 0
     pdf = Path(selection).resolve()
-    recipe = recipe_for(pdf)
+    try:
+        recipe = recipe_for(pdf)
+    except ValueError as error:
+        cached=validated_cache() if downloaded else None
+        if not cached:raise
+        print(str(error),flush=True)
+        if not offer_cached_pdf(cached,'MTA supplied an unfamiliar map edition. It has been kept locally for review.'):
+            print('Cancelled; the unfamiliar PDF was not used and no PCB was opened.',flush=True)
+            return 0
+        pdf,recipe=cached
+    try:
+        cached_path=cache_validated_pdf(pdf)
+        print('Validated PDF saved for future reuse:\n'+str(cached_path),flush=True)
+    except OSError as error:
+        print('Could not update the local PDF cache; this validated build can still continue:',error,flush=True)
+    if not downloaded or pdf != Path(selection).resolve():
+        print('Using locally selected or previously validated PDF:\n'+str(pdf),flush=True)
     print('Using calibrated recipe:', recipe.name, flush=True)
     print('The generated working copy will open in EasyEDA automatically.\nFinish the PCB/extension setup checklist before clicking OK; the Build map URL appears afterward.\nKeep this window open until COMPLETE.', flush=True)
     result=subprocess.call([sys.executable, str(HERE/'automate.py'),
