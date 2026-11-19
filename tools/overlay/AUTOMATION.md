@@ -53,12 +53,24 @@ From the repository folder, substitute your actual file paths:
 
 Leave PowerShell open. After preparing the image, it prints a copied-project path and a URL starting with `http://127.0.0.1:`. This means **your own computer**. The helper is now waiting for EasyEDA to connect.
 
-1. Open the generated **`Map_Build_01/Blank-template-COPY.eprj2`** in EasyEDA and activate its blank PCB tab.
+1. Open the generated **`Map_Build_01/Blank-template-COPY.eprj2`** in EasyEDA and activate its blank PCB tab, using the steps below.
 2. Choose **Overlay Builder > Build map**.
 3. In the **Build subway map** dialog's empty field, paste the **entire URL** printed by PowerShell and click **Confirm**. Use this run's URL, not an older one.
 4. Wait for **COMPLETE** in PowerShell. The helper waits up to 20 minutes. An error or timeout is not completion.
 
 The intended process needs no manual image sizing, dragging or Gerber export. Omit `--pdf` to attempt downloading from the recipe URL; if the MTA server refuses, use the reviewed local file.
+
+#### Where is the PCB editor tab?
+
+If EasyEDA shows the large welcome banner and **Quick Start** buttons, you are on the **Start Page**. A PCB editor tab is not open yet.
+
+1. Click **Open Project**, the yellow folder under **Quick Start**.
+2. Select **`Blank-template-COPY.eprj2` inside the output folder created by the Python helper** (for example, `Map_Build_01`). If that file does not exist yet, run the build command above first.
+3. In the project tree, double-click the **PCB document** to open the board drawing. If the project tree is hidden, expand **All Projects** on the left.
+4. The board drawing opens in a tab beside **Start Page**. That drawing tab is the **PCB editor tab**. Select it so the board is visible, rather than a schematic or a 3D preview.
+5. Look for **Overlay Builder > Build map** while that PCB tab is active.
+
+Use the helper-generated project copy, rather than an older project from **Recent Design**. Keep the Python helper running while you open the copy and start the extension.
 
 #### What belongs in the “Build subway map” dialog?
 
