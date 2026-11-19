@@ -9,9 +9,10 @@ The links above download the actual files if you need them individually. Normal
 users should download the whole software ZIP so the folder layout is already correct.
 See [template details and verification](../hardware/builder/README.md).
 
-**You supply only the MTA map PDF.** Double-click `Start_Overlay.cmd` in the
-repository folder, then choose your downloaded PDF in its file picker. You do not
-need to rename the PDF or put it here. The optional manual command instead expects
+Double-click `Start_Overlay.cmd` in the repository folder. It downloads the PDF
+directly from MTA and verifies its edition. If downloading fails, choose a locally
+downloaded PDF in the fallback picker. You do not need to rename the PDF or put it
+here. The optional manual command instead expects
 `inputs/Source_Map.pdf`; user PDFs remain ignored by Git and are not redistributed.
 
 Follow the [simple Windows workflow](../tools/overlay/AUTOMATION.md#simplest-windows-route).

@@ -15,6 +15,7 @@ import time
 import zipfile
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
+import sys
 from pathlib import Path
 
 import overlay
@@ -259,10 +260,15 @@ def open_project(project):
     try:
         if not hasattr(os, 'startfile'):
             raise OSError('Automatic opening is available on Windows only')
-        os.startfile(str(project))
+        log_path=project.parent/'EasyEDA-launch.log'
+        with log_path.open('ab') as log:
+            subprocess.run([sys.executable,str(HERE/'open_associated.py'),str(project)],
+                stdout=log,stderr=subprocess.STDOUT,check=True,timeout=15,
+                creationflags=getattr(subprocess,'DETACHED_PROCESS',0)|getattr(subprocess,'CREATE_NEW_PROCESS_GROUP',0))
         print('Opening the working copy in EasyEDA. If prompted, open this project.', flush=True)
+        print('Editor background messages are saved in:\n'+str(log_path),flush=True)
         return True
-    except OSError as error:
+    except (OSError,subprocess.CalledProcessError,subprocess.TimeoutExpired) as error:
         print('Could not open EasyEDA automatically:', error, flush=True)
         print('Open the working copy manually:', project, flush=True)
         return False
@@ -281,7 +287,7 @@ def confirm_extension_setup(project):
             '1. In EasyEDA Project Design, double-click Brooklyn MTA Active Map PCB. '
             'The PCB drawing must be visible.\n\n'
             '2. Advanced > Extensions Manager > Import: select '
-            'tools/overlay/easyeda/Brooklyn-Overlay-Builder.eext from the extracted package. '
+            'Brooklyn-Overlay-Builder.eext beside Start_Overlay.cmd in the extracted root folder. '
             'Skip importing if already installed.\n\n'
             '3. Installed > Brooklyn Overlay Builder > Config: check '
             'Allow interactive with external. Close Extensions Manager.\n\n'
@@ -329,9 +335,9 @@ def main(argv=None):
                     print('Cancelled before Build map. Original inputs are unchanged.', flush=True)
                     return 0
             connection_file = write_connection_instructions(job.output, url)
-            print('SETUP COMPLETE. In the PCB choose Advanced > Overlay Builder > Build map.', flush=True)
-            print('Paste this local job URL:\n'+url, flush=True)
-            print('If EasyEDA messages hide the URL, open:', connection_file.resolve(), flush=True)
+            print('\n'+'='*64+'\nSETUP COMPLETE - BUILD YOUR MAP\n'+'='*64,flush=True)
+            print('1. In EasyEDA: Advanced > Overlay Builder > Build map\n2. Paste this entire URL:\n\n'+url+'\n\n3. Click Confirm. Keep this command window open.',flush=True)
+            print('\nURL also saved in:\n'+str(connection_file.resolve())+'\n'+'='*64,flush=True)
             if args.easyeda_cli:
                 thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
                 try:
@@ -344,11 +350,11 @@ def main(argv=None):
             while job.state not in ('complete', 'failed') and time.monotonic() < until:
                 server.handle_request()
                 if job.state == 'waiting' and time.monotonic() >= remind_at:
-                    print('Waiting for Build map. Paste this URL: '+url, flush=True)
+                    print('\nWaiting for Build map. Current URL:\n'+url, flush=True)
                     remind_at = time.monotonic() + 60
             if job.state != 'complete':
                 raise ValueError(job.error or 'Timed out waiting for the EasyEDA extension')
-            print('COMPLETE:', (job.output / 'result/Gerbers-with-prepared-artwork.zip').resolve())
+            print('\nEXPORT VERIFIED\nBuild result:\n'+str((job.output / 'result/Gerbers-with-prepared-artwork.zip').resolve()),flush=True)
             print('All non-color Gerber payloads are byte-identical to the chosen blank. Review the color preview before manufacture.')
         return 0
     except (ValueError, OSError, KeyError, subprocess.TimeoutExpired) as error:

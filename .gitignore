@@ -32,3 +32,6 @@ dist/
 !/inputs/Blank_Map.eprj2
 !/inputs/Blank_Gerbers.zip
 /builds/
+/Gerbers-with-prepared-artwork.zip
+/Latest-overlay-build.txt
+/.overlay-result-*.tmp

@@ -11,11 +11,36 @@ import subprocess
 import sys
 import venv
 import urllib.request
+import os
+import shutil
+import tempfile
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 MTA_URL = 'https://www.mta.info/map/5256'
 MAX_PDF_BYTES = 32 * 1024 * 1024
+
+
+def publish_latest_result(root, output):
+    """Refresh only the convenient copy; dated originals remain untouched."""
+    source=output/'result/Gerbers-with-prepared-artwork.zip'
+    if not source.is_file():return None  # Cancelled during setup, not a completed build.
+    target=root/'Gerbers-with-prepared-artwork.zip'
+    temporary=None
+    try:
+        with tempfile.NamedTemporaryFile(dir=root,prefix='.overlay-result-',suffix='.tmp',delete=False) as file:
+            temporary=Path(file.name)
+            with source.open('rb') as stream:shutil.copyfileobj(stream,file)
+        os.replace(temporary,target)
+    finally:
+        if temporary and temporary.exists():temporary.unlink()
+    sha=hashlib.sha256(target.read_bytes()).hexdigest()
+    summary=('BUILD COMPLETE - READY TO PREVIEW\n\nUpload this ZIP to JLCPCB (keep it compressed):\n'+str(target.resolve())+
+        '\n\nDated original:\n'+str(source.resolve())+'\n\nSHA256: '+sha+
+        '\n\nJLCPCB settings:\n  PCB Color: White\n  Surface Finish: ENIG\n  Advanced Options > Silkscreen Technology: EasyEDA multi-color silkscreen\n\nOpen Gerber Viewer > 2D. Check map alignment, QR and labels before ordering.\n')
+    (root/'Latest-overlay-build.txt').write_text(summary,encoding='utf-8')
+    print('\n'+'='*64+'\n'+summary+'='*64,flush=True)
+    return target
 
 
 def download_pdf(folder):
@@ -83,7 +108,7 @@ def main(argv=None):
             print('Preparing the private Python environment...', flush=True)
             venv.EnvBuilder(with_pip=True).create(environment)
         print('Checking the required image/PDF packages (first run may download them)...', flush=True)
-        subprocess.run([str(python), '-m', 'pip', 'install', '-r', str(HERE/'requirements.txt')], check=True)
+        subprocess.run([str(python), '-m', 'pip', 'install', '--quiet', '--disable-pip-version-check', '-r', str(HERE/'requirements.txt')], check=True)
         command = [str(python), str(Path(__file__).resolve())]
         if args.pdf: command.extend(['--pdf', str(args.pdf.resolve())])
         if args.choose_pdf: command.append('--choose-pdf')
@@ -106,10 +131,13 @@ def main(argv=None):
     recipe = recipe_for(pdf)
     print('Using calibrated recipe:', recipe.name, flush=True)
     print('The generated working copy will open in EasyEDA automatically.\nFinish the PCB/extension setup checklist before clicking OK; the Build map URL appears afterward.\nKeep this window open until COMPLETE.', flush=True)
-    return subprocess.call([sys.executable, str(HERE/'automate.py'),
+    result=subprocess.call([sys.executable, str(HERE/'automate.py'),
                             '--project', str(ROOT/'inputs/Blank_Map.eprj2'),
                             '--baseline', str(ROOT/'inputs/Blank_Gerbers.zip'),
                             '--open-project', '--guided-setup', '--pdf', str(pdf), '--recipe', str(recipe), '--output', str(output)], cwd=ROOT)
+    if result==0:publish_latest_result(ROOT,output)
+    else:print('\nBUILD DID NOT COMPLETE. Any root upload ZIP is from a previous successful build. See the error above.',flush=True)
+    return result
 
 
 if __name__ == '__main__':

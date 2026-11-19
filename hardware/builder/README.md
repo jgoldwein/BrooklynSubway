@@ -1,8 +1,9 @@
 # Editable blank builder template
 
 The latest repository ZIP already includes the two required files in `inputs`.
-**You do not need to download or copy them separately.** Supply your MTA PDF
-locally and follow the [simple Windows workflow](../../tools/overlay/AUTOMATION.md#simplest-windows-route).
+**You do not need to download or copy them separately.** Follow the
+[simple Windows workflow](../../tools/overlay/AUTOMATION.md#simplest-windows-route);
+the launcher downloads the MTA PDF directly to your computer and checks its edition.
 
 Individual downloads, if needed:
 

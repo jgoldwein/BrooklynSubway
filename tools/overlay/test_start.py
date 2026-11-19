@@ -30,6 +30,22 @@ class LauncherTests(unittest.TestCase):
             pick.assert_not_called()
             install.assert_not_called()
 
+    def test_root_result_is_refreshed_and_originals_preserved(self):
+        target=self.root/'Gerbers-with-prepared-artwork.zip'
+        target.write_bytes(b'older build')
+        output=self.root/'builds'/'new';(output/'result').mkdir(parents=True)
+        source=output/'result'/'Gerbers-with-prepared-artwork.zip';source.write_bytes(b'new completed build')
+        self.assertEqual(start.publish_latest_result(self.root,output),target)
+        self.assertEqual(target.read_bytes(),source.read_bytes())
+        self.assertEqual(source.read_bytes(),b'new completed build')
+        summary=(self.root/'Latest-overlay-build.txt').read_text()
+        for term in ['White','ENIG','EasyEDA multi-color silkscreen',str(source.resolve())]:self.assertIn(term,summary)
+
+    def test_cancelled_build_leaves_previous_root_result_unchanged(self):
+        target=self.root/'Gerbers-with-prepared-artwork.zip';target.write_bytes(b'previous')
+        self.assertIsNone(start.publish_latest_result(self.root,self.root/'cancelled'))
+        self.assertEqual(target.read_bytes(),b'previous')
+
     def test_cancel_never_launches_helper(self):
         self.inputs()
         with mock.patch.object(start, 'choose_pdf', return_value=''), mock.patch.object(start.subprocess, 'call') as call:

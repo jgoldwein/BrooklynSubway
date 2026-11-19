@@ -14,16 +14,30 @@ def zipped(copper=b'%MOMM*%\nX100Y200D01*',color=b'blank'):
  return b.getvalue()
 
 class WorkflowTests(unittest.TestCase):
+ def test_bundled_root_installer_matches_compatibility_copy(self):
+  self.assertEqual((a.HERE.parents[1]/'Brooklyn-Overlay-Builder.eext').read_bytes(),(a.HERE/'easyeda/Brooklyn-Overlay-Builder.eext').read_bytes())
+ @unittest.skipUnless(sys.platform=='win32','Windows detached-launch integration')
+ def test_detached_launcher_keeps_child_output_in_log(self):
+  project=self.root/'test.eprj2';project.write_bytes(b'fixture')
+  helper=self.root/'open_associated.py'
+  helper.write_text("import subprocess,sys\nprint('opener output',flush=True)\nsubprocess.run([sys.executable,'-c',\"print('editor child output')\"],check=True)\n")
+  with mock.patch.object(a,'HERE',self.root):self.assertTrue(a.open_project(project))
+  contents=(self.root/'EasyEDA-launch.log').read_text()
+  self.assertIn('opener output',contents);self.assertIn('editor child output',contents)
  def test_auto_open_targets_generated_copy(self):
   with tempfile.TemporaryDirectory() as folder:
    project=Path(folder)/'working copy.eprj2';project.write_bytes(b'fixture')
-   with mock.patch.object(a.os,'startfile',create=True) as launch:
+   with mock.patch.object(a.os,'startfile',create=True), mock.patch.object(a.subprocess,'run') as launch:
     self.assertTrue(a.open_project(project))
-    launch.assert_called_once_with(str(project.resolve()))
+    self.assertEqual(launch.call_args.args[0][-1],str(project.resolve()))
+    self.assertIn('open_associated.py',launch.call_args.args[0][1])
+    self.assertIsNotNone(launch.call_args.kwargs['stdout'])
+    self.assertEqual(launch.call_args.kwargs['stderr'],a.subprocess.STDOUT)
+    self.assertTrue((project.parent/'EasyEDA-launch.log').exists())
  def test_auto_open_failure_allows_manual_fallback(self):
   with tempfile.TemporaryDirectory() as folder:
    project=Path(folder)/'copy.eprj2';project.write_bytes(b'fixture')
-   with mock.patch.object(a.os,'startfile',side_effect=OSError('No file association'),create=True):
+   with mock.patch.object(a.os,'startfile',create=True), mock.patch.object(a.subprocess,'run',side_effect=OSError('No file association')):
     self.assertFalse(a.open_project(project))
  def setUp(self):
   self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name)
