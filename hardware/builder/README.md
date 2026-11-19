@@ -33,6 +33,11 @@ to the original October 9 manufactured archive, and does not replace the recorde
 manufacturing-authority project. Review the design and fabrication preview before
 ordering. A successful tool run is not manufacturing approval or artwork permission.
 
+For this project's colorful map, select **White** PCB, **ENIG** surface finish,
+and **Advanced Options → Silkscreen Technology → EasyEDA multi-color silkscreen**
+on JLCPCB's quote page. Then open **Gerber Viewer** to inspect the uploaded result.
+See the [step-by-step settings and preview instructions](../../tools/overlay/AUTOMATION.md#jlcpcb-settings-and-color-preview).
+
 The project software license does not grant rights to MTA or other third-party
 artwork. The MTA PDF and completed mapped Gerbers are not included. See
 [artwork distribution notes](../../docs/ARTWORK_DISTRIBUTION.md).

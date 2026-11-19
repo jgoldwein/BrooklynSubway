@@ -18,11 +18,29 @@ Use this route:
 4. Download your PDF from the [official MTA source](https://www.mta.info/map/5256), then double-click **Start_Overlay.cmd**. The launcher sets up the Python packages on its first run and lets you choose the PDF in a file picker. **No terminal commands, PDF renaming, recipe selection or output-folder naming are required for this route.** If Windows displays a security prompt, decide whether to run the downloaded script; do not disable system security controls.
 5. Keep the command window open. When it prints **Open:**, open that exact copied project in EasyEDA. In **Project Design**, double-click **Brooklyn MTA Active Map PCB** under **Blank-template-COPY > Brooklyn MTA Active Map**.
 6. Choose **Advanced > Overlay Builder > Build map**, paste this run's complete local URL from the command window, and click **Confirm**.
-7. Wait for **Overlay complete** / **COMPLETE**, then preview the output ZIP whose full path is printed. The image disappears from the editor after export by design. Results are kept in **builds > Map_DATE_TIME > result** inside the extracted software folder.
+7. Wait for **Overlay complete** / **COMPLETE**, then follow [JLCPCB settings and color preview](#jlcpcb-settings-and-color-preview) below. The image disappears from the editor after export by design. Results are kept in **builds > Map_DATE_TIME > result** inside the extracted software folder.
 
 The launcher recognizes the included September 22 and October 27, 2026 PDF fingerprints and chooses the corresponding recipe automatically. The October geometry was checked against the recovered reference and the cleaned template completed a live October export. Unknown/newer editions stop with a clear message instead of guessing a placement. The MTA PDF itself is intentionally not bundled.
 
 The detailed file explanations below remain useful. The longer manual route is optional; do not perform both routes for the same build.
+
+## JLCPCB settings and color preview
+
+Use these settings for this project's colorful printed map. The designer checked this path with the generated ZIP on November 19, 2026.
+
+1. Open [JLCPCB](https://jlcpcb.com/) and its **Online PCB Quote** page. Click **Add gerber file**.
+2. Select this run's **Gerbers-with-prepared-artwork.zip** from the printed output path. Keep the ZIP compressed. Wait for processing.
+3. Under **PCB Specifications**, set **PCB Color → White**.
+4. Set **Surface Finish → ENIG**.
+5. Expand **Advanced Options**. Under **Silkscreen Technology**, select **EasyEDA multi-color silkscreen** (also called **EasyEDA MultiColor Silkscreen**).
+6. Above the uploaded board thumbnails, click **Gerber Viewer**. Select its **2D** tab to inspect the full-color front of the board. Also inspect the back.
+7. Zoom in and check the map against the LED pads at the top, middle, bottom and edges. Confirm the lower-left Wi-Fi QR code, **BrooklynMap-Avi** / **192.168.4.1** labels, OLED area and button labels are present and readable. Check that unintended personal markings are absent.
+
+**Expected result:** the viewer shows the colored subway map on a white board, including the restored setup QR code. The designer's generated-file preview showed this result. This visual check does not replace electrical review or the manufacturer's production checks.
+
+You can inspect the preview without placing or paying for an order. The price and quantity shown by the quote page are not part of these instructions. Confirm the remaining board specifications against your intended fabrication requirements before ordering.
+
+Do not look for **Gerber View** in EasyEDA's Export menu; that menu does not contain this viewer in the tested version. Use the **Gerber Viewer** link on JLCPCB's uploaded-file quote page. See also [JLCPCB's official colorful-silkscreen instructions](https://jlcpcb.com/help/article/how-to-design-multi-color-silkscreen-using-easyeda).
 
 ## First, understand the files
 
@@ -243,7 +261,7 @@ The extension first exports the blank PCB and compares it with your baseline. It
 1. In File Explorer, open the repository folder, then **Map_Build_01 > result**.
 2. Find **`Gerbers-with-prepared-artwork.zip`**. This is the finished fabrication archive, not the GitHub software download or input baseline.
 3. Find **`integrity-report.json`** beside it. Open it in a text editor to read the comparison record. `protectedPayloadsByteIdentical: true` means the output's non-color files were copied exactly from your selected baseline.
-4. Preview the finished ZIP using a viewer supporting **JLCPCB colorful silkscreen**. A copper-only viewer cannot show the color map.
+4. Follow [JLCPCB settings and color preview](#jlcpcb-settings-and-color-preview): **White** PCB, **ENIG** finish, and **Advanced Options → Silkscreen Technology → EasyEDA multi-color silkscreen**, then open the uploaded-file **Gerber Viewer**. A copper-only viewer cannot show the color map.
 5. Check LED/station alignment at the top, center, bottom and far edges. Check the QR code, labels and both PCB sides for unwanted personal text or artwork.
 
 A passing integrity report does not prove that the chosen starting circuit is correct or approve map alignment, artwork permissions or manufacture. Review those separately before placing an order.
