@@ -29,11 +29,13 @@ You also need these files:
 
 Before installing the tools, identify:
 
-1. The **[map-less EasyEDA `.eprj2` project](../../inputs/README.md)**. The linked inputs page explains its purpose and availability; the cleaned project download is not yet published.
-2. The **[matching blank Gerber `.zip`](../../inputs/README.md)**, exported from that same project. Its download will accompany the cleaned project; do not substitute the historical art-free manufacturing archive.
+1. **Map-less EasyEDA `.eprj2` project - DOWNLOAD NOT AVAILABLE YET.** This file is still being cleaned for publication. There is no downloadable builder project at this location yet.
+2. **Matching blank Gerber `.zip` - DOWNLOAD NOT AVAILABLE YET.** This must be exported from the cleaned project above. The older art-free manufacturing ZIP is a different revision and cannot substitute for this input.
 3. The **[source map `.pdf` from the MTA](https://www.mta.info/map/5256)**, matching the **[reviewed recipe](recipes/brooklyn-september-2026.json)**. The MTA link may serve a newer edition that the recipe does not accept; it is not a guaranteed download of the required September 2026 edition.
 
 If any is missing, stop here and obtain it from the project maintainer. The public blank builder pair is still under review; do not substitute an older production Gerber or a similarly named project.
+
+**The public builder package is not ready for a new user to complete this workflow.** The first two required downloads must be supplied before that changes. Links to explanatory README pages are not substitutes for those files.
 
 The included `tools/overlay/recipes/brooklyn-september-2026.json` requires the preserved September 2026 PDF. The [official MTA map page](https://www.mta.info/map/5256) can change to a newer edition. The current recipe deliberately rejects a different PDF. A newly downloaded PDF is not automatically compatible just because it shows Brooklyn.
 
