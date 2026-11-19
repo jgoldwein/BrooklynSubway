@@ -287,7 +287,7 @@ def main(argv=None):
             url = f'http://127.0.0.1:{server.server_port}/{job.token}'
             print('Prepared the map. Original files are unchanged.', flush=True)
             print('Open:', (job.output / 'Blank-template-COPY.eprj2').resolve(), flush=True)
-            print('One-time setup: import Brooklyn-Overlay-Builder.eext and allow external interaction.', flush=True)
+            print('One-time setup AFTER the PCB drawing is visible: import Brooklyn-Overlay-Builder.eext, then Config > Allow interactive with external.', flush=True)
             print('In the blank PCB choose Advanced > Overlay Builder > Build map, then paste this local job URL:', flush=True)
             print(url, flush=True)
             if args.open_project and not args.easyeda_cli:
