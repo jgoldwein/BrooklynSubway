@@ -1,10 +1,10 @@
 # Automated overlay builder (experimental)
 
-This helper automates image preparation, numerical placement, color fabrication export and packaging. It uses EasyEDA's documented API to generate its own color files; it does not guess or rewrite the opaque FCTS/FCBS format. **Live EasyEDA compatibility is still being tested.** The API documentation marks some operations as beta. Outputs are review candidates, not automatic manufacturing approval.
+This helper automates image preparation, numerical placement, color fabrication export and packaging. It uses EasyEDA's documented API to generate its own color files; it does not guess or rewrite the opaque FCTS/FCBS format. The API documentation marks some operations as beta. Outputs are review candidates, not automatic manufacturing approval.
 
 ## Installation and first build
 
-**Status: experimental.** Python and simulated editor tests pass. A complete export inside a real EasyEDA session has not yet been verified.
+**Status: experimental, with one complete live export verified on EasyEDA Pro 3.2.149 using extension 0.1.3.** The helper accepted the matching blank, inserted the prepared image, exported color files, removed the temporary image and produced the final ZIP. All 16 non-color payloads were verified byte-identical to the selected blank. Final artwork alignment still needs visual review; other client versions and the unattended CLI route remain unverified.
 
 **Follow the numbered sections in order.** Installing the extension does not create the PCB copy. The Python helper creates it in step 4. Do not open **Build map** or search for `Blank-template-COPY.eprj2` until step 4 prints **Prepared the map** and **Open:**.
 
@@ -106,6 +106,8 @@ Copy the actual **whole line beginning `http://127.0.0.1:`** from your terminal 
 **If you have not run the build command yet, or PowerShell shows an error instead of a URL, click Cancel in EasyEDA.** Complete step 4 in PowerShell first. Then open the copied blank PCB and return to **Advanced > Overlay Builder > Build map**. Keep PowerShell running until it reports COMPLETE.
 
 ### 5. Review
+
+**The graphic appears briefly, then disappears from the editor. This is expected.** The extension inserts it temporarily to export the color files, then removes it so the editable template stays map-less. **Overlay complete** means the output ZIP was created; it does not mean the image remains in your open PCB. Review the exported ZIP, not the now-blank editor drawing.
 
 Your output is **`Map_Build_01/result/Gerbers-with-prepared-artwork.zip`**, with an integrity report beside it. Preview it in a viewer supporting JLCPCB colorful silkscreen. Check LED/station alignment at the top, middle, bottom and far edges; check the labels, QR code and both sides for unwanted personal text. A successful script result is not manufacturing approval.
 
