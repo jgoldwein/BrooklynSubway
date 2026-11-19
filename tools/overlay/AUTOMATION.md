@@ -1,189 +1,268 @@
-# Automated overlay builder (experimental)
+﻿# Brooklyn Overlay Builder: step-by-step Windows guide
 
-This helper automates image preparation, numerical placement, color fabrication export and packaging. It uses EasyEDA's documented API to generate its own color files; it does not guess or rewrite the opaque FCTS/FCBS format. The API documentation marks some operations as beta. Outputs are review candidates, not automatic manufacturing approval.
+This guide helps you add subway map artwork to a blank Brooklyn Subway PCB design. Python prepares the image; EasyEDA Pro places it at the recorded coordinates and exports the color fabrication files. You then check the exported board before ordering.
 
-## Installation and first build
+**Current availability:** the tools are on GitHub. The clean, public blank EasyEDA project and its matching blank Gerber package are still being prepared for publication. You must have that matching pair before completing a build. Downloading the code alone does not give you those inputs.
 
-**Status: experimental, with one complete live export verified on EasyEDA Pro 3.2.149 using extension 0.1.3.** The helper accepted the matching blank, inserted the prepared image, exported color files, removed the temporary image and produced the final ZIP. All 16 non-color payloads were verified byte-identical to the selected blank. Final artwork alignment still needs visual review; other client versions and the unattended CLI route remain unverified.
+**Tested:** one complete build with EasyEDA Pro 3.2.149 and Brooklyn Overlay Builder 0.1.3. Other editor versions and the optional command-line route have not yet been tested live. Outputs require visual review before manufacture.
 
-**Follow the numbered sections in order.** Installing the extension does not create the PCB copy. The Python helper creates it in step 4. Do not open **Build map** or search for `Blank-template-COPY.eprj2` until step 4 prints **Prepared the map** and **Open:**.
+## First, understand the files
 
-### 1. Download and prepare
+There are **three different ZIP files** in this workflow. They serve different purposes:
 
-**Install EasyEDA Pro on your computer before continuing.** This workflow requires the **EasyEDA Pro desktop application**, not EasyEDA Standard. Download the installer for your operating system from the [official EasyEDA Download Center](https://easyeda.com/page/download), choose **EasyEDA Pro Edition**, run the installer, and open the application to complete its first-run setup.
+- **`BrooklynSubway-main.zip` - the software download.** GitHub creates this ZIP from the repository. It contains the Python tools, instructions, firmware source and other project files. You extract this ZIP so you can run the overlay tools. It is not a PCB fabrication file and does not go to the PCB manufacturer.
+- **Your blank Gerber ZIP - the starting fabrication files.** This describes the board before the map is added: copper, holes, masks, printed labels and other fabrication layers. The tool uses it as the reference, or **baseline**, whose protected contents must remain unchanged. Keep this ZIP compressed.
+- **`Gerbers-with-prepared-artwork.zip` - the finished result.** The helper creates this after EasyEDA exports the artwork. This is the ZIP you preview and, after checking it, may submit to the manufacturer. Keep it compressed.
 
-The illustrated menu paths and successful test use **EasyEDA Pro 3.2.149**. If you need that exact tested version, use EasyEDA's [official older-client downloads](https://prodocs.easyeda.com/en/faq/client-version/). Newer versions may have different menus and have not yet been validated with this builder. If EasyEDA Pro is already installed, you do not need to reinstall it to follow this guide.
+You also need these files:
 
-**[Download the project ZIP directly](https://github.com/jgoldwein/BrooklynSubway/archive/refs/heads/main.zip).** You do not need to find GitHub's Code menu. To browse just these tools, open the [overlay code directory](https://github.com/jgoldwein/BrooklynSubway/tree/main/tools/overlay).
+- **A blank `.eprj2` project:** the editable EasyEDA source, including the PCB and attached schematics. EasyEDA needs this to insert the image. It must match your blank Gerber ZIP, including the labels. A Gerber ZIP cannot replace this file.
+- **The MTA `.pdf`:** the source subway map downloaded or otherwise obtained from the MTA. The PDF edition must match the selected recipe. You provide this locally; it is not bundled with the tools.
+- **A recipe `.json`:** a small text file supplied with the tools. It records the approved PDF's fingerprint, crop rectangle, size and placement. It contains calibration numbers, not map artwork. Do not edit it to bypass a PDF mismatch.
+- **`Brooklyn-Overlay-Builder.eext`:** the EasyEDA extension installer. You create it in step 6, then import it into EasyEDA. It adds **Advanced > Overlay Builder > Build map**. It is not the board project.
 
-In Windows File Explorer, right-click the downloaded ZIP, choose **Extract All**, and extract it to your Downloads folder. Open the extracted `BrooklynSubway-main` folder: it should contain both `README.md` and `tools`. If you see another folder with the same name instead, open that inner folder.
+**Files you do not have yet:** `Blank-template-COPY.eprj2`, the prepared image and the final Gerber ZIP are generated later. Do not search for them inside the software download.
 
-The examples below assume the project folder is **`C:\Users\YOUR_WINDOWS_NAME\Downloads\BrooklynSubway-main`**. If you extracted elsewhere, use that location instead. Click File Explorer's address bar, type `powershell`, and press Enter to open PowerShell in that folder. Install Python 3.12 or newer if needed, then run these commands one at a time:
+## 1. Check that you have the three build inputs
+
+Before installing the tools, identify:
+
+1. The map-less EasyEDA `.eprj2` project.
+2. The matching blank Gerber `.zip`, exported from that same project.
+3. The reviewed source map `.pdf` matching the recipe.
+
+If any is missing, stop here and obtain it from the project maintainer. The public blank builder pair is still under review; do not substitute an older production Gerber or a similarly named project.
+
+The included `tools/overlay/recipes/brooklyn-september-2026.json` requires the preserved September 2026 PDF. The [official MTA map page](https://www.mta.info/map/5256) can change to a newer edition. The current recipe deliberately rejects a different PDF. A newly downloaded PDF is not automatically compatible just because it shows Brooklyn.
+
+## 2. Install EasyEDA Pro
+
+1. Open the [official EasyEDA Download Center](https://easyeda.com/page/download).
+2. Choose **EasyEDA Pro Edition**, then the installer for your operating system. Do not choose EasyEDA Standard.
+3. Run the installer and complete its prompts.
+4. Open EasyEDA Pro and complete its first-run setup. Leave it at the Start Page.
+
+The verified Windows walkthrough uses **Pro 3.2.149**. That version is available from [EasyEDA's official older-client downloads](https://prodocs.easyeda.com/en/faq/client-version/). Newer versions may have different menus. If the tested version is already installed, skip reinstalling it.
+
+**Expected result:** EasyEDA Pro opens. Do not open a board or the Build map dialog yet.
+
+## 3. Download the software tools from GitHub
+
+**What are you downloading, and why?** The following link downloads the repository as `BrooklynSubway-main.zip`. It gives your computer a local copy of `tools/overlay`, including the Python helper and extension source. Reading this guide in a browser does not install those files.
+
+1. Click **[Download BrooklynSubway-main.zip](https://github.com/jgoldwein/BrooklynSubway/archive/refs/heads/main.zip)**.
+2. Save it in your Windows **Downloads** folder. This is the software ZIP, not the blank Gerber ZIP.
+3. Open **File Explorer > Downloads**.
+4. Right-click `BrooklynSubway-main.zip` and select **Extract All**. Accept the suggested destination.
+5. Open the extracted folder. If it contains another `BrooklynSubway-main` folder, open that inner folder.
+6. Find both **`README.md`** and the **`tools`** folder in the same window. This is the **repository folder** used throughout the remaining steps.
+
+The full download includes firmware and documentation because it is a copy of the repository. **You do not need PlatformIO, and you do not need to program or connect a PCB to build the overlay.** You will use the `tools/overlay` files.
+
+For reference, the [overlay code directory](https://github.com/jgoldwein/BrooklynSubway/tree/main/tools/overlay) lets you browse those files online; browsing it does not download the complete tool to your computer.
+
+**Expected result:** an ordinary extracted folder containing `README.md` and `tools`. Do not work inside File Explorer's view of the ZIP itself.
+
+## 4. Put copies of your inputs in one place
+
+Inside the repository folder from step 3:
+
+1. Create a folder named **`inputs`**.
+2. Copy your blank `.eprj2` project into it. Rename this copy **`Blank_Map.eprj2`**.
+3. Copy its matching blank Gerber ZIP into it. Rename this copy **`Blank_Gerbers.zip`**. Do not extract it.
+4. Copy your reviewed MTA PDF into it. Rename this copy **`Source_Map.pdf`**.
+
+Renaming the copies simplifies the commands. It does not change the contents or make a mismatched file valid. Keep your original files elsewhere unchanged. If Windows hides file extensions, turn on **File name extensions** in File Explorer so you do not accidentally produce a name such as `Source_Map.pdf.pdf`.
+
+Your repository folder should now contain:
+
+```text
+BrooklynSubway-main/
+  README.md
+  tools/
+    overlay/
+      automate.py
+      build_extension.py
+      requirements.txt
+      recipes/
+        brooklyn-september-2026.json
+  inputs/
+    Blank_Map.eprj2
+    Blank_Gerbers.zip
+    Source_Map.pdf
+```
+
+**Expected result:** the three files above exist in `inputs`. The project contains no large map image, and its Gerber ZIP matches its labels and circuitry.
+
+## 5. Install Python and open PowerShell in the right folder
+
+Python runs the helper scripts; PowerShell is the window where you enter commands and read their results.
+
+1. If needed, install Python **3.12 or newer** from the [official Python Windows downloads](https://www.python.org/downloads/windows/). Enable the installer's option to add Python to PATH if offered. Python 3.13 was used for testing.
+2. In File Explorer, return to the repository folder containing `README.md`, `tools` and `inputs`.
+3. Click the address bar at the top of File Explorer.
+4. Type `powershell` and press **Enter**. This opens PowerShell in that folder.
+5. In PowerShell, enter:
+
+```powershell
+python --version
+```
+
+**Expected result:** a Python version of 3.12 or newer. If Python is not found or Windows offers to open a store instead, finish the Python installation before continuing.
+
+Confirm the folder is correct:
+
+```powershell
+Test-Path .\tools\overlay\automate.py
+```
+
+**Expected result:** `True`. If it says `False`, you opened PowerShell in the wrong folder. Return to step 3's folder check.
+
+Keep this PowerShell window open. Run the remaining commands there, not in EasyEDA or its file picker.
+
+## 6. Prepare Python and create the extension installer
+
+Run each command separately. Wait for it to finish before entering the next.
+
+First, create a private Python environment for these tools:
 
 ```powershell
 python -m venv .venv-overlay
+```
+
+This creates `.venv-overlay` inside the repository folder. It keeps the helper's Python packages separate from other projects. It may finish without printing a message.
+
+Next, install the image/PDF packages listed in `requirements.txt`:
+
+```powershell
 .\.venv-overlay\Scripts\python -m pip install -r tools/overlay/requirements.txt
+```
+
+`requirements.txt` is the supplied list of package versions. Wait for installation to finish without errors.
+
+Finally, build the EasyEDA extension installer:
+
+```powershell
 .\.venv-overlay\Scripts\python tools/overlay/build_extension.py --output Brooklyn-Overlay-Builder.eext
 ```
 
-The last command prints **`Installer created:` followed by its full path**. With the example folder above, the file is:
+**Expected result:** `Installer created:` followed by its full path. The installer is beside `README.md` in the repository folder, not inside `tools/overlay`.
+
+For example, if you extracted directly to Downloads, its path might be:
 
 ```text
 C:\Users\YOUR_WINDOWS_NAME\Downloads\BrooklynSubway-main\Brooklyn-Overlay-Builder.eext
 ```
 
-It is in the **project's top folder**, beside `README.md`, not inside `tools/overlay`. It is generated by the command; it is not already included in the downloaded ZIP. The command does not download a map. If that filename exists, use a new output filename. No npm or EasyEDA SDK installation is needed.
+`YOUR_WINDOWS_NAME` is an example placeholder. **Use the actual full path printed by your command.** A nested extraction folder will produce a longer path. No map or copied PCB has been created by this step.
 
-### 2. Install in EasyEDA once
+If the installer filename already exists, the command refuses to overwrite it. Use a new name with `--output`, then import that newly generated file in step 7.
 
-1. Open **EasyEDA Pro > Advanced > Extension Manager**.
-2. Choose **Import**, browse to the full path printed by the command above, and select `Brooklyn-Overlay-Builder.eext`.
-3. After import, select **Installed**, then click the **Brooklyn Overlay Builder** name. Its details appear on the right. Click **Config** beside **Detail**, check **Allow interactive with external**, then click **Close**. This lets the extension reach the local helper. You make this permission choice yourself; do not disable general security controls or enable unrelated permissions. If selecting the extension closes the manager, rebuild/import version **0.1.2 or newer**; older packages omitted metadata needed by EasyEDA 3.2's details panel.
-4. Restart EasyEDA if its installer requests it. Leave EasyEDA at the Start Page for now. You will open the copied PCB and use **Advanced > Overlay Builder > Build map** in step 4, after the helper has created it.
+## 7. Install the extension in EasyEDA Pro
 
-Installation does not start a build or change a PCB. The helper below must be running before the menu can work.
+1. In EasyEDA, choose **Advanced > Extensions Manager**.
+2. Click **Import** at the bottom left.
+3. Select the `.eext` file whose full path was printed in step 6. Accept replacement if you are updating an existing installation.
+4. Select the **Installed** tab.
+5. Click the **Brooklyn Overlay Builder** name in the left list. Its details should appear on the right.
+6. Verify the version is **0.1.3 or newer**. In the tested version it appears on a version button near the top of the details.
+7. Click **Config**, immediately beside **Detail**.
+8. Check **Allow interactive with external**. This lets the extension communicate with the helper on your computer. Leave the other settings unchanged.
+9. Click **Close**. Restart EasyEDA if it requests a restart.
 
-### 3. Choose matching inputs
+**Expected result:** the extension is installed and its external-interaction permission is checked. Do not start Build map yet. Installing the extension does not prepare the image or create the copied PCB.
 
-Keep a backup of your **map-less `.eprj2` project** and its **matching blank Gerber ZIP**. Both are required. A project with the old map still inserted is not blank.
+## 8. Start the helper and create your working PCB copy
 
-Before continuing, identify these three existing files:
-
-- **Project:** the editable map-less EasyEDA project, ending in `.eprj2`.
-- **Baseline:** the colorful Gerber export made from that same map-less project, ending in `.zip`.
-- **PDF:** the reviewed MTA source PDF matching the recipe, ending in `.pdf`.
-
-These inputs are not supplied by downloading the code ZIP. A Gerber ZIP cannot substitute for the editable EasyEDA project. If you do not have all three, stop here rather than searching for the generated output file.
-
-The included September recipe needs the preserved September 2026 PDF. The MTA URL may now serve a different edition. Use a reviewed local PDF matching the recipe until a recipe for the newer edition is available. The tool rejects a mismatched edition.
-
-### 4. Build
-
-**Run this in PowerShell, not in EasyEDA's file picker or Build map dialog.** Keep PowerShell in the extracted repository folder from step 1. In the command below, replace each example input path with the full path to its actual file. `C:\Maps` is an example, not a folder the tool creates:
+Return to the PowerShell window from step 5. With the input filenames from step 4, paste this single command:
 
 ```powershell
-.\.venv-overlay\Scripts\python tools/overlay/automate.py --project "C:\Maps\Blank_Map.eprj2" --baseline "C:\Maps\Blank_Gerbers.zip" --pdf "C:\Maps\Reviewed_Source_Map.pdf" --output "Map_Build_01"
+.\.venv-overlay\Scripts\python tools/overlay/automate.py --project "inputs\Blank_Map.eprj2" --baseline "inputs\Blank_Gerbers.zip" --pdf "inputs\Source_Map.pdf" --output "Map_Build_01"
 ```
 
-**Expected result:** PowerShell prints **Prepared the map. Original files are unchanged.**, then **Open:** followed by the complete path to `Blank-template-COPY.eprj2`, then a local job URL. If you see **ERROR** instead, stop and resolve that message. The copy is not ready merely because you downloaded or extracted the code.
+The options mean:
 
-The `--output "Map_Build_01"` option creates a new folder under the folder where you ran the command. With the step 1 example location, the copied PCB is exactly:
+- **`--project`:** the editable blank EasyEDA source to copy.
+- **`--baseline`:** the matching blank fabrication ZIP whose protected contents must be preserved.
+- **`--pdf`:** the local MTA PDF to check, crop and resize.
+- **`--output`:** a new folder for this build's copies, prepared image and results. The helper creates it inside the repository folder.
 
-```text
-C:\Users\YOUR_WINDOWS_NAME\Downloads\BrooklynSubway-main\Map_Build_01\Blank-template-COPY.eprj2
-```
+**Expected result:** PowerShell prints **Prepared the map. Original files are unchanged.**, then **Open:** and an absolute path to `Blank-template-COPY.eprj2`. It also prints a local job URL starting with `http://127.0.0.1:`.
 
-Your actual location may differ. **Use the full path printed after `Open:`; do not guess it from this example.** Leave PowerShell open: the helper is waiting for EasyEDA. Its URL starts with `http://127.0.0.1:`, which means **your own computer**.
+Do not continue if it prints **ERROR**. Keep the error message for troubleshooting.
 
-1. In EasyEDA, choose **Open Project**. Paste the full path printed after **Open:** into the file picker's **File name** field and click **Open**. Activate its blank PCB tab using the steps below.
-2. Choose **Advanced > Overlay Builder > Build map**.
-3. In the **Build subway map** dialog's empty field, paste the **entire URL** printed by PowerShell and click **Confirm**. Use this run's URL, not an older one.
-4. Wait for **COMPLETE** in PowerShell. The helper waits up to 20 minutes. An error or timeout is not completion.
+**Leave PowerShell open.** It is running a local helper and waiting for EasyEDA, for up to 20 minutes. Not returning to a prompt at this point is expected.
 
-The intended process needs no manual image sizing, dragging or Gerber export. Omit `--pdf` to attempt downloading from the recipe URL; if the MTA server refuses, use the reviewed local file.
+The newly created files include:
 
-#### Where is the PCB editor tab?
+- **`Map_Build_01/Blank-template-COPY.eprj2`:** the working copy you open in EasyEDA. Your original input is unchanged.
+- **`Map_Build_01/prepared/prepared-map.png`:** the cropped and resized image. The extension places it automatically; you do not drag it manually.
+- **`Map_Build_01/prepared/manifest.json`:** the record of source/image fingerprints and placement.
 
-If EasyEDA shows the large welcome banner and **Quick Start** buttons, you are on the **Start Page**. A PCB editor tab is not open yet.
+## 9. Open the generated PCB document
 
-1. Click **Open Project**, the yellow folder under **Quick Start**.
-2. Select **`Blank-template-COPY.eprj2` inside the output folder created by the Python helper** (for example, `Map_Build_01`). If that file does not exist yet, run the build command above first.
-3. Click the vertical **Project Design** tab on the left sidebar to display the project tree. Expand **Blank-template-COPY > Brooklyn MTA Active Map**, then double-click **Brooklyn MTA Active Map PCB**, the entry with the green board icon immediately below **Brooklyn MTA Active Map Schematics**. This opens the board drawing. **Project Design** is the sidebar tab; **Brooklyn MTA Active Map PCB** is the document inside it. These are the names in the supplied Brooklyn template; a renamed template may use different names.
-4. The board drawing opens in a tab beside **Start Page**. That drawing tab is the **PCB editor tab**. Select it so the board is visible, rather than a schematic or a 3D preview.
-5. Look for **Advanced > Overlay Builder > Build map** while that PCB tab is active.
+1. In EasyEDA's Start Page, click **Open Project**, the yellow folder under Quick Start.
+2. In the file picker's **File name** field, paste the complete path printed after **Open:** in PowerShell. Click **Open**.
+3. Click the vertical **Project Design** sidebar tab on the left.
+4. Expand **Blank-template-COPY > Brooklyn MTA Active Map**.
+5. Double-click **Brooklyn MTA Active Map PCB**, the green board-icon entry below **Brooklyn MTA Active Map Schematics**.
+6. Confirm the board drawing is visible and the project tree's top-level name is **Blank-template-COPY**. Do not select a similarly named older project from Recent Design.
 
-Use the helper-generated project copy, rather than an older project from **Recent Design**. Keep the Python helper running while you open the copy and start the extension.
+**Expected result:** the blank PCB drawing is open. The sidebar is named **Project Design**; the document inside it is named **Brooklyn MTA Active Map PCB**. A schematic or 3D preview is not the active PCB editor. A renamed template may use different internal document names.
 
-#### What belongs in the “Build subway map” dialog?
+## 10. Connect EasyEDA to this build
 
-The dialog connects EasyEDA to the running Python helper. It expects a **local job URL**, not a filename, the MTA website, a GitHub link or the map's `192.168.4.1` address.
+1. With the PCB drawing visible, choose **Advanced > Overlay Builder > Build map**.
+2. Return to PowerShell and copy the **entire local job URL** beginning `http://127.0.0.1:`.
+3. Paste it into the empty field in EasyEDA's **Build subway map** dialog.
+4. Click **Confirm** and wait for the export to finish.
 
-In PowerShell, find this message:
+The URL identifies the helper running on **your own computer**. It includes a port number and a long random token. Use the actual URL from this run, not one copied from a screenshot or an earlier build. Do not enter a filename, GitHub link, MTA link or `192.168.4.1`.
 
-```text
-In the blank PCB choose Advanced > Overlay Builder > Build map, then paste this local job URL:
-http://127.0.0.1:PORT/LONG_JOB_TOKEN
-```
+The extension first exports the blank PCB and compares it with your baseline. It stops before inserting the map if they do not match. Otherwise it inserts the image, exports again and removes the temporary image.
 
-Copy the actual **whole line beginning `http://127.0.0.1:`** from your terminal into the dialog. `PORT` and `LONG_JOB_TOKEN` above are placeholders: do not type that example. Your helper supplies real numbers and a long token automatically.
+**Expected result:** EasyEDA shows **Overlay complete**, and PowerShell prints **COMPLETE:** followed by the final ZIP path.
 
-**If you have not run the build command yet, or PowerShell shows an error instead of a URL, click Cancel in EasyEDA.** Complete step 4 in PowerShell first. Then open the copied blank PCB and return to **Advanced > Overlay Builder > Build map**. Keep PowerShell running until it reports COMPLETE.
+**The graphic appears briefly, then disappears from the editor. That is expected.** The extension removes its temporary image after export to leave the template map-less. The completed artwork is in the output ZIP, not left in your open PCB.
 
-### 5. Review
+## 11. Find and check your finished fabrication ZIP
 
-**The graphic appears briefly, then disappears from the editor. This is expected.** The extension inserts it temporarily to export the color files, then removes it so the editable template stays map-less. **Overlay complete** means the output ZIP was created; it does not mean the image remains in your open PCB. Review the exported ZIP, not the now-blank editor drawing.
+1. In File Explorer, open the repository folder, then **Map_Build_01 > result**.
+2. Find **`Gerbers-with-prepared-artwork.zip`**. This is the finished fabrication archive, not the GitHub software download or input baseline.
+3. Find **`integrity-report.json`** beside it. Open it in a text editor to read the comparison record. `protectedPayloadsByteIdentical: true` means the output's non-color files were copied exactly from your selected baseline.
+4. Preview the finished ZIP using a viewer supporting **JLCPCB colorful silkscreen**. A copper-only viewer cannot show the color map.
+5. Check LED/station alignment at the top, center, bottom and far edges. Check the QR code, labels and both PCB sides for unwanted personal text or artwork.
 
-Your output is **`Map_Build_01/result/Gerbers-with-prepared-artwork.zip`**, with an integrity report beside it. Preview it in a viewer supporting JLCPCB colorful silkscreen. Check LED/station alignment at the top, middle, bottom and far edges; check the labels, QR code and both sides for unwanted personal text. A successful script result is not manufacturing approval.
+A passing integrity report does not prove that the chosen starting circuit is correct or approve map alignment, artwork permissions or manufacture. Review those separately before placing an order.
 
-### Troubleshooting
+## Make another build later
 
-- **Missing menu:** activate a PCB tab and check that the extension is installed and enabled in Extension Manager.
-- **Cannot reach helper:** keep PowerShell open, use the complete current job URL and check the extension's external-interaction permission. Keep the job URL private.
-- **Missing API:** the installed editor lacks a required operation. Use the [manual workflow](README.md#quick-path-prepare-the-recovered-brooklyn-crop) and report the error plus your EasyEDA version.
-- **Template mismatch:** choose the project copy matching your blank ZIP. Do not bypass the check.
-- **Map-size image already present:** start with a genuinely map-less source copy. The extension does not guess which existing graphic to delete.
-- **HTTP 403/hash mismatch:** the download was refused or the map edition changed. Use a reviewed matching PDF and recipe.
-- **Retry after an error:** choose a new output folder. Preserve the error and reports for troubleshooting.
+Keep the installed extension and Python environment. Repeat steps 8-11 with a new output folder, such as `--output "Map_Build_02"`. Existing result folders are never overwritten, including folders left by failed attempts. Each new run supplies a new local job URL.
 
-## What a user needs once
+## Troubleshooting
 
-- Python 3.12+ and the normal pinned `tools/overlay/requirements.txt` dependencies.
-- EasyEDA Pro with the required color-image and Gerber-export APIs. The extension targets 3.2.x; exact runtime support is checked before changing an image.
-- The matching blank EasyEDA **project** (.eprj2), in addition to the blank Gerber ZIP. The source project is needed so EasyEDA retains existing labels, QR codes and color graphics. The Gerber ZIP alone is not a reversible editable source document.
-- A reviewed crop recipe whose source PDF hash matches the edition being downloaded.
+- **No `Blank-template-COPY.eprj2`:** step 8 has not finished successfully. The file is not included in the downloaded software ZIP.
+- **Cannot find the extension installer:** use the absolute path printed in step 6. It is created beside `README.md`.
+- **Extensions Manager closes when selecting the extension:** rebuild/import a current package. Versions before 0.1.2 omitted metadata required by EasyEDA 3.2's details panel.
+- **External interaction permission error:** Advanced > Extensions Manager > Installed > Brooklyn Overlay Builder > Config > Allow interactive with external.
+- **No Overlay Builder menu:** activate the PCB drawing and look under **Advanced**. Check that the extension is Enabled.
+- **Nothing happens:** inspect EasyEDA's bottom **Log** tab for `[Overlay Builder]` entries. Check the version printed there, not just the installer filename. Versions 0.1.1 and newer show failures in a dialog and Log.
+- **Cannot reach helper:** keep PowerShell open and use the current complete job URL. A failed or expired helper must be restarted with a fresh output folder.
+- **PCB does not match blank Gerber:** confirm the correct generated PCB is active and its labels/circuit match the baseline. A similarly named file is not sufficient. Do not bypass the check.
+- **Map-size image already present:** start from the genuinely map-less template. The extension does not guess which image to delete.
+- **PDF fingerprint/hash mismatch:** the PDF is a different edition. Obtain the reviewed matching edition or ask the maintainer to validate a new recipe. Renaming the PDF cannot resolve this.
+- **Missing editor API:** report the EasyEDA version and message. Other clients are not yet validated; the [manual import workflow](README.md#quick-path-prepare-the-recovered-brooklyn-crop) is available.
 
-The extension entry uses the documented `edaEsbuildExportName` IIFE format and `.eext` ZIP layout. No SDK/npm installation is needed by users. The local helper uses the Python standard library plus the existing crop dependencies. The extension has no third-party JavaScript dependencies.
+## Advanced details
 
-## One-command backend, EasyEDA 4.1.60+
+The helper uses standard Python plus the pinned packages in `requirements.txt`; the extension has no third-party JavaScript dependencies. It binds to `127.0.0.1` only and uses an unpredictable per-run URL token. Keep that URL private.
 
-EasyEDA documents a command-line interface starting at 4.1.60. With a compatible executable, the helper can open a hidden session on a COPY of the project, select its single PCB, place the image, export and close only that session:
+The helper can attempt downloading the recipe's source by omitting `--pdf`. The MTA server returned HTTP 403 in local tests, and its URL can change editions; the local-PDF workflow above is the verified route. Unknown editions are rejected.
 
-```powershell
-python tools/overlay/automate.py --project "Blank_Map.eprj2" --baseline "Blank_Gerbers.zip" --output "Map_Build" --easyeda-cli "C:\Program Files\easyeda-pro\easyeda-pro.exe"
-```
+The extension uses mm-to-mil conversion and explicit canvas/data-origin conversion. Version 0.1.3 requests millimeters, 4:5 coordinates and the standard layers including drill drawings to match this template. It never calls save on the source project. The final package uses the four color-fabrication payloads from EasyEDA's mapped export; all other payloads come byte-for-byte from the baseline. The two known English/Chinese ordering-note filenames are informational in comparison; the baseline's note is preserved.
 
-The helper refuses to invoke an older Windows GUI-only executable as a CLI. The owner's installed 3.2.149 is not CLI-capable; it uses the extension method below. The CLI adapter is simulated in tests and has not yet been exercised against a live 4.1.60+ installation.
+An optional `--easyeda-cli` adapter targets the [documented EasyEDA 4.1.60+ CLI](https://prodocs.easyeda.com/en/api/guide/cli.html). It is simulated in tests, not live-validated. EasyEDA 3.2.149 cannot use it. This beginner walkthrough uses the tested extension route instead.
 
-## Existing EasyEDA 3.2: local helper plus one extension action
+Tests: `python tools/overlay/test_overlay.py`, `python tools/overlay/test_automate.py` and `node tools/overlay/test_extension.cjs`.
 
-```powershell
-python tools/overlay/automate.py --project "Blank_Map.eprj2" --baseline "Blank_Gerbers.zip" --output "Map_Build"
-```
-
-This downloads the recipe's PDF, checks its hash, crops and sizes it, creates a project copy and an extension package, then prints a local job URL.
-
-One-time setup in EasyEDA: **Advanced > Extension Manager > Import** the generated `Brooklyn-Overlay-Builder.eext`. Enable its external-interaction permission so it can communicate with the helper on your own computer. Do not change your general application permissions.
-
-For each build:
-
-1. Open the generated `Blank-template-COPY.eprj2` and activate its map-less PCB.
-2. Choose **Advanced > Overlay Builder > Build map** and paste the printed local job URL.
-3. Wait for `COMPLETE` in the helper terminal. The script prepares and places the image, exports color files and produces `result/Gerbers-with-prepared-artwork.zip` plus its integrity report. No manual cropping, sizing, dragging or export dialog is needed.
-
-The extension exports the active template first. If its non-color contents differ from the chosen blank Gerber, it stops before placing an image. A map-size image already in the template also stops the run. The extension converts millimeters to API mil units, then converts the canvas origin to the data origin explicitly. It temporarily creates only the new color image and removes that object after export, including on export failure. It never calls save on the source project.
-
-## Download failures and changed maps
-
-The MTA server can reject an automated download (HTTP 403 was observed on the development computer). A URL may also change to a newer map. These are explicit errors, not successful builds. For a reviewed, already downloaded source use:
-
-```powershell
-python tools/overlay/automate.py --project "Blank_Map.eprj2" --baseline "Blank_Gerbers.zip" --pdf "Reviewed_Source_Map.pdf" --output "Map_Build"
-```
-
-The local-file path still checks the recipe's hash. There is no switch to ignore map-edition mismatches. An unfamiliar edition needs calibration review. Use a new output folder when retrying a failed run; originals and prior results are never overwritten.
-
-## Preservation and limits
-
-Version 0.1.3 explicitly requests millimeters, 4:5 coordinates and the standard layers including drill drawings, matching this template's One Key Export settings. Other templates/export settings may need a different adapter. The comparison treats only the two known English/Chinese ordering-instruction text filenames as informational; the output still preserves the baseline's original note. Geometry, drilling and manufacturing layers remain protected. The helper accepts bounded Content-Length and chunked uploads, as used by the desktop editor.
-
-- The helper binds only to 127.0.0.1 and requires an unpredictable per-run token. It serves only this job's prepared image and accepts only bounded exports, not arbitrary filesystem access.
-- The native project is copied. Open that copy, not your original. The helper does not replace original project/Gerber files or submit orders.
-- The result takes the four color-fabrication payloads from the generated export; every non-color payload comes byte-for-byte from the selected blank Gerber.
-- This preserves the **chosen blank's** circuitry. It does not turn the working-project circuit into the original manufactured circuit.
-- Review the resulting color preview. Native API availability, exporter behavior, input-template correctness, artwork rights and manufacturing acceptance remain separate from automated packaging.
-
-## Tests
-
-Run `python tools/overlay/test_overlay.py`, `python tools/overlay/test_automate.py` and `node tools/overlay/test_extension.cjs`. These cover crop provenance/geometry, protected-layer preservation, local-helper sequencing/token checks, source-template rejection, API unit/origin conversion, image count and cleanup, export failures and rejection of an old Windows executable as a CLI.
-
-Official API references: [color object creation](https://prodocs.easyeda.com/en/api/reference/pro-api.pcb_primitiveobject.create.html), [canvas/data origin conversion](https://prodocs.easyeda.com/en/api/reference/pro-api.pcb_document.convertcanvasorigintodataorigin.html), [color Gerber export](https://prodocs.easyeda.com/en/api/reference/pro-api.pcb_manufacturedata.getgerberfile.html), [command-line client](https://prodocs.easyeda.com/en/api/guide/cli.html), [extension packaging](https://prodocs.easyeda.com/en/api/guide/how-to-start.html).
+Official API references: [image creation](https://prodocs.easyeda.com/en/api/reference/pro-api.pcb_primitiveobject.create.html), [origin conversion](https://prodocs.easyeda.com/en/api/reference/pro-api.pcb_document.convertcanvasorigintodataorigin.html), [Gerber export](https://prodocs.easyeda.com/en/api/reference/pro-api.pcb_manufacturedata.getgerberfile.html) and [extension installation](https://prodocs.easyeda.com/en/api/guide/how-to-start.html).
