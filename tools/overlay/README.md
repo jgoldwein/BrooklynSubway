@@ -8,6 +8,8 @@ This is a **host-side artwork preparation tool**, not firmware. The preparation 
 
 ## What has been established
 
+**Adding subway map artwork to your PCB?** This guide explains how to download the map directly from the MTA and prepare it locally. The blank builder package does not include MTA map artwork. Users are responsible for obtaining any permissions required for their intended use. Downloading the map yourself does not automatically authorize reproduction or redistribution; see the [MTA licensing program](https://www.mta.info/doing-business-with-us/licensing-program).
+
 - The owner's supplied October 9 Gerber ZIP is byte-identical to `hardware/exports/2026-10-09/Gerbers.zip` (SHA-256 below).
 - The manufacturer production archive contains two embedded source ZIPs. Every one of their 20 file payloads matches the submitted archive. The production archive itself is kept private; its order metadata is not needed by this tool.
 - This establishes which fabrication export was submitted. It does **not** establish whether the source EasyEDA project was called V1.0 or V1.1. The recorded firmware hardware authority is unchanged.
