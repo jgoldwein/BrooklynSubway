@@ -84,7 +84,7 @@ If EasyEDA shows the large welcome banner and **Quick Start** buttons, you are o
 
 1. Click **Open Project**, the yellow folder under **Quick Start**.
 2. Select **`Blank-template-COPY.eprj2` inside the output folder created by the Python helper** (for example, `Map_Build_01`). If that file does not exist yet, run the build command above first.
-3. In the project tree, double-click the **PCB document** to open the board drawing. If the project tree is hidden, expand **All Projects** on the left.
+3. In the project tree, expand **Blank-template-COPY > Brooklyn MTA Active Map**, then double-click **Brooklyn MTA Active Map PCB**, the entry with the green board icon immediately below **Brooklyn MTA Active Map Schematics**. This opens the board drawing. If the project tree is hidden, expand **All Projects** on the left. These are the names in the supplied Brooklyn template; a renamed template may use different names.
 4. The board drawing opens in a tab beside **Start Page**. That drawing tab is the **PCB editor tab**. Select it so the board is visible, rather than a schematic or a 3D preview.
 5. Look for **Overlay Builder > Build map** while that PCB tab is active.
 
