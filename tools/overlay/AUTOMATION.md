@@ -16,7 +16,7 @@ Use this route:
 
 1. Download and extract the **latest package** using the **Start here** link above. Use the newly extracted folder for all remaining steps.
 2. Install [EasyEDA Pro](https://easyeda.com/page/download) and [Python 3.12 or newer](https://www.python.org/downloads/windows/) if needed. **Skip this step if both are already installed.** Pro 3.2.149 is the live-tested editor version; see [older official downloads](https://prodocs.easyeda.com/en/faq/client-version/).
-3. Double-click **Start_Overlay.cmd**. The launcher sets up the Python packages on its first run, then **downloads the PDF directly from the [official MTA source](https://www.mta.info/map/5256)** to your computer. It checks the edition before preparing the board. If downloading fails, it explains the problem and opens a picker for a PDF you download yourself. Cancel the picker to stop. **No terminal commands, PDF renaming, recipe selection or output-folder naming are required for this route.** If Windows displays a security prompt, decide whether to run the downloaded script; do not disable system security controls.
+3. Double-click **Start_Overlay.cmd**. If Windows shows **Open File - Security Warning** with **The publisher could not be verified**, follow [the warning instructions below](#windows-open-file-security-warning). The launcher sets up the Python packages on its first run, then **downloads the PDF directly from the [official MTA source](https://www.mta.info/map/5256)** to your computer. It checks the edition before preparing the board. If downloading fails, it explains the problem and opens a picker for a PDF you download yourself. Cancel the picker to stop. **No terminal commands, PDF renaming, recipe selection or output-folder naming are required for this route.**
 4. Keep the command window open. **The launcher automatically opens this run's generated working copy in EasyEDA before you configure the extension**, using Windows' `.eprj2` file association. Accept an open-project prompt if EasyEDA shows one. In **Project Design**, double-click **Brooklyn MTA Active Map PCB** under **Blank-template-COPY > Brooklyn MTA Active Map** if the drawing is not already open. **You must see the PCB drawing, not just the Start Page, project tree or schematic.** If automatic opening fails, the command window prints **Open the working copy manually:** followed by the exact file path. Use that path, not an older project or the input template.
 5. The launcher shows a **configure EasyEDA first** checklist. Leave it open while you finish setup. **With the PCB drawing visible**, choose **Advanced > Extensions Manager > Import** and select the included **tools > overlay > easyeda > Brooklyn-Overlay-Builder.eext**. Select its Installed entry, click **Config**, check **Allow interactive with external**, then close the manager. **Config/permission setup requires a loaded, visible PCB in the tested editor.** If it is missing or will not stay checked, close the manager, open the PCB drawing as described above, then return to Config. If already installed/configured, just verify the PCB is visible. **Only then return to the checklist and click OK.** Cancel stops this build session. The build timeout starts after you click OK, so setup time does not use it up. Do not restart the launcher after configuration.
 6. After **SETUP COMPLETE**, choose **Advanced > Overlay Builder > Build map**, paste this run's complete local URL from the command window, and click **Confirm**. The URL is also saved in **Build-map-URL.txt** inside this run's **builds > Map_DATE_TIME** folder; its full path is printed. Open that text file if EasyEDA's background messages push the URL off screen. The command window also repeats the URL while waiting. Use only the URL for the current running session.
@@ -27,6 +27,23 @@ The launcher recognizes the included September 22 and October 27, 2026 PDF finge
 Downloaded PDFs are kept under **builds > Map_DATE_TIME_source > Source_Map.pdf**. If the official link serves an unsupported edition, the launcher keeps that PDF and reports its fingerprint, then stops before opening a PCB. To use an existing local PDF directly, run `python tools/overlay/start.py --choose-pdf` or pass `--pdf "path-to-map.pdf"` instead.
 
 The detailed file explanations below remain useful. The longer manual route is optional; do not perform both routes for the same build.
+
+## Windows Open File security warning
+
+When you double-click the downloaded **Start_Overlay.cmd**, Windows may show:
+
+> Open File - Security Warning
+>
+> The publisher could not be verified. Are you sure you want to run this software?
+
+The dialog lists **Publisher: Unknown Publisher** and **Type: Windows Command Script**. This project's launcher is not digitally signed, so this warning can appear again on later runs. It does not by itself mean the overlay build has failed.
+
+1. Check that **Name** ends in **Start_Overlay.cmd** and its location is the new folder you extracted from this project's GitHub download.
+2. If this is the project file you intended to run and you trust the source, click **Run** to continue. Otherwise click **Cancel**.
+3. Leave **Always ask before opening this file** checked. You do not need to turn off Windows security features or run as administrator.
+4. After clicking Run, the launcher command window should appear. Continue with the PCB/extension setup checklist when it opens.
+
+These instructions describe this specific **Run / Cancel** dialog. A different warning should be reviewed separately.
 
 ## JLCPCB settings and color preview
 
