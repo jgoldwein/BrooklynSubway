@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "status": "DRAFT_REQUIRES_INDEPENDENT_REVIEW",
+  "name": "Brooklyn November 19, 2026 map crop",
+  "source": {
+    "url": "https://www.mta.info/map/5256",
+    "sha256": "3c1b6d5c17f69e65dbc373fcde2a23a3bc26b95216075aedb6ab2b0fdf67f60d",
+    "page": 1,
+    "pageSizePt": [
+      1656,
+      2016
+    ],
+    "pdfCreationDate": "2026-11-19",
+    "note": "Official MTA PDF downloaded locally November 19, 2026 after its 17:31 re-export. Checked against the October crop; unknown later PDFs still require validation. This fingerprint is not artwork permission."
+  },
+  "cropBoxPt": [
+    572.04,
+    983.52,
+    1598.76,
+    1942.92
+  ],
+  "placement": {
+    "units": "mm",
+    "layer": "Top Silkscreen Layer",
+    "widthMm": 342.31,
+    "heightMm": 297.81,
+    "startXmm": 0,
+    "startYmm": 297.81,
+    "rotationDegrees": 0,
+    "mirror": false
+  },
+  "recovery": {
+    "fullRasterPixels": [
+      4600,
+      5600
+    ],
+    "intermediateCropBoxPx": [
+      1589,
+      2732,
+      4441,
+      5397
+    ],
+    "intermediateMatchScore": 0.9990092515945435,
+    "referenceCropSha256": "52c1fea8b06f457f24ab28d0b2c4b8f96dc6e869e96ef9b8e53de07ced099a5f",
+    "referenceCropPixels": [
+      1293,
+      1126
+    ],
+    "referenceMatchCoverageFraction": [
+      0.9417570575852774,
+      0.9430380240215078
+    ],
+    "note": "Recovered from the intermediate Brooklyn JPEG crop inside the original full-map raster; PDF mapping independently supported by distributed SIFT matches. Placement comes from user-confirmed replacement fit, not the old image object. Both axes are explicitly rescaled, preserving the replacement fit.",
+    "heldOutMatches": 14,
+    "maximumHeldOutFeatureErrorMm": 0.11954092874925645,
+    "heldOutFeatureCoverageNote": "Image features, not an independent inspection of each station/PCB LED"
+  },
+  "manufacturingApproval": false,
+  "editionValidation": {
+    "referencePdfSha256": "b9536cfbd24ee6e203674b1396ad4cadb6be507d885546826cc04b7791061e45",
+    "samePageSize": true,
+    "sameCropAndPlacement": true,
+    "registration": {
+      "matches": 8246,
+      "affineOldToNew": [
+        [
+          0.9999982075292269,
+          4.4404106373522787e-07,
+          0.0016217527112769026
+        ],
+        [
+          -2.0057527626521466e-06,
+          0.9999987667515112,
+          0.0023298983278968273
+        ]
+      ],
+      "fixedCoordinateMedianMm": 0.0003948756213985707,
+      "fixedCoordinateP95Mm": 0.03149629182223979,
+      "heldOutTotal": 1650,
+      "heldOutWithinOnePixel": 1628,
+      "matchedFeatureCoverage": [
+        0.9974715913978732,
+        0.9972430465741975
+      ],
+      "manufacturingApproval": false
+    },
+    "liveExportTested": false,
+    "note": "Distributed image registration supports unchanged crop geometry; not a station-by-station inspection or manufacturing approval. Artwork is not pixel-identical to October."
+  }
+}
