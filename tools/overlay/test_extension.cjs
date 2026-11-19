@@ -35,5 +35,13 @@ function mock(options={}) {
  }
  m=mock();delete m.eda.pcb_PrimitiveObject.create;await assert.rejects(api.build(m.eda,url));assert.strictEqual(m.events.length,0);
  await assert.rejects(api.build(mock().eda,'https://example.com/upload'));
+ const logs=[],messages=[];let confirm;
+ context.eda={sys_Log:{add:text=>logs.push(text)},sys_Dialog:{
+  showInputDialog:(...args)=>{confirm=args[6]},
+  showInformationMessage:(...args)=>messages.push(args)
+ }};
+ api.run();assert(logs[0].includes('0.1.1'));confirm('');assert(messages[0][0].includes('No URL'));
+ confirm('not a job URL');await new Promise(resolve=>setImmediate(resolve));
+ assert(logs.some(text=>text.includes('Failed:')));assert(messages.some(args=>args[1]==='Overlay failed'));
  console.log('Extension checks PASS: unit/origin conversion, blank guard, baseline gate, placement, cleanup, failed export and local-only URL.');
 })().catch(e=>{console.error(e);process.exit(1)});

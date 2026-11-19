@@ -65,14 +65,26 @@ var edaEsbuildExportName = (() => {
     return await request('finish', 'POST', candidate);
   }
   function run() {
+    const log = message => eda.sys_Log?.add('[Overlay Builder] ' + message);
+    const notify = (message, title) => eda.sys_Dialog.showInformationMessage(message, title, 'OK');
+    log('Version 0.1.1: opened job URL dialog.');
     eda.sys_Dialog.showInputDialog('Paste the local job URL from the Python helper.',
       'Open Blank-template-COPY.eprj2 and activate its map-less PCB first.',
       'Build subway map', 'text', '', {}, value => {
-        if (!value) return;
+        if (!value) {
+          log('No job URL entered.');
+          notify('No URL was entered. Copy the complete http://127.0.0.1: address from the running Python helper.', 'Overlay not started');
+          return;
+        }
+        log('Confirm received; checking editor APIs and contacting the local helper.');
         build(eda, String(value).trim()).then(result => {
           console.log('Overlay complete:', result.output);
+          log('Complete: ' + result.output);
+          notify('Export complete. Review the resulting color preview before manufacture.\n' + result.output, 'Overlay complete');
         }).catch(async error => {
           console.error('Overlay failed:', error);
+          log('Failed: ' + String(error.message || error));
+          notify(String(error.message || error), 'Overlay failed');
           const url = String(value).trim();
           if (/^http:\/\/127\.0\.0\.1:\d{1,5}\/[0-9a-f]{64}$/.test(url)) {
             try { await eda.sys_ClientUrl.request(url + '/error', 'POST', JSON.stringify({error: String(error.message || error)})); } catch (_) {}
