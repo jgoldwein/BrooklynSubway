@@ -8,20 +8,22 @@ This guide helps you add subway map artwork to a blank Brooklyn Subway PCB desig
 
 ## First, understand the files
 
+**What is the helper?** It is the included **Python helper tool**, [automate.py](automate.py), which runs on your computer. It checks your input files, prepares the map image, creates a working PCB copy and packages the final Gerber ZIP. It also supplies the local job address that connects it to the EasyEDA extension. It is not a person, an AI service or a separate download: it comes in the software ZIP below. You start it in [step 8](#8-start-the-helper-and-create-your-working-pcb-copy).
+
 There are **three different ZIP files** in this workflow. They serve different purposes:
 
-- **`BrooklynSubway-main.zip` - the software download.** GitHub creates this ZIP from the repository. It contains the Python tools, instructions, firmware source and other project files. You extract this ZIP so you can run the overlay tools. It is not a PCB fabrication file and does not go to the PCB manufacturer.
-- **Your blank Gerber ZIP - the starting fabrication files.** This describes the board before the map is added: copper, holes, masks, printed labels and other fabrication layers. The tool uses it as the reference, or **baseline**, whose protected contents must remain unchanged. Keep this ZIP compressed.
-- **`Gerbers-with-prepared-artwork.zip` - the finished result.** The helper creates this after EasyEDA exports the artwork. This is the ZIP you preview and, after checking it, may submit to the manufacturer. Keep it compressed.
+- **[BrooklynSubway-main.zip](https://github.com/jgoldwein/BrooklynSubway/archive/refs/heads/main.zip) - the software download.** GitHub creates this ZIP from the [repository](https://github.com/jgoldwein/BrooklynSubway). It contains the [overlay tools](https://github.com/jgoldwein/BrooklynSubway/tree/main/tools/overlay), instructions, firmware source and other project files. You extract this ZIP so you can run the overlay tools; [step 3](#3-download-the-software-tools-from-github) explains how. It is not a PCB fabrication file and does not go to the PCB manufacturer.
+- **Your blank Gerber ZIP - the starting fabrication files.** This describes the board before the map is added: copper, holes, masks, printed labels and other fabrication layers. The Python helper tool uses it as the reference, or **baseline**, whose protected contents must remain unchanged. Keep this ZIP compressed. See [input requirements](#1-check-that-you-have-the-three-build-inputs) and [where to put it](#4-put-copies-of-your-inputs-in-one-place). The matching public builder ZIP is still being prepared; the historical art-free fabrication derivative is not a substitute.
+- **[Gerbers-with-prepared-artwork.zip - the finished result](#11-find-and-check-your-finished-fabrication-zip).** The Python helper tool creates this after EasyEDA exports the artwork. This is the ZIP you preview and, after checking it, may submit to the manufacturer. Keep it compressed. This link explains where to find your locally generated result; there is no finished map ZIP to download from this guide.
 
 You also need these files:
 
-- **A blank `.eprj2` project:** the editable EasyEDA source, including the PCB and attached schematics. EasyEDA needs this to insert the image. It must match your blank Gerber ZIP, including the labels. A Gerber ZIP cannot replace this file.
-- **The MTA `.pdf`:** the source subway map downloaded or otherwise obtained from the MTA. The PDF edition must match the selected recipe. You provide this locally; it is not bundled with the tools.
-- **A recipe `.json`:** a small text file supplied with the tools. It records the approved PDF's fingerprint, crop rectangle, size and placement. It contains calibration numbers, not map artwork. Do not edit it to bypass a PDF mismatch.
-- **`Brooklyn-Overlay-Builder.eext`:** the EasyEDA extension installer. You create it in step 6, then import it into EasyEDA. It adds **Advanced > Overlay Builder > Build map**. It is not the board project.
+- **[A blank `.eprj2` project](#1-check-that-you-have-the-three-build-inputs):** the editable [EasyEDA Pro](#2-install-easyeda-pro) source, including the PCB and attached schematics. EasyEDA needs this to insert the image. It must match your blank Gerber ZIP, including the labels. A Gerber ZIP cannot replace this file. The linked section explains the requirements; the public project download is still being prepared.
+- **[The MTA `.pdf`](https://www.mta.info/map/5256):** the source subway map downloaded or otherwise obtained from the MTA. The PDF edition must match the selected recipe. You provide this locally; it is not bundled with the tools. The MTA link may serve a newer edition; read the [edition requirement](#1-check-that-you-have-the-three-build-inputs) before proceeding.
+- **[A recipe `.json`](recipes/brooklyn-september-2026.json):** a small text file supplied with the tools. It records the approved PDF's fingerprint, crop rectangle, size and placement. It contains calibration numbers, not map artwork. Do not edit it to bypass a PDF mismatch. The link opens the included September 2026 recipe for reference; it is already present in your software download.
+- **[Brooklyn-Overlay-Builder.eext](#6-prepare-python-and-create-the-extension-installer):** the EasyEDA extension installer. You create it in step 6, then [import it into EasyEDA in step 7](#7-install-the-extension-in-easyeda-pro). It adds **Advanced > Overlay Builder > Build map**. It is not the board project. This link takes you to the creation instructions, not an installer download.
 
-**Files you do not have yet:** `Blank-template-COPY.eprj2`, the prepared image and the final Gerber ZIP are generated later. Do not search for them inside the software download.
+**Files you do not have yet:** [Blank-template-COPY.eprj2 and the prepared image](#8-start-the-helper-and-create-your-working-pcb-copy), and the [final Gerber ZIP](#11-find-and-check-your-finished-fabrication-zip), are generated later. Do not search for them inside the software download.
 
 ## 1. Check that you have the three build inputs
 
