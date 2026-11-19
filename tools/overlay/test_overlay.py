@@ -97,4 +97,39 @@ class Tests(unittest.TestCase):
   path=self.p/'existing';path.write_bytes(b'keep');self.assertRaises(FileExistsError,o.write_new,path,b'new');self.assertEqual(path.read_bytes(),b'keep')
  def test_picker_offline(self):
   path=self.p/'picker.html';o.pick(self.source,self.a,self.cpl,path);s=path.read_text();self.assertIn('data:image/png;base64',s);self.assertNotIn('<!--SOURCE_',s);self.assertNotIn('fetch(',s)
+@unittest.skipUnless(HAVE_RENDERER,'PyMuPDF required for recipe rendering')
+class PdfRecipeTests(unittest.TestCase):
+ def setUp(self):
+  self.tmp=tempfile.TemporaryDirectory();self.p=Path(self.tmp.name);self.pdf=self.p/'source.pdf'
+  doc=pymupdf.open();page=doc.new_page(width=100,height=80)
+  page.draw_rect(pymupdf.Rect(10,20,50,60),color=None,fill=(1,0,0));page.draw_rect(pymupdf.Rect(50,20,90,60),color=None,fill=(0,0,1))
+  doc.save(self.pdf);doc.close()
+  self.recipe=dict(schema=1,source=dict(sha256=o.digest(o.read(self.pdf)),page=1,pageSizePt=[100,80]),cropBoxPt=[10.25,20.25,89.75,59.75],placement=dict(units='mm',layer='Top Silkscreen Layer',widthMm=50.8,heightMm=12.7,startXmm=0,startYmm=12.7,rotationDegrees=0,mirror=False))
+  self.path=self.p/'recipe.json';self.out=self.p/'result'
+ def tearDown(self):self.tmp.cleanup()
+ def save(self):self.path.write_text(json.dumps(self.recipe))
+ def test_recipe_crop_dimensions_and_provenance(self):
+  self.save();o.prepare_pdf(self.pdf,self.path,self.out,144)
+  im=Image.open(self.out/'prepared-map.png');self.assertEqual(im.size,(288,72))
+  self.assertEqual(im.getpixel((20,36)),(255,0,0));self.assertEqual(im.getpixel((267,36)),(0,0,255))
+  manifest=o.load_json(self.out/'manifest.json');self.assertFalse(manifest['manufacturingApproval']);self.assertEqual(manifest['placement'],self.recipe['placement'])
+  self.assertEqual(manifest['artworkSha256'],o.digest(o.read(self.out/'prepared-map.png')))
+  self.assertIn('Width: 50.800 mm',(self.out/'EASYEDA_IMPORT.md').read_text())
+  self.assertRaises(ValueError,o.prepare_pdf,self.pdf,self.path,self.out,144)
+ def test_reject_wrong_edition_and_geometry(self):
+  self.recipe['source']['sha256']='0'*64;self.save();self.assertRaises(ValueError,o.prepare_pdf,self.pdf,self.path,self.out);self.assertFalse(self.out.exists())
+  self.recipe['source']['sha256']=o.digest(o.read(self.pdf));self.recipe['source']['pageSizePt']=[101,80];self.save();self.assertRaises(ValueError,o.prepare_pdf,self.pdf,self.path,self.out)
+ def test_reject_invalid_recipes(self):
+  import copy
+  initial=copy.deepcopy(self.recipe)
+  for section,key,value in [(None,'cropBoxPt',[-1,0,20,20]),(None,'cropBoxPt',[0,0,float('nan'),20]),('placement','widthMm',0),('placement','mirror',True),('source','page',2),('placement','startXmm',float('inf'))]:
+   self.recipe=copy.deepcopy(initial)
+   (self.recipe[section] if section else self.recipe)[key]=value;self.save()
+   with self.subTest(section=section,key=key,value=value):self.assertRaises(ValueError,o.prepare_pdf,self.pdf,self.path,self.out)
+   self.assertFalse(self.out.exists())
+ def test_dpi_and_raster_limits(self):
+  self.save()
+  for dpi in [0,71,601]:self.assertRaises(ValueError,o.prepare_pdf,self.pdf,self.path,self.out,dpi)
+  self.recipe['placement']['widthMm']=2000;self.recipe['placement']['heightMm']=2000;self.save();self.assertRaises(ValueError,o.prepare_pdf,self.pdf,self.path,self.out,600)
+
 if __name__=='__main__':unittest.main()

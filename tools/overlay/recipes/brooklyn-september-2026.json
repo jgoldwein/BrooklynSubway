@@ -1,0 +1,59 @@
+{
+  "schema": 1,
+  "status": "DRAFT_REQUIRES_INDEPENDENT_REVIEW",
+  "name": "Brooklyn September 2026 map crop",
+  "source": {
+    "url": "https://www.mta.info/map/5256",
+    "sha256": "93f58f809c48832dad4688710e8b848811581119b12d2cf0c307c31c779b0423",
+    "page": 1,
+    "pageSizePt": [
+      1656,
+      2016
+    ],
+    "pdfCreationDate": "2026-09-22",
+    "note": "The URL now serves a different edition. Obtain the hash-matching preserved edition; this recipe intentionally rejects the newer PDF."
+  },
+  "cropBoxPt": [
+    572.04,
+    983.52,
+    1598.76,
+    1942.92
+  ],
+  "placement": {
+    "units": "mm",
+    "layer": "Top Silkscreen Layer",
+    "widthMm": 342.31,
+    "heightMm": 297.81,
+    "startXmm": 0,
+    "startYmm": 297.81,
+    "rotationDegrees": 0,
+    "mirror": false
+  },
+  "recovery": {
+    "fullRasterPixels": [
+      4600,
+      5600
+    ],
+    "intermediateCropBoxPx": [
+      1589,
+      2732,
+      4441,
+      5397
+    ],
+    "intermediateMatchScore": 0.9990092515945435,
+    "referenceCropSha256": "52c1fea8b06f457f24ab28d0b2c4b8f96dc6e869e96ef9b8e53de07ced099a5f",
+    "referenceCropPixels": [
+      1293,
+      1126
+    ],
+    "referenceMatchCoverageFraction": [
+      0.9417570575852774,
+      0.9430380240215078
+    ],
+    "note": "Recovered from the intermediate Brooklyn JPEG crop inside the original full-map raster; PDF mapping independently supported by distributed SIFT matches. Placement comes from user-confirmed replacement fit, not the old image object. Both axes are explicitly rescaled, preserving the replacement fit.",
+    "heldOutMatches": 14,
+    "maximumHeldOutFeatureErrorMm": 0.11954092874925645,
+    "heldOutFeatureCoverageNote": "Image features, not an independent inspection of each station/PCB LED"
+  },
+  "manufacturingApproval": false
+}

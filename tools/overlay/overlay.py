@@ -262,6 +262,61 @@ No source Gerber or PCB project was modified. Review the manifest for all source
         widthMm=x1-x0,heightMm=y1-y0,requestedDpi=dpi,actualPixels=[width,height],
         artworkSha256=digest(art_bytes),manufacturingApproval=False,profileStatus='DRAFT_REQUIRES_INDEPENDENT_REVIEW'))
 
+def prepare_pdf(source, recipe_path, output, dpi=300):
+    """Crop a hash-pinned PDF in page points and apply explicit import dimensions."""
+    recipe=load_json(recipe_path)
+    if recipe.get('schema')!=1:raise ValueError('Unsupported PDF crop recipe schema')
+    spec=recipe.get('source',{});place=recipe.get('placement',{});box=recipe.get('cropBoxPt',[])
+    def numbers(values,count):
+        return isinstance(values,list) and len(values)==count and all(type(v) in (int,float) and math.isfinite(v) for v in values)
+    if not numbers(box,4) or not(box[0]<box[2] and box[1]<box[3]):raise ValueError('Invalid PDF crop rectangle')
+    size=spec.get('pageSizePt',[])
+    if not numbers(size,2) or min(size)<=0:raise ValueError('Invalid recipe page dimensions')
+    dims=[place.get('widthMm'),place.get('heightMm')]
+    if not numbers(dims,2) or min(dims)<=0 or max(dims)>2000:raise ValueError('Invalid physical image dimensions')
+    if not numbers([place.get('startXmm'),place.get('startYmm')],2):raise ValueError('Invalid image placement')
+    if place.get('units')!='mm' or place.get('layer')!='Top Silkscreen Layer' or place.get('rotationDegrees')!=0 or place.get('mirror') is not False:
+        raise ValueError('Recipe requires non-mirrored, unrotated top-silkscreen placement in mm')
+    page_number=spec.get('page')
+    if type(page_number)!=int or page_number<1:raise ValueError('Invalid PDF page number')
+    if type(dpi)!=int or not 72<=dpi<=600:raise ValueError('DPI must be 72..600')
+    width,height=[max(1,round(v/25.4*dpi)) for v in dims]
+    if width*height>80_000_000 or (box[2]-box[0])*(box[3]-box[1])*(dpi/72)**2>80_000_000:raise ValueError('Raster too large')
+    out=Path(output)
+    if out.exists():raise ValueError('Output directory already exists; choose a new path')
+    data=read(source);check_hash(data,spec.get('sha256'))
+    import pymupdf
+    from PIL import Image
+    with pymupdf.open(stream=data,filetype='pdf') as doc:
+        if doc.needs_pass or page_number>len(doc):raise ValueError('Invalid or password-protected source PDF')
+        page=doc[page_number-1]
+        if page.rotation or any(abs(a-b)>1e-5 for a,b in zip([page.rect.width,page.rect.height],size)):
+            raise ValueError('PDF page geometry does not match the recipe')
+        if not(0<=box[0]<box[2]<=page.rect.width and 0<=box[1]<box[3]<=page.rect.height):raise ValueError('Crop rectangle is outside the PDF page')
+        pix=page.get_pixmap(matrix=pymupdf.Matrix(dpi/72,dpi/72),clip=pymupdf.Rect(box),alpha=False)
+        image=Image.frombytes('RGB',(pix.width,pix.height),pix.samples)
+        # Explicitly preserve the fit's independent horizontal and vertical scaling.
+        extent=(box[0]*dpi/72-pix.x,box[1]*dpi/72-pix.y,box[2]*dpi/72-pix.x,box[3]*dpi/72-pix.y)
+        image=image.resize((width,height),Image.Resampling.LANCZOS,box=extent)
+        buffer=io.BytesIO();image.save(buffer,format='PNG',dpi=(dpi,dpi));art=buffer.getvalue()
+    manifest=dict(schema=1,sourcePdfSha256=digest(data),recipeSha256=digest(read(recipe_path)),cropBoxPt=box,page=page_number,
+        renderer='PyMuPDF '+pymupdf.VersionBind,actualPixels=[width,height],dpi=dpi,placement=place,
+        scaling='Independent horizontal and vertical dimensions from the recorded user fit',artworkSha256=digest(art),
+        profileStatus='DRAFT_REQUIRES_INDEPENDENT_REVIEW',manufacturingApproval=False)
+    instruction=("# Import prepared map into the blank working copy\n\n"
+        "Place > Image: choose prepared-map.png and keep original quality checked.\n\n"
+        f"Layer: {place['layer']}\n\nWidth: {dims[0]:.3f} mm\n\nHeight: {dims[1]:.3f} mm\n\n"
+        f"Start X: {place['startXmm']:.3f} mm\n\nStart Y: {place['startYmm']:.3f} mm\n\nRotation: 0 degrees\n\nMirror: No\n\n"
+        "Unlock the aspect ratio if necessary; both physical dimensions are deliberate. PNG DPI alone is not an origin specification.\n\n"
+        "Review widely separated station/LED locations and custom labels in the color preview. This is a draft crop/placement recipe, not manufacturing approval. "
+        "Use the original manufacturing archive for electrical content; the inspected working project's circuitry differs.\n")
+    out.mkdir(parents=True)
+    write_new(out/'prepared-map.png',art)
+    save_json(out/'manifest.json',manifest)
+    save_json(out/'placement.json',place)
+    write_new(out/'EASYEDA_IMPORT.md',instruction.encode())
+
+
 def crop(source, output, box, sha):
     check_hash(read(source),sha);im=image_file(source)
     x0,y0,x1,y1=box
@@ -320,6 +375,7 @@ def main(argv=None):
     p=sub.add_parser('production-audit');p.add_argument('--production',required=True);p.add_argument('--submitted',required=True);p.add_argument('--output',required=True)
     p=sub.add_parser('fetch');p.add_argument('--url',required=True);p.add_argument('--sha256',required=True);p.add_argument('--output',required=True)
     p=sub.add_parser('rasterize');p.add_argument('source');p.add_argument('--sha256',required=True);p.add_argument('--dpi',type=int,default=300);p.add_argument('--page',type=int,default=1);p.add_argument('--output',required=True)
+    p=sub.add_parser('prepare-pdf');p.add_argument('source');p.add_argument('--recipe',required=True);p.add_argument('--dpi',type=int,default=300);p.add_argument('--output',required=True)
     p=sub.add_parser('crop');p.add_argument('source');p.add_argument('--sha256',required=True);p.add_argument('--box',nargs=4,type=int,required=True);p.add_argument('--output',required=True)
     p=sub.add_parser('fit');p.add_argument('--source',required=True);p.add_argument('--landmarks',required=True);p.add_argument('--gerber',required=True);p.add_argument('--placements',required=True);p.add_argument('--tolerance-mm',type=float,default=.35);p.add_argument('--output',required=True)
     p=sub.add_parser('pick');p.add_argument('--source',required=True);p.add_argument('--gerber',required=True);p.add_argument('--placements',required=True);p.add_argument('--output',required=True)
@@ -335,6 +391,7 @@ def main(argv=None):
         elif a.command=='production-audit':save_json(a.output,production_audit(a.production,a.submitted))
         elif a.command=='fetch':fetch(a.url,a.sha256,a.output)
         elif a.command=='rasterize':rasterize(a.source,a.output,a.dpi,a.page,a.sha256)
+        elif a.command=='prepare-pdf':prepare_pdf(a.source,a.recipe,a.output,a.dpi)
         elif a.command=='crop':crop(a.source,a.output,a.box,a.sha256)
         elif a.command=='fit':save_json(a.output,fit_profile(a.source,a.landmarks,a.gerber,a.placements,a.tolerance_mm))
         elif a.command=='pick':pick(a.source,a.gerber,a.placements,a.output)

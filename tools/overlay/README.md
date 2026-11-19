@@ -2,7 +2,7 @@
 
 This is a **host-side artwork preparation tool**, not firmware. It never edits an EasyEDA project, the submitted Gerber archive, copper, holes or routing. It can prepare a registered image and package a new archive **after EasyEDA Pro generates the color fabrication files**.
 
-**Current status:** the tool is implemented and tested. There is **no approved, exact MTA-source-to-production-artwork profile yet**. Calibration outputs are marked DRAFT. Do not treat a successful script run as manufacturing approval. The opaque color layers do not expose the original crop/placement parameters. The EasyEDA project used for the original artwork still needs to be identified or the original map alignment independently reconstructed and reviewed.
+**Current status:** a PDF crop recipe has now been recovered for the preserved September 2026 edition, with explicit placement from the owner's visually checked replacement image. It remains **DRAFT** until the generated PDF-derived image is reviewed on the board. The source working project differs electrically from the manufactured Gerbers. The original fabrication archive remains the electrical baseline. No order-ready replacement archive or manufacturing approval is supplied.
 
 ## What has been established
 
@@ -29,6 +29,40 @@ python -m venv .venv-overlay
 ```
 
 The pinned host dependencies are Pillow 13.0.0 (raster handling), NumPy 2.5.4 (affine fitting), and PyMuPDF 1.26.5 (PDF/SVG rendering). They are not added to firmware. Use `python tools/overlay/overlay.py --help` for commands; replace `python` below with your virtual-environment Python when needed. Outputs never overwrite existing paths.
+
+### Optional crop-recovery analysis
+
+Recovering an unknown crop can use **opencv-python-headless 4.13.0.92** for SIFT feature matching and robust affine estimation. This is an optional host-only calibration dependency, installed in an isolated analysis directory or virtual environment. It is not used by firmware or required by the normal preparation commands. Feature matches produce a candidate registration; held-out points, broad image coverage and visual review are still required. Do not infer manufacturing approval from a feature match.
+
+## Quick path: prepare the recovered Brooklyn crop
+
+The recipe `recipes/brooklyn-september-2026.json` records the crop and the owner-checked replacement placement. It contains numbers and source hashes, not MTA artwork. Use the preserved PDF whose SHA-256 is:
+
+```text
+93f58f809c48832dad4688710e8b848811581119b12d2cf0c307c31c779b0423
+```
+
+The [MTA source URL](https://www.mta.info/map/5256) currently serves a different edition. The tool rejects that newer file rather than silently applying old registration to changed artwork. It does not download or bundle the old PDF.
+
+```powershell
+python tools/overlay/overlay.py prepare-pdf "YOUR_MATCHING_ORIGINAL_MAP.pdf" --recipe tools/overlay/recipes/brooklyn-september-2026.json --output captures/my-prepared-map
+```
+
+This one command produces `prepared-map.png`, `placement.json`, `EASYEDA_IMPORT.md` and a hash manifest. Default output is 300 DPI, 4043 by 3517 pixels. No Gerber or source project is modified.
+
+1. Open a separate copy of the blank-map EasyEDA project. Preserve its QR code, dedication and custom labels.
+2. Place the generated PNG with original quality selected on **Top Silkscreen Layer**.
+3. Enter both dimensions: **342.310 mm wide, 297.810 mm high**. The independent horizontal/vertical scaling deliberately reproduces the owner-checked fit; do not force the PDF's original aspect ratio.
+4. Enter **Start X 0.000 mm, Start Y 297.810 mm, rotation 0, mirror No**. These are EasyEDA image-property values, not a proven generic Gerber origin conversion.
+5. Inspect top, center, bottom and far-edge LED/station alignment and the custom labels in the color preview. Export colorful fabrication files only after that check.
+
+The crop was recovered from the 2852 by 2665 intermediate image at pixel rectangle `[1589,2732,4441,5397]` inside a 4600 by 5600 full-map raster, corresponding to PDF points `[572.04,983.52,1598.76,1942.92]`. Spatial image matching supported the recovery, including 14 held-out features. These checks do not replace station-by-station review. The clean PDF output does not reproduce manual annotations embedded in the earlier JPEG.
+
+### Blank-map workflow established with the owner
+
+Work on copies. First export an unchanged project, then remove only the selected map image and export a blank candidate. In this case the QR code, logo, dedication, OLED area and control labels were separate and remained visible. Preserve the original map object, its image file, and its position/size record before deletion.
+
+The tested working project had the same outline and 304 of 306 identical LED positions, but different vias and copper from the original manufacturing archive. **Do not use its new electrical layers to replace the manufactured board.** Blank/remapped exports were checked against each other: their protected drawing commands were identical after expanding renumbered aperture references and excluding unused aperture definitions. That supplemental analysis did not weaken the public `verify` command. The strict verifier can still flag a geometrically unchanged export because EasyEDA renumbers apertures; investigate rather than bypassing it. Packaging an original-board blank template still requires review of the color content and a controlled merge that retains every original electrical payload.
 
 ## 1. Inspect and pin the board export
 
