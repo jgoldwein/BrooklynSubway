@@ -2,7 +2,7 @@
 
 This is a **host-side artwork preparation tool**, not firmware. The preparation and packaging commands do not edit an EasyEDA project or the submitted Gerber archive. The experimental extension temporarily inserts artwork into a separate project copy and removes it after export; it does not save the source project or change copper, holes or routing.
 
-**Want the automated workflow?** Start with [Install and use Brooklyn Overlay Builder](AUTOMATION.md). It explains the one-time EasyEDA extension installation, local helper and result checks. Live editor integration is still awaiting verification; the manual workflow below remains available.
+**Want the automated workflow?** Start with [Install and use Brooklyn Overlay Builder](AUTOMATION.md). It explains the one-time EasyEDA extension installation, local helper and result checks. One live editor export has passed; the public editable template pair is still pending. The guide includes a Windows launcher that avoids the manual setup commands.
 
 **Current status:** a PDF crop recipe has now been recovered for the preserved September 2026 edition, with explicit placement from the owner's visually checked replacement image. The owner has now visually confirmed the generated PDF-derived image in the board preview. The recipe remains **DRAFT** for manufacturing: the final export and alignment against the original manufactured board still require review. The source working project differs electrically from the manufactured Gerbers. The original fabrication archive remains the electrical baseline. No order-ready replacement archive or manufacturing approval is supplied.
 
@@ -48,7 +48,7 @@ The recipe `recipes/brooklyn-september-2026.json` records the crop and the owner
 93f58f809c48832dad4688710e8b848811581119b12d2cf0c307c31c779b0423
 ```
 
-The [MTA source URL](https://www.mta.info/map/5256) currently serves a different edition. The tool rejects that newer file rather than silently applying old registration to changed artwork. It does not download or bundle the old PDF.
+The [MTA source URL](https://www.mta.info/map/5256) can serve a different edition. The Windows launcher also recognizes the October 27, 2026 recipe and selects by source fingerprint. The manual example below specifically uses September. Unknown editions are rejected; neither PDF is bundled.
 
 ```powershell
 python tools/overlay/overlay.py prepare-pdf "YOUR_MATCHING_ORIGINAL_MAP.pdf" --recipe tools/overlay/recipes/brooklyn-september-2026.json --output captures/my-prepared-map

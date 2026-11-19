@@ -271,7 +271,7 @@ def main(argv=None):
             print('Prepared the map. Original files are unchanged.', flush=True)
             print('Open:', (job.output / 'Blank-template-COPY.eprj2').resolve(), flush=True)
             print('One-time setup: import Brooklyn-Overlay-Builder.eext and allow external interaction.', flush=True)
-            print('In the blank PCB choose Overlay Builder > Build map, then paste this local job URL:', flush=True)
+            print('In the blank PCB choose Advanced > Overlay Builder > Build map, then paste this local job URL:', flush=True)
             print(url, flush=True)
             if args.easyeda_cli:
                 thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()

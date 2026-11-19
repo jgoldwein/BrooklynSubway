@@ -18,3 +18,5 @@ include an editable PCB project, a blank Gerber baseline or MTA artwork.
 See the [input requirements](../tools/overlay/AUTOMATION.md#1-check-that-you-have-the-three-build-inputs).
 
 Your input copies stay local and are ignored by Git. Keep originals elsewhere.
+
+For the simplest route, double-click `Start_Overlay.cmd` in the repository folder. It checks for the PCB/Gerber pair before doing any setup, then lets you choose the PDF without renaming or copying it here. The `Source_Map.pdf` filename is only needed by the optional manual command.

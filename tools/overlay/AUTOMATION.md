@@ -6,6 +6,24 @@ This guide helps you add subway map artwork to a blank Brooklyn Subway PCB desig
 
 **Tested:** one complete build with EasyEDA Pro 3.2.149 and Brooklyn Overlay Builder 0.1.3. Other editor versions and the optional command-line route have not yet been tested live. Outputs require visual review before manufacture.
 
+## Simplest Windows route
+
+**Package readiness:** the extension installer, launcher, inputs folder and calibration recipes are included. The clean editable PCB and matching blank Gerber are **not yet included**, so this public download cannot complete a build yet. The launcher checks this before installing packages or asking for a PDF.
+
+Once the missing pair is supplied, use this route:
+
+1. Install [EasyEDA Pro](https://easyeda.com/page/download) and [Python 3.12 or newer](https://www.python.org/downloads/windows/). Pro 3.2.149 is the live-tested editor version; see [older official downloads](https://prodocs.easyeda.com/en/faq/client-version/).
+2. [Download the software ZIP](https://github.com/jgoldwein/BrooklynSubway/archive/refs/heads/main.zip), extract it, and open the folder containing `Start_Overlay.cmd`. Do not run it from inside the ZIP.
+3. In EasyEDA, choose **Advanced > Extensions Manager > Import** and select the included **tools > overlay > easyeda > Brooklyn-Overlay-Builder.eext**. Select its Installed entry, click **Config**, check **Allow interactive with external**, then close the manager. This installation is only needed once.
+4. Download your PDF from the [official MTA source](https://www.mta.info/map/5256), then double-click **Start_Overlay.cmd**. The launcher sets up the Python packages on its first run and lets you choose the PDF in a file picker. **No terminal commands, PDF renaming, recipe selection or output-folder naming are required for this route.** If Windows displays a security prompt, decide whether to run the downloaded script; do not disable system security controls.
+5. Keep the command window open. When it prints **Open:**, open that exact copied project in EasyEDA. In **Project Design**, double-click **Brooklyn MTA Active Map PCB** under **Blank-template-COPY > Brooklyn MTA Active Map**.
+6. Choose **Advanced > Overlay Builder > Build map**, paste this run's complete local URL from the command window, and click **Confirm**.
+7. Wait for **Overlay complete** / **COMPLETE**, then preview the output ZIP whose full path is printed. The image disappears from the editor after export by design. Results are kept in **builds > Map_DATE_TIME > result** inside the extracted software folder.
+
+The launcher recognizes the included September 22 and October 27, 2026 PDF fingerprints and chooses the corresponding recipe automatically. The October geometry was checked against the recovered reference; the completed live export used September. Unknown/newer editions stop with a clear message instead of guessing a placement. The MTA PDF itself is intentionally not bundled.
+
+The detailed file explanations below remain useful. The longer manual route is optional; do not perform both routes for the same build.
+
 ## First, understand the files
 
 **What is the helper?** It is the included **Python helper tool**, [automate.py](automate.py), which runs on your computer. It checks your input files, prepares the map image, creates a working PCB copy and packages the final Gerber ZIP. It also supplies the local job address that connects it to the EasyEDA extension. It is not a person, an AI service or a separate download: it comes in the software ZIP below. You start it in [step 8](#8-start-the-helper-and-create-your-working-pcb-copy).
@@ -20,10 +38,13 @@ You also need these files:
 
 - **[A blank `.eprj2` project](#1-check-that-you-have-the-three-build-inputs):** the editable [EasyEDA Pro](#2-install-easyeda-pro) source, including the PCB and attached schematics. EasyEDA needs this to insert the image. It must match your blank Gerber ZIP, including the labels. A Gerber ZIP cannot replace this file. The linked section explains the requirements; the public project download is still being prepared.
 - **[The MTA `.pdf`](https://www.mta.info/map/5256):** the source subway map downloaded or otherwise obtained from the MTA. The PDF edition must match the selected recipe. You provide this locally; it is not bundled with the tools. The MTA link may serve a newer edition; read the [edition requirement](#1-check-that-you-have-the-three-build-inputs) before proceeding.
-- **[A recipe `.json`](recipes/brooklyn-september-2026.json):** a small text file supplied with the tools. It records the approved PDF's fingerprint, crop rectangle, size and placement. It contains calibration numbers, not map artwork. Do not edit it to bypass a PDF mismatch. The link opens the included September 2026 recipe for reference; it is already present in your software download.
+- **[A recipe `.json`](recipes/brooklyn-september-2026.json):** a small text file supplied with the tools. It records the approved PDF's fingerprint, crop rectangle, size and placement. It contains calibration numbers, not map artwork. Do not edit it to bypass a PDF mismatch. The link opens the September 2026 recipe for reference; the [October recipe](recipes/brooklyn-october-2026.json) is also included and the launcher chooses automatically; it is already present in your software download.
 - **[Brooklyn-Overlay-Builder.eext](#6-prepare-python-and-locate-the-included-installer):** the EasyEDA extension installer. It is already included in the software download at `tools/overlay/easyeda/Brooklyn-Overlay-Builder.eext`; [import it into EasyEDA in step 7](#7-install-the-extension-in-easyeda-pro). It adds **Advanced > Overlay Builder > Build map**. It is not the board project. You can also [download the ready-built installer directly](https://github.com/jgoldwein/BrooklynSubway/raw/refs/heads/main/tools/overlay/easyeda/Brooklyn-Overlay-Builder.eext).
 
 **Files you do not have yet:** [Blank-template-COPY.eprj2 and the prepared image](#8-start-the-helper-and-create-your-working-pcb-copy), and the [final Gerber ZIP](#11-find-and-check-your-finished-fabrication-zip), are generated later. Do not search for them inside the software download.
+
+<details>
+<summary><strong>Detailed manual setup and troubleshooting (optional)</strong></summary>
 
 ## 1. Check that you have the three build inputs
 
@@ -31,13 +52,13 @@ Before installing the tools, identify:
 
 1. **Map-less EasyEDA `.eprj2` project - DOWNLOAD NOT AVAILABLE YET.** This file is still being cleaned for publication. There is no downloadable builder project at this location yet.
 2. **Matching blank Gerber `.zip` - DOWNLOAD NOT AVAILABLE YET.** This must be exported from the cleaned project above. The older art-free manufacturing ZIP is a different revision and cannot substitute for this input.
-3. The **[source map `.pdf` from the MTA](https://www.mta.info/map/5256)**, matching the **[reviewed recipe](recipes/brooklyn-september-2026.json)**. The MTA link may serve a newer edition that the recipe does not accept; it is not a guaranteed download of the required September 2026 edition.
+3. The **[source map `.pdf` from the MTA](https://www.mta.info/map/5256)**, matching the **[reviewed recipe](recipes/brooklyn-september-2026.json)**. The MTA link may serve a newer edition that the included recipes do not accept; it is not a guaranteed download of a supported edition. The launcher also recognizes the October 27, 2026 edition.
 
 If any is missing, stop here and obtain it from the project maintainer. The public blank builder pair is still under review; do not substitute an older production Gerber or a similarly named project.
 
 **The public builder package is not ready for a new user to complete this workflow.** The first two required downloads must be supplied before that changes. Links to explanatory README pages are not substitutes for those files.
 
-The included `tools/overlay/recipes/brooklyn-september-2026.json` requires the preserved September 2026 PDF. The [official MTA map page](https://www.mta.info/map/5256) can change to a newer edition. The current recipe deliberately rejects a different PDF. A newly downloaded PDF is not automatically compatible just because it shows Brooklyn.
+The included recipes recognize September 22 and October 27, 2026 PDFs. The launcher chooses by fingerprint automatically. The manual command below explicitly uses the October recipe; using September manually requires selecting its recipe with `--recipe`. The [official MTA map page](https://www.mta.info/map/5256) can change editions; an unrecognized edition is rejected.
 
 ## 2. Install EasyEDA Pro
 
@@ -74,7 +95,7 @@ Inside the [repository folder you extracted in step 3](#3-download-the-software-
 1. Open the included **[inputs folder](../../inputs/README.md)**. It already comes in the latest repository ZIP; you do not need to create it. Its `README.md` explains what belongs there. If you downloaded an older ZIP without this folder, create a folder named `inputs` beside `README.md`.
 2. Copy your [blank EasyEDA `.eprj2` project](#1-check-that-you-have-the-three-build-inputs) into `inputs`. Rename this copy **`Blank_Map.eprj2`**. The linked section explains the required project; the public builder project download is still being prepared.
 3. Copy its [matching blank Gerber ZIP](#1-check-that-you-have-the-three-build-inputs) into `inputs`. Rename this copy **`Blank_Gerbers.zip`**. Do not extract it. This must be the baseline paired with that project, not an older manufacturing archive.
-4. Copy your reviewed PDF from the [official MTA map source](https://www.mta.info/map/5256) into `inputs`. Rename this copy **`Source_Map.pdf`**. Check the [required PDF edition](#1-check-that-you-have-the-three-build-inputs) first: the currently served MTA PDF may differ from the [included recipe](recipes/brooklyn-september-2026.json).
+4. Copy your reviewed PDF from the [official MTA map source](https://www.mta.info/map/5256) into `inputs`. Rename this copy **`Source_Map.pdf`**. Check the [required PDF edition](#1-check-that-you-have-the-three-build-inputs) first: the currently served MTA PDF may differ from the [included recipes](recipes/).
 
 Renaming the copies simplifies the [build command in step 8](#8-start-the-helper-and-create-your-working-pcb-copy). It does not change the contents or make a mismatched file valid. Keep your original files elsewhere unchanged. If Windows hides file extensions, turn on **File name extensions** in File Explorer so you do not accidentally produce a name such as `Source_Map.pdf.pdf`.
 
@@ -169,7 +190,7 @@ You can also [download the installer directly](https://github.com/jgoldwein/Broo
 Return to the PowerShell window from step 5. With the input filenames from step 4, paste this single command:
 
 ```powershell
-.\.venv-overlay\Scripts\python tools/overlay/automate.py --project "inputs\Blank_Map.eprj2" --baseline "inputs\Blank_Gerbers.zip" --pdf "inputs\Source_Map.pdf" --output "Map_Build_01"
+.\.venv-overlay\Scripts\python tools/overlay/automate.py --project "inputs\Blank_Map.eprj2" --baseline "inputs\Blank_Gerbers.zip" --pdf "inputs\Source_Map.pdf" --recipe "tools/overlay/recipes/brooklyn-october-2026.json" --output "Map_Build_01"
 ```
 
 The options mean:
@@ -245,6 +266,8 @@ Keep the installed extension and Python environment. Repeat steps 8-11 with a ne
 - **PDF fingerprint/hash mismatch:** the PDF is a different edition. Obtain the reviewed matching edition or ask the maintainer to validate a new recipe. Renaming the PDF cannot resolve this.
 - **Missing editor API:** report the EasyEDA version and message. Other clients are not yet validated; the [manual import workflow](README.md#quick-path-prepare-the-recovered-brooklyn-crop) is available.
 
+</details>
+
 ## Advanced details
 
 The helper uses standard Python plus the pinned packages in `requirements.txt`; the extension has no third-party JavaScript dependencies. It binds to `127.0.0.1` only and uses an unpredictable per-run URL token. Keep that URL private.
@@ -255,6 +278,6 @@ The extension uses mm-to-mil conversion and explicit canvas/data-origin conversi
 
 An optional `--easyeda-cli` adapter targets the [documented EasyEDA 4.1.60+ CLI](https://prodocs.easyeda.com/en/api/guide/cli.html). It is simulated in tests, not live-validated. EasyEDA 3.2.149 cannot use it. This beginner walkthrough uses the tested extension route instead.
 
-Tests: `python tools/overlay/test_overlay.py`, `python tools/overlay/test_automate.py` and `node tools/overlay/test_extension.cjs`.
+Tests: `python tools/overlay/test_start.py`, `python tools/overlay/test_overlay.py`, `python tools/overlay/test_automate.py` and `node tools/overlay/test_extension.cjs`.
 
 Official API references: [image creation](https://prodocs.easyeda.com/en/api/reference/pro-api.pcb_primitiveobject.create.html), [origin conversion](https://prodocs.easyeda.com/en/api/reference/pro-api.pcb_document.convertcanvasorigintodataorigin.html), [Gerber export](https://prodocs.easyeda.com/en/api/reference/pro-api.pcb_manufacturedata.getgerberfile.html) and [extension installation](https://prodocs.easyeda.com/en/api/guide/how-to-start.html).

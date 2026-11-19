@@ -1,0 +1,66 @@
+{
+  "schema": 1,
+  "status": "DRAFT_REQUIRES_INDEPENDENT_REVIEW",
+  "name": "Brooklyn October 2026 map crop",
+  "source": {
+    "url": "https://www.mta.info/map/5256",
+    "sha256": "b9536cfbd24ee6e203674b1396ad4cadb6be507d885546826cc04b7791061e45",
+    "page": 1,
+    "pageSizePt": [
+      1656,
+      2016
+    ],
+    "pdfCreationDate": "2026-10-27",
+    "note": "Preserved October 27, 2026 edition from the official MTA URL. Unknown later editions are rejected. This hash records the reviewed input, not permission to reproduce it."
+  },
+  "cropBoxPt": [
+    572.04,
+    983.52,
+    1598.76,
+    1942.92
+  ],
+  "placement": {
+    "units": "mm",
+    "layer": "Top Silkscreen Layer",
+    "widthMm": 342.31,
+    "heightMm": 297.81,
+    "startXmm": 0,
+    "startYmm": 297.81,
+    "rotationDegrees": 0,
+    "mirror": false
+  },
+  "recovery": {
+    "fullRasterPixels": [
+      4600,
+      5600
+    ],
+    "intermediateCropBoxPx": [
+      1589,
+      2732,
+      4441,
+      5397
+    ],
+    "intermediateMatchScore": 0.9990092515945435,
+    "referenceCropSha256": "52c1fea8b06f457f24ab28d0b2c4b8f96dc6e869e96ef9b8e53de07ced099a5f",
+    "referenceCropPixels": [
+      1293,
+      1126
+    ],
+    "referenceMatchCoverageFraction": [
+      0.9417570575852774,
+      0.9430380240215078
+    ],
+    "note": "Recovered from the intermediate Brooklyn JPEG crop inside the original full-map raster; PDF mapping independently supported by distributed SIFT matches. Placement comes from user-confirmed replacement fit, not the old image object. Both axes are explicitly rescaled, preserving the replacement fit.",
+    "heldOutMatches": 14,
+    "maximumHeldOutFeatureErrorMm": 0.11954092874925645,
+    "heldOutFeatureCoverageNote": "Image features, not an independent inspection of each station/PCB LED"
+  },
+  "manufacturingApproval": false,
+  "editionValidation": {
+    "geometry": "Same 14 held-out feature positions as the September reference; same crop and placement.",
+    "pixelComparison": "1776 pixels differ by more than 10 channel values out of 4043x3517; difference confined near the bottom Coney Island annotation.",
+    "annotationChange": "The September yellow warning triangle is absent in the October edition.",
+    "liveExportTested": false,
+    "note": "Image geometry review does not establish station-by-station PCB alignment or manufacturing approval."
+  }
+}
