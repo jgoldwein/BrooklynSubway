@@ -1,4 +1,4 @@
-﻿# Automated overlay builder (experimental)
+# Automated overlay builder (experimental)
 
 This helper automates image preparation, numerical placement, color fabrication export and packaging. It uses EasyEDA's documented API to generate its own color files; it does not guess or rewrite the opaque FCTS/FCBS format. **Live EasyEDA compatibility is still being tested.** The API documentation marks some operations as beta. Outputs are review candidates, not automatic manufacturing approval.
 
@@ -35,7 +35,7 @@ It is in the **project's top folder**, beside `README.md`, not inside `tools/ove
 1. Open **EasyEDA Pro > Advanced > Extension Manager**.
 2. Choose **Import**, browse to the full path printed by the command above, and select `Brooklyn-Overlay-Builder.eext`.
 3. Follow the installation prompts. Allow **external interaction** for this extension so it can reach the local helper. You make this permission choice yourself; do not disable general security controls or enable unrelated permissions.
-4. Restart EasyEDA if its installer requests it. Leave EasyEDA at the Start Page for now. You will open the copied PCB and use **Overlay Builder > Build map** in step 4, after the helper has created it.
+4. Restart EasyEDA if its installer requests it. Leave EasyEDA at the Start Page for now. You will open the copied PCB and use **Advanced > Overlay Builder > Build map** in step 4, after the helper has created it.
 
 Installation does not start a build or change a PCB. The helper below must be running before the menu can work.
 
@@ -72,7 +72,7 @@ C:\Users\YOUR_WINDOWS_NAME\Downloads\BrooklynSubway-main\Map_Build_01\Blank-temp
 Your actual location may differ. **Use the full path printed after `Open:`; do not guess it from this example.** Leave PowerShell open: the helper is waiting for EasyEDA. Its URL starts with `http://127.0.0.1:`, which means **your own computer**.
 
 1. In EasyEDA, choose **Open Project**. Paste the full path printed after **Open:** into the file picker's **File name** field and click **Open**. Activate its blank PCB tab using the steps below.
-2. Choose **Overlay Builder > Build map**.
+2. Choose **Advanced > Overlay Builder > Build map**.
 3. In the **Build subway map** dialog's empty field, paste the **entire URL** printed by PowerShell and click **Confirm**. Use this run's URL, not an older one.
 4. Wait for **COMPLETE** in PowerShell. The helper waits up to 20 minutes. An error or timeout is not completion.
 
@@ -86,7 +86,7 @@ If EasyEDA shows the large welcome banner and **Quick Start** buttons, you are o
 2. Select **`Blank-template-COPY.eprj2` inside the output folder created by the Python helper** (for example, `Map_Build_01`). If that file does not exist yet, run the build command above first.
 3. Click the vertical **Project Design** tab on the left sidebar to display the project tree. Expand **Blank-template-COPY > Brooklyn MTA Active Map**, then double-click **Brooklyn MTA Active Map PCB**, the entry with the green board icon immediately below **Brooklyn MTA Active Map Schematics**. This opens the board drawing. **Project Design** is the sidebar tab; **Brooklyn MTA Active Map PCB** is the document inside it. These are the names in the supplied Brooklyn template; a renamed template may use different names.
 4. The board drawing opens in a tab beside **Start Page**. That drawing tab is the **PCB editor tab**. Select it so the board is visible, rather than a schematic or a 3D preview.
-5. Look for **Overlay Builder > Build map** while that PCB tab is active.
+5. Look for **Advanced > Overlay Builder > Build map** while that PCB tab is active.
 
 Use the helper-generated project copy, rather than an older project from **Recent Design**. Keep the Python helper running while you open the copy and start the extension.
 
@@ -97,13 +97,13 @@ The dialog connects EasyEDA to the running Python helper. It expects a **local j
 In PowerShell, find this message:
 
 ```text
-In the blank PCB choose Overlay Builder > Build map, then paste this local job URL:
+In the blank PCB choose Advanced > Overlay Builder > Build map, then paste this local job URL:
 http://127.0.0.1:PORT/LONG_JOB_TOKEN
 ```
 
 Copy the actual **whole line beginning `http://127.0.0.1:`** from your terminal into the dialog. `PORT` and `LONG_JOB_TOKEN` above are placeholders: do not type that example. Your helper supplies real numbers and a long token automatically.
 
-**If you have not run the build command yet, or PowerShell shows an error instead of a URL, click Cancel in EasyEDA.** Complete step 4 in PowerShell first. Then open the copied blank PCB and return to **Overlay Builder > Build map**. Keep PowerShell running until it reports COMPLETE.
+**If you have not run the build command yet, or PowerShell shows an error instead of a URL, click Cancel in EasyEDA.** Complete step 4 in PowerShell first. Then open the copied blank PCB and return to **Advanced > Overlay Builder > Build map**. Keep PowerShell running until it reports COMPLETE.
 
 ### 5. Review
 
@@ -151,7 +151,7 @@ One-time setup in EasyEDA: **Advanced > Extension Manager > Import** the generat
 For each build:
 
 1. Open the generated `Blank-template-COPY.eprj2` and activate its map-less PCB.
-2. Choose **Overlay Builder > Build map** and paste the printed local job URL.
+2. Choose **Advanced > Overlay Builder > Build map** and paste the printed local job URL.
 3. Wait for `COMPLETE` in the helper terminal. The script prepares and places the image, exports color files and produces `result/Gerbers-with-prepared-artwork.zip` plus its integrity report. No manual cropping, sizing, dragging or export dialog is needed.
 
 The extension exports the active template first. If its non-color contents differ from the chosen blank Gerber, it stops before placing an image. A map-size image already in the template also stops the run. The extension converts millimeters to API mil units, then converts the canvas origin to the data origin explicitly. It temporarily creates only the new color image and removes that object after export, including on export failure. It never calls save on the source project.
