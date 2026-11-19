@@ -67,14 +67,14 @@ For reference, the [overlay code directory](https://github.com/jgoldwein/Brookly
 
 ## 4. Put copies of your inputs in one place
 
-Inside the repository folder from step 3:
+Inside the [repository folder you extracted in step 3](#3-download-the-software-tools-from-github):
 
-1. Create a folder named **`inputs`**.
-2. Copy your blank `.eprj2` project into it. Rename this copy **`Blank_Map.eprj2`**.
-3. Copy its matching blank Gerber ZIP into it. Rename this copy **`Blank_Gerbers.zip`**. Do not extract it.
-4. Copy your reviewed MTA PDF into it. Rename this copy **`Source_Map.pdf`**.
+1. Open the included **[inputs folder](../../inputs/README.md)**. It already comes in the latest repository ZIP; you do not need to create it. Its `README.md` explains what belongs there. If you downloaded an older ZIP without this folder, create a folder named `inputs` beside `README.md`.
+2. Copy your [blank EasyEDA `.eprj2` project](#1-check-that-you-have-the-three-build-inputs) into `inputs`. Rename this copy **`Blank_Map.eprj2`**. The linked section explains the required project; the public builder project download is still being prepared.
+3. Copy its [matching blank Gerber ZIP](#1-check-that-you-have-the-three-build-inputs) into `inputs`. Rename this copy **`Blank_Gerbers.zip`**. Do not extract it. This must be the baseline paired with that project, not an older manufacturing archive.
+4. Copy your reviewed PDF from the [official MTA map source](https://www.mta.info/map/5256) into `inputs`. Rename this copy **`Source_Map.pdf`**. Check the [required PDF edition](#1-check-that-you-have-the-three-build-inputs) first: the currently served MTA PDF may differ from the [included recipe](recipes/brooklyn-september-2026.json).
 
-Renaming the copies simplifies the commands. It does not change the contents or make a mismatched file valid. Keep your original files elsewhere unchanged. If Windows hides file extensions, turn on **File name extensions** in File Explorer so you do not accidentally produce a name such as `Source_Map.pdf.pdf`.
+Renaming the copies simplifies the [build command in step 8](#8-start-the-helper-and-create-your-working-pcb-copy). It does not change the contents or make a mismatched file valid. Keep your original files elsewhere unchanged. If Windows hides file extensions, turn on **File name extensions** in File Explorer so you do not accidentally produce a name such as `Source_Map.pdf.pdf`.
 
 Your repository folder should now contain:
 
