@@ -14,6 +14,17 @@ def zipped(copper=b'%MOMM*%\nX100Y200D01*',color=b'blank'):
  return b.getvalue()
 
 class WorkflowTests(unittest.TestCase):
+ def test_auto_open_targets_generated_copy(self):
+  with tempfile.TemporaryDirectory() as folder:
+   project=Path(folder)/'working copy.eprj2';project.write_bytes(b'fixture')
+   with mock.patch.object(a.os,'startfile',create=True) as launch:
+    self.assertTrue(a.open_project(project))
+    launch.assert_called_once_with(str(project.resolve()))
+ def test_auto_open_failure_allows_manual_fallback(self):
+  with tempfile.TemporaryDirectory() as folder:
+   project=Path(folder)/'copy.eprj2';project.write_bytes(b'fixture')
+   with mock.patch.object(a.os,'startfile',side_effect=OSError('No file association'),create=True):
+    self.assertFalse(a.open_project(project))
  def setUp(self):
   self.tmp=tempfile.TemporaryDirectory();self.root=Path(self.tmp.name)
   self.blank=self.root/'blank.zip';self.blank.write_bytes(zipped())

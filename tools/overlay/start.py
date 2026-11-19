@@ -70,11 +70,11 @@ def main(argv=None):
     recipe = recipe_for(pdf)
     output = ROOT/'builds'/datetime.now().strftime('Map_%Y%m%d_%H%M%S_%f')
     print('Using calibrated recipe:', recipe.name, flush=True)
-    print('When the helper prints Open:, open THAT project copy in EasyEDA.\nThen select Advanced > Overlay Builder > Build map and paste THIS RUN\'S local URL.\nKeep this window open until COMPLETE.', flush=True)
+    print('The generated working copy will open in EasyEDA automatically.\nThen select Advanced > Overlay Builder > Build map and paste THIS RUN\'S local URL.\nKeep this window open until COMPLETE.', flush=True)
     return subprocess.call([sys.executable, str(HERE/'automate.py'),
                             '--project', str(ROOT/'inputs/Blank_Map.eprj2'),
                             '--baseline', str(ROOT/'inputs/Blank_Gerbers.zip'),
-                            '--pdf', str(pdf), '--recipe', str(recipe), '--output', str(output)], cwd=ROOT)
+                            '--open-project', '--pdf', str(pdf), '--recipe', str(recipe), '--output', str(output)], cwd=ROOT)
 
 
 if __name__ == '__main__':

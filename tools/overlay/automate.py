@@ -14,6 +14,7 @@ import threading
 import time
 import zipfile
 from http.server import BaseHTTPRequestHandler, HTTPServer
+import os
 from pathlib import Path
 
 import overlay
@@ -252,6 +253,21 @@ def run_cli(executable, project, url):
         cli_call(executable,'session','close','--session',session_id,'--destroy')
 
 
+def open_project(project):
+    """Ask Windows to open only this run's generated copy, never the input template."""
+    project = project.resolve(strict=True)
+    try:
+        if not hasattr(os, 'startfile'):
+            raise OSError('Automatic opening is available on Windows only')
+        os.startfile(str(project))
+        print('Opening the working copy in EasyEDA. If prompted, open this project.', flush=True)
+        return True
+    except OSError as error:
+        print('Could not open EasyEDA automatically:', error, flush=True)
+        print('Open the working copy manually:', project, flush=True)
+        return False
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--project', required=True, help='Depersonalized blank EasyEDA .eprj2 template')
@@ -262,6 +278,7 @@ def main(argv=None):
     parser.add_argument('--output', required=True)
     parser.add_argument('--timeout', type=int, default=1200)
     parser.add_argument('--easyeda-cli', help='Optional EasyEDA 4.1.60+ executable for unattended, hidden-window operation')
+    parser.add_argument('--open-project', action='store_true', help='Open the generated working copy with its Windows file association')
     args = parser.parse_args(argv)
     try:
         job = prepare_job(args)
@@ -273,6 +290,8 @@ def main(argv=None):
             print('One-time setup: import Brooklyn-Overlay-Builder.eext and allow external interaction.', flush=True)
             print('In the blank PCB choose Advanced > Overlay Builder > Build map, then paste this local job URL:', flush=True)
             print(url, flush=True)
+            if args.open_project and not args.easyeda_cli:
+                open_project(job.output / 'Blank-template-COPY.eprj2')
             if args.easyeda_cli:
                 thread=threading.Thread(target=server.serve_forever,daemon=True);thread.start()
                 try:

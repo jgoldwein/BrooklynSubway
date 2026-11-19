@@ -42,6 +42,7 @@ class LauncherTests(unittest.TestCase):
         with mock.patch.object(start, 'recipe_for', return_value=recipe), mock.patch.object(start.subprocess, 'call', return_value=0) as call:
             self.assertEqual(start.main(['--pdf', str(pdf)]), 0)
             args = call.call_args.args[0]
+            self.assertIn('--open-project', args)
             self.assertEqual(args[args.index('--pdf')+1], str(pdf.resolve()))
             self.assertEqual(args[args.index('--recipe')+1], str(recipe))
             self.assertIn(str(self.root/'builds'), args[-1])
