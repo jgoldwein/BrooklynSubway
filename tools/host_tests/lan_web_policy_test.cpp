@@ -1314,6 +1314,31 @@ int main() {
     CHECK(brooklyn::web::renderStatusJson(json,sizeof(json),status,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
     CHECK(strstr(json,"\"quietHoursEndMinute\":480") && strstr(json,"\"quietLocalMinute\":426"));
   }
+  {
+    auto status=sampleStatus();status.adminSessionActive=false;
+    status.automaticUpdates=true;status.stationAlertPreferences.stations=7;
+    strcpy(status.availableVersion,"0.2.102");
+    static char page[brooklyn::web::kStatusPageCapacity];char json[6144];
+    CHECK(brooklyn::web::renderHomePage(page,sizeof(page),status,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
+    CHECK(strstr(page,"id=\"firmware-updates\"><h2>Firmware updates</h2>"));
+    CHECK(strstr(page,"id=\"my-station-alerts\"><h2>My station alerts</h2>"));
+    CHECK(strstr(page,"id=\"personalization\"><h2>Personalization</h2>"));
+    CHECK(strstr(page,"href=\"/personalization#station-alerts\">Choose stations"));
+    CHECK(strstr(page,"York St (F), High St (A/C), Jay St-MetroTech (A/C/F/R)"));
+    CHECK(strstr(page,"data-status=\"automaticUpdatesLabel\">On</strong>"));
+    CHECK(brooklyn::web::renderStatusJson(json,sizeof(json),status,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
+    CHECK(strstr(json,"\"automaticUpdates\":true,\"automaticUpdatesLabel\":\"On\""));
+    CHECK(strstr(json,"\"availableReleaseLabel\":\"0.2.102\""));
+    CHECK(strstr(json,"\"selectedStations\":\"York St (F), High St (A/C), Jay St-MetroTech (A/C/F/R)\""));
+    status.automaticUpdates=false;status.availableVersion[0]=0;
+    status.stationAlertPreferences.enabled=false;status.stationAlertPreferences.stations=0;
+    CHECK(brooklyn::web::renderHomePage(page,sizeof(page),status,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
+    CHECK(strstr(page,"data-status=\"automaticUpdatesLabel\">Off</strong>"));
+    CHECK(strstr(page,"data-status=\"stationAlertsLabel\">Off</strong>"));
+    CHECK(strstr(page,"No stations selected") && strstr(page,"No newer release known"));
+    CHECK(brooklyn::web::renderStatusJson(json,sizeof(json),status,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
+    CHECK(strstr(json,"\"automaticUpdates\":false") && strstr(json,"\"stationAlertsLabel\":\"Off\""));
+  }
   testPersistentConfiguration();
   testDnsConfigurationAndValidation();
   testDnsSettingsFormParsing();

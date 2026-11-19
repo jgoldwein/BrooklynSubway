@@ -481,3 +481,14 @@ Upcoming notices do not trigger the main-screen indicator. It clears when no mat
 Open **Screen > Quiet hours and startup greeting**. This has its own card, showing the saved schedule in New York time and whether quiet hours are active. Choose **Edit quiet hours and greeting** to change it; signing in may be required.
 
 For a newly active matching station notice, the main screen triangle flashes five times, then stays visible. The text stays steady. Two low-high warning pairs play once for each newly detected notice window. Quiet hours and startup sound muting suppress them, with no catch-up sound afterward. Turn to screen 8 for details. This does not change the map-light colors or wake a screen you turned off.
+
+
+### Easy-to-find settings cards
+
+Open **Advanced** for these separate cards:
+
+- **Firmware updates:** see the current version, whether automatic updates are On or Off, and any newer release the map knows about. Choose **Open firmware updates** to manage updates.
+- **My station alerts:** see whether alerts are On and which stations are selected. Choose **View alerts** to read notices or **Choose stations** to change your selection.
+- **Personalization:** choose **Edit personalization** to change names, greeting, celebration details, extras and the support contact.
+
+The version, update status and station choices refresh automatically. Changing settings may require administrator sign-in.

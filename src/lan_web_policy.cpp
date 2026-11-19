@@ -27,6 +27,14 @@ const char *quietState(const StatusSnapshot &s) {
   if(!s.timeSynchronized)return "Waiting for clock synchronization";
   return s.quietHoursActive?"Quiet hours are active now":"Outside quiet hours";
 }
+void selectedStations(const alerts::Preferences &p,char (&out)[128]) {
+  out[0]=0;
+  const char *names[]={"York St (F)","High St (A/C)","Jay St-MetroTech (A/C/F/R)"};
+  size_t used=0;
+  for(unsigned n=0;n<3;++n)if(p.stations&(1u<<n))
+    used+=snprintf(out+used,sizeof(out)-used,"%s%s",used?", ":"",names[n]);
+  if(!used)snprintf(out,sizeof(out),"No stations selected");
+}
 class Writer {
  public:
   Writer(char *out, size_t capacity) : out_(out), capacity_(capacity) {
@@ -403,7 +411,20 @@ size_t renderHomePage(char *out, size_t capacity,
                 "<a class=\"button secondary\" href=\"#screen\">Screen brightness</a></div></section>"
                 "<section class=\"wide\" data-view=\"advanced\" id=\"advanced\"><p class=\"kicker\">Tools &amp; help</p><h2>Keep your map running</h2>"
                 "<p>Check for updates or test the lights. You may need to sign in first.</p><div class=\"actions\">"
-                "<a class=\"button\" href=\"/update\">Firmware updates</a><a class=\"button secondary\" href=\"/hardware-test\">Test the lights</a><a class=\"button secondary\" href=\"/monitor\">Train monitor</a><a class=\"button secondary\" href=\"/alerts\">Station alerts</a><a class=\"button secondary\" href=\"/personalization\">Personalization</a></div></section>"
+                "<a class=\"button secondary\" href=\"/hardware-test\">Test the lights</a><a class=\"button secondary\" href=\"/monitor\">Train monitor</a></div></section>"
+                "<section data-view=\"advanced\" id=\"firmware-updates\"><h2>Firmware updates</h2><p>Current version: <strong data-status=\"firmwareVersion\">");
+  writer.html(status.firmwareVersion[0]?status.firmwareVersion:"unknown");
+  writer.append("</strong></p><p>Automatic updates: <strong data-status=\"automaticUpdatesLabel\">");
+  writer.append(status.automaticUpdates?"On":"Off");
+  writer.append("</strong></p><p>Available release: <span data-status=\"availableReleaseLabel\">");
+  writer.html(status.availableVersion[0]?status.availableVersion:"No newer release known");
+  writer.append("</span></p><p>Keep your map up to date and choose whether updates install automatically.</p><a class=\"button\" href=\"/update\">Open firmware updates</a></section>"
+                "<section data-view=\"advanced\" id=\"my-station-alerts\"><h2>My station alerts</h2><p>Alerts: <strong data-status=\"stationAlertsLabel\">");
+  writer.append(status.stationAlertPreferences.enabled?"On":"Off");
+  writer.append("</strong></p><p>Selected stations: <span data-status=\"selectedStations\">");
+  {char stations[128];selectedStations(status.stationAlertPreferences,stations);writer.html(stations);}
+  writer.append("</span></p><p>See service notices for your stations and choose which stations to follow.</p><div class=\"actions\"><a class=\"button\" href=\"/alerts\">View alerts</a><a class=\"button secondary\" href=\"/personalization#station-alerts\">Choose stations</a></div></section>"
+                "<section data-view=\"advanced\" id=\"personalization\"><h2>Personalization</h2><p>Make the map your own: names, greeting, celebration date, family credits, favorite-team extra and support contact.</p><a class=\"button secondary\" href=\"/personalization\">Edit personalization</a></section>"
                 "<details class=\"card wide\" data-view=\"advanced\"><summary>Device information</summary><dl><dt>Device name</dt><dd>");
   writer.html(status.deviceName);
   writer.append("</dd><dt>Firmware</dt><dd>");
@@ -1184,6 +1205,10 @@ size_t renderStatusJson(char *out, size_t capacity,
   writer.append(kFirmwareId);
   writer.append("\",\"firmwareVersion\":\"");
   writer.json(status.firmwareVersion);
+  writer.format("\",\"automaticUpdates\":%s,\"automaticUpdatesLabel\":\"%s\",\"availableReleaseLabel\":\"",status.automaticUpdates?"true":"false",status.automaticUpdates?"On":"Off");
+  writer.json(status.availableVersion[0]?status.availableVersion:"No newer release known");
+  writer.format("\",\"stationAlertsLabel\":\"%s\",\"selectedStations\":\"",status.stationAlertPreferences.enabled?"On":"Off");
+  {char stations[128];selectedStations(status.stationAlertPreferences,stations);writer.json(stations);}
   writer.append("\",\"lastSound\":\"");writer.json(status.lastSound);
   writer.format("\",\"otaBootConfirmed\":%s", status.otaBootConfirmed ? "true" : "false");
   writer.append(",\"deviceName\":\"");
@@ -1462,7 +1487,7 @@ size_t renderPersonalizationPage(char *out,size_t capacity,const personal::Setti
   }
   w.append("<h3>OLED greeting preview</h3><p class=\"hint\">The first four lines are centered on the OLED; the final names line scrolls.</p><pre id=\"preview\" style=\"background:#071827;color:#b3efff;padding:1rem;text-align:center;white-space:pre-wrap\"></pre><button type=\"submit\">Save personalization</button></form><p>Reset to firmware defaults restores the firmware greeting and contact defaults. It also erases Wi-Fi and administrator settings; it is not needed to edit these words.</p><p class=\"hint\">The guides use The Developer as a generic label: enter your developer or support contact name. Leave the support email blank to use Copy or Save reports without an email draft. Made by is a display credit. Original project authorship and license notices remain unchanged.</p>");
   const auto &stations=alerts::state().preferences;
-  w.append("<h2>My station alerts</h2><p>Check planned work and service notices for your stations, in both directions. New active notices play two warning pairs unless sounds are muted. Alerts do not change train-light colors.</p><form method=\"post\" action=\"/personalization/stations\"><input type=\"hidden\" name=\"csrf\" value=\"");w.html(csrf);w.append("\">");
+  w.append("<h2 id=\"station-alerts\">My station alerts</h2><p>Check planned work and service notices for your stations, in both directions. New active notices play two warning pairs unless sounds are muted. Alerts do not change train-light colors.</p><form method=\"post\" action=\"/personalization/stations\"><input type=\"hidden\" name=\"csrf\" value=\"");w.html(csrf);w.append("\">");
   const char *stationKeys[]={"enabled","york","high","jay","linewide"};
   const char *stationLabels[]={"Show station alerts","York St (F)","High St (A/C)","Jay St-MetroTech (A/C/F/R)","Include line-wide notices for these stations"};
   const bool selected[]={stations.enabled,bool(stations.stations&1),bool(stations.stations&2),bool(stations.stations&4),stations.lineWide};

@@ -2111,6 +2111,10 @@ void LanWebUi::sendLoginFailure(admin::LoginResult::Code code) {
 }
 
 void LanWebUi::updateAdminStatus(StatusSnapshot &status) {
+  status.automaticUpdates = autoInstall_;
+  status.stationAlertPreferences = alerts::state().preferences;
+  snprintf(status.availableVersion, sizeof(status.availableVersion), "%s",
+           updateAvailable_ ? availableVersion_ : "");
   status.trainColors=configuration_.trainColors();
   status.routeVisibilityMask=configuration_.routeVisibilityMask();
   status.unknownTiming = configuration_.unknownTiming();

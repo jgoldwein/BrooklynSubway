@@ -75,6 +75,8 @@ struct StatusSnapshot {
   bool adminSessionActive = false;
   char firmwareVersion[16] = {};
   bool otaBootConfirmed = false;
+  bool automaticUpdates = false;
+  alerts::Preferences stationAlertPreferences{};
   bool physicalLiveAvailable = false;
   bool physicalLedOutputEnabled = false;
   bool physicalPowerPaused = false;
