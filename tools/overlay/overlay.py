@@ -57,6 +57,52 @@ def normalized(name, data):
         text = re.sub(r'%TF\.CreationDate,[^*]*\*%', '', text)
     return '\n'.join(line.strip() for line in text.splitlines() if line.strip()).encode()
 
+def gerber_aperture_commands(data):
+    """Narrow equivalence for unchanged commands with renamed/unused apertures.
+
+    All non-definition commands and macro bodies remain exact. Unsupported
+    aperture blocks, redefinitions or non-standalone selections fail closed.
+    """
+    try:text=data.decode('ascii')
+    except UnicodeDecodeError:return None
+    if '%AB' in text:return None
+    definitions={};invalid=False
+    def definition(match):
+        nonlocal invalid
+        key=int(match[1])
+        if key<10 or key in definitions:invalid=True
+        definitions[key]=match[2]
+        return ''
+    text=re.sub(r'%ADD(\d+)([^*%]+)\*%',definition,text)
+    if invalid or '%AD' in text:return None
+    # Only match selection statements outside parameter/macro blocks.
+    parts=re.split(r'(%[^%]*%)',text)
+    result=[]
+    for part in parts:
+        if part.startswith('%'):
+            result.append(part);continue
+        cursor=0
+        for match in re.finditer(r'(?:G54)?D([1-9]\d+)\*',part):
+            key=int(match[1])
+            if key<10:continue
+            prefix=part[cursor:match.start()]
+            if re.search(r'D0*[1-9]\d+\*',prefix) or (match.start() and part[match.start()-1] not in '*\n\r'):
+                return None
+            if key not in definitions:return None
+            result.append(prefix);result.append(('aperture',definitions[key]));cursor=match.end()
+        tail=part[cursor:]
+        if re.search(r'D0*[1-9]\d+\*',tail):return None
+        result.append(tail)
+    # Definitions were removed; their adjacent empty lines carry no commands.
+    return tuple(('text','\n'.join(v for v in item.splitlines() if v)) if isinstance(item,str) else item for item in result if item)
+
+
+def same_aperture_commands(name, old, new):
+    if Path(name).suffix.upper() not in GERBER:return False
+    a=gerber_aperture_commands(normalized(name,old));b=gerber_aperture_commands(normalized(name,new))
+    return a is not None and b is not None and a==b
+
+
 def compare(baseline, candidate):
     a, b = archive(baseline), archive(candidate); items = []; failed = []
     for name in sorted(a.keys() | b.keys()):
@@ -65,6 +111,7 @@ def compare(baseline, candidate):
         elif old == new: status = 'identical'
         elif color: status = 'color_artwork_changed_requires_visual_review'
         elif normalized(name, old) == normalized(name, new): status = 'comments_only'
+        elif same_aperture_commands(name,old,new):status = 'aperture_renumbering_or_unused_definitions_only'
         else: status = 'protected_content_changed'; failed.append(name)
         items.append(dict(name=name, status=status, baselineSha256=digest(old) if old is not None else None,
                           candidateSha256=digest(new) if new is not None else None))

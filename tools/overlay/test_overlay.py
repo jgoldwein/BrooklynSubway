@@ -132,4 +132,29 @@ class PdfRecipeTests(unittest.TestCase):
   for dpi in [0,71,601]:self.assertRaises(ValueError,o.prepare_pdf,self.pdf,self.path,self.out,dpi)
   self.recipe['placement']['widthMm']=2000;self.recipe['placement']['heightMm']=2000;self.save();self.assertRaises(ValueError,o.prepare_pdf,self.pdf,self.path,self.out,600)
 
+class ApertureComparisonTests(unittest.TestCase):
+ def layer(self,number=10,width='0.25',unused='0.5',coord='X100Y200'):
+  return f'%FSLAX45Y45*%\n%MOMM*%\n%ADD{number}C,{width}*%\n%ADD99C,{unused}*%\nG54D{number}*\n{coord}D03*\nM02*'.encode()
+ def test_renumbering_and_unused_definitions(self):
+  self.assertTrue(o.same_aperture_commands('test.GTL',self.layer(),self.layer(20,unused='0.8')))
+  self.assertFalse(o.same_aperture_commands('test.DRL',self.layer(),self.layer(20)))
+ def test_preserve_width_coordinates_polarity_and_macro(self):
+  original=self.layer()
+  for changed in [self.layer(20,width='0.3'),self.layer(20,coord='X101Y200'),self.layer(20).replace(b'G54',b'%LPC*%\nG54'),self.layer(20).replace(b'C,0.25',b'R,0.25X0.25')]:
+   self.assertFalse(o.same_aperture_commands('test.GTL',original,changed))
+ def test_reject_unsupported_or_invalid_selection(self):
+  for changed in [self.layer().replace(b'G54D10',b'G54D11'),self.layer().replace(b'G54D10',b'X0Y0D10'),self.layer().replace(b'%ADD10',b'%ABD10*%\n%ADD10'),self.layer().replace(b'G54D10*',b'%ADD10C,0.25*%\nG54D10*')]:
+   self.assertIsNone(o.gerber_aperture_commands(changed))
+ def test_package_keeps_original_payloads(self):
+  with tempfile.TemporaryDirectory() as tmp:
+   root=Path(tmp);a=root/'a.zip';b=root/'b.zip'
+   original={'board.GTL':self.layer(),'holes.DRL':b'M48','map.FCTS':b'old'}
+   candidate={**original,'board.GTL':self.layer(20,unused='0.9'),'map.FCTS':b'new'}
+   zipwrite(a,original);zipwrite(b,candidate)
+   self.assertTrue(o.compare(a,b)['nonArtworkIntegrityPassed'])
+   o.package(a,b,root/'out');contents=o.archive(root/'out/Gerbers-with-prepared-artwork.zip')
+   self.assertEqual(contents['board.GTL'],original['board.GTL']);self.assertEqual(contents['map.FCTS'],b'new')
+   candidate['board.GTL']=self.layer(20,width='0.3');zipwrite(b,candidate)
+   self.assertFalse(o.compare(a,b)['nonArtworkIntegrityPassed'])
+
 if __name__=='__main__':unittest.main()

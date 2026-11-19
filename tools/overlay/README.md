@@ -66,7 +66,7 @@ For a reusable blank template, remove or change personal markings in the EasyEDA
 
 Work on copies. First export an unchanged project, then remove only the selected map image and export a blank candidate. In this case the QR code, logo, dedication, OLED area and control labels were separate and remained visible. Preserve the original map object, its image file, and its position/size record before deletion.
 
-The tested working project had the same outline and 304 of 306 identical LED positions, but different vias and copper from the original manufacturing archive. **Do not use its new electrical layers to replace the manufactured board.** Blank/remapped exports were checked against each other: their protected drawing commands were identical after expanding renumbered aperture references and excluding unused aperture definitions. That supplemental analysis did not weaken the public `verify` command. The strict verifier can still flag a geometrically unchanged export because EasyEDA renumbers apertures; investigate rather than bypassing it. Packaging an original-board blank template still requires review of the color content and a controlled merge that retains every original electrical payload.
+The tested working project had the same outline and 304 of 306 identical LED positions, but different vias and copper from the original manufacturing archive. **Do not use its new electrical layers to replace the manufactured board.** Blank/remapped exports were checked against each other: their protected drawing commands were identical after expanding renumbered aperture references and excluding unused aperture definitions. The public verifier now recognizes this narrow equivalence. All remaining drawing commands, polarity commands and macro bodies must match exactly. Aperture redefinitions, aperture blocks and unsupported selection syntax fail closed; actual width, coordinate or geometry changes are still rejected. Packaging an original-board blank template still requires review of the color content and a controlled merge that retains every original electrical payload.
 
 ## 1. Inspect and pin the board export
 
@@ -152,15 +152,20 @@ python tools/overlay/overlay.py verify --baseline hardware/exports/2026-10-09/Ge
 python tools/overlay/overlay.py package --baseline hardware/exports/2026-10-09/Gerbers.zip --candidate YOUR_NEW_EASYEDA_EXPORT.zip --output captures/rebuilt-gerbers
 ```
 
-`verify` exits 2 when protected content differs. It allows changes only to `.FCTS`, `.FCBS`, `.FCBO` and `.FCBM`; other members must match, apart from comments/line endings and the standard Gerber creation-date attribute. It does not claim general geometric equivalence between differently expressed Gerbers. Normal top/bottom silkscreen GTO/GBO are protected too: if EasyEDA changes their drawing content, stop and review instead of weakening the check. Added or missing members also fail.
+`verify` exits 2 when protected content differs. It allows changes only to `.FCTS`, `.FCBS`, `.FCBO` and `.FCBM`; other members must match, apart from comments/line endings, the standard Gerber creation-date attribute, and the narrowly checked aperture renumbering/unused-definition equivalence described above. It does not claim general geometric equivalence between differently expressed Gerbers. Normal top/bottom silkscreen GTO/GBO are protected too: if EasyEDA changes their drawing content, stop and review instead of weakening the check. Added or missing members also fail.
 
 `package` first runs those checks, then creates `Gerbers-with-prepared-artwork.zip` and `integrity-report.json`. Only the new opaque color files are taken from the candidate; **every other file's payload comes from the original archive, byte-for-byte**. It verifies that property before writing the output. A passing integrity report is not artwork alignment approval, electrical sign-off, legal clearance or manufacturer acceptance. Review JLCPCB's production preview before ordering.
 
 ## Validation performed
 
-- 17 synthetic tests: outline/CPL parsing, source hashes and download-host checks, SVG rendering/resource rejection, crop bounds, affine fitting, mirrored/tampered profiles, protected-layer changes, unsafe ZIP members, embedded source comparisons, no-overwrite behavior and package payload preservation.
+- 25 synthetic tests: outline/CPL parsing, source hashes and download-host checks, SVG rendering/resource rejection, crop bounds, affine fitting, mirrored/tampered profiles, protected-layer changes, unsafe ZIP members, embedded source comparisons, no-overwrite behavior, PDF recipe crops and geometry guards, aperture equivalence/rejection cases and package payload preservation.
 - Submitted and manufacturer-embedded source files compared: all 20 payloads identical in both embedded source archives.
 - Read-only real-board coordinate exercise: 302 existing board-preview reference points fitted to the supplied placement workbook, maximum residual about 0.000631 mm; full-board LED preview generated and inspected. This checks coordinate plumbing and is **not** a fit of a newly downloaded MTA map or independent proof of the source artwork's identity.
 - Original local PDF and edited SVG rasterization exercised. Identity packaging of the actual 20-member design archive also preserved every file payload. Generated artwork and production-order metadata are kept out of this tool's public files.
 
 The remaining production task is to reconstruct and independently review the exact original source-map crop/registration and custom-artwork composition. No order-ready replacement Gerber is supplied with this initial tool.
+
+
+### Packaging a matched depersonalized pair
+
+After adding the map to a copy of your selected depersonalized blank project, export its mapped candidate and run `package` with the **depersonalized blank** as `--baseline`. The output takes only the four color-fabrication payloads from the mapped candidate; all 16 other payloads come byte-for-byte from the chosen blank. The integrity report records that property. The chosen blank defines the circuitry for this package. If it differs from the original manufactured board, this operation does not resolve or approve those electrical differences. Review both front and back color previews before fabrication.
