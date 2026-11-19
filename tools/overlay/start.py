@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # Copyright 2026 Joel W. Goldwein
 # SPDX-License-Identifier: Apache-2.0
-"""Beginner launcher: check bundled inputs, set up Python and choose a local PDF."""
+"""Beginner launcher: download the official map, check its edition and open a working PCB."""
 import argparse
 from datetime import datetime
 import hashlib
@@ -10,9 +10,32 @@ from pathlib import Path
 import subprocess
 import sys
 import venv
+import urllib.request
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
+MTA_URL = 'https://www.mta.info/map/5256'
+MAX_PDF_BYTES = 32 * 1024 * 1024
+
+
+def download_pdf(folder):
+    """Save a bounded PDF download locally; recipe selection remains a separate gate."""
+    print('Downloading the subway map directly from MTA...', flush=True)
+    request = urllib.request.Request(MTA_URL, headers={
+        'User-Agent': 'BrooklynSubway-OverlayBuilder/1.0',
+        'Accept': 'application/pdf'})
+    with urllib.request.urlopen(request, timeout=30) as response:
+        data = response.read(MAX_PDF_BYTES + 1)
+    if len(data) > MAX_PDF_BYTES:
+        raise ValueError('MTA returned a file larger than the 32 MB download limit')
+    if not data.startswith(b'%PDF-'):
+        raise ValueError('MTA returned a web page or another non-PDF response')
+    folder.mkdir(parents=True, exist_ok=True)
+    path = folder/'Source_Map.pdf'
+    with path.open('xb') as output:
+        output.write(data)
+    print('Downloaded PDF saved locally:', path, flush=True)
+    return path
 
 
 def missing_inputs(root):
@@ -43,7 +66,9 @@ def choose_pdf():
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--bootstrap', action='store_true')
-    p.add_argument('--pdf', type=Path, help='Optional local PDF; otherwise show a file picker')
+    source = p.add_mutually_exclusive_group()
+    source.add_argument('--pdf', type=Path, help='Use a local PDF instead of downloading')
+    source.add_argument('--choose-pdf', action='store_true', help='Choose a local PDF instead of downloading')
     args = p.parse_args(argv)
     missing = missing_inputs(ROOT)
     if missing:
@@ -61,14 +86,24 @@ def main(argv=None):
         subprocess.run([str(python), '-m', 'pip', 'install', '-r', str(HERE/'requirements.txt')], check=True)
         command = [str(python), str(Path(__file__).resolve())]
         if args.pdf: command.extend(['--pdf', str(args.pdf.resolve())])
+        if args.choose_pdf: command.append('--choose-pdf')
         return subprocess.call(command, cwd=ROOT)
-    selection = args.pdf or choose_pdf()
+    run_name = datetime.now().strftime('Map_%Y%m%d_%H%M%S_%f')
+    output = ROOT/'builds'/run_name
+    selection = args.pdf
+    if not selection and not args.choose_pdf:
+        try:
+            selection = download_pdf(ROOT/'builds'/(run_name+'_source'))
+        except (OSError, ValueError) as error:
+            print('Automatic MTA download could not finish:', error, flush=True)
+            print('Download the PDF in your browser from '+MTA_URL+' and select it in the file picker. Cancel to stop.', flush=True)
+    if not selection:
+        selection = choose_pdf()
     if not selection:
         print('Cancelled; no board files changed.')
         return 0
     pdf = Path(selection).resolve()
     recipe = recipe_for(pdf)
-    output = ROOT/'builds'/datetime.now().strftime('Map_%Y%m%d_%H%M%S_%f')
     print('Using calibrated recipe:', recipe.name, flush=True)
     print('The generated working copy will open in EasyEDA automatically.\nThen select Advanced > Overlay Builder > Build map and paste THIS RUN\'S local URL.\nKeep this window open until COMPLETE.', flush=True)
     return subprocess.call([sys.executable, str(HERE/'automate.py'),

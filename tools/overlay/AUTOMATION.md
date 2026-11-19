@@ -2,25 +2,27 @@
 
 This guide helps you add subway map artwork to a blank Brooklyn Subway PCB design. Python prepares the image; EasyEDA Pro places it at the recorded coordinates and exports the color fabrication files. You then check the exported board before ordering.
 
-**Included in the latest software ZIP:** the clean editable PCB project, its matching blank Gerber ZIP, the extension installer, launcher and calibration recipes. **You supply only the MTA PDF.** Install EasyEDA Pro and Python once, then use the simple route below.
+**Included in the latest software ZIP:** the clean editable PCB project, its matching blank Gerber ZIP, the extension installer, launcher and calibration recipes. **The launcher downloads the PDF directly from MTA to your computer.** Install EasyEDA Pro and Python once, then use the simple route below.
 
 **Tested:** native project import/reopen and complete live overlay exports using the reviewed September and October PDFs, EasyEDA Pro 3.2.149 and Brooklyn Overlay Builder 0.1.3. Other editor versions and the optional command-line route have not yet been tested live. Outputs require visual review before manufacture.
 
 ## Simplest Windows route
 
-**Everything we can supply is included:** `inputs/Blank_Map.eprj2`, `inputs/Blank_Gerbers.zip`, the ready-built extension, launcher and recipes. Do not move or rename them. The MTA PDF stays user-supplied. See [template details and verification](../../hardware/builder/README.md).
+**Everything we can supply is included:** `inputs/Blank_Map.eprj2`, `inputs/Blank_Gerbers.zip`, the ready-built extension, launcher and recipes. Do not move or rename them. The MTA PDF is downloaded locally and is not bundled in GitHub. See [template details and verification](../../hardware/builder/README.md).
 
 Use this route:
 
 1. Install [EasyEDA Pro](https://easyeda.com/page/download) and [Python 3.12 or newer](https://www.python.org/downloads/windows/). Pro 3.2.149 is the live-tested editor version; see [older official downloads](https://prodocs.easyeda.com/en/faq/client-version/).
 2. [Download the software ZIP](https://github.com/jgoldwein/BrooklynSubway/archive/refs/heads/main.zip), extract it, and open the folder containing `Start_Overlay.cmd`. Do not run it from inside the ZIP.
 3. In EasyEDA, choose **Advanced > Extensions Manager > Import** and select the included **tools > overlay > easyeda > Brooklyn-Overlay-Builder.eext**. Select its Installed entry, click **Config**, check **Allow interactive with external**, then close the manager. This installation is only needed once.
-4. Download your PDF from the [official MTA source](https://www.mta.info/map/5256), then double-click **Start_Overlay.cmd**. The launcher sets up the Python packages on its first run and lets you choose the PDF in a file picker. **No terminal commands, PDF renaming, recipe selection or output-folder naming are required for this route.** If Windows displays a security prompt, decide whether to run the downloaded script; do not disable system security controls.
+4. Double-click **Start_Overlay.cmd**. The launcher sets up the Python packages on its first run, then **downloads the PDF directly from the [official MTA source](https://www.mta.info/map/5256)** to your computer. It checks the edition before preparing the board. If downloading fails, it explains the problem and opens a picker for a PDF you download yourself. Cancel the picker to stop. **No terminal commands, PDF renaming, recipe selection or output-folder naming are required for this route.** If Windows displays a security prompt, decide whether to run the downloaded script; do not disable system security controls.
 5. Keep the command window open. **The launcher automatically opens this run's generated working copy in EasyEDA**, using Windows' `.eprj2` file association. Accept an open-project prompt if EasyEDA shows one. In **Project Design**, double-click **Brooklyn MTA Active Map PCB** under **Blank-template-COPY > Brooklyn MTA Active Map** if the drawing is not already open. If automatic opening fails, the command window prints **Open the working copy manually:** followed by the exact file path. Use that path, not an older project or the input template.
 6. Choose **Advanced > Overlay Builder > Build map**, paste this run's complete local URL from the command window, and click **Confirm**.
 7. Wait for **Overlay complete** / **COMPLETE**, then follow [JLCPCB settings and color preview](#jlcpcb-settings-and-color-preview) below. The image disappears from the editor after export by design. Results are kept in **builds > Map_DATE_TIME > result** inside the extracted software folder.
 
 The launcher recognizes the included September 22 and October 27, 2026 PDF fingerprints and chooses the corresponding recipe automatically. The October geometry was checked against the recovered reference and the cleaned template completed a live October export. Unknown/newer editions stop with a clear message instead of guessing a placement. The MTA PDF itself is intentionally not bundled.
+
+Downloaded PDFs are kept under **builds > Map_DATE_TIME_source > Source_Map.pdf**. If the official link serves an unsupported edition, the launcher keeps that PDF and reports its fingerprint, then stops before opening a PCB. To use an existing local PDF directly, run `python tools/overlay/start.py --choose-pdf` or pass `--pdf "path-to-map.pdf"` instead.
 
 The detailed file explanations below remain useful. The longer manual route is optional; do not perform both routes for the same build.
 
