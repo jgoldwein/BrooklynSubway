@@ -104,6 +104,14 @@ def same_aperture_commands(name, old, new):
     return a is not None and b is not None and a==b
 
 
+def same_silkscreen_regions(name, old, new):
+    if Path(name).suffix.upper() not in {'.GTO','.GBO'}:return False
+    from gerber_regions import canonical_regions
+    a=canonical_regions(gerber_aperture_commands(normalized(name,old)))
+    b=canonical_regions(gerber_aperture_commands(normalized(name,new)))
+    return a is not None and b is not None and a==b
+
+
 def compare(baseline, candidate):
     a, b = archive(baseline), archive(candidate); items = []; failed = []
     for name in sorted(a.keys() | b.keys()):
@@ -114,6 +122,7 @@ def compare(baseline, candidate):
         elif color: status = 'color_artwork_changed_requires_visual_review'
         elif normalized(name, old) == normalized(name, new): status = 'comments_only'
         elif same_aperture_commands(name,old,new):status = 'aperture_renumbering_or_unused_definitions_only'
+        elif same_silkscreen_regions(name,old,new):status = 'identical_silkscreen_region_fill'
         else: status = 'protected_content_changed'; failed.append(name)
         items.append(dict(name=name, status=status, baselineSha256=digest(old) if old is not None else None,
                           candidateSha256=digest(new) if new is not None else None))
