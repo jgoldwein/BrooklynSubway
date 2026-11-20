@@ -22,6 +22,7 @@ namespace brooklyn::telemetry {
 
 // Latest stable application state, published by loop() each iteration.
 struct Snapshot {
+  char wanIpv4[16]{};
   bool networkReady = false;  // network::State::Ready (Wi-Fi up AND valid SNTP)
   bool systemHealthy = true;
   DisplayState display = DisplayState::WaitingForData;

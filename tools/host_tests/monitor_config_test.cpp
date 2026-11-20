@@ -88,6 +88,7 @@ int main(){
   const auto n=web::renderMonitoringPage(page,sizeof(page),saved,runtime,"test-csrf");CHECK(n>0 && n<sizeof(page));
   CHECK(!strstr(page,saved.password));CHECK(strstr(page,"value=\"\"") && strstr(page,"Show key"));
   CHECK(strstr(page,"/api/monitoring") && strstr(page,"no remote control"));
+  CHECK(strstr(page,"LAN and cached public WAN IPv4") && !strstr(page,"exclude Wi-Fi names, network addresses"));
   CHECK(!web::renderMonitoringPage(page,100,saved,runtime,"test-csrf"));
   CHECK(web::renderMonitoringJson(page,sizeof(page),runtime)>0);CHECK(strstr(page,"\"ackAgeSeconds\":null"));
   CHECK(!strstr(page,saved.deviceId) && !strstr(page,saved.password) && !strstr(page,saved.host));

@@ -122,6 +122,9 @@ struct StatusInput {
   bool hasRssi = false;
   int rssiDbm = 0;
   DnsHealth dns = DnsHealth::Unknown;
+  bool reportNetworkAddresses = false;
+  char wanIpv4[16]{};
+  char lanIpv4[16]{};
 
   uint8_t feedSuccessCount = 0;
   uint8_t feedAttemptedCount = 0;
@@ -154,7 +157,8 @@ struct StatusInput {
   ArmingState arming = ArmingState::Unknown;
   CurrentLimitState currentLimit = CurrentLimitState::Unknown;
 
-  // Bounded x_ extensions (schema allows up to 8; four non-sensitive diagnostics are used).
+  // Bounded x_ extensions (schema allows up to 8). Address reports replace
+  // x_ev_dropped/x_reconnects; explicit disconnect counts and serial stats remain.
   uint32_t extEventsDropped = 0;
   uint32_t extReconnects = 0;
   uint32_t extAcksMissed = 0;

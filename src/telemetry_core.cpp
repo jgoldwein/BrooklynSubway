@@ -4,6 +4,7 @@
 // Phase 4AA: host-testable telemetry core. See telemetry_core.h.
 
 #include "telemetry_core.h"
+#include "wan_address.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -319,10 +320,21 @@ size_t buildStatusJson(char *buffer, size_t capacity, const StatusInput &in) {
   w.fmt(",\"controller_state\":\"%s\",\"arming_state\":\"%s\",\"current_limit_state\":\"%s\"}",
         controllerName(in.controller), armingName(in.arming), currentName(in.currentLimit));
 
-  w.fmt(",\"extensions\":{\"x_ev_dropped\":%lu,\"x_reconnects\":%lu,\"x_acks_missed\":%lu,"
-        "\"x_pub_failures\":%lu",
-        static_cast<unsigned long>(in.extEventsDropped), static_cast<unsigned long>(in.extReconnects),
+  w.raw(",\"extensions\":{");
+  if(!in.reportNetworkAddresses)w.fmt("\"x_ev_dropped\":%lu,\"x_reconnects\":%lu,",
+        static_cast<unsigned long>(in.extEventsDropped),static_cast<unsigned long>(in.extReconnects));
+  w.fmt("\"x_acks_missed\":%lu,\"x_pub_failures\":%lu",
         static_cast<unsigned long>(in.extAcksMissed), static_cast<unsigned long>(in.extPublishFailures));
+  if(in.reportNetworkAddresses) {
+    char address[wan::kAddressSize]{};
+    auto writeAddress=[&](const char *value,bool publicOnly) {
+      size_t n=0;while(n<wan::kAddressSize && value[n])++n;
+      if(n<wan::kAddressSize && wan::parseIpv4(reinterpret_cast<const uint8_t *>(value),n,address,publicOnly))w.str(address);
+      else w.raw("null");
+    };
+    w.raw(",\"x_wan_ipv4\":");writeAddress(in.wanIpv4,true);
+    w.raw(",\"x_lan_ipv4\":");writeAddress(in.lanIpv4,false);
+  }
   if(in.hasConnectionHistory) {
     w.fmt(",\"x_wifi_disconnects\":%lu,\"x_mqtt_disconnects\":%lu,\"x_wifi_loss_up_s\":",
       static_cast<unsigned long>(in.wifiDisconnects),static_cast<unsigned long>(in.mqttDisconnects));

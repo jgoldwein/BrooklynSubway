@@ -19,6 +19,7 @@
 #include "poll_handoff.h"
 #include "runtime_observation.h"
 #include "weather.h"
+#include "wan_address.h"
 #include "station_alerts.h"
 
 #if BROOKLYN_NETWORK_ENABLED
@@ -59,6 +60,7 @@ class NetworkService {
   const pipeline::Counters &pipelineCounters() const { return publishedPipelineCounters_; }
   bool fetchingFeeds() const;
   const weather::Snapshot &weatherStatus() const {return weather_;}
+  const char *wanIpv4(uint32_t nowMs) const {return wanAddress_.value(nowMs);}
   uint8_t brightness() const;
   bool setPhysicalBrightness(bool oled, uint8_t value);
   uint8_t oledAddress() const;
@@ -111,7 +113,12 @@ class NetworkService {
   uint32_t completedCycleAtMs_ = 0;
   bool completedCyclePending_ = false;
   weather::Snapshot weather_{};
+  wan::Cache wanAddress_{};
 #if BROOKLYN_NETWORK_ENABLED
+  bool workerWan_=false,workerWanOk_=false;
+  uint8_t workerWanBody_[wan::kMaxBody]{};
+  size_t workerWanLength_=0;
+  uint32_t workerWanEpoch_=0;
   bool workerWeather_=false,workerWeatherOk_=false;
   bool workerAlerts_=false,workerAlertsOk_=false;
   uint8_t *alertsBuffer_=nullptr;

@@ -27,6 +27,7 @@ def main():
             f"-I{h.ROOT / 'tools/host_tests'}",
             str(h.ROOT / "tools/host_tests/telemetry_core_test.cpp"),
             str(h.ROOT / "src/telemetry_core.cpp"),
+            str(h.ROOT / "src/wan_address.cpp"),
             "-o", str(exe),
         ]
         build = subprocess.run(command, capture_output=True, text=True)

@@ -216,6 +216,12 @@ void buildStatusInput(StatusInput &s, uint64_t sequence, const Snapshot &snap, c
     if (s.rssiDbm > 0 || s.rssiDbm < -127) s.hasRssi = false;
   }
   s.dns = DnsHealth::Unknown;  // the diagnostics snapshot is private to NetworkService
+  s.reportNetworkAddresses=true;
+  if(s.wifiConnected) {
+    memcpy(s.wanIpv4,snap.wanIpv4,sizeof(s.wanIpv4));
+    const IPAddress ip=WiFi.localIP();
+    snprintf(s.lanIpv4,sizeof(s.lanIpv4),"%u.%u.%u.%u",ip[0],ip[1],ip[2],ip[3]);
+  }
   s.feedSuccessCount = snap.feedSuccess > 8 ? 8 : snap.feedSuccess;
   s.feedAttemptedCount = snap.feedAttempted > 8 ? 8 : snap.feedAttempted;
   s.hasFeedMask = snap.hasFeedMask;

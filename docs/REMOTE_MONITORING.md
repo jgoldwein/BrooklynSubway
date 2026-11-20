@@ -27,15 +27,36 @@ The report contains:
   after each boot. An initial failed connection is not a disconnect. Short Wi-Fi
   interruptions between worker samples may not be observed.
 - Logical brightness and route mask, and reported LED-output enable state.
+- From 0.2.104: the local LAN IPv4 and a cached public WAN IPv4, when known.
 
 An indication that LED output is enabled is a software report, not an electrical
 measurement or proof that individual LEDs are illuminated. No current sensor is
 installed. Clock/DNS health that cannot be measured is reported as unknown.
 
-Reports exclude Wi-Fi SSIDs/BSSIDs, MAC/IP/gateway/DNS addresses, passwords,
+Reports exclude Wi-Fi SSIDs/BSSIDs, MAC/gateway/DNS addresses, passwords,
 support email, personal greetings, and individual train/trip IDs. The map label
-you choose is included. The broker can see the connection's source IP normally;
-omitting it from the payload does not hide it from the server.
+you choose is included. Firmware 0.2.103 also excludes IP addresses. Beginning
+with 0.2.104, enabled monitoring includes `extensions.x_lan_ipv4` and
+`extensions.x_wan_ipv4`; either is `null` when unavailable.
+
+The LAN address comes from the map's current Wi-Fi interface. The WAN address
+is observed by [ipify](https://www.ipify.org/) through a verified HTTPS request
+to `https://api.ipify.org`. It is checked after an MTA cycle, refreshed about
+once an hour, expires after an hour, and retries after five minutes on failure.
+Wi-Fi loss or monitoring Off invalidates the cache. There are no lookups before
+individual enrollment or while monitoring is Off. The existing auxiliary worker
+does the bounded lookup between feed cycles; MQTT briefly releases TLS to limit
+concurrent memory use. Lookup failure does not prevent feeds or MQTT reports.
+
+The frozen v1 schema/topic layout is retained. To stay within its eight-extension
+limit, address-enabled reports omit `x_ev_dropped` and the redundant
+`x_reconnects`; those diagnostics remain in serial statistics. Explicit Wi-Fi and
+MQTT disconnect counts and loss uptimes remain in each report. Existing collectors
+accept the address extensions without a schema or broker ACL change.
+
+A public address may belong to the router, VPN or carrier NAT and may differ
+between destinations. It is not verified device identity and does not grant
+remote access to the LAN web page.
 
 ## Receive reports with your existing MQTT client
 

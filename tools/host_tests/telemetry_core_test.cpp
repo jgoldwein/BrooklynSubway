@@ -118,6 +118,23 @@ void testSerialization() {
   CHECK(buildStatusJson(small, sizeof(small), s) == 0);
   CHECK(buildStatusJson(nullptr, 0, s) == 0);
 
+  StatusInput addresses=fullStatus();
+  addresses.reportNetworkAddresses=true;addresses.hasConnectionHistory=true;
+  addresses.wifiDisconnects=2;addresses.mqttDisconnects=3;
+  strcpy(addresses.wanIpv4,"8.8.8.8");strcpy(addresses.lanIpv4,"10.1.1.27");
+  CHECK(buildStatusJson(buf,sizeof(buf),addresses)>0);
+  CHECK(strstr(buf,"\"x_wan_ipv4\":\"8.8.8.8\"")!=nullptr);
+  CHECK(strstr(buf,"\"x_lan_ipv4\":\"10.1.1.27\"")!=nullptr);
+  CHECK(strstr(buf,"\"x_wifi_disconnects\":2")!=nullptr && strstr(buf,"\"x_mqtt_disconnects\":3")!=nullptr);
+  CHECK(strstr(buf,"x_ev_dropped")==nullptr && strstr(buf,"x_reconnects")==nullptr);
+  sample("status",buf); // Must remain valid against the existing max-eight schema.
+  strcpy(addresses.wanIpv4,"192.168.1.1");addresses.lanIpv4[0]=0;
+  CHECK(buildStatusJson(buf,sizeof(buf),addresses)>0);
+  CHECK(strstr(buf,"\"x_wan_ipv4\":null")!=nullptr && strstr(buf,"\"x_lan_ipv4\":null")!=nullptr);
+  sample("status",buf);
+  memset(addresses.wanIpv4,'1',sizeof(addresses.wanIpv4));
+  CHECK(buildStatusJson(buf,sizeof(buf),addresses)>0 && strstr(buf,"\"x_wan_ipv4\":null")!=nullptr);
+
   // Nullable optional members.
   StatusInput sparse = fullStatus();
   sparse.hasPsram = false;

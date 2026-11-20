@@ -5,6 +5,7 @@
 // Not validated on hardware (ESP32-S3 not connected during Phase 4J).
 
 #include "network_service.h"
+#include "telemetry_service.h"
 #include <new>
 #include "live_display.h"
 #include "hardware.h"
@@ -852,6 +853,21 @@ void NetworkService::pollWorker(void *context) {
   auto &self=*static_cast<NetworkService *>(context);
   for (;;) {
     ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    if(self.workerWan_) {
+      self.workerWanLength_=0;self.workerWanOk_=false;
+      {
+        // Reuse the bounded auxiliary HTTPS connection, with MQTT TLS released.
+        // No extra task/socket or overlap with feed/weather/alert downloads.
+        telemetry::UpdatePause pause;
+        if(pause.ready) {
+          const auto status=transport::downloadFeed(weatherConnection(),wan::kUrl,
+              {self.workerWanBody_,wan::kMaxBody},true,self.workerWanLength_);
+          self.workerWanOk_=status==transport::DownloadStatus::Ok;
+        }
+      }
+      self.workerCompletedAtMs_=millis();
+      self.pollHandoff_.finish();continue;
+    }
     if(self.workerAlerts_) {
       size_t length=0;
       const auto status=transport::downloadFeed(weatherConnection(),alerts::kUrl,
@@ -911,7 +927,7 @@ void NetworkService::pollNow(uint32_t nowMs) {
     Serial.println("Network: bounded feed worker ready; loop remains available for web and controls");
   }
   workerConfig_={};
-  workerWeather_=false;workerAlerts_=false;
+  workerWeather_=false;workerAlerts_=false;workerWan_=false;
   workerConfig_.brightness=configuration_.brightness();
   workerConfig_.blueHoldSeconds=configuration_.blueHoldSeconds();
   workerCounters_=counters_;
@@ -922,6 +938,12 @@ void NetworkService::pollNow(uint32_t nowMs) {
 
 void NetworkService::collectPollResult() {
   if (!pollHandoff_.take()) return;
+  if(workerWan_) {
+    const bool ok=wanAddress_.finish(workerWanBody_,workerWanLength_,workerWanOk_,
+        workerCompletedAtMs_,workerWanEpoch_);
+    Serial.printf("Monitoring WAN IPv4: %s; source ipify; cached up to 1 hour\n",ok?"updated":"unavailable");
+    return;
+  }
   if(workerAlerts_) {
     auto &state=alerts::state();
     if(alerts::settingsWord(state.preferences)!=alerts::settingsWord(workerAlertsPreferences_))return;
@@ -963,6 +985,8 @@ void NetworkService::finishCycleReporting() {
 
 void NetworkService::update(uint32_t nowMs) {
   if (state_ == State::Disabled) return;
+  const auto monitoring=telemetry::monitoringStatus();
+  wanAddress_.observe(monitoring.configured && monitoring.enabled && state_==State::Ready && WiFi.status()==WL_CONNECTED);
   collectPollResult();
   if (recoveryRequested_ && !fetchingFeeds()) {
     recoveryRequested_ = false;
@@ -1012,7 +1036,7 @@ void NetworkService::update(uint32_t nowMs) {
         }
         if(scheduler_.due(nowMs)) pollNow(nowMs);
         else if(hasLatestCycle_ && pollTask_ && weather::due(weather_.attempted,weatherAttemptAtMs_,nowMs,completedCycleAtMs_,weather_.lastFailed)) {
-          workerWeather_=true;workerAlerts_=false;workerWeatherOk_=false;workerWeatherResult_={};
+          workerWeather_=true;workerAlerts_=false;workerWan_=false;workerWeatherOk_=false;workerWeatherResult_={};
           if(pollHandoff_.start()) xTaskNotifyGive(static_cast<TaskHandle_t>(pollTask_));
         } else if(hasLatestCycle_ && completedCycle_.downloaded && pollTask_ && alerts::due(nowMs,completedCycleAtMs_)) {
           if(!alertsBuffer_) {
@@ -1023,9 +1047,17 @@ void NetworkService::update(uint32_t nowMs) {
           if(!alertsBuffer_) {
             auto &state=alerts::state();state.attempted=true;state.attemptedAtMs=nowMs;state.lastFailed=true;
           } else {
-            workerAlerts_=true;workerWeather_=false;workerAlertsOk_=false;
+            workerAlerts_=true;workerWeather_=false;workerWan_=false;workerAlertsOk_=false;
             workerAlertsPreferences_=alerts::state().preferences;
             if(pollHandoff_.start()) xTaskNotifyGive(static_cast<TaskHandle_t>(pollTask_));
+          }
+        } else if(hasLatestCycle_ && pollTask_ &&
+            uint32_t(nowMs-completedCycleAtMs_)<1000 && wanAddress_.due(nowMs)) {
+          workerWan_=true;workerWeather_=false;workerAlerts_=false;
+          workerWanEpoch_=wanAddress_.epoch();
+          if(pollHandoff_.start()) {
+            wanAddress_.started(nowMs);
+            xTaskNotifyGive(static_cast<TaskHandle_t>(pollTask_));
           }
         }
       }
@@ -1175,7 +1207,7 @@ void NetworkService::serviceLanWebUi(uint32_t nowMs) {
   webStatus_.transportCounters = counters_;
   webStatus_.networkDiagnostics = networkDiagnostics_.snapshot();
   webStatus_.networkBusy=fetchingFeeds();
-  webStatus_.fetchingFeeds=webStatus_.networkBusy && !workerWeather_ && !workerAlerts_;
+  webStatus_.fetchingFeeds=webStatus_.networkBusy && !workerWeather_ && !workerAlerts_ && !workerWan_;
   lanWebUi_.service(webStatus_);
   applyDnsOverride();
 

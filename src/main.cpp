@@ -112,6 +112,7 @@ void publishTelemetrySnapshot(uint32_t nowMs) {
   using brooklyn::transport::CycleOutcome;
   brooklyn::telemetry::Snapshot snap;
   snap.networkReady = networkService.state() == brooklyn::network::State::Ready;
+  snprintf(snap.wanIpv4,sizeof(snap.wanIpv4),"%s",networkService.wanIpv4(nowMs));
   snap.systemHealthy = systemHealthy;
   snap.physicalOutputEnabled=brooklyn::display::live::enabled();
   snap.display = static_cast<brooklyn::telemetry::DisplayState>(operationalDisplay.state());

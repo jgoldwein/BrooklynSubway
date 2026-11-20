@@ -398,7 +398,7 @@ With monitoring firmware installed, open **Advanced > Remote monitoring**.
 Your monitoring administrator supplies an individual Device ID and key. Once
 provisioned, monitoring defaults to On; you can switch it Off at any time.
 Reports include status, uptime, Wi-Fi signal, feed health, memory and observed
-disconnects. Passwords and Wi-Fi names are excluded. The chosen map label is
+disconnects. From 0.2.104, reports also include the local LAN IP and a cached public WAN IP when known. Passwords and Wi-Fi names are excluded. The chosen map label is
 included. This does not allow remote control or inspect individual physical LEDs.
 Restart and updates keep the monitoring setup; firmware defaults remove it.
 See the [remote monitoring setup guide](REMOTE_MONITORING.md) for details.
