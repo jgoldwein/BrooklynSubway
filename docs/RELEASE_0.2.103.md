@@ -13,10 +13,11 @@
 - Current local sender state and server-acknowledgment age refresh every five
   seconds without refreshing the settings form. Sign-in returns to this page.
 - Private enrollment helper creates unique keys and publish-only ACL fragments.
-  Generated credentials are not part of public firmware, source or release assets.
+  Generated credential files and private source are kept out of Git. The
+  owner-authorized production binary exception is described below.
 - Separate private-update builder can prepare a signed, unit-bound enrollment
-  image for a shipped map. Such an image contains its key and is never a public
-  release asset. One-time seed handling preserves existing choices and respects
+  image for a shipped map. Such an image contains its key and normally remains
+  private. One-time seed handling preserves existing choices and respects
   later credential removal/default reset.
 - For this release only, the project owner explicitly authorized publishing the
   shipped map's signed, hardware-bound enrollment image as the production
