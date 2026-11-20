@@ -50,7 +50,10 @@ bool gConfigured=false;
 uint32_t gPauseDepth=0;
 bool gSuspended=true;
 uint64_t gSnapshotAtMs=0;
-int32_t gStatusMessageId=0;
+int32_t gStatusMessageId=0,gDiagnosticsMessageId=0;
+Diagnostics gDiagnostics;
+uint64_t gCheckAtMs=0,gCheckDueMs=0,gDiagnosticsAckMs=0;
+RTC_NOINIT_ATTR RestartRecord gRestartRecord;
 
 constexpr int kKeepAliveS = 60;
 constexpr int kMqttBuffer = 1024;
@@ -183,6 +186,7 @@ void stopClient() {
   esp_mqtt_client_destroy(gClient);
   gClient = nullptr;
   gStatusMessageId=0;
+  gDiagnosticsMessageId=0;
   ++gGeneration;  // events from the old client are stale from here on
 }
 
@@ -307,6 +311,7 @@ void execute(const Action &action) {
       return;
     }
     case ActionType::StopClient: {
+      {Lock lock;if(gCore.phase()==Phase::Connected && gCore.connectionFailed())gHistory.mqttLost(t);}
       stopClient();
       Lock lock;
       gCore.onClientStopped(nowMs());
@@ -325,6 +330,7 @@ void execute(const Action &action) {
       return;
     }
     case ActionType::PublishStatus:
+    case ActionType::PublishDiagnostics:
     case ActionType::PublishEvent:
       break;
     default:
@@ -347,6 +353,29 @@ void execute(const Action &action) {
     buildStatusInput(input, action.sequence, snap, counters);
     status = &input;
     len = buildStatusJson(gPayload, kMaxPayloadBytes + 1, input);
+  } else if(action.type==ActionType::PublishDiagnostics) {
+    static Diagnostics d;
+    {
+      Lock lock;
+      d=gSnapshot.diagnostics;
+      d.autoUpdates=gDiagnostics.autoUpdates;d.checkAttempted=gDiagnostics.checkAttempted;
+      d.checkSucceeded=gDiagnostics.checkSucceeded;d.checkIntervalSeconds=gDiagnostics.checkIntervalSeconds;
+      d.lastCheckAgeSeconds=(nowMs()-gCheckAtMs)/1000;
+      d.nextCheckSeconds=gCheckDueMs>nowMs()?(gCheckDueMs-nowMs()+999)/1000:0;
+      d.updateAvailable=gDiagnostics.updateAvailable;d.installPhase=gDiagnostics.installPhase;
+      memcpy(d.availableVersion,gDiagnostics.availableVersion,sizeof(d.availableVersion));
+      d.restart=gDiagnostics.restart;d.settingsRevision=gDiagnostics.settingsRevision;
+      d.imageConfirmed=ota::healthConfirmed();
+      d.settingsAtMs=gDiagnostics.settingsAtMs;memcpy(d.settingsGroup,gDiagnostics.settingsGroup,sizeof(d.settingsGroup));
+      d.monitoringEnabled=gDiagnostics.monitoringEnabled;d.hasError=gDiagnostics.hasError;
+      d.errorAtMs=gDiagnostics.errorAtMs;d.errorFeed=gDiagnostics.errorFeed;d.errorCategory=gDiagnostics.errorCategory;
+      d.errorHttp=gDiagnostics.errorHttp;d.errorTls=gDiagnostics.errorTls;
+      d.wifiOutage=gHistory.wifiOutage;d.mqttOutage=gHistory.mqttOutage;
+      d.wifiLossMs=gHistory.lastWifiLossMs;d.mqttLossMs=gHistory.lastMqttLossMs;
+      d.wifiRecoveryMs=gHistory.wifiRecoveryMs;d.mqttRecoveryMs=gHistory.mqttRecoveryMs;
+      d.wifiOutageMs=gHistory.wifiOutageMs;d.mqttOutageMs=gHistory.mqttOutageMs;
+    }
+    len=buildDiagnosticsJson(gPayload,kMaxPayloadBytes+1,gActive.deviceId,gBootId,action.sequence,nowMs(),unixNow(),d);
   } else {
     len = buildEventJson(gPayload, kMaxPayloadBytes + 1, gActive.deviceId, gBootId, action.sequence, action.event,
                          nowMs(), unixNow());
@@ -363,8 +392,9 @@ void execute(const Action &action) {
   }
   Lock lock;
   if(isStatus && id>0)gStatusMessageId=id;
+  if(action.type==ActionType::PublishDiagnostics && id>0)gDiagnosticsMessageId=id;
   gCore.publishResult(action, result, id, nowMs());
-  say("PUBLISH %s seq=%llu len=%u retain=%d msg_id=%d%s", isStatus ? "status" : eventTypeName(action.event.type),
+  say("PUBLISH %s seq=%llu len=%u retain=%d msg_id=%d%s", isStatus ? "status" : action.type==ActionType::PublishDiagnostics?"diagnostics":eventTypeName(action.event.type),
       static_cast<unsigned long long>(action.sequence), static_cast<unsigned>(len), isStatus ? 1 : 0, id,
       len == 0 ? " REJECTED(too large)" : "");
 }
@@ -375,7 +405,7 @@ void handleMqttEvent(const QueuedMqttEvent &e) {
   const uint64_t t = nowMs();
   switch (e.type) {
     case MqttEvent::Connected:
-      gCore.onConnected(t);
+      gCore.onConnected(t);gHistory.mqttRecovered(t);
       say("CONNECTED (MQTT 3.1.1, verified TLS)");
       break;
     case MqttEvent::Disconnected:
@@ -389,6 +419,7 @@ void handleMqttEvent(const QueuedMqttEvent &e) {
       break;
     case MqttEvent::Published:
       gCore.onPublished(e.messageId, t);
+      if(e.messageId==gDiagnosticsMessageId) {gDiagnosticsAckMs=t;gDiagnosticsMessageId=0;}
       if(e.messageId==gStatusMessageId) {
         gRuntime.hasStatusAck=true;gRuntime.lastStatusAckMs=t;gStatusMessageId=0;
       }
@@ -414,7 +445,7 @@ void telemetryTask(void *) {
     }
 
     const bool wifiUp = WiFi.status() == WL_CONNECTED;
-    gHistory.observeWifi(wifiUp,nowMs());
+    {Lock lock;gHistory.observeWifi(wifiUp,nowMs());}
     if (wifiUp && !wifiWasUp && everWifi) {
       Lock lock;
       gCore.enqueueEvent(makeWifiReconnectedEvent(nowMs()), nowMs());
@@ -447,6 +478,7 @@ void telemetryTask(void *) {
       in.wifiUp = wifiUp;
       in.timeValid = timeIsValid(unixNow());
       in.credentials = gConfigured && gActive.enabled && !replacing && !paused && fresh && memory;
+      in.diagnostics=true;
       action = gCore.next(now, in);
       gSuspended=gCore.phase()==Phase::Idle && gClient==nullptr;
       auto &r=gRuntime;
@@ -485,6 +517,7 @@ void begin() {
   }
   formatUuid4(random, gBootId);
   gReset = mapReset();
+  gDiagnostics.restart=takeRestart(gRestartRecord,esp_reset_reason()==ESP_RST_SW);
   gLock = xSemaphoreCreateMutex();
   if (gLock == nullptr) {
     say("init FAILED; monitoring unavailable, map continues");
@@ -508,6 +541,10 @@ void update(const Snapshot &snapshot) {
   bool start=false;
   {
     Lock lock;
+    const auto &a=gSnapshot.diagnostics;const auto &b=snapshot.diagnostics;
+    if(a.powerMode!=b.powerMode || a.ledsOn!=b.ledsOn || a.oledOn!=b.oledOn || a.quiet!=b.quiet ||
+        a.brightness!=b.brightness || a.oledBrightness!=b.oledBrightness || a.routeMask!=b.routeMask || a.lastInputMs!=b.lastInputMs)
+      gCore.requestDiagnostics();
     gSnapshot = snapshot;gSnapshotAtMs=nowMs();
     start=gConfigured && gDesired.enabled && !gTask && snapshot.networkReady;
     if(gConfigured && gDesired.enabled && !gTask && !snapshot.networkReady)gRuntime.state=monitor::State::WaitingNetwork;
@@ -565,6 +602,9 @@ monitor::Runtime monitoringStatus() {
 bool configureMonitoring(const monitor::Settings &settings) {
   if(!gLock || !monitor::valid(settings))return false;
   const auto store=monitor::nvsStore();if(!store.write || !store.write(store.context,settings))return false;
+  noteSettingsSaved(settings.enabled?"Monitoring enabled":"Monitoring disabled");
+  {Lock lock;gDiagnostics.monitoringEnabled=settings.enabled;}
+  if(!settings.enabled)flushDiagnostics();
   Lock lock;monitor::wipe(&gDesired,sizeof(gDesired));gDesired=settings;gConfigured=true;++gDesiredRevision;
   gRuntime.configured=true;gRuntime.enabled=settings.enabled;gRuntime.hasStatusAck=false;
   gRuntime.state=settings.enabled?monitor::State::Connecting:monitor::State::Disabled;
@@ -573,10 +613,58 @@ bool configureMonitoring(const monitor::Settings &settings) {
 bool clearMonitoring() {
   if(!gLock)return false;
   const auto store=monitor::nvsStore();if(!store.erase || !store.erase(store.context))return false;
+  noteSettingsSaved("Monitoring removed");
+  {Lock lock;gDiagnostics.monitoringEnabled=false;}
+  flushDiagnostics();
   Lock lock;monitor::wipe(&gDesired,sizeof(gDesired));gDesired=monitor::Settings{};gConfigured=false;++gDesiredRevision;
   gRuntime.configured=false;gRuntime.enabled=false;gRuntime.hasStatusAck=false;gRuntime.state=monitor::State::NotConfigured;
   return true;
 }
+void noteSettingsSaved(const char *group) {
+  if(!gLock)return;
+  Lock lock;
+  if(gDiagnostics.settingsRevision<UINT32_MAX)++gDiagnostics.settingsRevision;
+  gDiagnostics.settingsAtMs=nowMs();
+  snprintf(gDiagnostics.settingsGroup,sizeof(gDiagnostics.settingsGroup),"%.23s",group?group:"");
+  gCore.requestDiagnostics();
+}
+void noteUpdateStatus(bool automatic,uint32_t intervalMs,bool attempted,bool success,
+    uint32_t ageMs,uint32_t nextMs,bool available,const char *version,uint8_t phase) {
+  if(!gLock)return;
+  Lock lock;auto &d=gDiagnostics;
+  if(d.autoUpdates!=automatic || d.checkAttempted!=attempted || d.checkSucceeded!=success ||
+      (phase && d.installPhase!=phase) || d.updateAvailable!=available)gCore.requestDiagnostics();
+  d.autoUpdates=automatic;d.checkIntervalSeconds=intervalMs/1000;d.checkAttempted=attempted;
+  d.checkSucceeded=success;d.updateAvailable=available;if(phase)d.installPhase=phase;
+  snprintf(d.availableVersion,sizeof(d.availableVersion),"%.32s",version?version:"");
+  gCheckAtMs=nowMs()>=ageMs?nowMs()-ageMs:0;
+  gCheckDueMs=attempted?nowMs()+nextMs:nowMs();
+}
+void noteFeedError(uint8_t feed,uint8_t category,int32_t http,int32_t tls) {
+  if(!gLock || feed>=8)return;
+  Lock lock;auto &d=gDiagnostics;d.hasError=true;d.errorAtMs=nowMs();
+  d.errorFeed=feed;d.errorCategory=category;d.errorHttp=http;d.errorTls=tls;gCore.requestDiagnostics();
+}
+void noteInstallPhase(uint8_t phase) {
+  if(!gLock || phase>3)return;
+  Lock lock;gDiagnostics.installPhase=phase;gCore.requestDiagnostics();
+}
+void flushDiagnostics(uint32_t maximumMs) {
+  if(!gLock || !gTask)return;
+  const uint64_t start=nowMs(),end=start+(maximumMs>500?500:maximumMs);
+  {Lock lock;if(gCore.phase()!=Phase::Connected || !gDesired.enabled || gPauseDepth)return;gCore.requestDiagnostics(true);}
+  while(nowMs()<end) {
+    {Lock lock;if(gDiagnosticsAckMs>=start)return;}
+    delay(10);
+  }
+}
+void planRestart(RestartIntent intent) {
+  rememberRestart(gRestartRecord,intent);
+  if(!gLock)return;
+  {Lock lock;gDiagnostics.restart=intent;gCore.requestDiagnostics();}
+  flushDiagnostics();
+}
+
 bool pauseForUpdate() {
   __atomic_add_fetch(&gPauseDepth,1u,__ATOMIC_RELAXED);
   if(!gLock || !gTask)return true;
@@ -598,6 +686,12 @@ void resumeAfterUpdate() {
 
 namespace brooklyn::telemetry {
 void begin() {}
+void noteSettingsSaved(const char *) {}
+void noteUpdateStatus(bool,uint32_t,bool,bool,uint32_t,uint32_t,bool,const char *,uint8_t) {}
+void noteFeedError(uint8_t,uint8_t,int32_t,int32_t) {}
+void noteInstallPhase(uint8_t) {}
+void planRestart(RestartIntent) {}
+void flushDiagnostics(uint32_t) {}
 void update(const Snapshot &) {}
 void noteDisplayTransition(DisplayState, DisplayState) {}
 bool handleCommand(int) { return false; }

@@ -183,6 +183,8 @@ const char *WebOtaSession::firmwareVersion() {
 Result WebOtaSession::start(size_t contentLength, bool deferActivation,const char *expectedVersion) {
   if (!impl_) return Result::WriterBegin;
   if (impl_->writer.activationPending()) return Result::Busy;
+  telemetry::noteInstallPhase(1);
+  telemetry::flushDiagnostics();
   if(!monitoringPaused_) {
     monitoringPaused_=true;
     if(!telemetry::pauseForUpdate()) {releaseMonitoring();return Result::Busy;}
@@ -209,6 +211,7 @@ Result WebOtaSession::start(size_t contentLength, bool deferActivation,const cha
                     provisionedKeyCount(kTrustedKeys, kTrustedKeyCount)));
   const Result result = installer_->start(contentLength);
   if (result != Result::Ok) {
+    telemetry::noteInstallPhase(3);
     releaseMonitoring();
     oled::showUpgrade(oled::UpgradePhase::Failed);
     Serial.printf("OTA: rejected - %s\n", resultName(result));
@@ -227,6 +230,7 @@ Result WebOtaSession::feed(const uint8_t *data, size_t length) {
                   installer_->downgrade() ? "YES" : "no");
   }
   if (result != Result::Ok) {
+    telemetry::noteInstallPhase(3);
     releaseMonitoring();
     oled::showUpgrade(oled::UpgradePhase::Failed);
     Serial.printf("OTA: failed - %s\n", resultName(result));
@@ -243,6 +247,7 @@ Result WebOtaSession::finish() {
   if (!installer_) {releaseMonitoring();return Result::NotStarted;}
   oled::showUpgrade(oled::UpgradePhase::Verifying);
   const Result result = installer_->finish();
+  telemetry::noteInstallPhase(result==Result::Ok?2:3);
   releaseMonitoring();
   oled::showUpgrade(result==Result::Ok?(impl_->writer.activationPending()?oled::UpgradePhase::Ready:oled::UpgradePhase::Restarting):oled::UpgradePhase::Failed);
   Serial.printf("OTA: %s\n",
@@ -257,6 +262,7 @@ Result WebOtaSession::finish() {
 bool WebOtaSession::activatePendingImage() {
   if (!impl_) return false;
   const bool activated = impl_->writer.activatePendingImage();
+  if(activated)telemetry::planRestart(telemetry::RestartIntent::FirmwareUpdate);
   oled::showUpgrade(activated?oled::UpgradePhase::Restarting:oled::UpgradePhase::Failed);
   Serial.printf("OTA: boot activation %s\n", activated ? "approved" : "FAILED");
   return activated;
@@ -267,6 +273,7 @@ bool WebOtaSession::activationPending() const {
 }
 
 void WebOtaSession::abort() {
+  telemetry::noteInstallPhase(3);
   releaseMonitoring();
   if (installer_) installer_->abort();
   oled::showUpgrade(oled::UpgradePhase::Failed);

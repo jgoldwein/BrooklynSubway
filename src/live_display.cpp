@@ -10,6 +10,7 @@
 #include "rotary_policy.h"
 #include "easter_eggs.h"
 #include <Arduino.h>
+#include <esp_timer.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 #include <freertos/semphr.h>
@@ -32,6 +33,10 @@ bool testRequested = false;
 bool easterRequested=false;
 eggs::Chord easterChord;
 uint16_t diagnosticDepth = 0;
+uint64_t lastInputMs=0,lastButtonMs=0;
+uint8_t previousButtons=0,rawButtons=0;
+uint32_t activityChangedAt=0;
+bool activityInitialized=false;
 bool arm(void *) { return led::backend::armLiveOutput(); }
 bool transmit(void *, const led::DisplayState *frame, uint16_t count) {
   return led::backend::transmitLiveOutput(frame, count);
@@ -57,6 +62,16 @@ void run(void *) {
     const bool modeReleased=modeButton.update(digitalRead(pins::BUTTON_MODE)==LOW,nowMs);
     const bool rotaryReleased = rotaryButton.update(digitalRead(pins::ROTARY_PUSH) == LOW, nowMs);
     const int8_t rotaryStep=rotaryEncoder.update(digitalRead(pins::ROTARY_A)!=LOW,digitalRead(pins::ROTARY_B)!=LOW);
+    const int buttonPins[]={pins::ROTARY_PUSH,pins::BUTTON_TEST,pins::BUTTON_ROUTE,pins::BUTTON_DIM,pins::BUTTON_POWER,pins::BUTTON_MODE,pins::BUTTON_BRIGHT};
+    uint8_t down=0;for(unsigned i=0;i<7;++i)if(digitalRead(buttonPins[i])==LOW)down|=1u<<i;
+    // Observational only. No extra beeps, actions, or log of which button was used.
+    if(!activityInitialized) {activityInitialized=true;previousButtons=rawButtons=down;activityChangedAt=nowMs;}
+    if(down!=rawButtons) {rawButtons=down;activityChangedAt=nowMs;}
+    if(static_cast<uint32_t>(nowMs-activityChangedAt)>=30 && down!=previousButtons) {
+      if(down & ~previousButtons)lastButtonMs=lastInputMs=uint64_t(esp_timer_get_time())/1000;
+      previousButtons=down;
+    }
+    if(rotaryStep)lastInputMs=uint64_t(esp_timer_get_time())/1000;
     const bool eggReleased=easterChord.update(digitalRead(pins::BUTTON_TEST)==LOW,digitalRead(pins::BUTTON_ROUTE)==LOW,nowMs);
     if(eggReleased && !diagnosticDepth && !recoveryPending && !recovery) easterRequested=true;
     if (testReleased && diagnosticDepth == 0 && !easterChord.suppressed()) testRequested = true;
@@ -177,6 +192,8 @@ OutputStats stats() {
   if (!available()) return {};
   xSemaphoreTake(mutex, portMAX_DELAY);
   auto result = controller.stats();
+  result.maintenance=diagnosticDepth || recoveryPending;
+  result.lastInputMs=lastInputMs;result.lastButtonMs=lastButtonMs;
   result.stackMinimumBytes=uxTaskGetStackHighWaterMark(task)*sizeof(StackType_t);
   xSemaphoreGive(mutex);
   return result;

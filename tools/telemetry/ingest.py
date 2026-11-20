@@ -65,6 +65,7 @@ class Collector:
             self.add_test_alias(segment, uuid)
         self.telemetry_schema = load_schema("brooklyn-telemetry-v1.schema.json")
         self.event_schema = load_schema("brooklyn-event-v1.schema.json")
+        self.diagnostics_schema = load_schema("brooklyn-diagnostics-v1.schema.json")
         self.counters = {}
 
     def add_test_alias(self, segment, uuid):
@@ -137,6 +138,8 @@ class Collector:
             raise _Reject("unknown_schema")
         if kind == "status":
             return self._status(device_id, document, now, retained)
+        if document.get("kind") == "diagnostics":
+            return self._diagnostics(device_id, document, now, retained)
         return self._event(device_id, document, now, retained)
 
     def _status(self, device_id, document, now, retained):
@@ -174,6 +177,22 @@ class Collector:
         if stored is None or incoming is None:
             return not retained
         return incoming > stored
+
+    def _diagnostics(self, device_id, document, now, retained):
+        if retained:
+            raise _Reject("retained_diagnostics")
+        if validate(document, self.diagnostics_schema):
+            raise _Reject("schema")
+        if document["device_id"] != device_id:
+            raise _Reject("device_id_mismatch")
+        heartbeat = self.store.get_device(device_id)
+        if not heartbeat or heartbeat["boot_id"] != document["boot_id"]:
+            return "stale_diagnostics_boot"
+        previous = self.store.get_diagnostics(device_id)
+        if previous and previous["boot_id"] == document["boot_id"] and previous["sequence"] >= document["sequence"]:
+            return "duplicate_or_old"
+        self.store.save_diagnostics(device_id, document, now)
+        return "diagnostics"
 
     def _event(self, device_id, document, now, retained):
         if document.get("kind") != "event":

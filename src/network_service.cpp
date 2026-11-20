@@ -965,6 +965,8 @@ void NetworkService::collectPollResult() {
   scheduler_.cycleFinished(completedCycleAtMs_);
   for(uint8_t i=0;i<workerFailures_.count;++i)runtimeReport_.record(workerFailures_.items[i]);
   if(workerFailures_.count) {
+    const auto &observed=workerFailures_.items[workerFailures_.count-1];
+    telemetry::noteFeedError(observed.failure.index,static_cast<uint8_t>(observed.failure.status),observed.details.httpCode,observed.details.tlsError);
     const auto &failure=workerFailures_.items[workerFailures_.count-1].failure;
     webStatus_.hasLastFeedFailure=true;
     snprintf(webStatus_.lastFeedFailureName,sizeof(webStatus_.lastFeedFailureName),"%s",failure.name);

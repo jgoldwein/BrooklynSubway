@@ -111,6 +111,19 @@ void reportDisplayTransition(brooklyn::display::State previous,
 void publishTelemetrySnapshot(uint32_t nowMs) {
   using brooklyn::transport::CycleOutcome;
   brooklyn::telemetry::Snapshot snap;
+  auto &d=snap.diagnostics;
+  const auto output=brooklyn::display::live::stats();
+  const auto screen=brooklyn::oled::status();
+  d.ledsOn=snap.physicalOutputEnabled=brooklyn::display::live::enabled();
+  d.powerMode=output.powerMode;d.maintenance=output.maintenance;d.systemHealthy=systemHealthy;
+  d.oledState=static_cast<uint8_t>(screen.state);
+  d.oledOn=output.powerMode<2 && screen.state==brooklyn::oled::State::Ready;
+  d.quiet=brooklyn::oled::quietHoursActive(time(nullptr));
+  d.quietMapCap=brooklyn::oled::quietMapBrightness();
+  d.oledBrightness=networkService.oledContrast();d.brightness=networkService.brightness();
+  d.routeMask=networkService.routeVisibilityMask();
+  d.lastInputMs=output.lastInputMs;d.hasInput=d.lastInputMs!=0;
+  d.lastButtonMs=output.lastButtonMs;d.hasButton=d.lastButtonMs!=0;
   snap.networkReady = networkService.state() == brooklyn::network::State::Ready;
   snprintf(snap.wanIpv4,sizeof(snap.wanIpv4),"%s",networkService.wanIpv4(nowMs));
   snap.systemHealthy = systemHealthy;
@@ -432,6 +445,7 @@ void serviceBrightnessButtons() {
     if (brooklyn::display::live::stats().powerMode != request.mode) continue;
     if (!brooklyn::display::live::showBrightnessFeedback(request, value)) continue;
     brooklyn::hardware::signalBrightness(value, screen ? 255 : 16);
+    if(value!=previous)brooklyn::telemetry::noteSettingsSaved(screen?"OLED brightness":"LED brightness");
     Serial.printf("Brightness buttons: %s %u/%u%s\n", screen ? "OLED" : "LED", value,
         screen ? 255 : 16, value == previous ? " (limit)" : " saved");
   }
@@ -441,6 +455,7 @@ void serviceBrightnessButtons() {
 void loop() {
   if (brooklyn::display::live::consumeRebootRequest()) {
     Serial.println("POWER: 3-second hold; rebooting");
+    brooklyn::telemetry::planRestart(brooklyn::telemetry::RestartIntent::PowerButton);
     brooklyn::display::live::disable();
     delay(100);
     ESP.restart();

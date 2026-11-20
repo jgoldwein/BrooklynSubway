@@ -69,7 +69,7 @@ def test_database():
     with tempfile.TemporaryDirectory(prefix="phase4aa-db-") as tmp:
         path = Path(tmp) / "t.sqlite3"
         fresh = Store(path)
-        check(fresh.schema_version() == SCHEMA_VERSION == 2, "fresh database at current schema version")
+        check(fresh.schema_version() == SCHEMA_VERSION == 3, "fresh database at current schema version")
         check(fresh.db.execute("PRAGMA journal_mode").fetchone()[0] == "wal", "file database uses WAL")
         names = {r[0] for r in fresh.db.execute("SELECT name FROM sqlite_master WHERE type='index'")}
         check({"events_device_time", "events_received"} <= names, "query indexes exist")

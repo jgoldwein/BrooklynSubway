@@ -1,0 +1,325 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Brooklyn read-only diagnostics v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "protocol",
+    "version",
+    "kind",
+    "device_id",
+    "boot_id",
+    "sequence",
+    "uptime_ms",
+    "time_synced",
+    "device_time_utc",
+    "automatic_updates",
+    "check_attempted",
+    "last_check_succeeded",
+    "check_interval_s",
+    "last_check_age_s",
+    "next_check_in_s",
+    "update_available",
+    "available_version",
+    "install_phase",
+    "leds_on",
+    "oled_on",
+    "quiet_hours",
+    "maintenance",
+    "power_mode",
+    "led_output_reason",
+    "oled_output_reason",
+    "led_brightness",
+    "oled_brightness",
+    "oled_state",
+    "route_mask",
+    "last_button_age_s",
+    "last_control_age_s",
+    "restart_intent",
+    "settings_revision",
+    "last_setting_age_s",
+    "last_setting_group",
+    "monitoring_enabled",
+    "has_feed_error",
+    "last_error_age_s",
+    "last_error_feed_index",
+    "last_error_category",
+    "last_error_http",
+    "last_error_tls",
+    "wifi_outage",
+    "wifi_outage_duration_s",
+    "wifi_recovery_age_s",
+    "mqtt_outage",
+    "mqtt_outage_duration_s",
+    "mqtt_recovery_age_s",
+    "image_confirmed",
+    "last_update_outcome"
+  ],
+  "properties": {
+    "protocol": {
+      "const": "brooklyn-telemetry"
+    },
+    "version": {
+      "const": 1
+    },
+    "kind": {
+      "const": "diagnostics"
+    },
+    "device_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "boot_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$"
+    },
+    "sequence": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "uptime_ms": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "time_synced": {
+      "type": "boolean"
+    },
+    "device_time_utc": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "automatic_updates": {
+      "type": "boolean"
+    },
+    "check_attempted": {
+      "type": "boolean"
+    },
+    "last_check_succeeded": {
+      "type": "boolean"
+    },
+    "check_interval_s": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "last_check_age_s": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "next_check_in_s": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "update_available": {
+      "type": "boolean"
+    },
+    "available_version": {
+      "type": "string",
+      "maxLength": 32
+    },
+    "install_phase": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "leds_on": {
+      "type": "boolean"
+    },
+    "oled_on": {
+      "type": "boolean"
+    },
+    "quiet_hours": {
+      "type": "boolean"
+    },
+    "maintenance": {
+      "type": "boolean"
+    },
+    "power_mode": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 3
+    },
+    "led_output_reason": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "oled_output_reason": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "led_brightness": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "oled_brightness": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "oled_state": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "route_mask": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 262143
+    },
+    "last_button_age_s": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "last_control_age_s": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "restart_intent": {
+      "type": "string",
+      "maxLength": 64
+    },
+    "settings_revision": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "last_setting_age_s": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "last_setting_group": {
+      "type": "string",
+      "maxLength": 23
+    },
+    "monitoring_enabled": {
+      "type": "boolean"
+    },
+    "has_feed_error": {
+      "type": "boolean"
+    },
+    "last_error_age_s": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "last_error_feed_index": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 7
+    },
+    "last_error_category": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 255
+    },
+    "last_error_http": {
+      "type": "integer",
+      "minimum": -2147483648,
+      "maximum": 2147483647
+    },
+    "last_error_tls": {
+      "type": "integer",
+      "minimum": -2147483648,
+      "maximum": 2147483647
+    },
+    "wifi_outage": {
+      "type": "boolean"
+    },
+    "wifi_outage_duration_s": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "wifi_recovery_age_s": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "mqtt_outage": {
+      "type": "boolean"
+    },
+    "mqtt_outage_duration_s": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "mqtt_recovery_age_s": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "image_confirmed": {
+      "type": "boolean"
+    },
+    "last_update_outcome": {
+      "type": "string",
+      "maxLength": 32
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "time_synced": {
+            "const": true
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "device_time_utc": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "time_synced": {
+            "const": false
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "device_time_utc": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ]
+}

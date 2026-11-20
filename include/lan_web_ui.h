@@ -72,6 +72,7 @@ class LanWebUi {
   void handleUpdateAuto();
   void handleUpdateInterval();
   void serviceFirmwareUpdates(uint32_t nowMs);
+  void reportUpdateStatus();
   bool checkLatestRelease();
   bool installAvailableRelease();
   int updateAuthorizationStatus();
@@ -120,6 +121,7 @@ class LanWebUi {
   uint8_t releaseCheckFailures_ = 0;
   bool updateAvailable_ = false;
   uint32_t lastReleaseCheckMs_ = 0;
+  uint32_t actualReleaseCheckMs_ = 0; // Schedule changes are not check attempts.
   char availableVersion_[33] = {};
   char releaseStatus_[112] = "Waiting for a network connection";
 };

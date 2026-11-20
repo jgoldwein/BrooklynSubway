@@ -26,6 +26,8 @@ struct Operations {
 };
 
 struct OutputStats {
+  bool maintenance=false;
+  uint64_t lastInputMs=0,lastButtonMs=0;
   uint32_t effectiveRouteMask=semantic::kAllRoutesVisibleMask;
   semantic::Route focusedRoute=semantic::Route::None;
   bool routeFocusActive=false;

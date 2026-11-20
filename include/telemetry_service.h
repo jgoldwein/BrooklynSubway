@@ -17,11 +17,13 @@
 
 #include "telemetry_core.h"
 #include "monitor_config.h"
+#include "remote_diagnostics.h"
 
 namespace brooklyn::telemetry {
 
 // Latest stable application state, published by loop() each iteration.
 struct Snapshot {
+  Diagnostics diagnostics{};
   char wanIpv4[16]{};
   bool networkReady = false;  // network::State::Ready (Wi-Fi up AND valid SNTP)
   bool systemHealthy = true;
@@ -50,6 +52,14 @@ void begin();
 void update(const Snapshot &snapshot);
 // Call when the operational display changed state.
 void noteDisplayTransition(DisplayState previous, DisplayState current);
+void noteSettingsSaved(const char *codeDefinedGroup);
+void noteUpdateStatus(bool automatic,uint32_t intervalMs,bool attempted,bool success,
+                      uint32_t checkAgeMs,uint32_t nextMs,bool available,const char *version,uint8_t phase);
+void noteFeedError(uint8_t feed,uint8_t category,int32_t http,int32_t tls);
+void noteInstallPhase(uint8_t phase);
+void planRestart(RestartIntent intent);
+// A bounded best-effort send, without opening a connection just for this report.
+void flushDiagnostics(uint32_t maximumMs=350);
 // XIAO serial bench command hook; returns true if the character was consumed.
 bool handleCommand(int command);
 monitor::Settings monitoringSettings();

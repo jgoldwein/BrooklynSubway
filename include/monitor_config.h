@@ -63,6 +63,8 @@ struct Runtime {
 };
 // Observed transitions only: initial disconnection is not counted as a loss.
 struct ConnectionHistory {
+  bool wifiOutage=false,mqttOutage=false;
+  uint64_t wifiRecoveryMs=0,mqttRecoveryMs=0,wifiOutageMs=0,mqttOutageMs=0;
   bool wifiWasUp = false;
   uint32_t wifiLosses = 0;
   uint32_t mqttLosses = 0;
@@ -70,6 +72,7 @@ struct ConnectionHistory {
   uint64_t lastMqttLossMs = 0;
   bool observeWifi(bool up, uint64_t now);
   void mqttLost(uint64_t now);
+  void mqttRecovered(uint64_t now);
 };
 constexpr uint32_t kStartHeapBytes = 48000;
 constexpr uint32_t kStartLargestBytes = 8192;

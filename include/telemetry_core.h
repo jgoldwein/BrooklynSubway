@@ -217,6 +217,7 @@ struct Inputs {
   bool wifiUp = false;        // live association
   bool timeValid = false;     // live clock >= kMinValidUnixTime
   bool credentials = false;   // identity and broker credential compiled/provisioned
+  bool diagnostics = false;   // independent report; old heartbeat contract stays unchanged
 };
 inline bool connectionAllowed(const Inputs &in) {
   return in.networkReady && in.wifiUp && in.timeValid && in.credentials;
@@ -227,7 +228,7 @@ inline bool connectionAllowed(const Inputs &in) {
 // ---------------------------------------------------------------------------
 
 enum class Phase : uint8_t { Idle, Connecting, Connected };
-enum class ActionType : uint8_t { None, StartClient, StopClient, PublishOnline, PublishStatus, PublishEvent };
+enum class ActionType : uint8_t { None, StartClient, StopClient, PublishOnline, PublishStatus, PublishEvent, PublishDiagnostics };
 enum class PublishResult : uint8_t { Queued, Failed, TooLarge };
 enum class Admit : uint8_t { Queued, QueuedEvictedOldest, Coalesced, Suppressed, Rejected };
 
@@ -276,6 +277,8 @@ class Core {
   void onDisconnected(uint64_t nowMs);
   void onPublished(int32_t messageId, uint64_t nowMs);
   void publishResult(const Action &action, PublishResult result, int32_t messageId, uint64_t nowMs);
+  void requestDiagnostics(bool urgent=false) { diagnosticsRequested_=true;if(urgent)diagnosticsEarliestMs_=0; }
+  bool connectionFailed() const { return clientDead_; }
 
   Admit enqueueEvent(EventRecord event, uint64_t nowMs);
 
@@ -296,7 +299,7 @@ class Core {
   void setSequenceForTest(uint64_t value) { sequence_ = value; }
 
  private:
-  enum class Kind : uint8_t { Online, Status, Event };
+  enum class Kind : uint8_t { Online, Status, Event, Diagnostics };
   struct Item {
     EventRecord event;
     uint64_t sequence;
@@ -345,6 +348,8 @@ class Core {
   uint32_t streak_ = 0;
   uint64_t nextConnectMs_ = 0;
   uint64_t nextStatusMs_ = 0;
+  bool diagnosticsRequested_=true;
+  uint64_t nextDiagnosticsMs_=0, diagnosticsEarliestMs_=0;
 
   Item items_[kEventQueueSlots] = {};
   size_t count_ = 0;

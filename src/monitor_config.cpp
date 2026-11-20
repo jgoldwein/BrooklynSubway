@@ -78,10 +78,14 @@ bool load(const Store &store,Settings &out,bool &configured) {
 }
 bool ConnectionHistory::observeWifi(bool up,uint64_t now) {
   const bool lost=wifiWasUp && !up;
-  if(lost) {increment(wifiLosses);lastWifiLossMs=now;}
+  if(lost) {increment(wifiLosses);lastWifiLossMs=now;wifiOutage=true;}
+  if(up && wifiOutage) {wifiOutage=false;wifiRecoveryMs=now;wifiOutageMs=now-lastWifiLossMs;}
   wifiWasUp=up;return lost;
 }
-void ConnectionHistory::mqttLost(uint64_t now) {increment(mqttLosses);lastMqttLossMs=now;}
+void ConnectionHistory::mqttLost(uint64_t now) {if(mqttOutage)return;increment(mqttLosses);lastMqttLossMs=now;mqttOutage=true;}
+void ConnectionHistory::mqttRecovered(uint64_t now) {
+  if(!mqttOutage)return;mqttOutage=false;mqttRecoveryMs=now;mqttOutageMs=now-lastMqttLossMs;
+}
 bool resourcesAllow(bool active,uint32_t freeBytes,uint32_t largestBytes) {
   return freeBytes>=(active?kStopHeapBytes:kStartHeapBytes) && largestBytes>=(active?kStopLargestBytes:kStartLargestBytes);
 }

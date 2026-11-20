@@ -336,6 +336,15 @@ void LanWebUi::service(const StatusSnapshot &status) {
     return;
   }
   serviceFirmwareUpdates(millis());
+  reportUpdateStatus();
+}
+
+void LanWebUi::reportUpdateStatus() {
+  const uint32_t age=static_cast<uint32_t>(millis()-lastReleaseCheckMs_);
+  const uint32_t delay=ota::releaseCheckDelayMs(checkIntervalMs_,releaseCheckFailures_);
+  telemetry::noteUpdateStatus(autoInstall_,checkIntervalMs_,hasReleaseCheck_,releaseCheckSucceeded_,
+      static_cast<uint32_t>(millis()-actualReleaseCheckMs_),
+      delay>age?delay-age:0,updateAvailable_,availableVersion_,installPhase_);
 }
 
 void LanWebUi::sendTemplateHtml(const char *body, size_t length, int code) {
@@ -513,7 +522,7 @@ void LanWebUi::handleOledAddress() {
     server_.send(400, "text/plain", "Use a 7-bit hex address from 0x08 to 0x77"); return;
   }
   if (!configuration_.setOledAddress(address)) { server_.send(500, "text/plain", "Could not save OLED address"); return; }
-  hardware::requestSettingsSaved();
+  telemetry::noteSettingsSaved("OledAddress");hardware::requestSettingsSaved();
   Serial.printf("OLED clock: saved address 0x%02X; reboot to apply\n", address);
   server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "OLED address saved; reboot to apply");
 }
@@ -538,7 +547,7 @@ void LanWebUi::handleTrainColors() {
     }
   }
   if (!configuration_.setTrainColors(colors)) { server_.send(500,"text/plain","Could not save colors"); return; }
-  hardware::requestSettingsSaved();
+  telemetry::noteSettingsSaved("TrainColors");hardware::requestSettingsSaved();
   Serial.println("Train state colors saved; live display updates without restarting visit timers");
   server_.sendHeader("Location","/"); server_.send(303,"text/plain","Train colors saved");
 }
@@ -566,7 +575,7 @@ void LanWebUi::handleUnknownTiming() {
   if (!configuration_.setUnknownTiming(setting)) {
     server_.send(500,"text/plain","Could not save uncertain train settings"); return;
   }
-  hardware::requestSettingsSaved();
+  telemetry::noteSettingsSaved("UnknownTiming");hardware::requestSettingsSaved();
   Serial.printf("Uncertain trains: style %s, brightness %u/255, fade %lu seconds\n",mode.c_str(),brightness,static_cast<unsigned long>(seconds));
   server_.sendHeader("Location","/"); server_.send(303,"text/plain","Uncertain train settings saved");
 }
@@ -598,7 +607,7 @@ void LanWebUi::handleStationAlertPreferences() {
   }
   if(!(seen&32) || !alerts::validPreferences(next)) {server_.send(400,"text/plain","Choose at least one station, or turn alerts off");return;}
   if(!alerts::savePreferences(next)) {server_.send(500,"text/plain","Could not save station alerts");return;}
-  hardware::requestSettingsSaved();server_.sendHeader("Location","/personalization?saved=1");server_.send(303,"text/plain","Station alerts saved");
+  telemetry::noteSettingsSaved("StationAlertPreferences");hardware::requestSettingsSaved();server_.sendHeader("Location","/personalization?saved=1");server_.send(303,"text/plain","Station alerts saved");
 }
 void LanWebUi::handleExtraPersonalization() {
   if(!authorizeRequest(true))return;
@@ -622,7 +631,7 @@ void LanWebUi::handleExtraPersonalization() {
   constexpr uint16_t required=((1u<<personal::kExtraFieldCount)-1)|(1u<<(personal::kExtraFieldCount+4));
   if((seen&required)!=required || !personal::validExtras(next)) {server_.send(400,"text/plain","Use plain text within the message limits; a team heading is required");return;}
   if(!personal::saveExtras(next)) {server_.send(500,"text/plain","Could not save extras; previous settings remain active");return;}
-  hardware::requestSettingsSaved();server_.sendHeader("Location","/personalization?saved=1");server_.send(303,"text/plain","Extras saved");
+  telemetry::noteSettingsSaved("ExtraPersonalization");hardware::requestSettingsSaved();server_.sendHeader("Location","/personalization?saved=1");server_.send(303,"text/plain","Extras saved");
 }
 void LanWebUi::handlePersonalization(bool saving) {
   if(!authorizeRequest(saving))return;
@@ -642,7 +651,7 @@ void LanWebUi::handlePersonalization(bool saving) {
     }
     if(!personal::valid(next)) {server_.send(400,"text/plain","Use plain English letters, numbers and punctuation, no leading/trailing spaces, a valid date and email address. Return to correct the form.");return;}
     if(!personal::save(next)) {server_.send(500,"text/plain","Could not save personalization; previous settings remain active");return;}
-    hardware::requestSettingsSaved();
+    telemetry::noteSettingsSaved("Personalization");hardware::requestSettingsSaved();
     server_.sendHeader("Location","/personalization?saved=1");server_.send(303,"text/plain","Personalization saved");return;
   }
   if(server_.args()>1 || (server_.args()==1 && (server_.argName(0)!="saved" || server_.arg(0)!="1"))) {server_.send(400,"text/plain","Invalid personalization request");return;}
@@ -674,7 +683,7 @@ void LanWebUi::handleMonitoring(bool saving) {
     monitor::wipe(&next,sizeof(next));monitor::wipe(&previous,sizeof(previous));
     if(!ok) {server_.send(400,"text/plain","Check server, port, UUID, name and monitoring key (24-64 characters). A new identity or server needs its own key.");return;}
     if(!saved) {server_.send(500,"text/plain","Could not save monitoring settings; previous settings remain active");return;}
-    hardware::requestSettingsSaved();server_.sendHeader("Location","/monitoring");server_.send(303,"text/plain","Monitoring saved");return;
+    telemetry::noteSettingsSaved("Monitoring");hardware::requestSettingsSaved();server_.sendHeader("Location","/monitoring");server_.send(303,"text/plain","Monitoring saved");return;
   }
   if(server_.args()!=0) {monitor::wipe(&previous,sizeof(previous));server_.send(400,"text/plain","Invalid monitoring request");return;}
   char csrf[96]{};if(!requestSession(csrf,sizeof(csrf))) {monitor::wipe(&previous,sizeof(previous));sendSignInRequired();return;}
@@ -688,7 +697,7 @@ void LanWebUi::handleMonitoringClear() {
   if(server_.args()!=2 || server_.argName(0)==server_.argName(1) || !server_.hasArg("csrf") ||
       !server_.hasArg("confirm") || server_.arg("confirm")!="erase") {server_.send(400,"text/plain","Confirm removing this map's monitoring credentials");return;}
   if(!telemetry::clearMonitoring()) {server_.send(500,"text/plain","Could not remove monitoring credentials");return;}
-  hardware::requestSettingsSaved();server_.sendHeader("Location","/monitoring");server_.send(303,"text/plain","Monitoring credentials removed");
+  telemetry::noteSettingsSaved("MonitoringClear");hardware::requestSettingsSaved();server_.sendHeader("Location","/monitoring");server_.send(303,"text/plain","Monitoring credentials removed");
 }
 
 void LanWebUi::handleScreenOptions() {
@@ -730,7 +739,7 @@ void LanWebUi::handleSaveScreenOptions() {
   if(!config::validScreenPreferences(word)) {server_.send(400,"text/plain","Start and end times must differ");return;}
   if(!configuration_.setScreenPreferences(word)) {server_.send(500,"text/plain","Could not save screen settings");return;}
   oled::setScreenPreferences(word);hardware::setQuiet(oled::quietHoursActive(time(nullptr)),oled::quietMapBrightness());
-  hardware::requestSettingsSaved();
+  telemetry::noteSettingsSaved("SaveScreenOptions");hardware::requestSettingsSaved();
   server_.sendHeader("Location","/screen-options");server_.send(303,"text/plain","Screen settings saved");
 }
 
@@ -748,7 +757,7 @@ void LanWebUi::handleOledReturn() {
     server_.send(400,"text/plain","Choose Stay, 30 seconds, 1, 2 or 5 minutes");return;
   }
   if(!configuration_.setOledReturnSeconds(seconds)) {server_.send(500,"text/plain","Could not save screen return setting");return;}
-  hardware::requestSettingsSaved();
+  telemetry::noteSettingsSaved("OledReturn");hardware::requestSettingsSaved();
   oled::setReturnSeconds(seconds);
   server_.sendHeader("Location","/#screen");server_.send(303,"text/plain","Screen return setting saved");
 }
@@ -770,7 +779,7 @@ void LanWebUi::handleOledDimmer() {
   if (!configuration_.setOledContrast(contrast)) {
     server_.send(500, "text/plain", "Could not save OLED brightness"); return;
   }
-  hardware::requestSettingsSaved();
+  telemetry::noteSettingsSaved("OledDimmer");hardware::requestSettingsSaved();
   oled::setContrast(contrast);
   Serial.printf("OLED clock: saved contrast %u/255; worker applies within one second\n", contrast);
   server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "OLED brightness saved");
@@ -790,7 +799,7 @@ void LanWebUi::handlePollInterval() {
     server_.send(400, "text/plain", "Choose 15 to 120 seconds"); return;
   }
   if (!configuration_.setPollSeconds(seconds)) { server_.send(500, "text/plain", "Could not save interval"); return; }
-  hardware::requestSettingsSaved();
+  telemetry::noteSettingsSaved("PollInterval");hardware::requestSettingsSaved();
   Serial.printf("MTA poll wait: %lu seconds after each completed cycle\n", static_cast<unsigned long>(seconds));
   server_.sendHeader("Location", "/"); server_.send(303, "text/plain", "Interval saved");
 }
@@ -832,7 +841,7 @@ void LanWebUi::handleBrightness() {
     server_.send(500, "text/plain", "Unable to save brightness");
     return;
   }
-  hardware::requestSettingsSaved();
+  telemetry::noteSettingsSaved("Brightness");hardware::requestSettingsSaved();
   server_.sendHeader("Location", "/", true);
   server_.send(303, "text/plain", "");
 }
@@ -880,7 +889,7 @@ void LanWebUi::handleDnsSettings() {
     server_.send(500, "text/plain", "Unable to save DNS settings");
     return;
   }
-  hardware::requestSettingsSaved();
+  telemetry::noteSettingsSaved("DnsSettings");hardware::requestSettingsSaved();
   char address[16] = {};
   config::formatDnsIpv4(ipv4, address, sizeof(address));
   Serial.printf("LAN UI: manual DNS %s%s%s%s\n",
@@ -931,7 +940,7 @@ void LanWebUi::handleRoutes() {
     server_.send(500, "text/plain", "Unable to save route selection");
     return;
   }
-  hardware::requestSettingsSaved();
+  telemetry::noteSettingsSaved("Routes");hardware::requestSettingsSaved();
   Serial.printf("LAN UI: route visibility saved (mask 0x%05lx)\n",
                 static_cast<unsigned long>(visibilityMask));
   server_.sendHeader("Location", "/", true);
@@ -988,6 +997,7 @@ void LanWebUi::handleReboot() {
     return;
   }
   display::live::disable();
+  telemetry::planRestart(telemetry::RestartIntent::Web);
   rebootRequested_ = true;
   sendTemplateHtml(kRebooting, strlen(kRebooting));
 }
@@ -1014,6 +1024,7 @@ void LanWebUi::handleDefaultsReset() {
     server_.send(500,"text/plain","Reset could not be saved. Settings have not been erased.");return;
   }
   display::live::disable();
+  telemetry::planRestart(telemetry::RestartIntent::Defaults);
   rebootRequested_=true;
   sendNotice(200,"Returning to firmware defaults",
       "The map is restarting. Saved Wi-Fi, the administrator password and customized settings will be erased. "
@@ -1218,7 +1229,7 @@ void LanWebUi::handlePasswordChange() {
     server_.send(500, "text/plain", "Unable to save administrator password");
     return;
   }
-  hardware::requestSettingsSaved();
+  telemetry::noteSettingsSaved("PasswordChange");hardware::requestSettingsSaved();
   server_.sendHeader(
       "Set-Cookie",
       "bkmap_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0");
@@ -1540,8 +1551,10 @@ void LanWebUi::serviceFirmwareUpdates(uint32_t nowMs) {
   forceReleaseCheck_ = false;
   lastReleaseCheckMs_ = nowMs;
   hasReleaseCheck_ = true;
+  actualReleaseCheckMs_=nowMs;
   checkLatestRelease();
   lastReleaseCheckMs_=millis(); // Retry delay starts after the request finishes.
+  actualReleaseCheckMs_=lastReleaseCheckMs_;
   if(releaseCheckSucceeded_)releaseCheckFailures_=0;
   else {
     if(releaseCheckFailures_<255)++releaseCheckFailures_;
@@ -1580,7 +1593,7 @@ void LanWebUi::handleUpdateInterval() {
                "The setting could not be saved. It is unchanged.", 2, 0);
     return;
   }
-  hardware::requestSettingsSaved();
+  telemetry::noteSettingsSaved("UpdateInterval");hardware::requestSettingsSaved();
   prefs.end();
   checkIntervalMs_ = static_cast<uint32_t>(mins) * 60000u;
   lastReleaseCheckMs_ = millis();
@@ -1608,7 +1621,7 @@ void LanWebUi::handleUpdateAuto() {
                "The setting could not be saved. It is unchanged.", 2, 0);
     return;
   }
-  hardware::requestSettingsSaved();
+  telemetry::noteSettingsSaved("UpdateAuto");hardware::requestSettingsSaved();
   prefs.end();
   autoInstall_ = enable;
   Serial.printf("OTA auto-install setting: %s\n", enable ? "ON" : "OFF");
@@ -1621,6 +1634,7 @@ void LanWebUi::handleUpdateAuto() {
 }
 
 bool LanWebUi::checkLatestRelease() {
+  reportUpdateStatus();
   telemetry::UpdatePause monitorPause;
   if(!monitorPause.ready) {snprintf(releaseStatus_,sizeof(releaseStatus_),"Monitoring is releasing its connection; retry shortly");return false;}
   releaseCheckSucceeded_ = false;
@@ -1703,6 +1717,7 @@ bool LanWebUi::checkLatestRelease() {
 }
 
 bool LanWebUi::installAvailableRelease() {
+  reportUpdateStatus();telemetry::flushDiagnostics();
   telemetry::UpdatePause monitorPause;
   if(!monitorPause.ready) {snprintf(releaseStatus_,sizeof(releaseStatus_),"Monitoring is releasing its connection; retry shortly");return false;}
   display::live::disable();

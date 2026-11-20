@@ -1,0 +1,31 @@
+# Expanded remote diagnostics — local test build 0.2.105
+
+**Testing on the local COM6 map first. This build is not published, and Avi’s map remains on 0.2.104.**
+
+The map still sends its normal heartbeat about every 30 seconds. A separate `kind: diagnostics` report goes to its existing `/event` topic about once a minute, or after a change (normally at most once every five seconds). There are no new broker permissions, subscriptions, tasks or network connections. MQTT remains a read-only monitoring channel.
+
+The additional information is:
+
+- Automatic updates On/Off, the last actual firmware-check attempt and its result, the next check due time, available version and installation phase. The due time is a schedule, not a promise: checking also needs Wi-Fi, synchronized time and completed administrator setup.
+- POWER mode, map/OLED output status, quiet hours, brightness, route selection and a reason when an output is unavailable. `waiting_for_data_or_safety` deliberately leaves an uncertain cause unresolved; the map cannot electrically verify emitted light.
+- The last feed download error, its feed index (0–7), category, HTTP/TLS numeric result and age. A secure connection error does not separately establish whether DNS, a connection or TLS was responsible. It remains the **last recorded error** after recovery, not a claim of a current failure.
+- Last Wi-Fi and MQTT outage duration and recovery time. Initial disconnection and deliberate MQTT pauses for other TLS work do not count as faults. Durations and counts cover the current boot.
+- Restart source: web restart, long POWER press, firmware activation or firmware-default reset. A checked RTC record is consumed only on software reset; power loss, brownout, panic and watchdog resets cannot inherit a planned label. The existing heartbeat also reports the hardware reset reason and OTA health. A restart without a matching record is `unplanned_or_unknown`, not automatically a crash.
+- The category and time of the last saved setting, plus a save counter for this boot. Only labels defined in the program are reported, never passwords, monitoring keys, Wi-Fi credentials, greeting text or form contents. Saving the same value still counts as a save. Switching monitoring off or removing its credentials tries to send a final report for up to 350 ms using an already connected client; delivery cannot be guaranteed when connectivity is absent.
+- **Time since the last physical button press**, and separately time since the last local control use (button or knob turn). No individual button identity is transmitted. Values are unknown until a qualifying action after boot. Button sampling is debounced, and a button held during boot is not counted as a new press. The elapsed values use monotonic time; Home Assistant also derives approximate timestamps from the synchronized report time.
+
+The collector validates a separate strict schema, rejects retained/replayed/mismatched diagnostic reports, and stores only one latest diagnostic report per map. Diagnostics do not advance heartbeat freshness or make a disconnected map appear healthy. Its SQLite schema upgrades from version 2 to 3; back up the database before upgrading. An older collector continues accepting heartbeats but does not understand these new reports.
+
+## Home Assistant
+
+The local test extends the existing Merion MQTT device with diagnostic entities. The main cards are unchanged. Open **Settings ? Devices & services ? MQTT ? Local Brooklyn Subway (COM6)** to inspect them; additional settings are also attributes of **Last diagnostics report**. Button ages are labeled “at report” because they do not tick every second in the firmware report. Source timestamps and availability must be considered when inspecting an old report.
+
+The configuration builder is [ha_diagnostics.py](../tools/telemetry/ha_diagnostics.py). It preserves existing MQTT discovery components and does not contain credentials or publish anything itself. During this local test, only COM6’s discovery configuration is extended.
+
+## Validation and operator checks
+
+Automated checks cover bounded serialization, null/undersized buffers, JSON schema, privacy fields, duplicate and stale boot rejection, latest-only storage, outage recovery, restart-record corruption and one-time consumption, cadence and PUBACK bookkeeping. Existing heartbeat, web, OTA, LED transport, live display, controls and OLED tests are also run.
+
+On the test map, turn the knob and press it briefly. Check that the two activity times become known. Press POWER four times with about ten seconds between presses; expected modes are 1 (LEDs off), 2 (OLED off), 3 (both off), 0 (both on). Save a setting without changing it, then perform an ordinary web restart and confirm the reported save category and restart source. A short temporary quiet-hours window can verify off/dim and recovery; restore the original schedule afterward. Network-outage and OTA failure policies are host-tested; do not disturb the household router or Avi’s map for a local test.
+
+A byte-for-byte application readback is kept locally before the test upload. COM6’s existing NVS settings and individual monitoring credentials are retained. No per-map credentials are compiled into the ordinary 0.2.105 image.

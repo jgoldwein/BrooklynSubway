@@ -5,6 +5,7 @@
 
 #include "telemetry_core.h"
 #include "wan_address.h"
+#include "remote_diagnostics.h"
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -17,6 +18,7 @@ namespace {
 class Writer {
  public:
   Writer(char *buffer, size_t capacity) : buf_(buffer), cap_(capacity) {
+    if(buf_==nullptr || cap_==0)ok_=false;
     if (buf_ != nullptr && cap_ > 0) buf_[0] = '\0';
   }
   bool ok() const { return ok_ && buf_ != nullptr && cap_ > 0; }
@@ -691,6 +693,11 @@ Action Core::next(uint64_t nowMs, const Inputs &inputs) {
       return a;
     }
   }
+  if(inputs.diagnostics && nowMs>=diagnosticsEarliestMs_ &&
+      (diagnosticsRequested_ || nowMs>=nextDiagnosticsMs_)) {
+    for(const InFlight &f:inFlight_)if(f.used && f.kind==Kind::Diagnostics)return none;
+    a.type=ActionType::PublishDiagnostics;a.sequence=allocSequence();return a;
+  }
   return none;
 }
 
@@ -723,6 +730,7 @@ void Core::onConnected(uint64_t nowMs) {
   ++counters_.connects;
   if (everConnected_) ++counters_.reconnects;
   everConnected_ = true;
+  diagnosticsRequested_=true;
   nextStatusMs_ = nowMs;
 }
 
@@ -762,10 +770,12 @@ void Core::publishResult(const Action &action, PublishResult result, int32_t mes
     case ActionType::PublishOnline: kind = Kind::Online; break;
     case ActionType::PublishStatus: kind = Kind::Status; break;
     case ActionType::PublishEvent: kind = Kind::Event; break;
+    case ActionType::PublishDiagnostics: kind=Kind::Diagnostics; break;
     default: return;
   }
   if (result == PublishResult::TooLarge) {
     ++counters_.payloadRejected;
+    if(kind==Kind::Diagnostics) {diagnosticsRequested_=false;nextDiagnosticsMs_=nowMs+60000;diagnosticsEarliestMs_=nowMs+5000;}
     if (kind == Kind::Event) removeItemBySequence(action.sequence);
     if (kind == Kind::Status) {
       statusSent_ = true;
@@ -780,6 +790,9 @@ void Core::publishResult(const Action &action, PublishResult result, int32_t mes
   }
   addInFlight(kind, messageId, nowMs, action.sequence);
   switch (kind) {
+    case Kind::Diagnostics:
+      diagnosticsRequested_=false;nextDiagnosticsMs_=nowMs+60000;diagnosticsEarliestMs_=nowMs+5000;
+      break;
     case Kind::Online:
       onlineSent_ = true;
       ++counters_.onlineSent;
@@ -798,6 +811,83 @@ void Core::publishResult(const Action &action, PublishResult result, int32_t mes
       ++counters_.eventsSent;
       break;
   }
+}
+
+
+const char *restartIntentName(RestartIntent v) {
+  switch(v) {
+    case RestartIntent::Web:return "web_restart";
+    case RestartIntent::PowerButton:return "power_button";
+    case RestartIntent::FirmwareUpdate:return "firmware_update";
+    case RestartIntent::Defaults:return "firmware_defaults";
+    default:return "unplanned_or_unknown";
+  }
+}
+const char *ledOffReason(const Diagnostics &d) {
+  if(d.ledsOn) {
+    if(!d.brightness)return "brightness_zero";
+    if(!d.routeMask)return "routes_hidden";
+    if(d.quiet && d.quietMapCap<d.brightness)return "quiet_hours_dimmed";
+    return "on";
+  }
+  if(!d.systemHealthy)return "system_fault";
+  if(d.maintenance)return "test_or_recovery";
+  if(d.powerMode&1)return "power_button";
+  if(d.quiet && !d.quietMapCap)return "quiet_hours";
+  if(!d.brightness)return "brightness_zero";
+  return "waiting_for_data_or_safety";
+}
+size_t buildDiagnosticsJson(char *out,size_t capacity,const char *deviceId,const char *bootId,
+    uint64_t sequence,uint64_t uptime,uint32_t unixTime,const Diagnostics &d) {
+  Writer w(out,capacity);
+  w.raw("{\"protocol\":\"brooklyn-telemetry\",\"version\":1,\"kind\":\"diagnostics\",\"device_id\":");w.str(deviceId);
+  w.raw(",\"boot_id\":");w.str(bootId);
+  w.fmt(",\"sequence\":%llu,\"uptime_ms\":%llu,",(unsigned long long)sequence,(unsigned long long)uptime);writeTime(w,unixTime);
+  auto number=[&w](const char *key,uint64_t value){w.fmt(",\"%s\":%llu",key,(unsigned long long)value);};
+  auto flag=[&w](const char *key,bool value){w.fmt(",\"%s\":",key);w.boolean(value);};
+  auto text=[&w](const char *key,const char *value){w.fmt(",\"%s\":",key);w.str(value);};
+  auto age=[&](const char *key,bool known,uint64_t at){if(known && at<=uptime)number(key,(uptime-at)/1000);else w.fmt(",\"%s\":null",key);};
+  flag("automatic_updates",d.autoUpdates);
+  flag("check_attempted",d.checkAttempted);
+  flag("last_check_succeeded",d.checkSucceeded);
+  number("check_interval_s",d.checkIntervalSeconds);
+  age("last_check_age_s",d.checkAttempted,uptime>=uint64_t(d.lastCheckAgeSeconds)*1000?uptime-uint64_t(d.lastCheckAgeSeconds)*1000:0);
+  number("next_check_in_s",d.nextCheckSeconds);
+  flag("update_available",d.updateAvailable);
+  text("available_version",d.availableVersion);
+  number("install_phase",d.installPhase);
+  flag("leds_on",d.ledsOn);
+  flag("oled_on",d.oledOn);
+  flag("quiet_hours",d.quiet);
+  flag("maintenance",d.maintenance);
+  number("power_mode",d.powerMode);
+  text("led_output_reason",ledOffReason(d));
+  text("oled_output_reason",d.powerMode>=2?"power_button":!d.oledOn?"oled_not_ready":d.quiet?"quiet_hours_dimmed":"on");
+  number("led_brightness",d.brightness);
+  number("oled_brightness",d.oledBrightness);
+  number("oled_state",d.oledState);
+  number("route_mask",d.routeMask);
+  age("last_button_age_s",d.hasButton,d.lastButtonMs);
+  age("last_control_age_s",d.hasInput,d.lastInputMs);
+  text("restart_intent",restartIntentName(d.restart));
+  flag("image_confirmed",d.imageConfirmed);
+  text("last_update_outcome",d.restart==RestartIntent::FirmwareUpdate?(d.imageConfirmed?"confirmed":"health_check_pending"):d.installPhase==3?"failed":d.installPhase==2?"staged":d.installPhase==1?"downloading":"not_observed_this_boot");
+  number("settings_revision",d.settingsRevision);
+  age("last_setting_age_s",d.settingsRevision!=0,d.settingsAtMs);
+  text("last_setting_group",d.settingsGroup);
+  flag("monitoring_enabled",d.monitoringEnabled);
+  flag("has_feed_error",d.hasError);
+  age("last_error_age_s",d.hasError,d.errorAtMs);
+  number("last_error_feed_index",d.errorFeed);
+  number("last_error_category",d.errorCategory);
+  w.fmt(",\"last_error_http\":%ld,\"last_error_tls\":%ld",(long)d.errorHttp,(long)d.errorTls);
+  flag("wifi_outage",d.wifiOutage);
+  number("wifi_outage_duration_s",(d.wifiOutage && uptime>=d.wifiLossMs?uptime-d.wifiLossMs:d.wifiOutageMs)/1000);
+  age("wifi_recovery_age_s",d.wifiRecoveryMs!=0,d.wifiRecoveryMs);
+  flag("mqtt_outage",d.mqttOutage);
+  number("mqtt_outage_duration_s",(d.mqttOutage && uptime>=d.mqttLossMs?uptime-d.mqttLossMs:d.mqttOutageMs)/1000);
+  age("mqtt_recovery_age_s",d.mqttRecoveryMs!=0,d.mqttRecoveryMs);
+  w.raw("}");return w.ok() && w.size()<=kMaxPayloadBytes?w.size():0;
 }
 
 }  // namespace brooklyn::telemetry

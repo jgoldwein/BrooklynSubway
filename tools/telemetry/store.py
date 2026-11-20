@@ -15,11 +15,17 @@ from pathlib import Path
 def _split_statements(script):
     return [part.strip() for part in script.split(";") if part.strip()]
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 PRUNE_BATCH = 500
 BUSY_TIMEOUT_S = 10
 
 _MIGRATIONS = {
+    3: """
+    CREATE TABLE diagnostics_current (
+        device_id TEXT PRIMARY KEY, boot_id TEXT NOT NULL, sequence INTEGER NOT NULL,
+        received_at INTEGER NOT NULL, body_json TEXT NOT NULL
+    );
+    """,
     2: """
     CREATE INDEX events_received ON events (received_at);
     """,
@@ -119,6 +125,16 @@ class Store:
                  json.dumps(payload, sort_keys=True, separators=(",", ":")), now,
                  1 if live else 0, now, device_id),
             )
+
+    def get_diagnostics(self, device_id):
+        row = self.db.execute("SELECT * FROM diagnostics_current WHERE device_id = ?", (device_id,)).fetchone()
+        return dict(row) if row else None
+
+    def save_diagnostics(self, device_id, payload, now):
+        with self.db:
+            self.db.execute("INSERT OR REPLACE INTO diagnostics_current VALUES (?, ?, ?, ?, ?)",
+                (device_id, payload["boot_id"], payload["sequence"], now,
+                 json.dumps(payload, sort_keys=True, separators=(",", ":"))))
 
     def save_availability(self, device_id, state, now, retained):
         with self.db:
