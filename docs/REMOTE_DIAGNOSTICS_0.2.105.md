@@ -2,7 +2,7 @@
 
 **Testing on the local COM6 map first. This build is not published, and Avi’s map remains on 0.2.104.**
 
-The map still sends its normal heartbeat about every 30 seconds. A separate `kind: diagnostics` report goes to its existing `/event` topic about once a minute, or after a change (normally at most once every five seconds). There are no new broker permissions, subscriptions, tasks or network connections. MQTT remains a read-only monitoring channel.
+The map still sends its normal heartbeat about every 30 seconds. A separate `kind: diagnostics` report goes to its existing `/event` topic about once a minute, or after a change (normally at most once every five seconds). Deliberate TLS and memory-protection pauses can delay delivery; an action's reported time is distinct from the report's arrival time. There are no new broker permissions, subscriptions, tasks or network connections. MQTT remains a read-only monitoring channel.
 
 The additional information is:
 
@@ -18,7 +18,7 @@ The collector validates a separate strict schema, rejects retained/replayed/mism
 
 ## Home Assistant
 
-The local test extends the existing Merion MQTT device with diagnostic entities. The main cards are unchanged. Open **Settings ? Devices & services ? MQTT ? Local Brooklyn Subway (COM6)** to inspect them; additional settings are also attributes of **Last diagnostics report**. Button ages are labeled “at report” because they do not tick every second in the firmware report. Source timestamps and availability must be considered when inspecting an old report.
+The local test extends the existing Merion MQTT device with diagnostic entities. The main cards are unchanged. Open **Settings > Devices & services > MQTT > Local Brooklyn Subway (COM6)** to inspect them; additional settings are also attributes of **Last diagnostics report**. Button ages are labeled “at report” because they do not tick every second in the firmware report. Source timestamps and availability must be considered when inspecting an old report.
 
 The configuration builder is [ha_diagnostics.py](../tools/telemetry/ha_diagnostics.py). It preserves existing MQTT discovery components and does not contain credentials or publish anything itself. During this local test, only COM6’s discovery configuration is extended.
 
@@ -29,3 +29,11 @@ Automated checks cover bounded serialization, null/undersized buffers, JSON sche
 On the test map, turn the knob and press it briefly. Check that the two activity times become known. Press POWER four times with about ten seconds between presses; expected modes are 1 (LEDs off), 2 (OLED off), 3 (both off), 0 (both on). Save a setting without changing it, then perform an ordinary web restart and confirm the reported save category and restart source. A short temporary quiet-hours window can verify off/dim and recovery; restore the original schedule afterward. Network-outage and OTA failure policies are host-tested; do not disturb the household router or Avi’s map for a local test.
 
 A byte-for-byte application readback is kept locally before the test upload. COM6’s existing NVS settings and individual monitoring credentials are retained. No per-map credentials are compiled into the ordinary 0.2.105 image.
+
+## Local trial results — November 20, 2026
+
+The COM6 trial verified button and knob activity reporting, all four POWER modes, the saved OLED-brightness category and timestamp, and a planned long-POWER restart. Quiet hours disabled map output at 6:13 PM and restored it automatically at 6:18 PM New York time; both transitions were reported through MQTT. The user then chose a normal schedule of 10:30 PM–6:30 AM, with map lights Off during quiet hours.
+
+A signed manual reinstall of 0.2.105 booted the alternate `app1` partition, reported `firmware_update`, progressed from `health_check_pending` to `confirmed`, and recovered to Fresh 8/8 feeds. Home Assistant received the confirmed OTA state and recovered feed status. One initial upload received the expected busy HTTP 503 before the installer started; retrying succeeded. Downloading/staged phase delivery was not observed through MQTT during this trial, so those phases are not claimed as live-verified.
+
+A real broker outage and deliberate feed/OTA failures were not induced on the live board; their policies were checked by automated tests. The release remains unpublished, and Avi’s board remains on 0.2.104. Home Assistant’s main card layout is unchanged; the added monitoring fields are diagnostic entities on the local map’s device page.
