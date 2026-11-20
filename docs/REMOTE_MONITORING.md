@@ -197,15 +197,26 @@ credentials. It cannot enroll an unprovisioned shipped map by itself. A private
 signed package can also be uploaded manually over the same numbered public
 version; the signature, target and payload checks still apply.
 
+**Owner-authorized 0.2.103 exception:** the owner explicitly accepted the risk of
+publishing the shipped unit's hardware-bound enrollment package as this version's
+production automatic-update asset. That asset contains its individual MQTT key;
+it is extractable despite the hardware check. The key permits publishing only
+that unit's status/event/availability, not subscription or remote control. Treat
+GitHub download counts as informational: they cannot prove who obtained a key.
+An ordinary later release omits the seed but does not revoke copies of the old
+key; broker/device credential rotation must be coordinated separately. The
+standard public-release helper continues to reject private seed images, so this
+explicit exception is not the normal release workflow.
+
 Use [`tools/private_monitor_update.py`](../tools/private_monitor_update.py).
 It builds from committed source in an isolated directory under ignored
 `dist/private-monitor`, checks the exact runtime hardware ID before applying
 the settings, and signs the result with the existing trusted OTA key. The ID
 check prevents accidental enrollment of a different unit; it is not encryption.
-The binary and its generated private source contain the key and must be shared
-privately, never uploaded to GitHub. Normal public release tooling rejects the
-private enrollment marker. It is not a way to deliver private credentials in a
-public automatic update.
+The binary and its generated private source contain the key. The normal workflow
+keeps them private. Normal public release tooling rejects the private enrollment
+marker; it does not make publicly distributed credentials private. See the
+explicit 0.2.103 owner-authorized exception above.
 
 An existing monitoring configuration, including Off, is preserved. A non-secret
 `bkmap_seed/enroll` marker records that the private seed has been handled. It

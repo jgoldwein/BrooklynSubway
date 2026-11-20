@@ -18,9 +18,16 @@
   image for a shipped map. Such an image contains its key and is never a public
   release asset. One-time seed handling preserves existing choices and respects
   later credential removal/default reset.
-- The public automatic update does not enroll an unconfigured map. A shipped
-  map can receive its individual configuration through a one-time private signed
-  upload, including over the same numbered public version.
+- For this release only, the project owner explicitly authorized publishing the
+  shipped map's signed, hardware-bound enrollment image as the production
+  automatic-update asset. On that matching unit, it enables monitoring without
+  form entry when no monitoring settings exist. Existing settings are preserved;
+  other units are not enrolled by that seed.
+- This asset contains an extractable, individual, publish-only MQTT credential.
+  Hardware binding prevents accidental enrollment elsewhere; it does not hide
+  the credential. Download counts cannot identify recipients or rule out copying.
+  A following ordinary release can omit the embedded seed, but changing the
+  broker credential requires a separate coordinated rotation.
 
 ## Behavior
 
