@@ -64,3 +64,12 @@ DMA transport before claiming the issue fixed.
 
 Keep the verified ordinary 0.2.103 image locally for rollback. Do not publish
 0.2.104 as a proven fix before evaluating the physical trial.
+
+## Initial COM6 result, November 20, 2026
+
+The local 0.2.104 build was installed over USB with a verified flash hash.
+The user reported no flashes with monitoring Off, then no flashes at all after
+turning monitoring On for the requested observation. MQTT resumed with Fresh
+8/8 feeds and no reported Wi-Fi/MQTT disconnects. The new LAN and WAN fields
+were also received. The result supports the driver mitigation; it does not
+establish the exact electrical cause or replace a longer stability test.

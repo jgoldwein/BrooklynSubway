@@ -12,8 +12,8 @@ in this ordinary update; existing monitoring settings are retained.
 - All RMT configuration, routing, start and completion results are checked.
   A reported transport error or 100 ms completion timeout forces GPIO1 LOW;
   a faulted transmitter requires a reboot. A startup serial line identifies
-  the driver, memory allocation and timing. Physical testing remains necessary
-  to determine whether this resolves the reported transient flashes.
+  the driver, memory allocation and timing. The COM6 short visual trial showed
+  no flashes with monitoring Off or On; longer-term observation remains useful.
 
 - Enabled monitoring includes LAN IPv4 and cached public WAN IPv4, with `null`
   for unknown/expired addresses. Existing topics, credentials and v1 schema remain.
@@ -35,10 +35,14 @@ in this ordinary update; existing monitoring settings are retained.
 Validation: WAN parser/cache 77 checks; telemetry core 268 checks and 30 frozen
 schema checks; monitoring configuration/privacy 83 checks; web policy 1035
 checks; existing collector/store/hardening/deployment suites passed. All four
-production/bench build targets passed. Device testing of the new lookup remains
-pending. LED transport tests cover all 306 RGB pixels across all eight channels,
+production/bench build targets passed for the address change. COM6 MQTT reports
+now confirm nonempty LAN and WAN fields within the eight-extension limit.
+LED transport tests cover all 306 RGB pixels across all eight channels,
 repeat initialization/transmission, GRB pulse timing/reset, invalid input and
 injected core/configuration/install/clock/routing/start/completion failures.
 Existing diagnostic, live-display and physical output safety tests pass.
-The production network build passes. Local COM6 hardware trial is in progress;
-this release has not been published.
+Production network, diagnostic PCB and network bench builds pass after the LED
+change. COM6 reports Fresh 8/8 feeds with monitoring enabled, no reported
+Wi-Fi/MQTT disconnects, and the user observed no transient flashes in the short
+trial. This is not a long stability test or an electrical waveform measurement.
+This release has not been published.
