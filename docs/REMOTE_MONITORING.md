@@ -1,6 +1,6 @@
 # Remote monitoring
 
-The production monitoring provision is being prepared for firmware 0.2.103.
+The production monitoring provision is included in firmware 0.2.103.
 It is not proof that a particular map has been enrolled or has reported.
 Older Phase 4AA design/bench notes describe earlier milestones; this guide
 describes the provisioned production path.
@@ -68,6 +68,49 @@ client to check own-namespace permission and foreign-namespace denial. It sends
 only two non-retained diagnostic event payloads, not device heartbeats. Broker
 permission checks are distinct from observing real device reports in a subscriber.
 
+### Watch from a Linux terminal (Mosquitto 2.0.18)
+
+Use a separate read-authorized account, such as the broker administrator or
+collector, rather than the map's publish-only account. On mythbackend, run these
+as your normal login user. Keep this client configuration separate from any
+existing MQTT client defaults:
+
+```sh
+mkdir -p "$HOME/.config/brooklyn-monitor"
+chmod 700 "$HOME/.config/brooklyn-monitor"
+umask 077
+nano "$HOME/.config/brooklyn-monitor/mosquitto_sub"
+```
+
+Enter two lines, using that account's actual password on the second line:
+
+```text
+-u goldwein
+-P YOUR_MQTT_ACCOUNT_PASSWORD
+```
+
+Save and exit. This file is a private client setting, not the broker's hashed
+`/etc/mosquitto/passwd`. Then watch both maps:
+
+```sh
+XDG_CONFIG_HOME="$HOME/.config/brooklyn-monitor" mosquitto_sub \
+  -h mqtt.goldwein.net -p 8884 \
+  --cafile /etc/ssl/certs/ca-certificates.crt \
+  -q 1 -v -t 'brooklyn/v1/+/status' \
+  -t 'brooklyn/v1/+/event' -t 'brooklyn/v1/+/availability'
+```
+
+Press **Ctrl+C** to stop. Initial retained status/availability can be old; add
+`-R` to suppress retained replay and wait for new messages. New status reports
+normally arrive about every 30 seconds once provisioned. To isolate one map,
+replace each `+` with its `bkmap-<UUID>` value. Do not specify the map's MQTT
+client ID on this subscriber, since that would disconnect the map itself.
+The CA file above is the Debian/Ubuntu system trust store; it must exist and
+trust the broker's certificate. Do not disable certificate verification.
+
+These options and the per-user default configuration format are supported by
+[Mosquitto 2.0.18](https://github.com/eclipse-mosquitto/mosquitto/blob/v2.0.18/man/mosquitto_sub.1.xml).
+
 ## Set up an individual map
 
 For the developer/broker administrator:
@@ -79,7 +122,7 @@ For the developer/broker administrator:
    ```
 
 2. Open the generated `SETUP.txt`. `device-settings.json` contains the PRIVATE
-   key. It must not be uploaded to GitHub or included in a firmware image.
+   key. It must not be uploaded to GitHub or included in public firmware.
 3. Back up `/etc/mosquitto/passwd` and the 8884 listener's ACL. Use
    `mosquitto_passwd /etc/mosquitto/passwd bkmap-<UUID>` to add the device and paste
    its generated key at the hidden prompts. Do not use `-c`, which replaces the
@@ -148,6 +191,11 @@ with that unit's individual monitoring settings. Its owner installs the private
 `.bkota` once through the normal signed updater; no monitoring form is needed.
 The matching broker account and ACL must exist first. Later ordinary public
 updates retain the installed configuration.
+
+The public automatic update enables the feature but does not contain individual
+credentials. It cannot enroll an unprovisioned shipped map by itself. A private
+signed package can also be uploaded manually over the same numbered public
+version; the signature, target and payload checks still apply.
 
 Use [`tools/private_monitor_update.py`](../tools/private_monitor_update.py).
 It builds from committed source in an isolated directory under ignored

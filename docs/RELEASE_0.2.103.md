@@ -13,11 +13,14 @@
 - Current local sender state and server-acknowledgment age refresh every five
   seconds without refreshing the settings form. Sign-in returns to this page.
 - Private enrollment helper creates unique keys and publish-only ACL fragments.
-  Generated credentials are not part of firmware, source or release assets.
+  Generated credentials are not part of public firmware, source or release assets.
 - Separate private-update builder can prepare a signed, unit-bound enrollment
   image for a shipped map. Such an image contains its key and is never a public
   release asset. One-time seed handling preserves existing choices and respects
   later credential removal/default reset.
+- The public automatic update does not enroll an unconfigured map. A shipped
+  map can receive its individual configuration through a one-time private signed
+  upload, including over the same numbered public version.
 
 ## Behavior
 
@@ -53,5 +56,12 @@ status acknowledgments while MTA cycles completed 8/8. At 247 seconds its
 monitoring counters showed one connection, no reconnects or missed acknowledgments,
 and eight status reports; internal heap minimum was 27,960 bytes, with no TLS
 allocation failures. This is short-run software evidence, not prolonged stability
-or independent physical-output verification. Independent subscriber inspection
-and private-image hardware commissioning remain separate steps.
+or independent physical-output verification.
+
+COM6 also passed a private-image enrollment test after its monitoring credentials
+were removed. Restoring the ordinary public image retained those credentials:
+at 246 seconds it had one connection, no reconnects, no missed acknowledgments
+and eight status reports, alongside complete 8/8 MTA cycles. Internal heap
+minimum was 27,780 bytes. Avi's private package has been signed and verified;
+installation on the shipped unit and independent subscriber inspection remain
+separate steps.
