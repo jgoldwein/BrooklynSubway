@@ -1,4 +1,5 @@
 #include "led_backend.h"
+#include "led_transport.h"
 #include "indication_types.h"
 #include "board_pins.h"
 #include "led_diagnostic_policy.h"
@@ -147,6 +148,26 @@ bool signalDiagnosticChannel(led::PhysicalChannel channel) {
   ++cueCalls;
   resetWalk(number == stopChannel ? 3 : -1, number - 1);
   return number != failCue;
+}
+}
+// Replace only the hardware boundary; backend safety, caps and diagnostics
+// run unchanged against the existing pixel observer.
+namespace brooklyn::led::transport {
+bool initialize() {return !failAllocation;}
+void holdDataLow() {for(uint8_t pin : pins::LED_DATA) digitalWrite(pin, LOW);}
+bool transmit(const DisplayState *frame, uint16_t count) {
+  if(!frame || count!=306) return false;
+  uint16_t offset=0;
+  for(uint8_t channel=0;channel<8;++channel) {
+    uint32_t rgb[42]{};
+    for(uint8_t i=0;i<pins::LED_COUNT[channel];++i) {
+      const auto c=frame[offset+i].color;
+      rgb[i]=(uint32_t(c.red)<<16)|(uint32_t(c.green)<<8)|c.blue;
+    }
+    observeStrip(pins::LED_DATA[channel],rgb,pins::LED_COUNT[channel]);
+    offset+=pins::LED_COUNT[channel];
+  }
+  return true;
 }
 }
 int main() {
