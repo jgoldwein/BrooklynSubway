@@ -113,6 +113,7 @@ void publishTelemetrySnapshot(uint32_t nowMs) {
   brooklyn::telemetry::Snapshot snap;
   snap.networkReady = networkService.state() == brooklyn::network::State::Ready;
   snap.systemHealthy = systemHealthy;
+  snap.physicalOutputEnabled=brooklyn::display::live::enabled();
   snap.display = static_cast<brooklyn::telemetry::DisplayState>(operationalDisplay.state());
   snap.brightness = networkService.brightness();
   snap.hasRouteMask = true;

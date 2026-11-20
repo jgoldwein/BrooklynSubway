@@ -159,6 +159,11 @@ struct StatusInput {
   uint32_t extReconnects = 0;
   uint32_t extAcksMissed = 0;
   uint32_t extPublishFailures = 0;
+  bool hasConnectionHistory = false;
+  uint32_t wifiDisconnects = 0;
+  uint32_t mqttDisconnects = 0;
+  uint64_t lastWifiLossMs = 0;
+  uint64_t lastMqttLossMs = 0;
 };
 
 // Returns the JSON length, or 0 when it does not fit in `capacity` (capacity includes the

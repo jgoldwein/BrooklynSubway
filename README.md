@@ -21,6 +21,7 @@
 
 - **Interested in the electronics?** Download the [art-free Gerber derivative, BOM and placement files](hardware/README.md). Read the [artwork distribution notes](docs/ARTWORK_DISTRIBUTION.md) for what was removed and what remains in history.
 - **What changed?** Read the [changelog and release notes](CHANGELOG.md), directly on GitHub.
+- **Want to check your map from away?** Read the [optional remote monitoring guide](docs/REMOTE_MONITORING.md), including individual MQTT setup and private preconfigured updates.
 - **Looking for upgraded firmware?** See the [latest signed release](https://github.com/jgoldwein/BrooklynSubway/releases/latest).
   For an already programmed map, use **Advanced > Firmware updates** on its web page.
 

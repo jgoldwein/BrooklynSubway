@@ -11,6 +11,7 @@ __pycache__/
 *.pyc
 
 include/secrets.h
+include/private_monitor_enrollment.h
 
 # Release artifacts and signing keys must never be committed
 dist/

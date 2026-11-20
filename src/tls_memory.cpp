@@ -9,7 +9,9 @@
 #include <stdint.h>
 namespace brooklyn::tls {
 namespace {
-constexpr size_t kExternalThreshold=4096;
+// Concurrent feed + monitoring TLS needs room for task/Wi-Fi allocations.
+// TLS blocks have no DMA/internal-only requirement; free remains heap_caps_free.
+constexpr size_t kExternalThreshold=1024;
 uint32_t externalAllocations=0,internalFallbacks=0,allocationFailures=0;
 void *allocate(size_t count,size_t size) {
   if(count && size>SIZE_MAX/count){__atomic_add_fetch(&allocationFailures,1u,__ATOMIC_RELAXED);return nullptr;}
@@ -30,7 +32,7 @@ bool configureMemory() {
   // before network startup, rather than changing allocators during connections.
   static bool configured=false;if(configured)return true;
   configured=mbedtls_platform_set_calloc_free(allocate,release)==0;
-  Serial.println(configured?"TLS memory: blocks >=4096 B prefer PSRAM; smaller blocks internal; certificate verification unchanged":"TLS memory: allocator setup FAILED; SDK allocator retained");
+  Serial.println(configured?"TLS memory: blocks >=1024 B prefer PSRAM; smaller blocks internal; certificate verification unchanged":"TLS memory: allocator setup FAILED; SDK allocator retained");
   return configured;
 }
 MemoryStats memoryStats(){MemoryStats result;result.externalAllocations=__atomic_load_n(&externalAllocations,__ATOMIC_RELAXED);result.internalFallbacks=__atomic_load_n(&internalFallbacks,__ATOMIC_RELAXED);result.allocationFailures=__atomic_load_n(&allocationFailures,__ATOMIC_RELAXED);return result;}

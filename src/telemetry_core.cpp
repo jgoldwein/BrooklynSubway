@@ -320,9 +320,17 @@ size_t buildStatusJson(char *buffer, size_t capacity, const StatusInput &in) {
         controllerName(in.controller), armingName(in.arming), currentName(in.currentLimit));
 
   w.fmt(",\"extensions\":{\"x_ev_dropped\":%lu,\"x_reconnects\":%lu,\"x_acks_missed\":%lu,"
-        "\"x_pub_failures\":%lu}}",
+        "\"x_pub_failures\":%lu",
         static_cast<unsigned long>(in.extEventsDropped), static_cast<unsigned long>(in.extReconnects),
         static_cast<unsigned long>(in.extAcksMissed), static_cast<unsigned long>(in.extPublishFailures));
+  if(in.hasConnectionHistory) {
+    w.fmt(",\"x_wifi_disconnects\":%lu,\"x_mqtt_disconnects\":%lu,\"x_wifi_loss_up_s\":",
+      static_cast<unsigned long>(in.wifiDisconnects),static_cast<unsigned long>(in.mqttDisconnects));
+    if(in.wifiDisconnects) w.fmt("%llu",static_cast<unsigned long long>(in.lastWifiLossMs/1000));else w.raw("null");
+    w.raw(",\"x_mqtt_loss_up_s\":");
+    if(in.mqttDisconnects) w.fmt("%llu",static_cast<unsigned long long>(in.lastMqttLossMs/1000));else w.raw("null");
+  }
+  w.raw("}}");
   return w.ok() ? w.size() : 0;
 }
 

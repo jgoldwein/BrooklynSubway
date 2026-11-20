@@ -37,6 +37,8 @@ PLATFORMIO = Path.home() / ".platformio/penv/Scripts/platformio.exe"
 
 def check_developer_credentials(payload):
     """Refuse release binaries containing local development string credentials."""
+    if b"BROOKLYN_PRIVATE_MONITOR_ENROLLMENT_V1" in payload:
+        sys.exit("refusing public release: private per-unit monitoring enrollment image")
     secrets = ROOT / "include" / "secrets.h"
     if not secrets.exists():
         return

@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include "ota_esp.h"
+#include "telemetry_service.h"
 
 #if BROOKLYN_NETWORK_ENABLED
 
@@ -166,7 +167,10 @@ class WebOtaSession::Impl {
 };
 
 WebOtaSession::WebOtaSession() : impl_(new (std::nothrow) Impl) {}
-WebOtaSession::~WebOtaSession() = default;
+WebOtaSession::~WebOtaSession() {releaseMonitoring();}
+void WebOtaSession::releaseMonitoring() {
+  if(monitoringPaused_) {monitoringPaused_=false;telemetry::resumeAfterUpdate();}
+}
 
 const char *WebOtaSession::targetName() { return BROOKLYN_OTA_TARGET_NAME; }
 
@@ -179,6 +183,10 @@ const char *WebOtaSession::firmwareVersion() {
 Result WebOtaSession::start(size_t contentLength, bool deferActivation,const char *expectedVersion) {
   if (!impl_) return Result::WriterBegin;
   if (impl_->writer.activationPending()) return Result::Busy;
+  if(!monitoringPaused_) {
+    monitoringPaused_=true;
+    if(!telemetry::pauseForUpdate()) {releaseMonitoring();return Result::Busy;}
+  }
   if (installer_) installer_->abort();
   oled::showUpgrade(oled::UpgradePhase::Starting,expectedVersion?expectedVersion:"",0);
   const uint32_t announcedAt=millis();
@@ -193,7 +201,7 @@ Result WebOtaSession::start(size_t contentLength, bool deferActivation,const cha
   installer_.reset(new (std::nothrow) Installer(config, impl_->sha,
                                                 impl_->verifier,
                                                 impl_->writer));
-  if (!installer_) {oled::showUpgrade(oled::UpgradePhase::Failed);return Result::WriterBegin;}
+  if (!installer_) {releaseMonitoring();oled::showUpgrade(oled::UpgradePhase::Failed);return Result::WriterBegin;}
   Serial.printf("OTA: update started target=%s length=%u keys=%u\n",
                 BROOKLYN_OTA_TARGET_NAME,
                 static_cast<unsigned>(contentLength),
@@ -201,6 +209,7 @@ Result WebOtaSession::start(size_t contentLength, bool deferActivation,const cha
                     provisionedKeyCount(kTrustedKeys, kTrustedKeyCount)));
   const Result result = installer_->start(contentLength);
   if (result != Result::Ok) {
+    releaseMonitoring();
     oled::showUpgrade(oled::UpgradePhase::Failed);
     Serial.printf("OTA: rejected - %s\n", resultName(result));
   }
@@ -218,6 +227,7 @@ Result WebOtaSession::feed(const uint8_t *data, size_t length) {
                   installer_->downgrade() ? "YES" : "no");
   }
   if (result != Result::Ok) {
+    releaseMonitoring();
     oled::showUpgrade(oled::UpgradePhase::Failed);
     Serial.printf("OTA: failed - %s\n", resultName(result));
   }
@@ -230,9 +240,10 @@ Result WebOtaSession::feed(const uint8_t *data, size_t length) {
 }
 
 Result WebOtaSession::finish() {
-  if (!installer_) return Result::NotStarted;
+  if (!installer_) {releaseMonitoring();return Result::NotStarted;}
   oled::showUpgrade(oled::UpgradePhase::Verifying);
   const Result result = installer_->finish();
+  releaseMonitoring();
   oled::showUpgrade(result==Result::Ok?(impl_->writer.activationPending()?oled::UpgradePhase::Ready:oled::UpgradePhase::Restarting):oled::UpgradePhase::Failed);
   Serial.printf("OTA: %s\n",
                 result == Result::Ok
@@ -256,6 +267,7 @@ bool WebOtaSession::activationPending() const {
 }
 
 void WebOtaSession::abort() {
+  releaseMonitoring();
   if (installer_) installer_->abort();
   oled::showUpgrade(oled::UpgradePhase::Failed);
 }

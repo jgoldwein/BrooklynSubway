@@ -13,6 +13,14 @@ if re.fullmatch(r"[0-9]+\.[0-9]+\.[0-9]+", version) is None:
     raise ValueError("BROOKLYN_FIRMWARE_VERSION must be a three-part numeric version")
 
 components = [int(component) for component in version.split(".")]
+private_enrollment=os.environ.get("BROOKLYN_PRIVATE_MONITOR_ENROLLMENT","")
+if private_enrollment:
+    if private_enrollment!="1" or env.subst("$PIOENV")!="brooklyn-s3-network":
+        raise ValueError("Private enrollment is restricted to the production network target")
+    private_header=Path(env.subst("$PROJECT_DIR"))/"include/private_monitor_enrollment.h"
+    if not private_header.is_file():
+        raise ValueError("Private enrollment header is absent; use the isolated private-update builder")
+    env.Append(CPPDEFINES=[("BROOKLYN_PRIVATE_MONITOR_ENROLLMENT",1)])
 if version != "0.0.0":
     # Public releases must never compile developer Wi-Fi/MQTT credentials.
     env.Append(CPPDEFINES=[("BROOKLYN_RELEASE_BUILD", 1)])

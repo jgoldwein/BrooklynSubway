@@ -425,6 +425,7 @@ size_t renderHomePage(char *out, size_t capacity,
   {char stations[128];selectedStations(status.stationAlertPreferences,stations);writer.html(stations);}
   writer.append("</span></p><p>See service notices for your stations and choose which stations to follow.</p><div class=\"actions\"><a class=\"button\" href=\"/alerts\">View alerts</a><a class=\"button secondary\" href=\"/personalization#station-alerts\">Choose stations</a></div></section>"
                 "<section data-view=\"advanced\" id=\"personalization\"><h2>Personalization</h2><p>Make the map your own: names, greeting, celebration date, family credits, favorite-team extra and support contact.</p><a class=\"button secondary\" href=\"/personalization\">Edit personalization</a></section>"
+                "<section data-view=\"advanced\"><h2>Remote monitoring</h2><p>Share status, uptime and connection health with your private monitor.</p><a class=\"button secondary\" href=\"/monitoring\">Open remote monitoring</a></section>"
                 "<details class=\"card wide\" data-view=\"advanced\"><summary>Device information</summary><dl><dt>Device name</dt><dd>");
   writer.html(status.deviceName);
   writer.append("</dd><dt>Firmware</dt><dd>");
@@ -925,6 +926,7 @@ size_t renderHomePage(char *out, size_t capacity,
 // Only fixed local GET pages are allowed; never redirect to submitted URLs or actions.
 const char *loginReturnPath(const char *target) {
   if (!target || !target[0]) return "/";
+  if (strcmp(target,"monitoring")==0) return "/monitoring";
   if (strcmp(target,"personalization")==0) return "/personalization";
   if (strcmp(target,"screen-options")==0) return "/screen-options";
   if (strcmp(target,"update")==0) return "/update";
@@ -940,6 +942,7 @@ const char *loginReturnPath(const char *target) {
 }
 const char *loginTargetForRequest(const char *path) {
   if (!path) return "";
+  if(strcmp(path,"/monitoring")==0 || strcmp(path,"/monitoring/clear")==0 || strcmp(path,"/api/monitoring")==0)return "monitoring";
   if (strcmp(path,"/defaults")==0) return "defaults";
   if (strcmp(path,"/personalization")==0 || strcmp(path,"/personalization/extras")==0 || strcmp(path,"/personalization/stations")==0) return "personalization";
   if (strcmp(path,"/screen-options")==0 || strcmp(path,"/config/screen-options")==0) return "screen-options";
@@ -1509,6 +1512,29 @@ size_t renderPersonalizationPage(char *out,size_t capacity,const personal::Setti
   }
   w.append("<p class=\"hint\">Up to 21 characters per message. Blank team caption uses the OLED name followed by &rsquo;s favorite team, scrolling when needed.</p><button>Save extras</button></form>");
   w.append("</section></main><script>const f=document.getElementById('personal');function preview(){document.getElementById('preview').textContent=['greeting','shortName','from','date','names'].map(k=>f.elements[k].value).join('\\n');}f.addEventListener('input',preview);preview();</script></body></html>");
+  return w.size();
+}
+size_t renderMonitoringJson(char *out,size_t capacity,const monitor::Runtime &r) {
+  Writer w(out,capacity);
+  w.append("{\"state\":\"");w.html(monitor::stateName(r.state));
+  w.format("\",\"configured\":%s,\"enabled\":%s,\"uptimeSeconds\":%llu,\"wifiDisconnects\":%lu,\"monitorDisconnects\":%lu,\"ackAgeSeconds\":",
+    r.configured?"true":"false",r.enabled?"true":"false",static_cast<unsigned long long>(r.uptimeMs/1000),
+    static_cast<unsigned long>(r.wifiDisconnects),static_cast<unsigned long>(r.mqttDisconnects));
+  if(r.hasStatusAck && r.uptimeMs>=r.lastStatusAckMs)w.format("%llu",static_cast<unsigned long long>((r.uptimeMs-r.lastStatusAckMs)/1000));else w.append("null");
+  w.append("}");return w.size();
+}
+size_t renderMonitoringPage(char *out,size_t capacity,const monitor::Settings &s,const monitor::Runtime &r,const char *csrf) {
+  Writer w(out,capacity);
+  w.append("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Remote monitoring</title><link rel=\"stylesheet\" href=\"/ui.css?v=103\"></head><body><header><div><h1>Remote monitoring</h1><p>Check on your map from away</p></div><a href=\"/#advanced\">Back to Advanced</a></header><main style=\"display:block;max-width:48rem\"><section><h2>Connection status</h2><p id=\"monitor-state\" role=\"status\">");
+  w.html(monitor::stateName(r.state));
+  w.append("</p><p id=\"monitor-details\"></p><p>Reports are sent about every 30 seconds. Your private dashboard shows status, uptime, last seen, firmware, feed health, memory and observed disconnects. Counts start when monitoring starts after each boot. A server acknowledgment confirms delivery to the broker; the dashboard must also be running.</p><p>No report means unknown or disconnected, not proof that the map is broken. This reports software health, not a physical inspection.</p></section><section><h2>Monitoring settings</h2><p>Ask your monitoring administrator for this map's individual Device ID and key. Monitoring starts automatically after you save valid credentials with On selected. Choose Off to stop sending; your map keeps working.</p><form method=\"post\" action=\"/monitoring\"><input type=\"hidden\" name=\"csrf\" value=\"");w.html(csrf);w.append("\"><label for=\"enabled\">Send monitoring reports</label><select name=\"enabled\" id=\"enabled\">");
+  w.format("<option value=\"1\"%s>On</option><option value=\"0\"%s>Off</option></select>",s.enabled?" selected":"",s.enabled?"":" selected");
+  w.append("<label for=\"name\">Map label (visible on your private dashboard)</label><input id=\"name\" name=\"name\" maxlength=\"32\" required value=\"");w.html(s.name);
+  w.append("\"><label for=\"host\">Monitoring server</label><input id=\"host\" name=\"host\" maxlength=\"96\" required value=\"");w.html(s.host);
+  w.format("\"><label for=\"port\">TLS port</label><input type=\"number\" id=\"port\" name=\"port\" min=\"1\" max=\"65535\" value=\"%u\" required>",unsigned(s.port));
+  w.append("<label for=\"deviceId\">Device ID</label><input id=\"deviceId\" name=\"deviceId\" maxlength=\"36\" required value=\"");w.html(s.deviceId);
+  w.append("\"><label for=\"monitor-key\">Monitoring key</label><input type=\"password\" id=\"monitor-key\" name=\"password\" maxlength=\"64\" autocomplete=\"new-password\" value=\"\"><label><input type=\"checkbox\" id=\"show-monitor-key\"> Show key being entered</label><p class=\"hint\">The saved key is never shown. Leave blank to keep it when the server and Device ID are unchanged.</p><button>Save monitoring</button></form><p>Reports use encrypted TLS and an individual publish-only identity. There is no remote control channel. Reports exclude Wi-Fi names, network addresses, passwords and individual train IDs. Your chosen map label is shared.</p><p class=\"hint\">This local settings page uses HTTP: enter the key only on your trusted home Wi-Fi. Keys are stored in device flash; physical access can expose them. Restart and firmware updates keep these settings. Reset to firmware defaults removes them.</p></section><section><h2>Remove monitoring credentials</h2><form method=\"post\" action=\"/monitoring/clear\"><input type=\"hidden\" name=\"csrf\" value=\"");w.html(csrf);
+  w.append("\"><label><input type=\"checkbox\" name=\"confirm\" value=\"erase\" required> Remove this map's saved monitoring identity and key</label><button class=\"secondary\">Remove monitoring credentials</button></form><p>To revoke a key on the server, contact the monitoring administrator.</p></section></main><script>document.getElementById('show-monitor-key').onchange=function(){document.getElementById('monitor-key').type=this.checked?'text':'password'};async function refresh(){try{const r=await fetch('/api/monitoring',{cache:'no-store'});if(r.redirected){location.assign('/login?next=monitoring');return}if(!r.ok)throw Error();const s=await r.json();document.getElementById('monitor-state').textContent=s.state;document.getElementById('monitor-details').textContent='Uptime: '+s.uptimeSeconds+' s | Wi-Fi disconnects: '+s.wifiDisconnects+' | Monitoring disconnects: '+s.monitorDisconnects+' | Last server acknowledgment: '+(s.ackAgeSeconds===null?'none yet':s.ackAgeSeconds+' s ago')}catch(e){document.getElementById('monitor-state').textContent='Status unavailable; retrying'}setTimeout(refresh,5000)}refresh();</script></body></html>");
   return w.size();
 }
 }  // namespace brooklyn::web

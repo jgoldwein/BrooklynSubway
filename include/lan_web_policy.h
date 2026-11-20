@@ -12,6 +12,7 @@
 #include "runtime_observation.h"
 #include "personalization.h"
 #include "station_alerts.h"
+#include "monitor_config.h"
 
 #include <stddef.h>
 #include <stdint.h>
@@ -22,6 +23,8 @@ namespace brooklyn::web {
 constexpr size_t kStatusPageCapacity = 28672;
 size_t renderStationAlerts(char *out,size_t capacity,uint32_t now,bool json=false);
 size_t renderPersonalizationPage(char *out,size_t capacity,const personal::Settings &settings,const char *csrf);
+size_t renderMonitoringPage(char *out,size_t capacity,const monitor::Settings &,const monitor::Runtime &,const char *csrf);
+size_t renderMonitoringJson(char *out,size_t capacity,const monitor::Runtime &);
 
 constexpr const char *kDefaultDeviceName = "BrooklynMap";
 constexpr const char *kHostname = "brooklynmap";

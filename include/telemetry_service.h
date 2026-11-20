@@ -1,12 +1,10 @@
 // Copyright 2026 Joel W. Goldwein
 // SPDX-License-Identifier: Apache-2.0
 //
-// Phase 4AA production telemetry service (publish-only MQTT). ESP32 adapter around the
-// host-tested brooklyn::telemetry::Core.
-//
-// Live telemetry is compiled in ONLY when BROOKLYN_TARGET_XIAO, BROOKLYN_NETWORK_ENABLED
-// and the git-ignored include/secrets.h defines BROOKLYN_MQTT_BENCH_PASSWORD. Every other
-// build gets empty no-ops: no esp-mqtt client, no bench credential, no tasks.
+// Provisioned production/bench monitoring, publish-only MQTT with verified TLS.
+// Network builds load an individual identity from bkmap_mon; no compiled credentials.
+// Worker/socket allocation is deferred until valid credentials are saved and enabled.
+// Non-network builds have no MQTT task. Firmware defaults erase the monitoring record.
 //
 // The service owns a dedicated FreeRTOS task. Heartbeats, reconnects and event drains are
 // driven by that task's own clock and never by loop(), the MTA cycle, or SNTP. loop()
@@ -18,6 +16,7 @@
 #include <stdint.h>
 
 #include "telemetry_core.h"
+#include "monitor_config.h"
 
 namespace brooklyn::telemetry {
 
@@ -41,6 +40,7 @@ struct Snapshot {
   uint16_t occupiedMapLeds = 0;
   bool hasCollisions = false;
   uint32_t collisionCount = 0;
+  bool physicalOutputEnabled = false;
 };
 
 // Call before networkService.begin().
@@ -51,5 +51,17 @@ void update(const Snapshot &snapshot);
 void noteDisplayTransition(DisplayState previous, DisplayState current);
 // XIAO serial bench command hook; returns true if the character was consumed.
 bool handleCommand(int command);
+monitor::Settings monitoringSettings();
+monitor::Runtime monitoringStatus();
+bool configureMonitoring(const monitor::Settings &);
+bool clearMonitoring();
+// Waits a bounded interval for the sender to relinquish its TLS connection.
+bool pauseForUpdate();
+void resumeAfterUpdate();
+struct UpdatePause {
+  bool ready;
+  UpdatePause():ready(pauseForUpdate()){}
+  ~UpdatePause(){resumeAfterUpdate();}
+};
 
 }  // namespace brooklyn::telemetry

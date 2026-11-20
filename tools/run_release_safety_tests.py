@@ -6,6 +6,11 @@ import release_firmware as release
 
 
 class ReleaseSafetyTests(unittest.TestCase):
+    def test_private_enrollment_image_rejected_from_public_release(self):
+        with self.assertRaises(SystemExit) as raised:
+            release.check_developer_credentials(b"binary BROOKLYN_PRIVATE_MONITOR_ENROLLMENT_V1")
+        self.assertIn("private per-unit",str(raised.exception))
+
     def test_embedded_credentials_rejected_without_disclosing_value(self):
         with tempfile.TemporaryDirectory() as tmp:
             original = release.ROOT

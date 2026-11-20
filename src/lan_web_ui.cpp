@@ -14,6 +14,7 @@
 #include "support_assets.h"
 #include "personalization.h"
 #include "factory_reset.h"
+#include "telemetry_service.h"
 
 #if BROOKLYN_NETWORK_ENABLED
 
@@ -186,6 +187,16 @@ bool LanWebUi::begin() {
 }
 
 void LanWebUi::registerRoutes() {
+  server_.on("/monitoring",HTTP_GET,[this](){handleMonitoring(false);});
+  server_.on("/monitoring",HTTP_POST,[this](){handleMonitoring(true);});
+  server_.on("/monitoring/clear",HTTP_POST,[this](){handleMonitoringClear();});
+  server_.on("/api/monitoring",HTTP_GET,[this](){
+    if(!authorizeRequest(false))return;
+    if(server_.args()!=0) {server_.send(400,"text/plain","Invalid monitoring request");return;}
+    const size_t n=renderMonitoringJson(gJson,sizeof(gJson),telemetry::monitoringStatus());
+    if(!n) {server_.send(500,"text/plain","Monitoring status unavailable");return;}
+    server_.sendHeader("Cache-Control","no-store");server_.send(200,"application/json",gJson);
+  });
   server_.on("/alerts", HTTP_GET, [this]() { handleStationAlerts(false); });
   server_.on("/api/station-alerts", HTTP_GET, [this]() { handleStationAlerts(true); });
   server_.on("/personalization/stations", HTTP_POST, [this]() { handleStationAlertPreferences(); });
@@ -640,6 +651,44 @@ void LanWebUi::handlePersonalization(bool saving) {
   const size_t n=renderPersonalizationPage(gPage,sizeof(gPage),settings,csrf);eraseBytes(csrf,sizeof(csrf));
   if(!n) {server_.send(500,"text/plain","Unable to render personalization");return;}
   sendHtml(gPage,n);
+}
+
+void LanWebUi::handleMonitoring(bool saving) {
+  if(!authorizeRequest(saving))return;
+  auto previous=telemetry::monitoringSettings();
+  if(saving) {
+    monitor::Settings next;
+    String values[6];monitor::Param params[6]{};unsigned used=0,csrfCount=0;bool ok=true;
+    for(int i=0;i<server_.args();++i) {
+      if(server_.argName(i)=="csrf") {++csrfCount;continue;}
+      if(used==6) {ok=false;break;}
+      static const char *const keys[]={"host","port","deviceId","password","name","enabled"};
+      unsigned key=0;for(;key<6 && server_.argName(i)!=keys[key];++key){}
+      if(key==6) {ok=false;break;}
+      values[used]=server_.arg(i);if(!hasNoEmbeddedNull(values[used]) || values[used].length()>96) {ok=false;break;}
+      params[used]={keys[key],values[used].c_str()};++used;
+    }
+    ok=ok && csrfCount==1 && monitor::parseSettings(params,used,previous,next);
+    const bool saved=ok && telemetry::configureMonitoring(next);
+    for(auto &v:values)eraseString(v);
+    monitor::wipe(&next,sizeof(next));monitor::wipe(&previous,sizeof(previous));
+    if(!ok) {server_.send(400,"text/plain","Check server, port, UUID, name and monitoring key (24-64 characters). A new identity or server needs its own key.");return;}
+    if(!saved) {server_.send(500,"text/plain","Could not save monitoring settings; previous settings remain active");return;}
+    hardware::requestSettingsSaved();server_.sendHeader("Location","/monitoring");server_.send(303,"text/plain","Monitoring saved");return;
+  }
+  if(server_.args()!=0) {monitor::wipe(&previous,sizeof(previous));server_.send(400,"text/plain","Invalid monitoring request");return;}
+  char csrf[96]{};if(!requestSession(csrf,sizeof(csrf))) {monitor::wipe(&previous,sizeof(previous));sendSignInRequired();return;}
+  const size_t n=renderMonitoringPage(gPage,sizeof(gPage),previous,telemetry::monitoringStatus(),csrf);
+  eraseBytes(csrf,sizeof(csrf));monitor::wipe(&previous,sizeof(previous));
+  if(!n) {server_.send(500,"text/plain","Unable to render monitoring settings");return;}
+  sendHtml(gPage,n);
+}
+void LanWebUi::handleMonitoringClear() {
+  if(!authorizeRequest(true))return;
+  if(server_.args()!=2 || server_.argName(0)==server_.argName(1) || !server_.hasArg("csrf") ||
+      !server_.hasArg("confirm") || server_.arg("confirm")!="erase") {server_.send(400,"text/plain","Confirm removing this map's monitoring credentials");return;}
+  if(!telemetry::clearMonitoring()) {server_.send(500,"text/plain","Could not remove monitoring credentials");return;}
+  hardware::requestSettingsSaved();server_.sendHeader("Location","/monitoring");server_.send(303,"text/plain","Monitoring credentials removed");
 }
 
 void LanWebUi::handleScreenOptions() {
@@ -1572,6 +1621,8 @@ void LanWebUi::handleUpdateAuto() {
 }
 
 bool LanWebUi::checkLatestRelease() {
+  telemetry::UpdatePause monitorPause;
+  if(!monitorPause.ready) {snprintf(releaseStatus_,sizeof(releaseStatus_),"Monitoring is releasing its connection; retry shortly");return false;}
   releaseCheckSucceeded_ = false;
   updateAvailable_ = false;
   availableVersion_[0] = '\0';
@@ -1652,6 +1703,8 @@ bool LanWebUi::checkLatestRelease() {
 }
 
 bool LanWebUi::installAvailableRelease() {
+  telemetry::UpdatePause monitorPause;
+  if(!monitorPause.ready) {snprintf(releaseStatus_,sizeof(releaseStatus_),"Monitoring is releasing its connection; retry shortly");return false;}
   display::live::disable();
   if (!updateAvailable_ || availableVersion_[0] == '\0' ||
       otaSession_.activationPending()) {

@@ -29,6 +29,8 @@ class WebOtaSession {
   static const char *firmwareVersion();
 
  private:
+  void releaseMonitoring();
+  bool monitoringPaused_ = false;
   class Impl;
   std::unique_ptr<Impl> impl_;
   std::unique_ptr<Installer> installer_;

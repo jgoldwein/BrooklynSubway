@@ -441,7 +441,7 @@ bool isProtectedEndpoint(const char *method, const char *path) {
   if (method == nullptr || path == nullptr) return false;
   if (strcmp(method, "GET") == 0 &&
       (strcmp(path, "/wifi/setup") == 0 || strcmp(path, "/update") == 0 ||
-       strcmp(path, "/update/progress") == 0 ||
+       strcmp(path, "/update/progress") == 0 || strcmp(path,"/monitoring")==0 || strcmp(path,"/api/monitoring")==0 ||
        strcmp(path, "/hardware-test") == 0 || strcmp(path, "/defaults") == 0 || strcmp(path, "/screen-options") == 0 || strcmp(path, "/personalization") == 0)) {
     return true;
   }
@@ -452,7 +452,7 @@ bool isMutationEndpoint(const char *method, const char *path) {
   if (method == nullptr || path == nullptr || strcmp(method, "POST") != 0) {
     return false;
   }
-  return strcmp(path, "/config/colors") == 0 ||
+  return strcmp(path,"/monitoring")==0 || strcmp(path,"/monitoring/clear")==0 || strcmp(path, "/config/colors") == 0 ||
          strcmp(path, "/config/brightness") == 0 ||
          strcmp(path, "/config/poll") == 0 ||
          strcmp(path, "/config/oled") == 0 ||

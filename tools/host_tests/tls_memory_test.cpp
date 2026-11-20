@@ -15,9 +15,10 @@ int main(){
  using namespace brooklyn::tls;CHECK(!configureMemory());CHECK(configureMemory());CHECK(configureMemory() && installs==2);
  void *small=allocFn(1,64);CHECK(small && internalCalls==1 && externalCalls==0);freeFn(small);
  void *large=allocFn(2,8192);CHECK(large && externalCalls==1);for(unsigned i=0;i<16384;++i)CHECK(static_cast<unsigned char *>(large)[i]==0);freeFn(large);
+ void *medium=allocFn(1,1024);CHECK(medium && externalCalls==2 && internalCalls==1);freeFn(medium);
  failExternal=true;large=allocFn(1,4096);CHECK(large && internalCalls==2);freeFn(large);
  failInternal=true;CHECK(!allocFn(1,16384));CHECK(!allocFn(1,32));
  const int before=allocCalls;CHECK(!allocFn(SIZE_MAX,2));CHECK(allocCalls==before);
- freeFn(nullptr);const auto stats=memoryStats();CHECK(stats.externalAllocations==1 && stats.internalFallbacks==2 && stats.allocationFailures==3);
+ freeFn(nullptr);const auto stats=memoryStats();CHECK(stats.externalAllocations==2 && stats.internalFallbacks==2 && stats.allocationFailures==3);
  puts("TLS allocator: one-time install/retry, small internal, large zeroed PSRAM, internal fallback, allocation failure, overflow and compatible free PASS");
 }

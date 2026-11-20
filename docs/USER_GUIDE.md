@@ -392,6 +392,19 @@ Weather data: [Open-Meteo](https://open-meteo.com/), licensed under
 
 ## Send a support report
 
+### Optional remote monitoring
+
+With monitoring firmware installed, open **Advanced > Remote monitoring**.
+Your monitoring administrator supplies an individual Device ID and key. Once
+provisioned, monitoring defaults to On; you can switch it Off at any time.
+Reports include status, uptime, Wi-Fi signal, feed health, memory and observed
+disconnects. Passwords and Wi-Fi names are excluded. The chosen map label is
+included. This does not allow remote control or inspect individual physical LEDs.
+Restart and updates keep the monitoring setup; firmware defaults remove it.
+See the [remote monitoring setup guide](REMOTE_MONITORING.md) for details.
+
+### Make and send a report yourself
+
 The top-level **Help** menu includes the online guide, **Project on GitHub**,
 **About**, and **Licenses**. You can read the local Help page without internet;
 GitHub links and full license documents need internet access.

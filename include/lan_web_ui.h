@@ -30,6 +30,8 @@ class LanWebUi {
  private:
   void registerRoutes();
   void handleHome();
+  void handleMonitoring(bool saving);
+  void handleMonitoringClear();
   void handlePersonalization(bool saving);
   void handleExtraPersonalization();
   void handleStationAlertPreferences();
