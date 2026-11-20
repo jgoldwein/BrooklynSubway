@@ -13,22 +13,14 @@
 - Current local sender state and server-acknowledgment age refresh every five
   seconds without refreshing the settings form. Sign-in returns to this page.
 - Private enrollment helper creates unique keys and publish-only ACL fragments.
-  Generated credential files and private source are kept out of Git. The
-  owner-authorized production binary exception is described below.
+  Generated credentials are not part of public firmware, source or release assets.
 - Separate private-update builder can prepare a signed, unit-bound enrollment
-  image for a shipped map. Such an image contains its key and normally remains
-  private. One-time seed handling preserves existing choices and respects
+  image for a shipped map. Such an image contains its key and is never a public
+  release asset. One-time seed handling preserves existing choices and respects
   later credential removal/default reset.
-- For this release only, the project owner explicitly authorized publishing the
-  shipped map's signed, hardware-bound enrollment image as the production
-  automatic-update asset. On that matching unit, it enables monitoring without
-  form entry when no monitoring settings exist. Existing settings are preserved;
-  other units are not enrolled by that seed.
-- This asset contains an extractable, individual, publish-only MQTT credential.
-  Hardware binding prevents accidental enrollment elsewhere; it does not hide
-  the credential. Download counts cannot identify recipients or rule out copying.
-  A following ordinary release can omit the embedded seed, but changing the
-  broker credential requires a separate coordinated rotation.
+- The public automatic update does not enroll an unconfigured map. A shipped
+  map can receive its individual configuration through a one-time private signed
+  upload, including over the same numbered public version.
 
 ## Behavior
 
