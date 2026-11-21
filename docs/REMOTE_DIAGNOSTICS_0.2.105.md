@@ -1,6 +1,6 @@
-# Expanded remote diagnostics — local test build 0.2.105
+# Expanded remote diagnostics — firmware 0.2.105
 
-**Testing on the local COM6 map first. This build is not published, and Avi’s map remains on 0.2.104.**
+**Validated on the local COM6 production map before public rollout. The ordinary firmware contains no individual credentials and preserves monitoring settings already saved on a map.**
 
 The map still sends its normal heartbeat about every 30 seconds. A separate `kind: diagnostics` report goes to its existing `/event` topic about once a minute, or after a change (normally at most once every five seconds). Deliberate TLS and memory-protection pauses can delay delivery; an action's reported time is distinct from the report's arrival time. There are no new broker permissions, subscriptions, tasks or network connections. MQTT remains a read-only monitoring channel.
 
@@ -36,4 +36,4 @@ The COM6 trial verified button and knob activity reporting, all four POWER modes
 
 A signed manual reinstall of 0.2.105 booted the alternate `app1` partition, reported `firmware_update`, progressed from `health_check_pending` to `confirmed`, and recovered to Fresh 8/8 feeds. Home Assistant received the confirmed OTA state and recovered feed status. One initial upload received the expected busy HTTP 503 before the installer started; retrying succeeded. Downloading/staged phase delivery was not observed through MQTT during this trial, so those phases are not claimed as live-verified.
 
-A real broker outage and deliberate feed/OTA failures were not induced on the live board; their policies were checked by automated tests. The release remains unpublished, and Avi’s board remains on 0.2.104. Home Assistant's top status card layout is unchanged; the additional parameters appear as diagnostic entries below the existing diagnostics on the dedicated monitoring page.
+A real broker outage and deliberate feed/OTA failures were not induced on the live board; their policies were checked by automated tests. At the end of the local trial, the release was unpublished and Avi's board was still on 0.2.104. Home Assistant's top status card layout is unchanged; the additional parameters appear as diagnostic entries below the existing diagnostics on the dedicated monitoring page.
