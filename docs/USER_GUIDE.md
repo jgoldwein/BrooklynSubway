@@ -412,7 +412,7 @@ GitHub links and full license documents need internet access.
 1. Open your map's web page and choose **Help**, then **Make a support report**.
 2. Press **Make support report** and review the text.
 3. Press **Send report to The Developer** (or your saved support name). Your email app opens a draft addressed to
-   the support email saved under **Advanced > Personalization**. Describe the problem, review the message, then tap Send.
+   the support email saved under **Advanced > General settings**. Describe the problem, review the message, then tap Send.
 4. If the page asks for the full file, press **Save report file** and attach
    `brooklyn-subway-support.txt` in your email app before sending.
 
@@ -440,7 +440,9 @@ A successful settings save plays two gentle rising notes. Quiet hours mute them.
 
 ## Personalize your map
 
-1. Open the map's web page and choose **Advanced > Personalization**.
+From firmware 0.2.106, **Map name** at the top labels this individual PCB. Press **Save map name** to change it without re-entering the monitoring key. The title, recipient and greeting below are separate. Existing names and monitoring credentials are preserved.
+
+1. Open the map's web page and choose **Advanced > General settings**.
 2. Sign in with the administrator password if asked.
 3. Edit the names, greeting, date, From line, scrolling names or support contact. The preview shows the greeting lines.
 4. Press **Save personalization**. The usual two-note save sound confirms the save, unless quiet hours mute it.
@@ -456,7 +458,7 @@ The Wi-Fi setup network remains **BrooklynMap-Avi**, matching the printed instru
 
 ### Personal extras
 
-Under **Advanced > Personalization**, the **Personalized extras** form controls Celebration, Anniversary, Family Credits and Rangers. Turn off extras you do not want; the button cycle skips them. Subway Express and Morse remain available.
+Under **Advanced > General settings**, the **Personalized extras** form controls Celebration, Anniversary, Family Credits and Rangers. Turn off extras you do not want; the button cycle skips them. Subway Express and Morse remain available.
 
 You can edit the celebration and anniversary messages, the family-credits heading, and the team heading, caption and flashing cheer. Names, the From line and scrolling names still come from the main personalization form. A blank family-credits heading uses the recipient name. A blank team caption uses the short OLED name followed by "'s favorite team" and scrolls long text. Changing a team label does not change the Rangers sound or colors.
 
@@ -472,7 +474,7 @@ The Rangers extra lasts about 10 seconds, flashes the saved cheer (default **GO 
 
 ## My station alerts
 
-Open **Advanced > Personalization > My station alerts**. Choose York St (F), High St (A/C), or Jay St-MetroTech (A/C/F/R), then save. York St is the default. You can include line-wide notices or turn station alerts off. Both directions are included.
+Open **Advanced > General settings > My station alerts**. Choose York St (F), High St (A/C), or Jay St-MetroTech (A/C/F/R), then save. York St is the default. You can include line-wide notices or turn station alerts off. Both directions are included.
 
 Open **Advanced > Station alerts** to read the notices, or turn the knob to the OLED Station alerts screen (8/9). **Now** means the notice is currently scheduled to apply; **Upcoming** means it starts within the next 48 hours. **Unavailable** means the map could not verify current notices. Check the MTA before traveling. A station tag means it is included in an affected area; read the details rather than assuming the station is closed.
 
@@ -502,6 +504,6 @@ Open **Advanced** for these separate cards:
 
 - **Firmware updates:** see the current version, whether automatic updates are On or Off, and any newer release the map knows about. Choose **Open firmware updates** to manage updates.
 - **My station alerts:** see whether alerts are On and which stations are selected. Choose **View alerts** to read notices or **Choose stations** to change your selection.
-- **Personalization:** choose **Edit personalization** to change names, greeting, celebration details, extras and the support contact.
+- **General settings & personalization:** choose **General settings** to change names, greeting, celebration details, extras and the support contact.
 
 The version, update status and station choices refresh automatically. Changing settings may require administrator sign-in.

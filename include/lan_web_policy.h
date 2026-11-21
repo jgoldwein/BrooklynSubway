@@ -22,7 +22,7 @@ namespace brooklyn::web {
 // Includes signed-in controls, all route diagnostics and escaped status text.
 constexpr size_t kStatusPageCapacity = 28672;
 size_t renderStationAlerts(char *out,size_t capacity,uint32_t now,bool json=false);
-size_t renderPersonalizationPage(char *out,size_t capacity,const personal::Settings &settings,const char *csrf);
+size_t renderPersonalizationPage(char *out,size_t capacity,const personal::Settings &settings,const char *csrf,const char *mapName="Brooklyn map");
 size_t renderMonitoringPage(char *out,size_t capacity,const monitor::Settings &,const monitor::Runtime &,const char *csrf);
 size_t renderMonitoringJson(char *out,size_t capacity,const monitor::Runtime &);
 

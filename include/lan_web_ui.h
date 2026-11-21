@@ -33,6 +33,7 @@ class LanWebUi {
   void handleMonitoring(bool saving);
   void handleMonitoringClear();
   void handlePersonalization(bool saving);
+  void handleMapName();
   void handleExtraPersonalization();
   void handleStationAlertPreferences();
   void handleStationAlerts(bool json);

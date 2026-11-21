@@ -1168,10 +1168,16 @@ void testPersonalization() {
   CHECK(admin::isProtectedEndpoint("GET","/personalization"));
   CHECK(admin::isMutationEndpoint("POST","/personalization"));
   CHECK(admin::isMutationEndpoint("POST","/personalization/extras"));
+  CHECK(admin::isMutationEndpoint("POST","/personalization/name"));
+  CHECK(strcmp(web::loginTargetForRequest("/personalization/name"),"personalization")==0);
   CHECK(strcmp(web::loginReturnPath("personalization"),"/personalization")==0);
   CHECK(strcmp(web::loginTargetForRequest("/personalization"),"personalization")==0);
   static char page[web::kStatusPageCapacity];
   CHECK(web::renderPersonalizationPage(page,sizeof(page),p,"test-csrf")>0);
+  CHECK(strstr(page,"<h1>General settings</h1>") && strstr(page,"action=\"/personalization/name\""));
+  CHECK(web::renderPersonalizationPage(page,sizeof(page),p,"test-csrf","Joel's <map>&")>0);
+  CHECK(strstr(page,"Joel&#39;s &lt;map&gt;&amp;"));
+  CHECK(strstr(page,"name=\"mapName\" maxlength=\"32\""));
   CHECK(strstr(page,"name=\"email\"") && strstr(page,"name=\"csrf\" value=\"test-csrf\""));
   CHECK(strstr(page,"maxlength=\"21\"") && strstr(page,"id=\"preview\""));
   strcpy(p.date,"2026-02-29");CHECK(!personal::valid(p));
@@ -1322,7 +1328,7 @@ int main() {
     CHECK(brooklyn::web::renderHomePage(page,sizeof(page),status,5,brooklyn::semantic::kAllRoutesVisibleMask)>0);
     CHECK(strstr(page,"id=\"firmware-updates\"><h2>Firmware updates</h2>"));
     CHECK(strstr(page,"id=\"my-station-alerts\"><h2>My station alerts</h2>"));
-    CHECK(strstr(page,"id=\"personalization\"><h2>Personalization</h2>"));
+    CHECK(strstr(page,"id=\"personalization\"><h2>General settings &amp; personalization</h2>"));
     CHECK(strstr(page,"href=\"/personalization#station-alerts\">Choose stations"));
     CHECK(strstr(page,"York St (F), High St (A/C), Jay St-MetroTech (A/C/F/R)"));
     CHECK(strstr(page,"data-status=\"automaticUpdatesLabel\">On</strong>"));

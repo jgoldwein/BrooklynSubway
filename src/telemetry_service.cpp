@@ -5,6 +5,7 @@
 
 #include "telemetry_service.h"
 #include "monitor_seed.h"
+#include "personalization.h"
 
 #if BROOKLYN_NETWORK_ENABLED
 #define BROOKLYN_TELEMETRY_ACTIVE 1
@@ -192,7 +193,9 @@ void stopClient() {
 
 void buildStatusInput(StatusInput &s, uint64_t sequence, const Snapshot &snap, const Counters &c) {
   s.deviceId = gActive.deviceId;
-  s.deviceName = gActive.name;
+  static personal::MapName name; // Single MQTT worker owns the serialization buffer.
+  name=personal::mapName(gActive.name);
+  s.deviceName = name.text;
   s.bootId = gBootId;
   s.sequence = sequence;
   s.uptimeMs = nowMs();
@@ -593,7 +596,10 @@ bool handleCommand(int command) {
 
 monitor::Settings monitoringSettings() {
   if(!gLock)return {};
-  Lock lock;return gDesired;
+  monitor::Settings settings;
+  {Lock lock;settings=gDesired;}
+  const auto name=personal::mapName(settings.name);
+  memcpy(settings.name,name.text,sizeof(settings.name));return settings;
 }
 monitor::Runtime monitoringStatus() {
   if(!gLock) {monitor::Runtime r;r.state=monitor::State::Failed;return r;}

@@ -203,6 +203,7 @@ void LanWebUi::registerRoutes() {
   server_.on("/personalization/extras", HTTP_POST, [this]() { handleExtraPersonalization(); });
   server_.on("/personalization", HTTP_GET, [this]() { handlePersonalization(false); });
   server_.on("/personalization", HTTP_POST, [this]() { handlePersonalization(true); });
+  server_.on("/personalization/name", HTTP_POST, [this]() { handleMapName(); });
   const char *headers[] = {"Cookie", "X-CSRF-Token", "Content-Type"};
   server_.collectHeaders(headers, 3);
   server_.on("/update", HTTP_GET, [this]() { handleUpdatePage(); });
@@ -657,9 +658,23 @@ void LanWebUi::handlePersonalization(bool saving) {
   if(server_.args()>1 || (server_.args()==1 && (server_.argName(0)!="saved" || server_.arg(0)!="1"))) {server_.send(400,"text/plain","Invalid personalization request");return;}
   char csrf[96]{};if(!requestSession(csrf,sizeof(csrf))) {sendSignInRequired();return;}
   const auto settings=personal::snapshot();
-  const size_t n=renderPersonalizationPage(gPage,sizeof(gPage),settings,csrf);eraseBytes(csrf,sizeof(csrf));
+  auto monitoring=telemetry::monitoringSettings();
+  const auto name=personal::mapName(monitoring.name);monitor::wipe(&monitoring,sizeof(monitoring));
+  const size_t n=renderPersonalizationPage(gPage,sizeof(gPage),settings,csrf,name.text);eraseBytes(csrf,sizeof(csrf));
   if(!n) {server_.send(500,"text/plain","Unable to render personalization");return;}
   sendHtml(gPage,n);
+}
+
+void LanWebUi::handleMapName() {
+  if(!authorizeRequest(true))return;
+  if(server_.args()!=2 || server_.argName(0)==server_.argName(1) || !server_.hasArg("csrf") || !server_.hasArg("mapName")) {server_.send(400,"text/plain","Enter one map name");return;}
+  const String text=server_.arg("mapName");personal::MapName name;
+  if(!hasNoEmbeddedNull(text) || text.length()>=sizeof(name.text)) {server_.send(400,"text/plain","Use a map name up to 32 characters");return;}
+  memcpy(name.text,text.c_str(),text.length()+1);
+  if(!personal::validMapName(name)) {server_.send(400,"text/plain","Use 1-32 plain English letters, numbers or punctuation, without leading or trailing spaces");return;}
+  if(!personal::saveMapName(name)) {server_.send(500,"text/plain","Could not save map name; previous name remains active");return;}
+  telemetry::noteSettingsSaved("MapName");hardware::requestSettingsSaved();
+  server_.sendHeader("Location","/personalization?saved=1");server_.send(303,"text/plain","Map name saved");
 }
 
 void LanWebUi::handleMonitoring(bool saving) {

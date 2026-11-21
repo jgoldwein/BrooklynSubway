@@ -82,6 +82,39 @@ inline void apply(const Settings &s) {
 #endif
 }
 
+// Individual PCB label, independent of the greeting and monitoring credentials.
+// Empty internal value means use the older monitoring label (upgrade compatibility).
+struct MapName {char text[33]{};};
+inline bool validMapName(const MapName &s) {
+  size_t n=0;
+  for(;n<sizeof(s.text) && s.text[n];++n)
+    if(static_cast<unsigned char>(s.text[n])<32 || static_cast<unsigned char>(s.text[n])>126)return false;
+  return n>0 && n<sizeof(s.text) && s.text[0]!=' ' && s.text[n-1]!=' ';
+}
+inline MapName &mapNameStorage() {static MapName s;return s;}
+inline void applyMapName(const MapName &s) {
+#if defined(ARDUINO_ARCH_ESP32)
+  portENTER_CRITICAL(&mutex());
+#endif
+  mapNameStorage()=s;
+#if defined(ARDUINO_ARCH_ESP32)
+  portEXIT_CRITICAL(&mutex());
+#endif
+}
+inline MapName mapName(const char *fallback="Brooklyn map") {
+#if defined(ARDUINO_ARCH_ESP32)
+  portENTER_CRITICAL(&mutex());
+#endif
+  MapName copy=mapNameStorage();
+#if defined(ARDUINO_ARCH_ESP32)
+  portEXIT_CRITICAL(&mutex());
+#endif
+  if(!copy.text[0])snprintf(copy.text,sizeof(copy.text),"%s",fallback);
+  return copy;
+}
+bool loadMapName();
+bool saveMapName(const MapName &s);
+
 struct ExtraSettings {
   uint8_t enabledMask=15; // Celebration, anniversary, family credits, Rangers.
   char celebrationNote[22]="Let's celebrate!";

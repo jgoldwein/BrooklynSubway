@@ -10,6 +10,7 @@ struct Record {uint32_t version;Settings settings;uint32_t checksum;};
 uint32_t checksum(const Record &r) {uint32_t h=2166136261u;const auto *p=reinterpret_cast<const uint8_t *>(&r);for(size_t i=0;i<offsetof(Record,checksum);++i)h=(h^p[i])*16777619u;return h;}
 }
 bool load() {
+  loadMapName();
   loadExtras();
   Settings defaults;apply(defaults);Preferences p;if(!p.begin("bkmap_cfg",true)) {Serial.println("Personalization: original defaults (no saved settings)");return true;}
   const size_t n=p.getBytesLength("personal_v1");Record r{};bool ok=!n;
@@ -23,6 +24,24 @@ bool save(const Settings &s) {
   if(!p.begin("bkmap_cfg",false))return false;
   const bool ok=p.putBytes("personal_v1",&r,sizeof(r))==sizeof(r);p.end();
   if(ok) {apply(s);Serial.println("Personalization: saved; OLED and web text updated");}return ok;
+}
+namespace {
+struct MapNameRecord {uint32_t version;MapName name;uint32_t checksum;};
+uint32_t nameChecksum(const MapNameRecord &r) {uint32_t h=2166136261u;const auto *p=reinterpret_cast<const uint8_t *>(&r);for(size_t i=0;i<offsetof(MapNameRecord,checksum);++i)h=(h^p[i])*16777619u;return h;}
+}
+bool loadMapName() {
+  applyMapName(MapName{});Preferences p;if(!p.begin("bkmap_cfg",true))return true;
+  const size_t n=p.getBytesLength("map_name_v1");MapNameRecord r{};bool ok=!n;
+  if(n==sizeof(r))ok=p.getBytes("map_name_v1",&r,sizeof(r))==sizeof(r) && r.version==1 && nameChecksum(r)==r.checksum && validMapName(r.name);
+  p.end();if(n && ok)applyMapName(r.name);
+  Serial.printf("Map name: %s\n",!n?"using existing monitoring label":ok?"saved name loaded":"invalid record; using existing label");return ok;
+}
+bool saveMapName(const MapName &s) {
+  if(!validMapName(s))return false;
+  MapNameRecord r{};r.version=1;r.name=s;r.checksum=nameChecksum(r);Preferences p;
+  if(!p.begin("bkmap_cfg",false))return false;
+  const bool ok=p.putBytes("map_name_v1",&r,sizeof(r))==sizeof(r);p.end();
+  if(ok) {applyMapName(s);Serial.println("Map name: saved; web and monitoring label updated");}return ok;
 }
 namespace {
 struct ExtraRecord {uint32_t version;ExtraSettings settings;uint32_t checksum;};

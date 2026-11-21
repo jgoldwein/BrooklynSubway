@@ -59,14 +59,15 @@ def main():
     for key,c in extended['components'].items():
         if key=='existing':continue
         assert c['entity_category']=='diagnostic'
-        assert c['state_topic']==topic
+        assert c['state_topic']==(topic.replace('/event','/status') if key=='map_name' else topic)
         assert 'command_topic' not in c
-        assert "'diagnostics'" in c['value_template'] and device in c['value_template']
-    assert len(extended['components'])==28
+        if key=='map_name':assert 'device_name' in c['value_template']
+        else:assert "'diagnostics'" in c['value_template'] and device in c['value_template']
+    assert len(extended['components'])==29
     try:extend_discovery(original,device,'bad/namespace')
     except ValueError:pass
     else:raise AssertionError('unsafe prefix accepted')
     print('Diagnostics schema/privacy/identity/replay/latest-only storage: 66 checks PASS')
-    print('Home Assistant: 27 diagnostic components; existing configuration preserved; no command topics PASS')
+    print('Home Assistant: 28 diagnostic components including map name; existing configuration preserved; no command topics PASS')
     return 0
 if __name__=='__main__':raise SystemExit(main())

@@ -38,5 +38,23 @@ int main() {
   assert(extraSnapshot().enabledMask==15);
   {Settings noMail=snapshot();noMail.email[0]=0;assert(save(noMail));assert(load());assert(snapshot().email[0]==0);}
   puts("Personalization NVS: default, save, reload, failed-write retention, corruption/version/size fallback and cleared-namespace defaults PASS");
+  // New names must not change the existing personalization blob or depend on MQTT.
+  const auto oldPersonal=fakeNvs::bytes();const auto oldExtras=fakeNvs::extraBytes();
+  assert(strcmp(mapName("Legacy monitoring name").text,"Legacy monitoring name")==0);
+  MapName name;strcpy(name.text,"Living room map");assert(saveMapName(name));
+  assert(fakeNvs::bytes()==oldPersonal && fakeNvs::extraBytes()==oldExtras);
+  applyMapName(MapName{});assert(loadMapName());assert(strcmp(mapName().text,"Living room map")==0);
+  const auto savedName=fakeNvs::nameBytes();
+  fakeNvs::failWrite()=true;strcpy(name.text,"Unsaved name");assert(!saveMapName(name));
+  assert(strcmp(mapName().text,"Living room map")==0 && fakeNvs::nameBytes()==savedName);fakeNvs::failWrite()=false;
+  fakeNvs::nameBytes()[8]^=1;assert(!loadMapName());assert(strcmp(mapName("Legacy name").text,"Legacy name")==0);
+  fakeNvs::nameBytes()=savedName;fakeNvs::nameBytes().pop_back();assert(!loadMapName());
+  fakeNvs::nameBytes()=savedName;fakeNvs::nameBytes()[0]=99;assert(!loadMapName());
+  fakeNvs::nameBytes().clear();assert(loadMapName());assert(strcmp(mapName().text,"Brooklyn map")==0);
+  const char *badNames[]={""," Leading","Trailing ","Bad\nname"};
+  for(const char *bad:badNames) {MapName n;strcpy(n.text,bad);assert(!saveMapName(n));}
+  MapName full;memset(full.text,'a',32);assert(validMapName(full));full.text[32]='a';assert(!validMapName(full));
+  assert(fakeNvs::bytes()==oldPersonal && fakeNvs::extraBytes()==oldExtras);
+  puts("Map name NVS: legacy fallback, independent save, reload, write failure, corruption, reset and validation PASS");
 }
 

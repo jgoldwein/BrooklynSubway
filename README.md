@@ -54,7 +54,7 @@ or a guarantee of the next train's arrival.
 
 ## Make it your own
 
-Open **Advanced > Personalization** on the map to set the recipient, short screen name, greeting, From line, scrolling credits, celebration date, display creator, support contact name and email. **The Developer** is a generic support label; replace it with the person supporting your map. The support button uses these saved details. See the [personalization guide](docs/PERSONALIZATION.md). You can also choose station alerts and enable or customize personal extras.
+Open **Advanced > General settings** on the map to set the recipient, short screen name, greeting, From line, scrolling credits, celebration date, display creator, support contact name and email. **The Developer** is a generic support label; replace it with the person supporting your map. The support button uses these saved details. See the [personalization guide](docs/PERSONALIZATION.md). You can also choose station alerts and enable or customize personal extras.
 
 The guides use generic labels. The build story, photographs and historical engineering notes describe the original gift and retain its names. The setup Wi-Fi name **BrooklynMap-Avi** stays fixed to match the printed board and recovery instructions.
 

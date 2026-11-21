@@ -53,4 +53,13 @@ def extend_discovery(payload, device_id, prefix):
     for transport in ['wifi','mqtt']:
         add(transport+'_outage_duration',transport.upper()+' last outage duration',"value_json.get('"+transport+"_outage_duration_s')",'s')
         at_time('last_'+transport+'_recovery','Last '+transport.upper()+' recovery',transport+'_recovery_age_s')
+    # The individual label is already in all heartbeat versions. Keep identity/topic
+    # and entity IDs stable when an administrator changes the friendly map name.
+    components['map_name']={
+        'platform':'sensor','name':'Map name','unique_id':f'brooklyn_{device_id}_map_name',
+        'default_entity_id':f'sensor.{prefix}_map_name','entity_category':'diagnostic',
+        'state_topic':f'brooklyn/v1/bkmap-{device_id}/status',
+        'value_template':"{{ value_json.device_name }}",'expire_after':120,
+        'availability_topic':f'brooklyn/v1/bkmap-{device_id}/availability',
+        'payload_available':'online','payload_not_available':'offline','icon':'mdi:tag-text-outline'}
     return result
