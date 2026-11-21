@@ -18,9 +18,9 @@ The collector validates a separate strict schema, rejects retained/replayed/mism
 
 ## Home Assistant
 
-The local test extends the existing Merion MQTT device with diagnostic entities. The main cards are unchanged. Open **Settings > Devices & services > MQTT > Local Brooklyn Subway (COM6)** to inspect them; additional settings are also attributes of **Last diagnostics report**. Button ages are labeled “at report” because they do not tick every second in the firmware report. Source timestamps and availability must be considered when inspecting an old report.
+The Merion **Brooklyn Subway** monitoring page displays these diagnostic entries below each map's existing **Connection & diagnostics** section. They are grouped as **Updates & restart**, **Display & controls**, **Saved settings**, and **Feed & connection recovery**. The top status cards, existing diagnostic tiles, connection history and compact Home card are unchanged. The entities also remain available under **Settings > Devices & services > MQTT > the map's device**; all raw report fields are attributes of **Last detailed report**. Button ages are labeled “at report” because they do not tick every second in the firmware report. Source timestamps and availability must be considered when inspecting an old report.
 
-The configuration builder is [ha_diagnostics.py](../tools/telemetry/ha_diagnostics.py). It preserves existing MQTT discovery components and does not contain credentials or publish anything itself. During this local test, only COM6’s discovery configuration is extended.
+The configuration builder is [ha_diagnostics.py](../tools/telemetry/ha_diagnostics.py). It preserves existing MQTT discovery components and does not contain credentials or publish anything itself. Both maps' HA discovery configurations include the new diagnostic entries. COM6 supplies them on 0.2.105; Avi's new entries are marked as waiting for firmware 0.2.105 or later. Registering the entries in HA does not change Avi's installed firmware or settings.
 
 ## Validation and operator checks
 
@@ -36,4 +36,4 @@ The COM6 trial verified button and knob activity reporting, all four POWER modes
 
 A signed manual reinstall of 0.2.105 booted the alternate `app1` partition, reported `firmware_update`, progressed from `health_check_pending` to `confirmed`, and recovered to Fresh 8/8 feeds. Home Assistant received the confirmed OTA state and recovered feed status. One initial upload received the expected busy HTTP 503 before the installer started; retrying succeeded. Downloading/staged phase delivery was not observed through MQTT during this trial, so those phases are not claimed as live-verified.
 
-A real broker outage and deliberate feed/OTA failures were not induced on the live board; their policies were checked by automated tests. The release remains unpublished, and Avi’s board remains on 0.2.104. Home Assistant’s main card layout is unchanged; the added monitoring fields are diagnostic entities on the local map’s device page.
+A real broker outage and deliberate feed/OTA failures were not induced on the live board; their policies were checked by automated tests. The release remains unpublished, and Avi’s board remains on 0.2.104. Home Assistant's top status card layout is unchanged; the additional parameters appear as diagnostic entries below the existing diagnostics on the dedicated monitoring page.
